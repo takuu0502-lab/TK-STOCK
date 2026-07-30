@@ -31,14 +31,23 @@
         const snapshot = await get(ref(db, path));
         if (snapshot.exists()) return { value: snapshot.val() };
         return null;
-      } catch(e) { console.error('FB get error', e); return null; }
+      } catch(e) {
+        console.error('FB get error', e);
+        window._fbGetError = e.message;
+        return null;
+      }
     },
     set: async (key, value, shared) => {
       try {
         const path = shared ? 'shared/' + key : 'local/' + key;
         await set(ref(db, path), value);
         return { value };
-      } catch(e) { console.error('FB set error', e); return null; }
+      } catch(e) {
+        console.error('FB set error', e);
+        const el = document.getElementById('authMsg') || document.getElementById('modalMsg');
+        if(el) el.innerHTML = '<div class="msg msg-error">DB書き込みエラー: ' + e.message + '<br>FirebaseコンソールでRealtimeDatabaseのルールを確認してください。</div>';
+        return null;
+      }
     },
     delete: async (key, shared) => {
       try {
@@ -165,9 +174,13 @@
   .spec-step-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:7px;}
   .spec-step-tabs{display:flex;gap:6px;flex-wrap:wrap;}
   #specSelect{min-width:200px;}
-  .tire-size-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-  .tire-size-row select{width:auto;min-width:78px;flex:1 1 78px;}
-  .tire-size-sep{font-family:var(--font-mono);font-weight:600;color:var(--text-2);font-size:15px;}
+  .tire-size-row{display:inline-flex;align-items:flex-end;gap:0;flex-wrap:nowrap;}
+  .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:none;}
+  .tire-size-col select{width:90px;font-size:14px;padding:0 4px;border-radius:0;text-align:center;height:38px;box-sizing:border-box;}
+  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;width:100px;}
+  .tire-size-col:last-of-type select{border-radius:0 6px 6px 0;width:80px;}
+  .tire-size-col label{font-size:11px;color:var(--text-3);font-weight:600;letter-spacing:0.3px;}
+  .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-2);font-size:16px;background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:0 3px;height:38px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;}
   .spec-search-actions{display:flex;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
   .detail-header{margin-bottom:16px;}
   .detail-name{font-size:22px;font-weight:700;color:var(--text-1);font-family:var(--font-display);}
@@ -475,7 +488,7 @@
         <input type="text" id="inBarcode" placeholder="バーコード番号" style="width:220px;">
       </div>
       <button class="btn btn-ghost" id="inScanBtn">カメラでスキャン</button>
-      <button class="btn" id="inLookupBtn">検索</button>
+      <button class="btn btn-ghost" id="inLookupBtn">検索</button>
     </div>
     <div id="inReaderWrap"></div>
     <div id="inResult"></div>
@@ -489,7 +502,7 @@
         <input type="text" id="outBarcode" placeholder="バーコード番号" style="width:220px;">
       </div>
       <button class="btn btn-ghost" id="outScanBtn">カメラでスキャン</button>
-      <button class="btn" id="outLookupBtn">検索</button>
+      <button class="btn btn-ghost" id="outLookupBtn">検索</button>
     </div>
     <div id="outReaderWrap"></div>
     <div id="outResult"></div>
@@ -563,8 +576,12 @@
   <div class="modal">
     <h3 id="modalTitle">新規商品登録</h3>
     <div class="field">
-      <label>商品コード</label>
-      <input type="text" id="f_barcode" placeholder="例) T-00123">
+      <label>商品コード / JANコード</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="f_barcode" placeholder="例) T-00123 または JANコード13桁" style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="janLookupBtn" title="JANコードで商品情報を検索">JAN検索</button>
+      </div>
+      <div id="janLookupMsg" style="margin-top:6px;"></div>
     </div>
     <div class="row">
       <div class="field" style="flex:1;">
@@ -588,18 +605,18 @@
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
       <div class="tire-size-row" id="f_spec_tire_row" style="display:none;margin-top:8px;">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">
-          <label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>
+        <div class="tire-size-col">
+          <label>タイヤ幅</label>
           <select id="f_spec_width"><option value="">-</option></select>
         </div>
-        <span class="tire-size-sep" style="margin-top:16px;">/</span>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">
-          <label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>
+        <span class="tire-size-sep">/</span>
+        <div class="tire-size-col">
+          <label>扁平率</label>
           <select id="f_spec_aspect"><option value="">-</option></select>
         </div>
-        <span class="tire-size-sep" style="margin-top:16px;">R</span>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">
-          <label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>
+        <span class="tire-size-sep">R</span>
+        <div class="tire-size-col">
+          <label>インチ</label>
           <select id="f_spec_inch"><option value="">-</option></select>
         </div>
       </div>
@@ -727,7 +744,7 @@
 
     <div class="field no-print" style="margin-top:14px;">
       <label>備考</label>
-      <textarea id="quoteNote" rows="3" placeholder="備考・特記事項など" style="resize:vertical;"></textarea>
+      <textarea id="quoteNote" rows="7" placeholder="備考・特記事項など" style="resize:vertical;width:100%;min-height:120px;"></textarea>
     </div>
 
     <div class="modal-actions no-print">
@@ -775,7 +792,17 @@
 </div>
 
 <script>
-(function(){
+// Firebase接続タイムアウト（10秒）
+let storageReadyFired = false;
+setTimeout(function(){
+  if(!storageReadyFired){
+    const el = document.getElementById('authMsg');
+    if(el) el.innerHTML = '<div class="msg msg-error">Firebaseへの接続がタイムアウトしました。インターネット接続とFirebaseのデータベースルール（.read/.write を true）を確認してください。</div>';
+  }
+}, 10000);
+
+window.addEventListener('storageReady', function(){
+  storageReadyFired = true;
   const SHARED = true;
   let products = [];
   let transactions = [];
@@ -1408,7 +1435,7 @@
     product = {
       id: uid('p'),
       barcode: '',
-      name: r.b+' '+r.m,
+      name: r.b === r.m ? r.b : r.b+' '+r.m,
       majorId: majorId,
       subId: null,
       spec: r.s,
@@ -1466,7 +1493,7 @@
       const checked = catalogQuoteSelection.has(cKey);
       return '<tr data-catalog-idx="'+i+'">'
         + '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>'
-        + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+escapeHtml(r.b)+' '+escapeHtml(r.m)+'</td>'
+        + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
         + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+r.w.toLocaleString('ja-JP')+'</td>' : '')
         + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
@@ -1571,7 +1598,7 @@
       const color = gaugeColor(p.stock, p.minStock);
       const low = (p.minStock > 0 && p.stock <= p.minStock);
       return '<tr class="clickable-row" data-detail="'+p.id+'">'
-        + '<td data-label="商品名">'+escapeHtml(p.name)+'</td>'
+        + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
         + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div></td>'
         + '</tr>';
@@ -1800,6 +1827,12 @@
     window.print();
   });
 
+  function cleanName(name){
+    if(!name) return name;
+    const parts = name.trim().split(/\s+/);
+    if(parts.length === 2 && parts[0] === parts[1]) return parts[0];
+    return name;
+  }
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
   }
@@ -2040,11 +2073,11 @@
   }
   function populateSpecTireSelects(){
     const wSel = document.getElementById('f_spec_width');
-    let wOpts = '<option value="">幅</option>';
+    let wOpts = '<option value=""></option>';
     for(let w=135; w<=355; w+=10){ wOpts += '<option value="'+w+'">'+w+'</option>'; }
     wSel.innerHTML = wOpts;
     const aSel = document.getElementById('f_spec_aspect');
-    let aOpts = '<option value="">扁平率</option>';
+    let aOpts = '<option value=""></option>';
     for(let a=25; a<=80; a+=5){ aOpts += '<option value="/'+a+'">'+a+'</option>'; }
     aSel.innerHTML = aOpts;
     const iSel = document.getElementById('f_spec_inch');
@@ -2085,6 +2118,48 @@
   });
   document.getElementById('f_major').addEventListener('change', toggleTireNameField);
 
+  // ---------- JANコードルックアップ ----------
+  async function lookupJan(code){
+    const msgEl = document.getElementById('janLookupMsg');
+    if(!code || code.length < 8){
+      msgEl.innerHTML = '<div class="msg msg-error">8桁以上のコードを入力してください。</div>';
+      return;
+    }
+    msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
+    try {
+      const res = await fetch('https://api.upcitemdb.com/prod/trial/lookup?upc=' + encodeURIComponent(code));
+      const data = await res.json();
+      if(data.code === 'OK' && data.items && data.items.length > 0){
+        const item = data.items[0];
+        const name = item.title || '';
+        const brand = item.brand || '';
+        const fullName = (brand && name.toLowerCase().indexOf(brand.toLowerCase()) === -1)
+          ? brand + ' ' + name : name;
+        if(fullName && !document.getElementById('f_name').value){
+          document.getElementById('f_name').value = fullName;
+        }
+        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(fullName)+'</b></div>';
+      } else {
+        msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報は見つかりませんでした。手動で入力してください。</div>';
+      }
+    } catch(e) {
+      msgEl.innerHTML = '<div class="msg msg-error">検索に失敗しました。ネットワーク接続を確認してください。</div>';
+    }
+  }
+
+  document.getElementById('janLookupBtn').addEventListener('click', ()=>{
+    const code = document.getElementById('f_barcode').value.trim();
+    lookupJan(code);
+  });
+
+  document.getElementById('f_barcode').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const code = document.getElementById('f_barcode').value.trim();
+      if(/^\d{8,}$/.test(code)) lookupJan(code);
+    }
+  });
+
   function openAddModal(prefillBarcode){
     editingId = null;
     document.getElementById('modalTitle').textContent = '新規商品登録';
@@ -2101,8 +2176,10 @@
     document.getElementById('f_cost').value = '';
     document.getElementById('f_price').value = '';
     document.getElementById('modalMsg').innerHTML = '';
+    document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
     modal.classList.add('show');
+    if(prefillBarcode && /^\d{8,}$/.test(prefillBarcode)) lookupJan(prefillBarcode);
   }
   function openEditModal(id){
     const p = products.find(x=>x.id===id);
@@ -2167,9 +2244,9 @@
 
     document.getElementById('productDetailBody').innerHTML = ''
       + '<div class="detail-header">'
-      + '<div class="detail-name">'+escapeHtml(p.name)+'</div>'
+      + '<div class="detail-name">'+escapeHtml(cleanName(p.name))+'</div>'
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
-      + '<div class="detail-code">'+escapeHtml(p.barcode)+'</div>'
+      + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div class="detail-cat">'+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+'</div>'
       + '</div>'
       + '<div class="detail-stats">'
@@ -2178,7 +2255,7 @@
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
       + '<div class="detail-stat"><div class="detail-stat-label">販売価格（1点）</div><div class="detail-stat-value">'+(sell ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</div></div>'
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">粗利（1点）</div><div class="detail-stat-value">'+(margin !== null ? '\u00a5'+margin.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
-      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫評価額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*p.stock).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
+      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*p.stock).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
       + '</div>'
       + (writable ? (''
         + '<div class="detail-quick-actions">'
@@ -2223,6 +2300,9 @@
     const msgEl = document.getElementById('detailActionMsg');
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
     if(kind === 'out' && qty > p.stock){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+p.stock+')を超える出庫はできません。</div>'; return; }
+    const label = kind === 'in' ? '入庫' : '出庫';
+    const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' 点 '+label+' します。よろしいですか？');
+    if(!confirmed) return;
     p.stock = kind === 'in' ? p.stock + qty : p.stock - qty;
     transactions.unshift({
       id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
@@ -2344,7 +2424,13 @@
       }
       renderLookupCard(kind, p);
     }
-    lookupBtn.addEventListener('click', ()=> doLookup(false));
+    lookupBtn.addEventListener('click', ()=>{
+      if(barcodeInput.value.trim()){
+        doLookup(false);
+      } else {
+        document.getElementById('openSpecSearch').click();
+      }
+    });
     barcodeInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doLookup(false); });
     barcodeInput.__doScanLookup = ()=> doLookup(true);
   }
@@ -2373,7 +2459,7 @@
     ) : '';
     resultEl.innerHTML = ''
       + '<div class="lookup-card">'
-      + '<div class="p-name">'+escapeHtml(p.name)+'</div>'
+      + '<div class="p-name">'+escapeHtml(cleanName(p.name))+'</div>'
       + '<div class="p-meta">'+escapeHtml(p.barcode)+' ・ '+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+(p.spec ? ' ・ '+escapeHtml(p.spec) : '')+'</div>'
       + '<div class="p-meta">現在庫: <strong style="color:var(--text-1);">'+p.stock+'</strong></div>'
       + typeSelectorHtml
@@ -2509,14 +2595,22 @@
       const resLine = (t.itemType === 'reserved' && t.reservation)
         ? '<div class="hist-sub">取付予定: '+escapeHtml(t.reservation.installDate)+' ・ お客様: '+escapeHtml(t.reservation.customer)+' ・ 車種: '+escapeHtml(t.reservation.car)+' ・ 予約担当: '+escapeHtml(t.reservation.staff)+'</div>'
         : '';
-      return '<div class="hist-row"><span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span><div class="hist-info"><div class="hist-name">'+escapeHtml(t.name)+resTag+'</div><div class="hist-sub">'+escapeHtml(t.barcode)+' ・ '+dateStr+(t.user ? ' ・ 担当: '+escapeHtml(t.user) : '')+'</div>'+resLine+'</div><div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div></div>';
+      return '<div class="hist-row"><span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span><div class="hist-info"><div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div><div class="hist-sub">'+escapeHtml(t.barcode)+' ・ '+dateStr+(t.user ? ' ・ 担当: '+escapeHtml(t.user) : '')+'</div>'+resLine+'</div><div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div></div>';
     }).join('');
   }
 
   // ---------- アカウント / ログイン ----------
   async function loadAccounts(){
+    window._fbGetError = null;
     try{
       const a = await window.storage.get('accounts', SHARED);
+      if(window._fbGetError){
+        // Firebase読み込みエラー → 画面に表示
+        const el = document.getElementById('authMsg');
+        if(el) el.innerHTML = '<div class="msg msg-error">⚠️ Firebase接続エラー: ' + window._fbGetError + '<br>FirebaseコンソールでRealtimeDatabaseのルールを<br><code>".read":true, ".write":true</code> に設定してください。</div>';
+        accounts = [];
+        return;
+      }
       accounts = a ? JSON.parse(a.value) : [];
     }catch(e){ accounts = []; }
   }
@@ -2544,6 +2638,11 @@
     await loadAccounts();
     syncAuthToggleAvailability();
     if(accounts.length === 0){
+      // Firebase接続エラーの場合はセットアップ画面ではなくログイン画面+エラーを表示
+      if(window._fbGetError){
+        showAuthScreen('login');
+        return;
+      }
       showAuthScreen('setup');
       return;
     }
@@ -2761,7 +2860,6 @@
   });
 
   initAuth();
-})();
 });
 </script>
 </body>
