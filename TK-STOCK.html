@@ -38,7 +38,12 @@
         const path = shared ? 'shared/' + key : 'local/' + key;
         await set(ref(db, path), value);
         return { value };
-      } catch(e) { console.error('FB set error', e); return null; }
+      } catch(e) {
+        console.error('FB set error', e);
+        const el = document.getElementById('authMsg') || document.getElementById('modalMsg');
+        if(el) el.innerHTML = '<div class="msg msg-error">DB書き込みエラー: ' + e.message + '<br>FirebaseコンソールでRealtimeDatabaseのルールを確認してください。</div>';
+        return null;
+      }
     },
     delete: async (key, shared) => {
       try {
@@ -783,7 +788,17 @@
 </div>
 
 <script>
+// Firebase接続タイムアウト（10秒）
+let storageReadyFired = false;
+setTimeout(function(){
+  if(!storageReadyFired){
+    const el = document.getElementById('authMsg');
+    if(el) el.innerHTML = '<div class="msg msg-error">Firebaseへの接続がタイムアウトしました。インターネット接続とFirebaseのデータベースルール（.read/.write を true）を確認してください。</div>';
+  }
+}, 10000);
+
 window.addEventListener('storageReady', function(){
+  storageReadyFired = true;
   const SHARED = true;
   let products = [];
   let transactions = [];
