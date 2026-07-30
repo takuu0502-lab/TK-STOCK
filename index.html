@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -593,7 +594,17 @@
     <div style="margin-top:18px;">
       <button class="btn btn-amber" id="saveExternalPricingRules">外部向け価格の設定を保存</button>
     </div>
+
+    <div class="pricing-section-divider"></div>
+
+    <div class="pricing-section-title">価格表取込</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      Excelファイル（.xlsx）から価格表を取り込み、在庫検索・見積もりに反映できます。取込済み価格表の削除もここから行えます。
+    </p>
+    <div id="importedCatalogsPreview" style="margin-bottom:12px;"></div>
+    <button class="btn btn-amber" id="openImportCatalogBtn">価格表を取込む（Excel）</button>
   </div>
+</div>
 
 </div>
 
@@ -779,6 +790,36 @@
   </div>
 </div>
 
+
+<div class="modal-overlay" id="importCatalogModal">
+  <div class="modal" style="max-width:560px;">
+    <h3>価格表取込（Excel）</h3>
+    <p style="font-size:12.5px;color:var(--text-2);margin:0 0 16px;">Excelファイルを選択してください。取込済みの価格表も管理できます。</p>
+
+    <div id="importedCatalogsList" style="margin-bottom:16px;"></div>
+
+    <div style="border-top:1px solid var(--line);padding-top:16px;">
+      <label style="font-size:12px;color:var(--text-2);margin-bottom:6px;display:block;">Excelファイルを選択</label>
+      <input type="file" id="importFileInput" accept=".xlsx,.xls" style="margin-bottom:10px;font-size:13px;">
+      <div class="field">
+        <label>ブランド名（例: TOPRUN）</label>
+        <input type="text" id="importBrandName" placeholder="ブランド名を入力">
+      </div>
+      <div class="field">
+        <label>価格表名（例: TOPRUN 2026年2月）</label>
+        <input type="text" id="importCatalogName" placeholder="管理用の名前">
+      </div>
+      <div id="importPreview" style="margin-top:12px;font-size:12.5px;color:var(--text-2);"></div>
+      <div id="importMsg" style="margin-top:8px;"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-amber" id="importExecBtn" style="flex:1;" disabled>取込実行</button>
+      <button class="btn btn-ghost" id="importCancelBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="accountsModal">
   <div class="modal">
     <h3>アカウント管理</h3>
@@ -851,6 +892,28 @@ window.addEventListener('storageReady', function(){
 
   const DISTINCT_BRANDS = Array.from(new Set(PRICE_CATALOG.map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
 
+  let importedItems = [];
+  let importedCatalogs = []; // [{id, name, brand, importedAt, items:[]}]
+  function getCatalog(){ return importedItems.length ? [...PRICE_CATALOG, ...importedItems] : PRICE_CATALOG; }
+  function getBrands(){
+    if(!importedItems.length) return DISTINCT_BRANDS;
+    return Array.from(new Set(getCatalog().map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
+  }
+  function rebuildImportedItems(){
+    importedItems = importedCatalogs.flatMap(c=>c.items||[]);
+  }
+  async function loadImportedCatalogs(){
+    try{
+      const r = await window.storage.get('importedCatalogs', SHARED);
+      importedCatalogs = r ? JSON.parse(r.value) : [];
+    }catch(e){ importedCatalogs = []; }
+    rebuildImportedItems();
+  }
+  async function saveImportedCatalogs(){
+    try{ await window.storage.set('importedCatalogs', JSON.stringify(importedCatalogs), SHARED); }
+    catch(e){ console.error('save importedCatalogs failed', e); }
+  }
+
   function defaultPriceRules(){
     return {default:{basis:'retail',percent:0}, byBrand:{REGNO:{basis:'retail',percent:30}}, byModel:{}};
   }
@@ -888,9 +951,9 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('brandRulesList');
     document.getElementById('pr_default_basis').value = priceRules.default.basis || 'retail';
     document.getElementById('pr_default_percent').value = priceRules.default.percent || 0;
-    wrap.innerHTML = DISTINCT_BRANDS.map(brand=>{
+    wrap.innerHTML = getBrands().map(brand=>{
       const rule = priceRules.byBrand[brand];
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
@@ -938,7 +1001,7 @@ window.addEventListener('storageReady', function(){
       percent: Number(document.getElementById('pr_default_percent').value) || 0
     };
     const byBrand = {};
-    DISTINCT_BRANDS.forEach(brand=>{
+    getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-rule-basis="'+brand+'"]');
       const percentEl = document.querySelector('[data-rule-percent="'+brand+'"]');
       const basis = basisEl.value;
@@ -948,7 +1011,7 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, priceRules.byModel || {});
     expandedBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m)));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
@@ -1007,9 +1070,9 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('costBrandRulesList');
     document.getElementById('cr_default_basis').value = costRules.default.basis || 'wholesale';
     document.getElementById('cr_default_percent').value = costRules.default.percent || 0;
-    wrap.innerHTML = DISTINCT_BRANDS.map(brand=>{
+    wrap.innerHTML = getBrands().map(brand=>{
       const rule = costRules.byBrand[brand];
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedCostBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
@@ -1057,7 +1120,7 @@ window.addEventListener('storageReady', function(){
       percent: Number(document.getElementById('cr_default_percent').value) || 0
     };
     const byBrand = {};
-    DISTINCT_BRANDS.forEach(brand=>{
+    getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-cost-rule-basis="'+brand+'"]');
       const percentEl = document.querySelector('[data-cost-rule-percent="'+brand+'"]');
       const basis = basisEl.value;
@@ -1067,7 +1130,7 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, costRules.byModel || {});
     expandedCostBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m)));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-cost-model-rule-basis="'+key+'"]');
@@ -1129,9 +1192,9 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     document.getElementById('er_default_basis').value = externalPriceRules.default.basis || 'retail';
     document.getElementById('er_default_percent').value = externalPriceRules.default.percent || 0;
-    wrap.innerHTML = DISTINCT_BRANDS.map(brand=>{
+    wrap.innerHTML = getBrands().map(brand=>{
       const rule = externalPriceRules.byBrand[brand];
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedExternalBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
@@ -1179,7 +1242,7 @@ window.addEventListener('storageReady', function(){
       percent: Number(document.getElementById('er_default_percent').value) || 0
     };
     const byBrand = {};
-    DISTINCT_BRANDS.forEach(brand=>{
+    getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-ext-rule-basis="'+brand+'"]');
       const percentEl = document.querySelector('[data-ext-rule-percent="'+brand+'"]');
       if(!basisEl) return;
@@ -1188,7 +1251,7 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, externalPriceRules.byModel || {});
     expandedExternalBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m)));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-ext-model-rule-basis="'+key+'"]');
@@ -1231,6 +1294,7 @@ window.addEventListener('storageReady', function(){
     await loadPriceRules();
     await loadCostRules();
     await loadExternalPriceRules();
+    await loadImportedCatalogs();
     try{
       const c = await window.storage.get('categories', SHARED);
       categories = c ? JSON.parse(c.value) : [];
@@ -1321,7 +1385,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); }
+      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); }
     });
   });
 
@@ -1567,7 +1631,7 @@ window.addEventListener('storageReady', function(){
   }
   function findCatalogEntryForProduct(p){
     if(!p.spec || !p.name) return null;
-    return PRICE_CATALOG.find(r => r.s.indexOf(p.spec) !== -1 && p.name.indexOf(r.b) !== -1 && p.name.indexOf(r.m) !== -1) || null;
+    return getCatalog().find(r => r.s.indexOf(p.spec) !== -1 && p.name.indexOf(r.b) !== -1 && p.name.indexOf(r.m) !== -1) || null;
   }
   async function ensureProductForCatalogEntry(r){
     let product = findProductForCatalogEntry(r);
@@ -1615,7 +1679,7 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const query = (selectedTireWidth||'') + (selectedTireAspect||'') + (selectedTireInch||'');
-    let matches = PRICE_CATALOG.filter(r => !query || r.s.indexOf(query) !== -1);
+    let matches = getCatalog().filter(r => !query || r.s.indexOf(query) !== -1);
     if(selectedCatalogModelKey){
       const [fb, fm] = selectedCatalogModelKey.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
@@ -2043,7 +2107,7 @@ window.addEventListener('storageReady', function(){
           }
           html += '</select></div>';
           html += '</div>';
-          const catalogModels = Array.from(new Set(PRICE_CATALOG.map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+          const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
           html += '<div style="margin-top:10px;">';
           html += '<label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:5px;">または銘柄で選ぶ（ブリヂストン価格表より）</label>';
           html += '<select id="specCatalogModel"><option value="">指定しない</option>';
@@ -2247,7 +2311,7 @@ window.addEventListener('storageReady', function(){
   }
   function populateTireModelSelect(){
     const sel = document.getElementById('f_tiremodel');
-    const catalogModels = Array.from(new Set(PRICE_CATALOG.map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+    const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
     let opts = '<option value="">直接入力</option>';
     catalogModels.forEach(key=>{
       opts += '<option value="'+escapeHtml(key)+'">'+escapeHtml(key.replace('||',' '))+'</option>';
@@ -2919,6 +2983,163 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('openAccounts').addEventListener('click', openAccountsModal);
+
+  // ---------- 価格表取込（Excel）----------
+  let parsedImportData = [];
+
+  function renderImportedCatalogsPreview(){
+    const wrap = document.getElementById('importedCatalogsPreview');
+    if(!wrap) return;
+    if(!importedCatalogs.length){ wrap.innerHTML = '<p style="font-size:12.5px;color:var(--text-3);">取込済みの価格表はありません。</p>'; return; }
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">取込済み価格表</div>'
+      + importedCatalogs.map(c=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;margin-bottom:6px;">'
+        + '<div><span style="font-weight:600;font-size:13px;">'+escapeHtml(c.name)+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);margin-left:8px;">'+c.items.length+'件 / '+c.importedAt+'</span></div>'
+        + '<button class="btn btn-ghost btn-sm" data-delete-catalog="'+escapeHtml(c.id)+'">削除</button>'
+        + '</div>').join('');
+    wrap.querySelectorAll('[data-delete-catalog]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.dataset.deleteCatalog;
+        importedCatalogs = importedCatalogs.filter(c=>c.id!==id);
+        rebuildImportedItems();
+        await saveImportedCatalogs();
+        renderImportedCatalogsPreview();
+        renderPriceCatalog();
+      });
+    });
+  }
+
+  function renderImportedCatalogsList(){
+    const wrap = document.getElementById('importedCatalogsList');
+    if(!wrap) return;
+    if(!importedCatalogs.length){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">取込済み価格表</div>'
+      + importedCatalogs.map(c=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;margin-bottom:6px;">'
+        + '<div><span style="font-weight:600;font-size:13px;">'+escapeHtml(c.name)+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);margin-left:8px;">'+c.items.length+'件</span></div>'
+        + '</div>').join('');
+  }
+
+  document.getElementById('openImportCatalogBtn').addEventListener('click', ()=>{
+    parsedImportData = [];
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importBrandName').value = '';
+    document.getElementById('importCatalogName').value = '';
+    document.getElementById('importPreview').innerHTML = '';
+    document.getElementById('importMsg').innerHTML = '';
+    document.getElementById('importExecBtn').disabled = true;
+    renderImportedCatalogsList();
+    document.getElementById('importCatalogModal').classList.add('show');
+  });
+
+  document.getElementById('importCancelBtn').addEventListener('click', ()=>{
+    document.getElementById('importCatalogModal').classList.remove('show');
+  });
+
+  document.getElementById('importFileInput').addEventListener('change', function(){
+    const file = this.files[0];
+    if(!file) return;
+    document.getElementById('importPreview').innerHTML = '読み込み中...';
+    document.getElementById('importExecBtn').disabled = true;
+    parsedImportData = [];
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+
+        // ヘッダー行をスキップして商品データを抽出
+        // サイズ列（/RまたはR含む文字列）と価格列（数値）を自動検出
+        const items = [];
+        let lastInch = null;
+        for(const row of rows){
+          if(!row || row.every(c=>c===null)) continue;
+          // サイズ文字列を探す（例: 195/65R15）
+          let sizeVal = null;
+          let priceVal = null;
+          let modelVal = null;
+          for(let i=0;i<row.length;i++){
+            const v = row[i];
+            if(typeof v === 'string' && /\d+\/\d+R\d+/.test(v)) sizeVal = v.trim();
+            if(typeof v === 'number' && v > 1000 && v < 500000 && !sizeVal) priceVal = v;
+          }
+          // モデル名を銘柄列から取得（3文字以上の英数字）
+          for(let i=0;i<row.length;i++){
+            const v = row[i];
+            if(typeof v === 'string' && /^[A-Za-z0-9]{2,}/.test(v.trim()) && v.trim().length <= 10 && !/\//.test(v)){
+              modelVal = v.trim();
+            }
+          }
+          // 価格を最後の数値から取得
+          for(let i=row.length-1;i>=0;i--){
+            const v = row[i];
+            if(typeof v === 'number' && v > 1000 && v < 500000){ priceVal = v; break; }
+          }
+          if(sizeVal && priceVal && modelVal){
+            items.push({s: sizeVal, m: modelVal, w: priceVal, t: null});
+          }
+        }
+
+        parsedImportData = items;
+        if(items.length > 0){
+          // ブランド名の自動補完（タイトル行から推測）
+          const titleRow = rows.find(r=>r&&r[0]&&typeof r[0]==='string'&&r[0].length>3);
+          if(titleRow && !document.getElementById('importBrandName').value){
+            const titleStr = String(titleRow[0]);
+            const match = titleStr.match(/([A-Z]{3,})/);
+            if(match) document.getElementById('importBrandName').value = match[1];
+          }
+          if(!document.getElementById('importCatalogName').value){
+            document.getElementById('importCatalogName').value = file.name.replace(/\.xlsx?$/,'');
+          }
+          document.getElementById('importPreview').innerHTML =
+            '<div class="msg msg-ok">'+items.length+'件のデータを検出しました。</div>'
+            + '<div style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;">'
+            + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+            + '<tr style="background:var(--bg-1);"><th style="padding:6px 8px;text-align:left;">銘柄</th><th style="padding:6px 8px;text-align:left;">サイズ</th><th style="padding:6px 8px;text-align:right;">卸価格</th></tr>'
+            + items.slice(0,20).map(r=>'<tr style="border-top:1px solid var(--line-soft);"><td style="padding:5px 8px;">'+escapeHtml(r.m)+'</td><td style="padding:5px 8px;">'+escapeHtml(r.s)+'</td><td style="padding:5px 8px;text-align:right;">¥'+r.w.toLocaleString('ja-JP')+'</td></tr>').join('')
+            + (items.length>20 ? '<tr><td colspan="3" style="padding:5px 8px;color:var(--text-3);">... 他 '+(items.length-20)+' 件</td></tr>' : '')
+            + '</table></div>';
+          document.getElementById('importExecBtn').disabled = false;
+        } else {
+          document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">データを検出できませんでした。サイズ（例:195/65R15）と価格が含まれているか確認してください。</div>';
+        }
+      }catch(err){
+        document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">ファイルの読み込みに失敗しました: '+escapeHtml(err.message)+'</div>';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  document.getElementById('importExecBtn').addEventListener('click', async ()=>{
+    const brand = document.getElementById('importBrandName').value.trim();
+    const name = document.getElementById('importCatalogName').value.trim();
+    const msgEl = document.getElementById('importMsg');
+    if(!brand){ msgEl.innerHTML = '<div class="msg msg-error">ブランド名を入力してください。</div>'; return; }
+    if(!name){ msgEl.innerHTML = '<div class="msg msg-error">価格表名を入力してください。</div>'; return; }
+    if(!parsedImportData.length){ msgEl.innerHTML = '<div class="msg msg-error">取込データがありません。</div>'; return; }
+
+    const items = parsedImportData.map(r=>({...r, b: brand}));
+    const catalog = {
+      id: uid('cat'),
+      name: name,
+      brand: brand,
+      importedAt: new Date().toLocaleDateString('ja-JP'),
+      items: items
+    };
+    // 同じブランドの既存データを置換
+    importedCatalogs = importedCatalogs.filter(c=>c.brand !== brand);
+    importedCatalogs.push(catalog);
+    rebuildImportedItems();
+    await saveImportedCatalogs();
+    renderPriceCatalog();
+    renderImportedCatalogsPreview();
+    msgEl.innerHTML = '<div class="msg msg-ok">'+items.length+'件を取込みました。</div>';
+    document.getElementById('importExecBtn').disabled = true;
+    setTimeout(()=>{ document.getElementById('importCatalogModal').classList.remove('show'); }, 1200);
+  });
+
   document.getElementById('accountsCancel').addEventListener('click', ()=> document.getElementById('accountsModal').classList.remove('show'));
 
   function openAccountsModal(){
