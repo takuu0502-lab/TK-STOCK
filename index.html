@@ -428,7 +428,7 @@
       <input type="password" id="auth_password" autocomplete="current-password">
     </div>
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);margin-bottom:14px;cursor:pointer;">
-      <input type="checkbox" id="auth_remember" checked style="width:auto;">
+      <input type="checkbox" id="auth_remember" style="width:auto;">
       ログイン情報を記憶する
     </label>
     <div id="authMsg"></div>
@@ -2645,11 +2645,6 @@ window.addEventListener('storageReady', function(){
       }
       showAuthScreen('setup');
       return;
-    }
-    const session = await loadSession();
-    if(session && session.userId){
-      const acc = accounts.find(a=>a.id === session.userId);
-      if(acc){ loginSuccess(acc); return; }
     }
     showAuthScreen('login');
   }
