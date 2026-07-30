@@ -327,6 +327,9 @@
   .price-catalog td{padding:8px;font-size:13px;border-bottom:1px solid var(--line-soft);}
   .price-catalog tr:last-child td{border-bottom:none;}
   .price-catalog .price-num{font-family:var(--font-mono);font-weight:600;}
+
+  .visibility-toggle{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-2);cursor:pointer;user-select:none;white-space:nowrap;}
+  .visibility-toggle input[type=checkbox]{width:auto;padding:0;margin:0;accent-color:var(--amber);}
   .brand-rule-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .brand-rule-row .brand-rule-name{width:90px;font-size:13px;color:var(--text-1);flex:0 0 90px;}
   .brand-rule-row select{width:170px;}
@@ -964,6 +967,7 @@ window.addEventListener('storageReady', function(){
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
+        + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+(isBrandVisible(brand)?' checked':'')+'>検索表示</label>'
         + '</div>';
       if(isOpen){
         html += '<div class="brand-model-list">';
@@ -979,6 +983,7 @@ window.addEventListener('storageReady', function(){
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
+            + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+(isModelVisible(brand,model)?' checked':'')+'>検索表示</label>'
             + '</div>';
         });
         html += '</div>';
@@ -991,6 +996,24 @@ window.addEventListener('storageReady', function(){
         if(expandedBrandModels.has(brand)) expandedBrandModels.delete(brand);
         else expandedBrandModels.add(brand);
         renderBrandRules();
+      });
+    });
+    wrap.querySelectorAll('[data-vis-brand]').forEach(chk=>{
+      chk.addEventListener('change', async ()=>{
+        const brand = chk.dataset.visBrand;
+        if(chk.checked){ catalogVisibility.hiddenBrands = catalogVisibility.hiddenBrands.filter(b=>b!==brand); }
+        else { if(!catalogVisibility.hiddenBrands.includes(brand)) catalogVisibility.hiddenBrands.push(brand); }
+        await saveCatalogVisibility();
+        renderPriceCatalog();
+      });
+    });
+    wrap.querySelectorAll('[data-vis-model]').forEach(chk=>{
+      chk.addEventListener('change', async ()=>{
+        const key = chk.dataset.visModel;
+        if(chk.checked){ catalogVisibility.hiddenModels = catalogVisibility.hiddenModels.filter(k=>k!==key); }
+        else { if(!catalogVisibility.hiddenModels.includes(key)) catalogVisibility.hiddenModels.push(key); }
+        await saveCatalogVisibility();
+        renderPriceCatalog();
       });
     });
   }
@@ -1295,6 +1318,7 @@ window.addEventListener('storageReady', function(){
     await loadCostRules();
     await loadExternalPriceRules();
     await loadImportedCatalogs();
+    await loadCatalogVisibility();
     try{
       const c = await window.storage.get('categories', SHARED);
       categories = c ? JSON.parse(c.value) : [];
@@ -1679,7 +1703,7 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const query = (selectedTireWidth||'') + (selectedTireAspect||'') + (selectedTireInch||'');
-    let matches = getCatalog().filter(r => !query || r.s.indexOf(query) !== -1);
+    let matches = getCatalog().filter(r => isItemVisible(r) && (!query || r.s.indexOf(query) !== -1));
     if(selectedCatalogModelKey){
       const [fb, fm] = selectedCatalogModelKey.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
@@ -2983,6 +3007,24 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('openAccounts').addEventListener('click', openAccountsModal);
+
+  // ---------- カタログ表示設定 ----------
+  let catalogVisibility = { hiddenBrands: [], hiddenModels: [] };
+  async function loadCatalogVisibility(){
+    try{
+      const r = await window.storage.get('catalogVisibility', SHARED);
+      catalogVisibility = r ? JSON.parse(r.value) : { hiddenBrands: [], hiddenModels: [] };
+    }catch(e){ catalogVisibility = { hiddenBrands: [], hiddenModels: [] }; }
+    if(!catalogVisibility.hiddenBrands) catalogVisibility.hiddenBrands = [];
+    if(!catalogVisibility.hiddenModels) catalogVisibility.hiddenModels = [];
+  }
+  async function saveCatalogVisibility(){
+    try{ await window.storage.set('catalogVisibility', JSON.stringify(catalogVisibility), SHARED); }
+    catch(e){ console.error('save catalogVisibility failed', e); }
+  }
+  function isBrandVisible(brand){ return !catalogVisibility.hiddenBrands.includes(brand); }
+  function isModelVisible(brand, model){ return !catalogVisibility.hiddenModels.includes(brand+'||'+model); }
+  function isItemVisible(r){ return isBrandVisible(r.b) && isModelVisible(r.b, r.m); }
 
   // ---------- 価格表取込（Excel）----------
   let parsedImportData = [];
