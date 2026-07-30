@@ -1853,27 +1853,27 @@ window.addEventListener('storageReady', function(){
         html += '<div class="spec-step"><div class="spec-step-label">3. 規格・サイズ</div>';
         if(isTire){
           html += '<div class="tire-size-row">';
-          html += '<div class="tire-size-col">';
-          html += '<label>タイヤ幅</label>';
-          html += '<select id="specTireWidth"><option value="">指定なし</option>';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+          html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
+          html += '<select id="specTireWidth"><option value="">-</option>';
           for(let w=135; w<=355; w+=10){
             const val = String(w);
             html += '<option value="'+val+'"'+(selectedTireWidth===val?' selected':'')+'>'+val+'</option>';
           }
           html += '</select></div>';
-          html += '<span class="tire-size-sep">/</span>';
-          html += '<div class="tire-size-col">';
-          html += '<label>扁平率</label>';
-          html += '<select id="specTireAspect"><option value="">指定なし</option>';
+          html += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+          html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
+          html += '<select id="specTireAspect"><option value="">-</option>';
           for(let a=25; a<=80; a+=5){
             const val = '/'+a;
             html += '<option value="'+val+'"'+(selectedTireAspect===val?' selected':'')+'>'+a+'</option>';
           }
           html += '</select></div>';
-          html += '<span class="tire-size-sep">R</span>';
-          html += '<div class="tire-size-col">';
-          html += '<label>インチ</label>';
-          html += '<select id="specTireInch"><option value="">指定なし</option>';
+          html += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+          html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
+          html += '<select id="specTireInch"><option value="">-</option>';
           for(let inch=12; inch<=24; inch++){
             const val = 'R'+inch;
             html += '<option value="'+val+'"'+(selectedTireInch===val?' selected':'')+'>'+inch+'</option>';
@@ -2137,7 +2137,6 @@ window.addEventListener('storageReady', function(){
     if(e.key === 'Enter'){
       e.preventDefault();
       const code = document.getElementById('f_barcode').value.trim();
-      // JANコードらしい桁数（8桁以上の数字）なら自動ルックアップ
       if(/^\d{8,}$/.test(code)) lookupJan(code);
     }
   });
@@ -2228,7 +2227,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="detail-header">'
       + '<div class="detail-name">'+escapeHtml(cleanName(p.name))+'</div>'
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
-      + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(p.barcode)+'</div>' : '')
+      + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div class="detail-cat">'+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+'</div>'
       + '</div>'
       + '<div class="detail-stats">'
@@ -2283,7 +2282,7 @@ window.addEventListener('storageReady', function(){
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
     if(kind === 'out' && qty > p.stock){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+p.stock+')を超える出庫はできません。</div>'; return; }
     const label = kind === 'in' ? '入庫' : '出庫';
-    const confirmed = await showConfirm('「'+p.name+'」を '+qty+' 点 '+label+' します。よろしいですか？');
+    const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' 点 '+label+' します。よろしいですか？');
     if(!confirmed) return;
     p.stock = kind === 'in' ? p.stock + qty : p.stock - qty;
     transactions.unshift({
