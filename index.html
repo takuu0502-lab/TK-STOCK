@@ -403,6 +403,79 @@
     .detail-stats{grid-template-columns:1fr 1fr;gap:8px;}
     .brand{font-size:22px;}
   }
+
+  @media (min-width:900px){
+    .app{
+      max-width:100%;
+      display:grid;
+      grid-template-columns:210px 1fr;
+      grid-template-rows:auto 1fr;
+      min-height:100vh;
+      padding-bottom:0;
+    }
+    .header{
+      grid-column:1 / -1;
+      grid-row:1;
+      padding:20px 28px 0;
+      border-bottom:1px solid var(--line);
+      margin-bottom:0;
+    }
+    .brand-row{padding-bottom:14px;}
+    .tabs{
+      grid-column:1;
+      grid-row:2;
+      flex-direction:column;
+      align-items:stretch;
+      justify-content:flex-start;
+      padding:16px 12px;
+      gap:4px;
+      background:var(--bg-1);
+      border-right:1px solid var(--line);
+      min-height:calc(100vh - 70px);
+    }
+    .tabs-group{
+      flex-direction:column;
+      gap:4px;
+      width:100%;
+    }
+    .tab-btn{
+      text-align:left;
+      border-radius:6px;
+      border:1px solid transparent;
+      border-bottom:1px solid transparent;
+      padding:10px 14px;
+      font-size:13px;
+    }
+    .tab-btn.active{
+      background:var(--amber-dim);
+      color:var(--amber);
+      border-color:var(--amber-dim);
+      border-bottom:1px solid var(--amber-dim);
+    }
+    .tabs > div:last-child{
+      margin-top:auto;
+      flex-direction:column;
+      gap:6px;
+      padding-top:16px;
+      border-top:1px solid var(--line);
+    }
+    .tabs > div:last-child .btn{
+      width:100%;
+      text-align:center;
+    }
+    .panel{
+      grid-column:2;
+      grid-row:2;
+      margin:0;
+      border-radius:0;
+      border-top:none;
+      border-right:none;
+      border-bottom:none;
+      border-left:none;
+      padding:24px 32px;
+      min-height:calc(100vh - 70px);
+    }
+  }
 </style>
 </head>
 <body>
