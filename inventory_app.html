@@ -8,6 +8,50 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA8--lZsQv4fg4ymCGU2qrMtIkp2HWGswQ",
+    authDomain: "tk-stock.firebaseapp.com",
+    databaseURL: "https://tk-stock-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "tk-stock",
+    storageBucket: "tk-stock.firebasestorage.app",
+    messagingSenderId: "915645900204",
+    appId: "1:915645900204:web:06d0146d4488cbfa3d0609"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  window.storage = {
+    get: async (key, shared) => {
+      try {
+        const path = shared ? 'shared/' + key : 'local/' + key;
+        const snapshot = await get(ref(db, path));
+        if (snapshot.exists()) return { value: snapshot.val() };
+        return null;
+      } catch(e) { console.error('FB get error', e); return null; }
+    },
+    set: async (key, value, shared) => {
+      try {
+        const path = shared ? 'shared/' + key : 'local/' + key;
+        await set(ref(db, path), value);
+        return { value };
+      } catch(e) { console.error('FB set error', e); return null; }
+    },
+    delete: async (key, shared) => {
+      try {
+        const path = shared ? 'shared/' + key : 'local/' + key;
+        await remove(ref(db, path));
+        return { deleted: true };
+      } catch(e) { console.error('FB delete error', e); return null; }
+    }
+  };
+
+  // storage準備完了を通知
+  window.dispatchEvent(new Event('storageReady'));
+</script>
 <style>
   :root{
     --bg-0:#F5F4EF;
@@ -544,11 +588,20 @@
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
       <div class="tire-size-row" id="f_spec_tire_row" style="display:none;margin-top:8px;">
-        <select id="f_spec_width"><option value="">幅</option></select>
-        <span class="tire-size-sep">/</span>
-        <select id="f_spec_aspect"><option value="">扁平率</option></select>
-        <span class="tire-size-sep">R</span>
-        <select id="f_spec_inch"><option value="">-</option></select>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">
+          <label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>
+          <select id="f_spec_width"><option value="">-</option></select>
+        </div>
+        <span class="tire-size-sep" style="margin-top:16px;">/</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">
+          <label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>
+          <select id="f_spec_aspect"><option value="">-</option></select>
+        </div>
+        <span class="tire-size-sep" style="margin-top:16px;">R</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">
+          <label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>
+          <select id="f_spec_inch"><option value="">-</option></select>
+        </div>
       </div>
     </div>
     <div class="row">
@@ -1786,26 +1839,32 @@
         html += '<div class="spec-step"><div class="spec-step-label">3. 規格・サイズ</div>';
         if(isTire){
           html += '<div class="tire-size-row">';
-          html += '<select id="specTireWidth"><option value="">幅</option>';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+          html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
+          html += '<select id="specTireWidth"><option value="">-</option>';
           for(let w=135; w<=355; w+=10){
             const val = String(w);
             html += '<option value="'+val+'"'+(selectedTireWidth===val?' selected':'')+'>'+val+'</option>';
           }
-          html += '</select>';
-          html += '<span class="tire-size-sep">/</span>';
-          html += '<select id="specTireAspect"><option value="">扁平率</option>';
+          html += '</select></div>';
+          html += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+          html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
+          html += '<select id="specTireAspect"><option value="">-</option>';
           for(let a=25; a<=80; a+=5){
             const val = '/'+a;
             html += '<option value="'+val+'"'+(selectedTireAspect===val?' selected':'')+'>'+a+'</option>';
           }
-          html += '</select>';
-          html += '<span class="tire-size-sep">R</span>';
+          html += '</select></div>';
+          html += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+          html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
           html += '<select id="specTireInch"><option value="">-</option>';
           for(let inch=12; inch<=24; inch++){
             const val = 'R'+inch;
             html += '<option value="'+val+'"'+(selectedTireInch===val?' selected':'')+'>'+inch+'</option>';
           }
-          html += '</select>';
+          html += '</select></div>';
           html += '</div>';
           const catalogModels = Array.from(new Set(PRICE_CATALOG.map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
           html += '<div style="margin-top:10px;">';
@@ -2703,6 +2762,7 @@
 
   initAuth();
 })();
+});
 </script>
 </body>
 </html>
