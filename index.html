@@ -568,6 +568,30 @@
     <div style="margin-top:18px;">
       <button class="btn btn-amber" id="saveCostPricingRules">仕入れ価格の設定を保存</button>
     </div>
+
+    <div class="pricing-section-divider"></div>
+
+    <div class="pricing-section-title">外部向け販売価格の設定</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      外部アカウントでログインした場合に表示・適用される販売価格です。通常の販売価格とは独立して設定できます。ブランドごと・銘柄ごとの個別設定も可能です。
+    </p>
+    <div class="field" style="max-width:440px;">
+      <label>基本設定（すべてのブランドの初期値）</label>
+      <div class="row">
+        <select id="er_default_basis" style="flex:1;">
+          <option value="retail">希望小売価格から</option>
+          <option value="wholesale">A表価格から</option>
+        </select>
+        <input type="number" id="er_default_percent" min="0" max="100" value="0" style="width:90px;">
+        <span style="align-self:center;font-size:13px;color:var(--text-2);">% OFF</span>
+      </div>
+    </div>
+    <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
+    <div id="externalBrandRulesList" style="margin-top:8px;"></div>
+    <div id="externalPricingMsg"></div>
+    <div style="margin-top:18px;">
+      <button class="btn btn-amber" id="saveExternalPricingRules">外部向け価格の設定を保存</button>
+    </div>
   </div>
 
 </div>
@@ -1063,6 +1087,124 @@ window.addEventListener('storageReady', function(){
     renderPriceCatalog();
   });
 
+  // ---------- 外部向け価格ルール ----------
+  function defaultExternalPriceRules(){
+    return {default:{basis:'retail',percent:0}, byBrand:{}, byModel:{}};
+  }
+  let externalPriceRules = defaultExternalPriceRules();
+  async function loadExternalPriceRules(){
+    try{
+      const r = await window.storage.get('externalPriceRules', SHARED);
+      externalPriceRules = r ? JSON.parse(r.value) : defaultExternalPriceRules();
+    }catch(e){ externalPriceRules = defaultExternalPriceRules(); }
+    if(!externalPriceRules.byModel) externalPriceRules.byModel = {};
+    if(!externalPriceRules.byBrand) externalPriceRules.byBrand = {};
+  }
+  async function saveExternalPriceRules(){
+    try{ await window.storage.set('externalPriceRules', JSON.stringify(externalPriceRules), SHARED); }
+    catch(e){ console.error('save externalPriceRules failed', e); }
+  }
+  function externalRuleFor(brand, model){
+    const modelKey = brand+'||'+model;
+    if(externalPriceRules.byModel && externalPriceRules.byModel[modelKey]) return externalPriceRules.byModel[modelKey];
+    if(externalPriceRules.byBrand && externalPriceRules.byBrand[brand]) return externalPriceRules.byBrand[brand];
+    return externalPriceRules.default || {basis:'retail',percent:0};
+  }
+  function computeExternalSellPrice(brand, model, wholesale, retail){
+    const rule = externalRuleFor(brand, model);
+    const base = rule.basis === 'wholesale' ? wholesale : retail;
+    if(!base) return null;
+    const pct = Number(rule.percent) || 0;
+    return Math.round(base * (1 - pct/100));
+  }
+  function getEffectiveSellPrice(brand, model, wholesale, retail){
+    if(isExternalUser()) return computeExternalSellPrice(brand, model, wholesale, retail);
+    return computeSellPrice(brand, model, wholesale, retail);
+  }
+
+  let expandedExternalBrandModels = new Set();
+  function renderExternalBrandRules(){
+    const wrap = document.getElementById('externalBrandRulesList');
+    if(!wrap) return;
+    document.getElementById('er_default_basis').value = externalPriceRules.default.basis || 'retail';
+    document.getElementById('er_default_percent').value = externalPriceRules.default.percent || 0;
+    wrap.innerHTML = DISTINCT_BRANDS.map(brand=>{
+      const rule = externalPriceRules.byBrand[brand];
+      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const isOpen = expandedExternalBrandModels.has(brand);
+      let html = '<div class="brand-rule-row">'
+        + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
+        + '<select data-ext-rule-basis="'+escapeHtml(brand)+'">'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+        + '</select>'
+        + '<input type="number" min="0" max="100" data-ext-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
+        + '<button type="button" class="btn btn-ghost btn-sm" data-ext-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
+        + '</div>';
+      if(isOpen){
+        html += '<div class="brand-model-list">';
+        html += '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">銘柄ごとに個別の基準・割引率を設定できます。</div>';
+        models.forEach(model=>{
+          const key = brand+'||'+model;
+          const mrule = externalPriceRules.byModel[key];
+          html += '<div class="brand-rule-row model-rule-row">'
+            + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
+            + '<select data-ext-model-rule-basis="'+escapeHtml(key)+'">'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+            + '</select>'
+            + '<input type="number" min="0" max="100" data-ext-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
+            + '</div>';
+        });
+        html += '</div>';
+      }
+      return html;
+    }).join('');
+    wrap.querySelectorAll('[data-ext-toggle-models]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const brand = btn.dataset.extToggleModels;
+        if(expandedExternalBrandModels.has(brand)) expandedExternalBrandModels.delete(brand);
+        else expandedExternalBrandModels.add(brand);
+        renderExternalBrandRules();
+      });
+    });
+  }
+
+  document.getElementById('saveExternalPricingRules').addEventListener('click', async ()=>{
+    externalPriceRules.default = {
+      basis: document.getElementById('er_default_basis').value,
+      percent: Number(document.getElementById('er_default_percent').value) || 0
+    };
+    const byBrand = {};
+    DISTINCT_BRANDS.forEach(brand=>{
+      const basisEl = document.querySelector('[data-ext-rule-basis="'+brand+'"]');
+      const percentEl = document.querySelector('[data-ext-rule-percent="'+brand+'"]');
+      if(!basisEl) return;
+      const basis = basisEl.value;
+      if(basis){ byBrand[brand] = {basis, percent: Number(percentEl.value) || 0}; }
+    });
+    const byModel = Object.assign({}, externalPriceRules.byModel || {});
+    expandedExternalBrandModels.forEach(brand=>{
+      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m)));
+      models.forEach(model=>{
+        const key = brand+'||'+model;
+        const basisEl = document.querySelector('[data-ext-model-rule-basis="'+key+'"]');
+        const percentEl = document.querySelector('[data-ext-model-rule-percent="'+key+'"]');
+        if(!basisEl) return;
+        const basis = basisEl.value;
+        if(basis){ byModel[key] = {basis, percent: Number(percentEl.value) || 0}; }
+        else { delete byModel[key]; }
+      });
+    });
+    externalPriceRules.byBrand = byBrand;
+    externalPriceRules.byModel = byModel;
+    await saveExternalPriceRules();
+    document.getElementById('externalPricingMsg').innerHTML = '<div class="msg msg-ok">外部向け価格の設定を保存しました。</div>';
+    renderPriceCatalog();
+  });
+
   function uid(prefix){ return (prefix||'p') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
   async function sha256Hex(str){
@@ -1087,6 +1229,7 @@ window.addEventListener('storageReady', function(){
   async function loadData(){
     await loadPriceRules();
     await loadCostRules();
+    await loadExternalPriceRules();
     try{
       const c = await window.storage.get('categories', SHARED);
       categories = c ? JSON.parse(c.value) : [];
@@ -1177,7 +1320,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); }
+      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); }
     });
   });
 
@@ -1486,7 +1629,7 @@ window.addEventListener('storageReady', function(){
     matches.sort((a,b)=> (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja'));
     const showCost = !isExternalUser();
     const rows = matches.map((r,i)=>{
-      const sell = computeSellPrice(r.b, r.m, r.w, r.t);
+      const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
       const cost = computeCostPrice(r.b, r.m, r.w, r.t);
       const stock = stockForCatalogEntry(r);
       const cKey = r.b+'||'+r.m+'||'+r.s;
@@ -1528,7 +1671,7 @@ window.addEventListener('storageReady', function(){
         const groups = [];
         for(const r of selectedMatches){
           const product = await ensureProductForCatalogEntry(r);
-          const sell = computeSellPrice(r.b, r.m, r.w, r.t);
+          const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
         }
         quoteGroups = groups;
