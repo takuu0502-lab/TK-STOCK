@@ -492,7 +492,7 @@
   <div class="panel" id="tab-estimate" style="display:none;">
     <h2 class="section-title">タイヤ見積もり</h2>
     <div id="estimateSearchPanel"></div>
-    <div id="estimateResults" style="margin-top:16px;"></div>
+    <div id="estimateCatalogWrap" style="margin-top:16px;"></div>
   </div>
 
   <div class="panel" id="tab-in" style="display:none;">
@@ -1795,25 +1795,31 @@ window.addEventListener('storageReady', function(){
 
   let catalogQuoteSelection = new Set(); // key: "brand||model||size"
 
-  function renderPriceCatalog(){
-    const wrap = document.getElementById('priceCatalogWrap');
-    const m = selectedMajor !== null ? majorById(selectedMajor) : null;
-    const isTire = m && m.name === 'タイヤ';
-    if(!isTire || !(selectedTireWidth || selectedCatalogModelKey)){
-      wrap.innerHTML = '';
-      return;
+  function renderPriceCatalog(opts){
+    // opts: {targetId, width, aspect, inch, modelKey} — 省略時は在庫一覧タブのグローバル状態を使用
+    const targetId = (opts && opts.targetId) || 'priceCatalogWrap';
+    const wrap = document.getElementById(targetId);
+    if(!wrap) return;
+    const useWidth  = (opts && opts.width  !== undefined) ? opts.width  : selectedTireWidth;
+    const useAspect = (opts && opts.aspect !== undefined) ? opts.aspect : selectedTireAspect;
+    const useInch   = (opts && opts.inch   !== undefined) ? opts.inch   : selectedTireInch;
+    const useModel  = (opts && opts.modelKey !== undefined) ? opts.modelKey : selectedCatalogModelKey;
+    const forceTire = !!(opts && opts.targetId); // 見積タブからの呼び出しは常にタイヤモード
+    if(!forceTire){
+      const m = selectedMajor !== null ? majorById(selectedMajor) : null;
+      const isTire = m && m.name === 'タイヤ';
+      if(!isTire || !(useWidth || useModel)){ wrap.innerHTML = ''; return; }
     }
-    const aspectPart = (selectedTireAspect && selectedTireAspect !== 'NOASPECT') ? selectedTireAspect : '';
-    const query = (selectedTireWidth||'') + aspectPart + (selectedTireInch||'');
+    const aspectPart = (useAspect && useAspect !== 'NOASPECT') ? useAspect : '';
+    const query = (useWidth||'') + aspectPart + (useInch||'');
     // ライトバン用(165R13等): 扁平率あり検索でも幅+インチのみパターンも試みる
-    const queryAlt = (selectedTireWidth && selectedTireInch && aspectPart)
-      ? (selectedTireWidth + selectedTireInch) : null;
+    const queryAlt = (useWidth && useInch && aspectPart) ? (useWidth + useInch) : null;
     let matches = getCatalog().filter(r => isItemVisible(r) && (!query || r.s.indexOf(query) !== -1 || (queryAlt && r.s.indexOf(queryAlt) !== -1)));
-    if(selectedCatalogModelKey){
-      const [fb, fm] = selectedCatalogModelKey.split('||');
+    if(useModel){
+      const [fb, fm] = useModel.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
     }
-    const queryLabel = query || (selectedCatalogModelKey ? selectedCatalogModelKey.replace('||',' ') : '');
+    const queryLabel = query || (useModel ? useModel.replace('||',' ') : '');
     if(matches.length === 0){
       wrap.innerHTML = '<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表</div>'
         + '<div class="price-catalog-sub">茨城地区本部 A表・2026年2月以降</div>'
@@ -2108,42 +2114,31 @@ window.addEventListener('storageReady', function(){
 
   // -------- タイヤ見積もりタブ --------
   let estWidth = null, estAspect = null, estInch = null;
-  let estResults = []; // 検索結果（カタログエントリー）
-  let estSelections = {}; // {catalogKey: qty}
 
   function renderEstimateTab(){
     const panel = document.getElementById('estimateSearchPanel');
     let html = '<div class="spec-search-panel">';
     html += '<div class="spec-step"><div class="spec-step-label">タイヤサイズを選択</div>';
     html += '<div class="tire-size-row">';
-
-    // 幅
     html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
     html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
     html += '<select id="estTireWidth"><option value="">-</option>';
     for(let w=135;w<=355;w+=10){ html += '<option value="'+w+'"'+(estWidth===String(w)?' selected':'')+'>'+w+'</option>'; }
     html += '</select></div>';
-
     html += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
-
-    // 扁平率
     html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
     html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
     html += '<select id="estTireAspect"><option value="">-</option>';
     html += '<option value="NOASPECT"'+(estAspect==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
     for(let a=25;a<=80;a+=5){ const v='/'+a; html += '<option value="'+v+'"'+(estAspect===v?' selected':'')+'>'+a+'</option>'; }
     html += '</select></div>';
-
     html += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
-
-    // インチ
     html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
     html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
     html += '<select id="estTireInch"><option value="">-</option>';
     for(let i=12;i<=24;i++){ const v='R'+i; html += '<option value="'+v+'"'+(estInch===v?' selected':'')+'>'+i+'</option>'; }
     html += '</select></div>';
-
-    html += '</div></div>'; // tire-size-row, spec-step
+    html += '</div></div>';
     html += '<div class="spec-search-actions"><button class="btn btn-amber" id="estSearchGo">検索</button></div>';
     html += '</div>';
     panel.innerHTML = html;
@@ -2152,121 +2147,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('estTireAspect').addEventListener('change', e=>{ estAspect = e.target.value||null; });
     document.getElementById('estTireInch').addEventListener('change', e=>{ estInch = e.target.value||null; });
     document.getElementById('estSearchGo').addEventListener('click', ()=>{
-      runEstimateSearch();
-    });
-  }
-
-  function runEstimateSearch(){
-    if(!estWidth && !estInch){
-      document.getElementById('estimateResults').innerHTML = '<div class="msg msg-error" style="margin-top:8px;">タイヤ幅またはインチを選択してください。</div>';
-      return;
-    }
-    const aspectPart = (estAspect && estAspect !== 'NOASPECT') ? estAspect : '';
-    const query = (estWidth||'') + aspectPart + (estInch||'');
-    const queryAlt = (estWidth && estInch && aspectPart) ? (estWidth + estInch) : null;
-
-    const catalog = getCatalog();
-    estResults = catalog.filter(r=>{
-      if(!r.s) return false;
-      if(estAspect === 'NOASPECT'){
-        // 扁平率なし: 幅+Rインチ形式
-        if(estWidth && !r.s.startsWith(estWidth)) return false;
-        if(estInch && r.s.indexOf(estInch) === -1) return false;
-        return /^\d+R\d+/.test(r.s);
-      }
-      if(query && r.s.indexOf(query) === -1 && !(queryAlt && r.s.indexOf(queryAlt) !== -1)) return false;
-      return true;
-    });
-
-    estSelections = {};
-    renderEstimateResults();
-  }
-
-  function renderEstimateResults(){
-    const wrap = document.getElementById('estimateResults');
-    if(!estResults.length){
-      wrap.innerHTML = '<div class="empty-state">該当する銘柄が価格表に見つかりませんでした。</div>';
-      return;
-    }
-
-    const sizeLabel = (()=>{
-      const a = (estAspect && estAspect !== 'NOASPECT') ? estAspect : '';
-      return (estWidth||'') + a + (estInch||'');
-    })();
-
-    let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-      +'<div style="font-size:13px;color:var(--text-2);">「<b>'+escapeHtml(sizeLabel)+'</b>」の検索結果：<b>'+estResults.length+'</b>件</div>'
-      +'<button class="btn btn-amber btn-sm" id="estOpenQuote" style="font-size:13px;">選択した銘柄で見積書を作成</button>'
-      +'</div>';
-
-    html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
-    html += '<thead><tr style="border-bottom:2px solid var(--line);">'
-      +'<th style="text-align:left;padding:8px 6px;font-weight:600;color:var(--text-2);font-size:11px;">選択</th>'
-      +'<th style="text-align:left;padding:8px 6px;font-weight:600;color:var(--text-2);font-size:11px;">ブランド</th>'
-      +'<th style="text-align:left;padding:8px 6px;font-weight:600;color:var(--text-2);font-size:11px;">銘柄</th>'
-      +'<th style="text-align:left;padding:8px 6px;font-weight:600;color:var(--text-2);font-size:11px;">サイズ</th>'
-      +'<th style="text-align:right;padding:8px 6px;font-weight:600;color:var(--text-2);font-size:11px;">売価(税抜)</th>'
-      +'<th style="text-align:center;padding:8px 6px;font-weight:600;color:var(--text-2);font-size:11px;">本数</th>'
-      +'</tr></thead><tbody>';
-
-    estResults.forEach((r, idx)=>{
-      const key = idx+'_'+r.b+'_'+r.m+'_'+r.s;
-      const sell = computeSellPrice(r.b, r.m, r.w, r.t||null);
-      const sellStr = sell ? '¥'+sell.toLocaleString('ja-JP') : '（価格設定なし）';
-      const checked = estSelections[key] !== undefined;
-      const qty = estSelections[key] || 4;
-      html += '<tr style="border-bottom:1px solid var(--line-soft);" data-est-key="'+escapeHtml(key)+'">'
-        +'<td style="padding:8px 6px;"><input type="checkbox" class="est-chk" data-est-key="'+escapeHtml(key)+'"'+(checked?' checked':'')+' style="width:auto;accent-color:var(--amber);"></td>'
-        +'<td style="padding:8px 6px;font-weight:600;">'+escapeHtml(r.b)+'</td>'
-        +'<td style="padding:8px 6px;">'+escapeHtml(r.m)+'</td>'
-        +'<td style="padding:8px 6px;font-family:var(--font-mono);">'+escapeHtml(r.s)+'</td>'
-        +'<td style="padding:8px 6px;text-align:right;font-family:var(--font-mono);font-weight:600;">'+sellStr+'</td>'
-        +'<td style="padding:8px 6px;text-align:center;"><select class="est-qty" data-est-key="'+escapeHtml(key)+'" style="width:70px;font-size:13px;">'
-        +[1,2,3,4].map(n=>'<option value="'+n+'"'+(qty===n?' selected':'')+'>'+n+' 本</option>').join('')
-        +'</select></td>'
-        +'</tr>';
-    });
-    html += '</tbody></table></div>';
-    wrap.innerHTML = html;
-
-    // チェックボックス
-    wrap.querySelectorAll('.est-chk').forEach(chk=>{
-      chk.addEventListener('change', ()=>{
-        const k = chk.dataset.estKey;
-        if(chk.checked){
-          const qtyEl = wrap.querySelector('.est-qty[data-est-key="'+k+'"]');
-          estSelections[k] = Number(qtyEl?.value)||4;
-        } else {
-          delete estSelections[k];
-        }
-      });
-    });
-    // 本数
-    wrap.querySelectorAll('.est-qty').forEach(sel=>{
-      sel.addEventListener('change', ()=>{
-        const k = sel.dataset.estKey;
-        if(estSelections[k] !== undefined) estSelections[k] = Number(sel.value)||4;
-      });
-    });
-    // 見積書を作成
-    document.getElementById('estOpenQuote').addEventListener('click', ()=>{
-      const selected = Object.keys(estSelections);
-      if(!selected.length){ alert('銘柄を選択してください。'); return; }
-      const groups = selected.map(key=>{
-        const idx = Number(key.split('_')[0]);
-        const r = estResults[idx];
-        const sell = computeSellPrice(r.b, r.m, r.w, r.t||null) || r.w || 0;
-        return { id: uid('qg'), productId: null, name: r.b+' '+r.m, spec: r.s, qty: estSelections[key], unitPrice: sell };
-      });
-      quoteGroups = groups;
-      sharedLaborLines = [];
-      document.getElementById('quoteCustomer').value = '';
-      document.getElementById('quoteCar').value = '';
-      document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
-      document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('ja-JP');
-      if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
-      renderAll();
-      document.getElementById('quoteModal').classList.add('show');
+      renderPriceCatalog({ targetId:'estimateCatalogWrap', width:estWidth, aspect:estAspect, inch:estInch, modelKey:null });
     });
   }
 
