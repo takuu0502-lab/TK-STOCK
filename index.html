@@ -2321,15 +2321,6 @@ window.addEventListener('storageReady', function(){
 
   // 写真撮影でバーコードをデコード（iOS Safari向けの確実な方法）
   function addPhotoScanButton(wrap, onDecoded){
-    const _fmt2 = (typeof Html5QrcodeSupportedFormats !== 'undefined')
-      ? Html5QrcodeSupportedFormats
-      : { EAN_13:9, EAN_8:10, CODE_128:5, CODE_39:3, CODE_93:4,
-          UPC_A:14, UPC_E:15, ITF:8, QR_CODE:0 };
-    const fmts = [
-      _fmt2.EAN_13, _fmt2.EAN_8, _fmt2.CODE_128, _fmt2.CODE_39,
-      _fmt2.CODE_93, _fmt2.UPC_A, _fmt2.UPC_E, _fmt2.ITF, _fmt2.QR_CODE,
-    ];
-
     const photoInput = document.createElement('input');
     photoInput.type = 'file';
     photoInput.accept = 'image/*';
@@ -2344,26 +2335,65 @@ window.addEventListener('storageReady', function(){
     photoBtn.addEventListener('click', ()=> photoInput.click());
     wrap.appendChild(photoBtn);
 
-    // デコード用の非表示div
-    const tmpId = 'photoScanTmp';
-    let tmpDiv = document.getElementById(tmpId);
-    if(!tmpDiv){ tmpDiv = document.createElement('div'); tmpDiv.id = tmpId; tmpDiv.style.display = 'none'; document.body.appendChild(tmpDiv); }
-
     photoInput.addEventListener('change', async function(){
       const file = this.files[0];
       if(!file) return;
       photoBtn.textContent = '読み取り中...';
       photoBtn.disabled = true;
-      try{
-        const tmpScanner = new Html5Qrcode(tmpId, { formatsToSupport: fmts, verbose: false });
-        const code = await tmpScanner.scanFile(file, false);
-        onDecoded(code);
-      }catch(e){
-        photoBtn.textContent = '読み取れませんでした。もう一度試してください';
+
+      let decoded = null;
+      let errLog = [];
+
+      // 試行1: BarcodeDetector API（iOS17+ / Android Chrome 対応）
+      if('BarcodeDetector' in window){
+        try{
+          const bd = new BarcodeDetector({
+            formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf','qr_code']
+          });
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          img.src = url;
+          await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
+          const results = await bd.detect(img);
+          URL.revokeObjectURL(url);
+          if(results.length > 0) decoded = results[0].rawValue;
+          else errLog.push('BD:not found');
+        }catch(e){ errLog.push('BD:'+(e.message||e)); }
+      }
+
+      // 試行2: Html5Qrcode scanFile
+      if(!decoded){
+        try{
+          // 既存の一時要素を破棄して新規作成（状態リセット）
+          const old = document.getElementById('_photoTmp');
+          if(old) old.remove();
+          const tmpDiv = document.createElement('div');
+          tmpDiv.id = '_photoTmp';
+          tmpDiv.style.cssText = 'position:fixed;left:-9999px;top:0;width:320px;height:240px;overflow:hidden;visibility:hidden;';
+          document.body.appendChild(tmpDiv);
+
+          const _f = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+            ? Html5QrcodeSupportedFormats
+            : {EAN_13:9,EAN_8:10,CODE_128:5,CODE_39:3,CODE_93:4,UPC_A:14,UPC_E:15,ITF:8,QR_CODE:0};
+          const fmts = [_f.EAN_13,_f.EAN_8,_f.CODE_128,_f.CODE_39,_f.CODE_93,_f.UPC_A,_f.UPC_E,_f.ITF,_f.QR_CODE];
+
+          const sc = new Html5Qrcode('_photoTmp', { formatsToSupport: fmts, verbose: false });
+          decoded = await sc.scanFile(file, false);
+        }catch(e){ errLog.push('H5:'+(e.message||String(e))); }
+      }
+
+      if(decoded){
+        onDecoded(decoded);
+      } else {
+        // エラー詳細を表示して原因特定に役立てる
+        const detail = errLog.join(' / ');
+        photoBtn.textContent = '読み取れませんでした';
         photoBtn.disabled = false;
-        setTimeout(()=>{
-          photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）';
-        }, 2500);
+        // エラー詳細を小さく表示
+        let errEl = wrap.querySelector('._photoErr');
+        if(!errEl){ errEl = document.createElement('div'); errEl.className = '_photoErr'; errEl.style.cssText = 'font-size:10px;color:var(--text-3);margin-top:4px;word-break:break-all;'; wrap.appendChild(errEl); }
+        errEl.textContent = 'エラー: ' + detail;
+        setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 3000);
       }
       this.value = '';
     });
