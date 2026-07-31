@@ -538,9 +538,10 @@
         <select id="pr_default_basis" style="flex:1;">
           <option value="retail">希望小売価格から</option>
           <option value="wholesale">A表価格から</option>
+          <option value="cost">仕入れ価格から（乗せ）</option>
         </select>
         <input type="number" id="pr_default_percent" min="0" max="100" value="0" style="width:90px;">
-        <span style="align-self:center;font-size:13px;color:var(--text-2);">% OFF</span>
+        <span style="align-self:center;font-size:13px;color:var(--text-2);" id="pr_default_label">% OFF</span>
       </div>
     </div>
     <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
@@ -586,9 +587,10 @@
         <select id="er_default_basis" style="flex:1;">
           <option value="retail">希望小売価格から</option>
           <option value="wholesale">A表価格から</option>
+          <option value="cost">仕入れ価格から（乗せ）</option>
         </select>
         <input type="number" id="er_default_percent" min="0" max="100" value="0" style="width:90px;">
-        <span style="align-self:center;font-size:13px;color:var(--text-2);">% OFF</span>
+        <span style="align-self:center;font-size:13px;color:var(--text-2);" id="er_default_label">% OFF</span>
       </div>
     </div>
     <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
@@ -942,9 +944,14 @@ window.addEventListener('storageReady', function(){
   }
   function computeSellPrice(brand, model, wholesale, retail){
     const rule = ruleFor(brand, model);
+    const pct = Number(rule.percent) || 0;
+    if(rule.basis === 'cost'){
+      const cost = computeCostPrice(brand, model, wholesale, retail);
+      if(!cost) return null;
+      return Math.round(cost * (1 + pct/100));
+    }
     const base = rule.basis === 'wholesale' ? wholesale : retail;
     if(!base) return null;
-    const pct = Number(rule.percent) || 0;
     return Math.round(base * (1 - pct/100));
   }
 
@@ -954,6 +961,7 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('brandRulesList');
     document.getElementById('pr_default_basis').value = priceRules.default.basis || 'retail';
     document.getElementById('pr_default_percent').value = priceRules.default.percent || 0;
+    const prLabel = document.getElementById('pr_default_label'); if(prLabel) prLabel.textContent = (priceRules.default.basis==='cost') ? '% 乗せ' : '% OFF';
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = priceRules.byBrand[brand];
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
@@ -964,8 +972,10 @@ window.addEventListener('storageReady', function(){
         + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
         + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
         + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
+        + '<span style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
         + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+(isBrandVisible(brand)?' checked':'')+'>検索表示</label>'
         + '</div>';
@@ -981,8 +991,10 @@ window.addEventListener('storageReady', function(){
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
             + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
+            + '<span style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
             + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+(isModelVisible(brand,model)?' checked':'')+'>検索表示</label>'
             + '</div>';
         });
@@ -1017,6 +1029,15 @@ window.addEventListener('storageReady', function(){
       });
     });
   }
+
+
+  // 基本設定のbasis変更でラベル更新
+  document.getElementById('pr_default_basis').addEventListener('change', function(){
+    document.getElementById('pr_default_label').textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+  });
+  document.getElementById('er_default_basis').addEventListener('change', function(){
+    document.getElementById('er_default_label').textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+  });
 
   document.getElementById('savePricingRules').addEventListener('click', async ()=>{
     priceRules.default = {
@@ -1103,6 +1124,7 @@ window.addEventListener('storageReady', function(){
         + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
         + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
         + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-cost-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-cost-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
@@ -1119,6 +1141,7 @@ window.addEventListener('storageReady', function(){
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
             + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-cost-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '</div>';
@@ -1199,9 +1222,14 @@ window.addEventListener('storageReady', function(){
   }
   function computeExternalSellPrice(brand, model, wholesale, retail){
     const rule = externalRuleFor(brand, model);
+    const pct = Number(rule.percent) || 0;
+    if(rule.basis === 'cost'){
+      const cost = computeCostPrice(brand, model, wholesale, retail);
+      if(!cost) return null;
+      return Math.round(cost * (1 + pct/100));
+    }
     const base = rule.basis === 'wholesale' ? wholesale : retail;
     if(!base) return null;
-    const pct = Number(rule.percent) || 0;
     return Math.round(base * (1 - pct/100));
   }
   function getEffectiveSellPrice(brand, model, wholesale, retail){
@@ -1215,6 +1243,7 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     document.getElementById('er_default_basis').value = externalPriceRules.default.basis || 'retail';
     document.getElementById('er_default_percent').value = externalPriceRules.default.percent || 0;
+    const erLabel = document.getElementById('er_default_label'); if(erLabel) erLabel.textContent = (externalPriceRules.default.basis==='cost') ? '% 乗せ' : '% OFF';
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = externalPriceRules.byBrand[brand];
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
@@ -1225,6 +1254,7 @@ window.addEventListener('storageReady', function(){
         + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
         + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
         + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-ext-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<button type="button" class="btn btn-ghost btn-sm" data-ext-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
@@ -1241,6 +1271,7 @@ window.addEventListener('storageReady', function(){
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
             + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-ext-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '</div>';
