@@ -368,9 +368,9 @@
   .msg-error{background:var(--red-dim);color:#8A2E1F;border:1px solid #F2C6BC;}
   .msg-ok{background:var(--teal-dim);color:#146B48;border:1px solid #BEE8D3;}
 
-  #reader{width:100%;max-width:360px;border-radius:8px;overflow:hidden;margin-top:12px;border:1px solid var(--line);}
-  #reader video{width:100% !important;max-height:200px;object-fit:cover;display:block;}
-  #reader canvas{max-height:200px;}
+  #reader{width:100%;max-width:300px;border-radius:8px;overflow:hidden;margin-top:8px;border:1px solid var(--line);}
+  #reader video{width:100% !important;height:150px !important;object-fit:cover;display:block;}
+  #reader canvas{height:150px !important;}
   .scan-hint{font-size:11.5px;color:var(--text-3);margin-top:6px;}
 
   .hist-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);}
@@ -2545,7 +2545,7 @@ window.addEventListener('storageReady', function(){
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報は見つかりませんでした。手動で入力してください。</div>';
       }
     } catch(e) {
-      msgEl.innerHTML = '<div class="msg msg-error">検索に失敗しました。ネットワーク接続を確認してください。</div>';
+      msgEl.innerHTML = '<div class="msg msg-error">商品情報は見つかりませんでした。手動で入力してください。</div>';
     }
   }
 
@@ -2581,10 +2581,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
     modal.classList.add('show');
-    if(prefillBarcode && /^\d{8,}$/.test(prefillBarcode)){
-      document.getElementById('f_barcode').value = prefillBarcode;
-      // JAN自動検索は日本のタイヤに対応していないため無効化
-    }
+    if(prefillBarcode && /^\d{8,}$/.test(prefillBarcode)) lookupJan(prefillBarcode);
   }
   function openEditModal(id){
     const p = products.find(x=>x.id===id);
