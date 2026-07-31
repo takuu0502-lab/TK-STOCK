@@ -2557,27 +2557,13 @@ window.addEventListener('storageReady', function(){
       return;
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
-    async function yahooSearch(params){
-      const target = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid='
-        + appId + '&' + params;
-      // allorigins経由でCORS回避
-      const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(target));
-      if(!res.ok) throw new Error('proxy HTTP ' + res.status);
-      const wrapper = await res.json();
-      if(!wrapper.contents) throw new Error('empty response');
-      return JSON.parse(wrapper.contents);
-    }
     try {
-      let name = '';
-      const data1 = await yahooSearch('jan_code=' + encodeURIComponent(code) + '&results=3');
-      if(data1.hits && data1.hits.length > 0) name = data1.hits[0].name || '';
-      if(!name){
-        const data2 = await yahooSearch('query=' + encodeURIComponent(code) + '&results=1');
-        if(data2.hits && data2.hits.length > 0) name = data2.hits[0].name || '';
-      }
-      if(name){
-        if(!document.getElementById('f_name').value) document.getElementById('f_name').value = name;
-        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(name)+'</b></div>';
+      const res = await fetch('/api/lookup?jan=' + encodeURIComponent(code) + '&appid=' + encodeURIComponent(appId));
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if(data.name){
+        if(!document.getElementById('f_name').value) document.getElementById('f_name').value = data.name;
+        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(data.name)+'</b></div>';
       } else {
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報はYahoo!ショッピングに登録されていません。手動で入力してください。</div>';
       }
