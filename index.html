@@ -1858,7 +1858,7 @@ window.addEventListener('storageReady', function(){
         const r = matches[Number(cb.dataset.catalogChk)];
         const cKey = r.b+'||'+r.m+'||'+r.s;
         if(cb.checked) catalogQuoteSelection.add(cKey); else catalogQuoteSelection.delete(cKey);
-        renderPriceCatalog();
+        renderPriceCatalog(opts);
       });
     });
     wrap.querySelectorAll('[data-catalog-click]').forEach(td=>{
@@ -1870,9 +1870,14 @@ window.addEventListener('storageReady', function(){
         const selectedMatches = matches.filter(r=> catalogQuoteSelection.has(r.b+'||'+r.m+'||'+r.s));
         const groups = [];
         for(const r of selectedMatches){
-          const product = await ensureProductForCatalogEntry(r);
           const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-          groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
+          // 見積タブからの場合は在庫登録不要、在庫一覧タブからは既存ロジック
+          if(opts && opts.targetId){
+            groups.push({ id:uid('qg'), productId:null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:4, unitPrice: sell!==null ? sell : r.w });
+          } else {
+            const product = await ensureProductForCatalogEntry(r);
+            groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
+          }
         }
         quoteGroups = groups;
         sharedLaborLines = [];
@@ -1880,6 +1885,7 @@ window.addEventListener('storageReady', function(){
         document.getElementById('quoteCar').value = '';
         document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
         document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('ja-JP');
+        if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
         renderAll();
         renderTotals();
         document.getElementById('quoteModal').classList.add('show');
@@ -1889,7 +1895,7 @@ window.addEventListener('storageReady', function(){
     if(clearBtn){
       clearBtn.addEventListener('click', ()=>{
         catalogQuoteSelection = new Set();
-        renderPriceCatalog();
+        renderPriceCatalog(opts);
       });
     }
   }
