@@ -496,7 +496,8 @@
       <button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes" style="font-size:12px;">📋 保存済み見積</button>
     </div>
     <div id="estimateSearchPanel"></div>
-    <div id="estimateCatalogWrap" style="margin-top:16px;"></div>
+    <div id="estSelectionBar" style="margin-top:10px;"></div>
+    <div id="estimateCatalogWrap" style="margin-top:10px;"></div>
   </div>
 
   <div class="panel" id="tab-in" style="display:none;">
@@ -1582,7 +1583,7 @@ window.addEventListener('storageReady', function(){
     selectedTireAspect = null;
     selectedTireInch = null;
     selectedCatalogModelKey = null;
-    catalogQuoteSelection = new Set();
+    catalogQuoteSelection = new Map();
     stockOnlyFilter = false;
   }
   let expanded = new Set();
@@ -1797,7 +1798,85 @@ window.addEventListener('storageReady', function(){
     openProductDetail(product.id);
   }
 
-  let catalogQuoteSelection = new Set(); // key: "brand||model||size"
+  let catalogQuoteSelection = new Map(); // key:"brand||model||size" → entry object（複数サイズ対応）
+
+  // 選択済みタイヤの常時表示バー（前後異サイズ対応）
+  function renderEstSelectionBar(){
+    const bar = document.getElementById('estSelectionBar');
+    if(!bar) return;
+    const entries = Array.from(catalogQuoteSelection.values());
+    if(entries.length === 0){ bar.innerHTML = ''; return; }
+    const uniqueSizes = new Set(entries.map(r=>r.s));
+    const isMixed = uniqueSizes.size >= 2;
+    const label = isMixed
+      ? '<span style="background:var(--amber);color:#fff;border-radius:4px;padding:1px 7px;font-size:11px;margin-right:6px;">前後異サイズ</span>'
+      : '';
+    const itemHtml = entries.map(r=>{
+      const name = r.b===r.m ? r.b : r.b+' '+r.m;
+      return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg-1);border:1px solid var(--amber);border-radius:6px;padding:3px 10px;font-size:12px;">'
+        + '<span style="color:var(--amber);font-weight:600;">'+escapeHtml(name)+'</span>'
+        + '<span style="color:var(--text-3);">'+escapeHtml(r.s)+'</span>'
+        + '<button type="button" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;line-height:1;padding:0 2px;" data-est-remove="'+escapeHtml(r.b+'||'+r.m+'||'+r.s)+'">×</button>'
+        + '</span>';
+    }).join('');
+    bar.innerHTML = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;">'
+      + label
+      + '<span style="font-size:12px;font-weight:600;color:var(--amber);">選択中 '+entries.length+'件：</span>'
+      + itemHtml
+      + '<button class="btn btn-amber btn-sm" id="estBarQuoteBtn" style="margin-left:auto;">見積もりを作成</button>'
+      + '<button class="btn btn-ghost btn-sm" id="estBarClearBtn">クリア</button>'
+      + '</div>';
+    bar.querySelectorAll('[data-est-remove]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        catalogQuoteSelection.delete(btn.dataset.estRemove);
+        renderEstSelectionBar();
+        // チェックボックスの表示状態を同期（チェック外れる）
+        const wrap = document.getElementById('estimateCatalogWrap');
+        if(wrap) wrap.querySelectorAll('input[data-catalog-chk]').forEach(cb=>{
+          const key = cb.dataset.catalogChk;
+          if(!key) return;
+          // チェック済みのものをMapに照合して更新
+          // renderPriceCatalogを再呼び出しするのが確実
+        });
+        // 現在の検索結果を再描画してチェック状態を同期
+        const lastOpts = window._lastEstOpts;
+        if(lastOpts) renderPriceCatalog(lastOpts);
+      });
+    });
+    const estBarQuoteBtn = document.getElementById('estBarQuoteBtn');
+    if(estBarQuoteBtn){
+      estBarQuoteBtn.addEventListener('click', async ()=>{
+        const selectedMatches = Array.from(catalogQuoteSelection.values());
+        if(selectedMatches.length === 0) return;
+        const uniqueSizes2 = new Set(selectedMatches.map(r=>r.s));
+        const defaultQty = uniqueSizes2.size >= 2 ? 2 : 4;
+        const groups = [];
+        for(const r of selectedMatches){
+          const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+          groups.push({ id:uid('qg'), productId:null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
+        }
+        quoteGroups = groups;
+        sharedLaborLines = [];
+        document.getElementById('quoteCustomer').value = '';
+        document.getElementById('quoteCar').value = '';
+        document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
+        document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('ja-JP');
+        if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
+        catalogQuoteSelection = new Map();
+        renderEstSelectionBar();
+        currentEditingQuoteId = null;
+        renderAll(); renderTotals();
+        document.getElementById('quoteModal').classList.add('show');
+      });
+    }
+    const estBarClearBtn = document.getElementById('estBarClearBtn');
+    if(estBarClearBtn){
+      estBarClearBtn.addEventListener('click', ()=>{
+        catalogQuoteSelection = new Map();
+        renderEstSelectionBar();
+      });
+    }
+  }
 
   function renderPriceCatalog(opts){
     // opts: {targetId, width, aspect, inch, modelKey} — 省略時は在庫一覧タブのグローバル状態を使用
@@ -1861,8 +1940,9 @@ window.addEventListener('storageReady', function(){
       cb.addEventListener('change', ()=>{
         const r = matches[Number(cb.dataset.catalogChk)];
         const cKey = r.b+'||'+r.m+'||'+r.s;
-        if(cb.checked) catalogQuoteSelection.add(cKey); else catalogQuoteSelection.delete(cKey);
+        if(cb.checked) catalogQuoteSelection.set(cKey, r); else catalogQuoteSelection.delete(cKey);
         renderPriceCatalog(opts);
+        renderEstSelectionBar();
       });
     });
     wrap.querySelectorAll('[data-catalog-click]').forEach(td=>{
@@ -1871,13 +1951,16 @@ window.addEventListener('storageReady', function(){
     const cqBtn = document.getElementById('catalogQuoteBtn');
     if(cqBtn){
       cqBtn.addEventListener('click', async ()=>{
-        const selectedMatches = matches.filter(r=> catalogQuoteSelection.has(r.b+'||'+r.m+'||'+r.s));
+        // Map.values()で全選択済みエントリ取得（複数サイズ対応）
+        const selectedMatches = Array.from(catalogQuoteSelection.values());
+        // 前後異サイズ判定：ユニークサイズが2種以上ならqty:2、同一サイズのみならqty:4
+        const uniqueSizes = new Set(selectedMatches.map(r=>r.s));
+        const defaultQty = uniqueSizes.size >= 2 ? 2 : 4;
         const groups = [];
         for(const r of selectedMatches){
           const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-          // 見積タブからの場合は在庫登録不要、在庫一覧タブからは既存ロジック
           if(opts && opts.targetId){
-            groups.push({ id:uid('qg'), productId:null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:4, unitPrice: sell!==null ? sell : r.w });
+            groups.push({ id:uid('qg'), productId:null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
           } else {
             const product = await ensureProductForCatalogEntry(r);
             groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
@@ -1890,16 +1973,20 @@ window.addEventListener('storageReady', function(){
         document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
         document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('ja-JP');
         if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
+        catalogQuoteSelection = new Map();
+        renderEstSelectionBar();
         renderAll();
         renderTotals();
+        currentEditingQuoteId = null;
         document.getElementById('quoteModal').classList.add('show');
       });
     }
     const clearBtn = document.getElementById('catalogClearBtn');
     if(clearBtn){
       clearBtn.addEventListener('click', ()=>{
-        catalogQuoteSelection = new Set();
+        catalogQuoteSelection = new Map();
         renderPriceCatalog(opts);
+        renderEstSelectionBar();
       });
     }
   }
@@ -2159,7 +2246,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('estTireAspect').addEventListener('change', e=>{ estAspect = e.target.value||null; });
     document.getElementById('estTireInch').addEventListener('change', e=>{ estInch = e.target.value||null; });
     document.getElementById('estSearchGo').addEventListener('click', ()=>{
-      renderPriceCatalog({ targetId:'estimateCatalogWrap', width:estWidth, aspect:estAspect, inch:estInch, modelKey:null });
+      const estOpts = { targetId:'estimateCatalogWrap', width:estWidth, aspect:estAspect, inch:estInch, modelKey:null };
+      window._lastEstOpts = estOpts;
+      renderPriceCatalog(estOpts);
     });
     document.getElementById('estOpenSavedQuotes').addEventListener('click', async ()=>{
       await loadSavedQuotes();
