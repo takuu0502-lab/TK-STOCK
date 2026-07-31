@@ -538,7 +538,7 @@
         <select id="pr_default_basis" style="flex:1;">
           <option value="retail">希望小売価格から</option>
           <option value="wholesale">A表価格から</option>
-          <option value="cost">仕入れ価格から（乗せ）</option>
+          <option value="cost">仕入れ価格から</option>
         </select>
         <input type="number" id="pr_default_percent" min="0" max="100" value="0" style="width:90px;">
         <span style="align-self:center;font-size:13px;color:var(--text-2);" id="pr_default_label">% OFF</span>
@@ -587,7 +587,7 @@
         <select id="er_default_basis" style="flex:1;">
           <option value="retail">希望小売価格から</option>
           <option value="wholesale">A表価格から</option>
-          <option value="cost">仕入れ価格から（乗せ）</option>
+          <option value="cost">仕入れ価格から</option>
         </select>
         <input type="number" id="er_default_percent" min="0" max="100" value="0" style="width:90px;">
         <span style="align-self:center;font-size:13px;color:var(--text-2);" id="er_default_label">% OFF</span>
@@ -972,7 +972,7 @@ window.addEventListener('storageReady', function(){
         + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
         + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
         + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<span style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -991,7 +991,7 @@ window.addEventListener('storageReady', function(){
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
             + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '<span style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -1124,7 +1124,7 @@ window.addEventListener('storageReady', function(){
         + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
         + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
         + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-cost-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-cost-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
@@ -1141,7 +1141,7 @@ window.addEventListener('storageReady', function(){
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
             + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-cost-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '</div>';
@@ -1254,7 +1254,7 @@ window.addEventListener('storageReady', function(){
         + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
         + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
         + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-ext-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<button type="button" class="btn btn-ghost btn-sm" data-ext-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
@@ -1271,7 +1271,7 @@ window.addEventListener('storageReady', function(){
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
             + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
             + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から（乗せ）</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-ext-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '</div>';
