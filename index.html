@@ -2234,8 +2234,9 @@ window.addEventListener('storageReady', function(){
       const creatorTag = (!isExternalUser() && q.createdByName) ? ' <span style="font-size:10px;color:var(--text-3);background:var(--bg-1);border:1px solid var(--line);border-radius:4px;padding:1px 5px;">'+escapeHtml(q.createdByName)+'</span>' : '';
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);">'
         +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+(q.car?' <span style="font-size:11px;color:var(--text-3);font-weight:400;">'+escapeHtml(q.car)+'</span>':'')+creatorTag+'</div>'
-        +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+(total?' ・ '+total:'')+'</div>'
+        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+creatorTag+'</div>'
+        +(q.car?'<div style="font-size:14px;font-weight:600;color:var(--text-2);margin-top:2px;">'+escapeHtml(q.car)+'</div>':'')
+        +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+'</div>'
         +'</div>'
         +'<button class="btn btn-amber btn-sm" data-load-quote="'+escapeHtml(q.id)+'">呼び出し</button>'
         +'<button class="btn btn-ghost btn-sm" data-del-quote="'+escapeHtml(q.id)+'" style="color:var(--red,#e53935);">削除</button>'
