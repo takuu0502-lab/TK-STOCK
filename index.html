@@ -2334,12 +2334,25 @@ window.addEventListener('storageReady', function(){
       return null;
     }
 
-    const config = { fps: 10, qrbox: { width: 250, height: 120 } };
+    // JAN(EAN-13)・CODE-128など1次元バーコードを含むフォーマットを指定
+    const formatsToSupport = [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE,
+    ];
+    // 1次元バーコードは横長なので幅広・低いボックスに設定
+    const config = { fps: 15, qrbox: { width: 300, height: 100 } };
     let lastErr = null;
 
     // 試行1: facingMode: environment（背面カメラ指定）
     try{
-      const scanner1 = new Html5Qrcode(readerId);
+      const scanner1 = new Html5Qrcode(readerId, { formatsToSupport });
       await scanner1.start({ facingMode: { ideal: 'environment' } }, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
       return scanner1;
     }catch(err){
@@ -2354,7 +2367,7 @@ window.addEventListener('storageReady', function(){
       if(cams && cams.length){
         const back = cams.find(c=> /back|rear|environment|背面/i.test(c.label));
         const camId = back ? back.id : cams[cams.length-1].id;
-        const scanner2 = new Html5Qrcode(readerId);
+        const scanner2 = new Html5Qrcode(readerId, { formatsToSupport });
         await scanner2.start(camId, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
         return scanner2;
       }
