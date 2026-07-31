@@ -384,6 +384,7 @@
   .hist-qty{font-family:var(--font-mono);font-weight:600;font-size:14px;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;}
+  #confirmModal{z-index:200;}
   .modal-overlay.show{display:flex;}
   .modal{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:22px;width:100%;max-width:420px;max-height:88vh;overflow:auto;}
   .modal h3{font-family:var(--font-display);font-size:17px;margin:0 0 16px;}
@@ -1980,6 +1981,7 @@ window.addEventListener('storageReady', function(){
   const LABOR_PRESETS = ['組替・バランス・脱着','タイヤ処分料','ゴムバルブ','チッ素ガス','アライメント'];
 
   function openQuoteModal(){
+    currentEditingQuoteId = null; // 新規作成時はIDをリセット
     quoteGroups = [];
     sharedLaborLines = [];
     document.getElementById('quoteCustomer').value = '';
@@ -2168,6 +2170,7 @@ window.addEventListener('storageReady', function(){
 
   // -------- 見積保存 --------
   let savedQuotes = [];
+  let currentEditingQuoteId = null; // 呼び出し中の見積ID（上書き用）
 
   async function loadSavedQuotes(){
     try{
@@ -2198,6 +2201,7 @@ window.addEventListener('storageReady', function(){
   }
 
   function loadQuoteSnapshot(q){
+    currentEditingQuoteId = q.id || null; // 上書き保存用にIDを記録
     quoteGroups = JSON.parse(JSON.stringify(q.groups));
     sharedLaborLines = JSON.parse(JSON.stringify(q.laborLines||[]));
     document.getElementById('quoteCustomer').value = q.customer||'';
@@ -2260,14 +2264,29 @@ window.addEventListener('storageReady', function(){
 
   document.getElementById('quoteSave').addEventListener('click', async ()=>{
     if(quoteGroups.length === 0){ alert('品目がありません。'); return; }
-    const snap = currentQuoteSnapshot();
     await loadSavedQuotes();
-    savedQuotes.push(snap);
+    if(currentEditingQuoteId){
+      // 既存の見積を上書き
+      const idx = savedQuotes.findIndex(x => x.id === currentEditingQuoteId);
+      const snap = currentQuoteSnapshot();
+      snap.id = currentEditingQuoteId; // 元のIDを保持
+      // savedAtは更新する（最終保存日時）
+      if(idx !== -1){
+        savedQuotes[idx] = snap;
+      } else {
+        savedQuotes.push(snap); // 万一見つからなければ新規追加
+      }
+    } else {
+      // 新規保存
+      const snap = currentQuoteSnapshot();
+      savedQuotes.push(snap);
+      currentEditingQuoteId = snap.id; // 以後は上書き対象にする
+    }
     await persistSavedQuotes();
     const msg = document.createElement('div');
     msg.className = 'msg msg-ok';
     msg.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 20px;border-radius:8px;background:#4caf50;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
-    msg.textContent = '見積を保存しました';
+    msg.textContent = currentEditingQuoteId ? '見積を上書き保存しました' : '見積を保存しました';
     document.body.appendChild(msg);
     setTimeout(()=>msg.remove(), 2500);
   });
