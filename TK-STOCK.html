@@ -605,6 +605,19 @@
 
     <div class="pricing-section-divider"></div>
 
+    <div class="pricing-section-title">API設定</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">
+      JANコードから商品名を自動入力するために、Yahoo!ショッピングAPIのClient IDを設定してください。<br>
+      取得先：<a href="https://developer.yahoo.co.jp/" target="_blank" style="color:var(--amber);">developer.yahoo.co.jp</a>（無料・Yahooアカウントがあれば即取得可能）
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;max-width:480px;">
+      <input type="text" id="yahooAppIdInput" placeholder="Yahoo! Client ID（アプリケーションID）" style="flex:1;font-size:13px;">
+      <button class="btn btn-amber btn-sm" id="saveYahooAppId">保存</button>
+    </div>
+    <div id="yahooAppIdMsg" style="margin-top:6px;font-size:12px;"></div>
+
+    <div class="pricing-section-divider"></div>
+
     <div class="pricing-section-title">価格表取込</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
       Excelファイル（.xlsx）から価格表を取り込み、在庫検索・見積もりに反映できます。取込済み価格表の削除もここから行えます。
@@ -2520,27 +2533,33 @@ window.addEventListener('storageReady', function(){
   });
   document.getElementById('f_major').addEventListener('change', toggleTireNameField);
 
-  // ---------- JANコードルックアップ ----------
+  // ---------- JANコードルックアップ (Yahoo!ショッピングAPI) ----------
   async function lookupJan(code){
     const msgEl = document.getElementById('janLookupMsg');
     if(!code || code.length < 8){
       msgEl.innerHTML = '<div class="msg msg-error">8桁以上のコードを入力してください。</div>';
       return;
     }
+    const appId = localStorage.getItem('yahooAppId') || '';
+    if(!appId){
+      msgEl.innerHTML = '<div class="msg msg-error">Yahoo! Client IDが未設定です。「価格調整」タブ→「API設定」から登録してください。</div>';
+      return;
+    }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('https://api.upcitemdb.com/prod/trial/lookup?upc=' + encodeURIComponent(code));
+      const url = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid='
+        + encodeURIComponent(appId)
+        + '&jan_code=' + encodeURIComponent(code)
+        + '&results=1&condition=new';
+      const res = await fetch(url);
       const data = await res.json();
-      if(data.code === 'OK' && data.items && data.items.length > 0){
-        const item = data.items[0];
-        const name = item.title || '';
-        const brand = item.brand || '';
-        const fullName = (brand && name.toLowerCase().indexOf(brand.toLowerCase()) === -1)
-          ? brand + ' ' + name : name;
-        if(fullName && !document.getElementById('f_name').value){
-          document.getElementById('f_name').value = fullName;
+      if(data.hits && data.hits.length > 0){
+        const item = data.hits[0];
+        const name = item.name || '';
+        if(name && !document.getElementById('f_name').value){
+          document.getElementById('f_name').value = name;
         }
-        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(fullName)+'</b></div>';
+        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(name)+'</b></div>';
       } else {
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報は見つかりませんでした。手動で入力してください。</div>';
       }
@@ -3231,6 +3250,24 @@ window.addEventListener('storageReady', function(){
         + '<span style="font-size:11px;color:var(--text-3);margin-left:8px;">'+c.items.length+'件</span></div>'
         + '</div>').join('');
   }
+
+  // ---------- Yahoo appid 設定 ----------
+  (function(){
+    const saved = localStorage.getItem('yahooAppId') || '';
+    const input = document.getElementById('yahooAppIdInput');
+    if(input && saved) input.value = saved;
+  })();
+  document.getElementById('saveYahooAppId').addEventListener('click', ()=>{
+    const val = document.getElementById('yahooAppIdInput').value.trim();
+    if(val){
+      localStorage.setItem('yahooAppId', val);
+      document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--green,#4caf50);">✓ 保存しました</span>';
+    } else {
+      localStorage.removeItem('yahooAppId');
+      document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--text-3);">削除しました</span>';
+    }
+    setTimeout(()=>{ document.getElementById('yahooAppIdMsg').innerHTML = ''; }, 3000);
+  });
 
   document.getElementById('openImportCatalogBtn').addEventListener('click', ()=>{
     parsedImportData = [];
