@@ -2319,8 +2319,57 @@ window.addEventListener('storageReady', function(){
     return 'カメラを起動できませんでした'+(name ? '（'+name+'）' : '')+'。バーコードを直接入力してください。';
   }
 
+  // 写真撮影でバーコードをデコード（iOS Safari向けの確実な方法）
+  function addPhotoScanButton(wrap, onDecoded){
+    const _fmt2 = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+      ? Html5QrcodeSupportedFormats
+      : { EAN_13:9, EAN_8:10, CODE_128:5, CODE_39:3, CODE_93:4,
+          UPC_A:14, UPC_E:15, ITF:8, QR_CODE:0 };
+    const fmts = [
+      _fmt2.EAN_13, _fmt2.EAN_8, _fmt2.CODE_128, _fmt2.CODE_39,
+      _fmt2.CODE_93, _fmt2.UPC_A, _fmt2.UPC_E, _fmt2.ITF, _fmt2.QR_CODE,
+    ];
+
+    const photoInput = document.createElement('input');
+    photoInput.type = 'file';
+    photoInput.accept = 'image/*';
+    photoInput.capture = 'environment';
+    photoInput.style.display = 'none';
+    wrap.appendChild(photoInput);
+
+    const photoBtn = document.createElement('button');
+    photoBtn.className = 'btn btn-ghost btn-sm';
+    photoBtn.style.cssText = 'margin-top:8px;width:100%;font-size:13px;';
+    photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）';
+    photoBtn.addEventListener('click', ()=> photoInput.click());
+    wrap.appendChild(photoBtn);
+
+    // デコード用の非表示div
+    const tmpId = 'photoScanTmp';
+    let tmpDiv = document.getElementById(tmpId);
+    if(!tmpDiv){ tmpDiv = document.createElement('div'); tmpDiv.id = tmpId; tmpDiv.style.display = 'none'; document.body.appendChild(tmpDiv); }
+
+    photoInput.addEventListener('change', async function(){
+      const file = this.files[0];
+      if(!file) return;
+      photoBtn.textContent = '読み取り中...';
+      photoBtn.disabled = true;
+      try{
+        const tmpScanner = new Html5Qrcode(tmpId, { formatsToSupport: fmts, verbose: false });
+        const code = await tmpScanner.scanFile(file, false);
+        onDecoded(code);
+      }catch(e){
+        photoBtn.textContent = '読み取れませんでした。もう一度試してください';
+        photoBtn.disabled = false;
+        setTimeout(()=>{
+          photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）';
+        }, 2500);
+      }
+      this.value = '';
+    });
+  }
+
   async function startCameraInto(readerId, wrap, onDecoded){
-    wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。明るい場所でゆっくり近づけると読み取りやすくなります。</div>';
     if(typeof Html5Qrcode === 'undefined'){
       wrap.innerHTML = '<div class="msg msg-error">カメラスキャン機能を読み込めませんでした。通信環境をご確認のうえページを再読み込みしてください。</div>';
       return null;
@@ -2329,8 +2378,13 @@ window.addEventListener('storageReady', function(){
       wrap.innerHTML = '<div class="msg msg-error">'+describeCameraError({})+'</div>';
       return null;
     }
+
+    wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。</div>';
+
+    // 写真スキャンボタンを常に追加（iOS Safari対応）
+    addPhotoScanButton(wrap, onDecoded);
+
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      wrap.innerHTML = '<div class="msg msg-error">このブラウザはカメラ機能に対応していません。バーコードを直接入力してください。</div>';
       return null;
     }
 
@@ -2343,10 +2397,6 @@ window.addEventListener('storageReady', function(){
       _fmt.EAN_13, _fmt.EAN_8, _fmt.CODE_128, _fmt.CODE_39,
       _fmt.CODE_93, _fmt.UPC_A, _fmt.UPC_E, _fmt.ITF, _fmt.QR_CODE,
     ];
-
-    // 1次元バーコード向け設定
-    // experimentalFeatures でネイティブ BarcodeDetector API を優先使用
-    // （Android Chrome / iOS Safari 17+ で高精度なJAN/EAN読み取りが可能）
     const config = {
       fps: 15,
       qrbox: { width: 300, height: 100 },
@@ -2361,8 +2411,8 @@ window.addEventListener('storageReady', function(){
       return scanner1;
     }catch(err){
       lastErr = err;
-      // DOMをリセットして再生成（同IDで再インスタンス化するため必要）
-      wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。明るい場所でゆっくり近づけると読み取りやすくなります。</div>';
+      wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。</div>';
+      addPhotoScanButton(wrap, onDecoded);
     }
 
     // 試行2: getCamerasでカメラID直接指定
@@ -2380,7 +2430,10 @@ window.addEventListener('storageReady', function(){
     }
 
     window.__cameraRetry = function(){ startCameraInto(readerId, wrap, onDecoded); };
-    wrap.innerHTML = '<div class="msg msg-error">'+describeCameraError(lastErr)+'</div><button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="window.__cameraRetry()">再試行</button>';
+    const errDiv = document.createElement('div');
+    errDiv.innerHTML = '<div class="msg msg-error">'+describeCameraError(lastErr)+'</div>'
+      + '<button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="window.__cameraRetry()">再試行</button>';
+    wrap.insertBefore(errDiv, wrap.firstChild);
     return null;
   }
 
