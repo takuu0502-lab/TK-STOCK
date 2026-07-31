@@ -1839,6 +1839,7 @@ window.addEventListener('storageReady', function(){
       const cKey = r.b+'||'+r.m+'||'+r.s;
       const checked = catalogQuoteSelection.has(cKey);
       return '<tr data-catalog-idx="'+i+'">'
+        + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
         + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
         + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+r.w.toLocaleString('ja-JP')+'</td>' : '')
@@ -1852,8 +1853,9 @@ window.addEventListener('storageReady', function(){
       ? '<div class="catalog-quote-bar">'+catalogQuoteSelection.size+'件選択中 <button class="btn btn-amber btn-sm" id="catalogQuoteBtn">見積もりを作成</button><button class="btn btn-ghost btn-sm" id="catalogClearBtn">選択クリア</button></div>'
       : '';
     wrap.innerHTML = '<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'
-      + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄</div>'
-      + '<table><thead><tr><th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
+      + (forceTire ? quoteBarHtml : '')
+      + '<table><thead><tr>'+(forceTire ? '<th class="no-print">選択</th>' : '')+'<th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 
     wrap.querySelectorAll('[data-catalog-chk]').forEach(cb=>{
       cb.addEventListener('change', ()=>{
