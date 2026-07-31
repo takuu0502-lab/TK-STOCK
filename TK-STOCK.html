@@ -2557,31 +2557,26 @@ window.addEventListener('storageReady', function(){
       return;
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
+    const proxy = 'https://corsproxy.io/?';
+    async function yahooSearch(params){
+      const target = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid='
+        + appId + '&' + params;
+      const res = await fetch(proxy + encodeURIComponent(target));
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
     try {
-      // JANコードで検索
       let name = '';
-      const url1 = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid='
-        + appId + '&jan_code=' + encodeURIComponent(code) + '&results=3';
-      const res1 = await fetch(url1);
-      if(!res1.ok){ throw new Error('HTTP ' + res1.status); }
-      const data1 = await res1.json();
-      if(data1.hits && data1.hits.length > 0){
-        name = data1.hits[0].name || '';
-      }
-      // 見つからなければキーワード検索でも試みる
+      // JANコードで検索
+      const data1 = await yahooSearch('jan_code=' + encodeURIComponent(code) + '&results=3');
+      if(data1.hits && data1.hits.length > 0) name = data1.hits[0].name || '';
+      // 見つからなければキーワード検索
       if(!name){
-        const url2 = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid='
-          + appId + '&query=' + encodeURIComponent(code) + '&results=1';
-        const res2 = await fetch(url2);
-        const data2 = await res2.json();
-        if(data2.hits && data2.hits.length > 0){
-          name = data2.hits[0].name || '';
-        }
+        const data2 = await yahooSearch('query=' + encodeURIComponent(code) + '&results=1');
+        if(data2.hits && data2.hits.length > 0) name = data2.hits[0].name || '';
       }
       if(name){
-        if(!document.getElementById('f_name').value){
-          document.getElementById('f_name').value = name;
-        }
+        if(!document.getElementById('f_name').value) document.getElementById('f_name').value = name;
         msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(name)+'</b></div>';
       } else {
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報はYahoo!ショッピングに登録されていません。手動で入力してください。</div>';
