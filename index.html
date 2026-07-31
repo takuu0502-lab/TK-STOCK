@@ -2320,7 +2320,7 @@ window.addEventListener('storageReady', function(){
   }
 
   async function startCameraInto(readerId, wrap, onDecoded){
-    wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードをカメラに向けてください。うまく認識しない場合は下の欄に直接入力してください。</div>';
+    wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。明るい場所でゆっくり近づけると読み取りやすくなります。</div>';
     if(typeof Html5Qrcode === 'undefined'){
       wrap.innerHTML = '<div class="msg msg-error">カメラスキャン機能を読み込めませんでした。通信環境をご確認のうえページを再読み込みしてください。</div>';
       return null;
@@ -2334,31 +2334,35 @@ window.addEventListener('storageReady', function(){
       return null;
     }
 
-    // JAN(EAN-13)・CODE-128など1次元バーコードを含むフォーマットを指定
+    // Html5QrcodeSupportedFormats が未定義の場合は数値で代替
+    const _fmt = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+      ? Html5QrcodeSupportedFormats
+      : { EAN_13:9, EAN_8:10, CODE_128:5, CODE_39:3, CODE_93:4,
+          UPC_A:14, UPC_E:15, ITF:8, QR_CODE:0 };
     const formatsToSupport = [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.QR_CODE,
+      _fmt.EAN_13, _fmt.EAN_8, _fmt.CODE_128, _fmt.CODE_39,
+      _fmt.CODE_93, _fmt.UPC_A, _fmt.UPC_E, _fmt.ITF, _fmt.QR_CODE,
     ];
-    // 1次元バーコードは横長なので幅広・低いボックスに設定
-    const config = { fps: 15, qrbox: { width: 300, height: 100 } };
+
+    // 1次元バーコード向け設定
+    // experimentalFeatures でネイティブ BarcodeDetector API を優先使用
+    // （Android Chrome / iOS Safari 17+ で高精度なJAN/EAN読み取りが可能）
+    const config = {
+      fps: 15,
+      qrbox: { width: 300, height: 100 },
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    };
     let lastErr = null;
 
     // 試行1: facingMode: environment（背面カメラ指定）
     try{
-      const scanner1 = new Html5Qrcode(readerId, { formatsToSupport });
+      const scanner1 = new Html5Qrcode(readerId, { formatsToSupport, verbose: false });
       await scanner1.start({ facingMode: { ideal: 'environment' } }, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
       return scanner1;
     }catch(err){
       lastErr = err;
       // DOMをリセットして再生成（同IDで再インスタンス化するため必要）
-      wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードをカメラに向けてください。うまく認識しない場合は下の欄に直接入力してください。</div>';
+      wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。明るい場所でゆっくり近づけると読み取りやすくなります。</div>';
     }
 
     // 試行2: getCamerasでカメラID直接指定
@@ -2367,7 +2371,7 @@ window.addEventListener('storageReady', function(){
       if(cams && cams.length){
         const back = cams.find(c=> /back|rear|environment|背面/i.test(c.label));
         const camId = back ? back.id : cams[cams.length-1].id;
-        const scanner2 = new Html5Qrcode(readerId, { formatsToSupport });
+        const scanner2 = new Html5Qrcode(readerId, { formatsToSupport, verbose: false });
         await scanner2.start(camId, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
         return scanner2;
       }
