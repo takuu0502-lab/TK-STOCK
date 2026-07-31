@@ -2333,26 +2333,35 @@ window.addEventListener('storageReady', function(){
       wrap.innerHTML = '<div class="msg msg-error">このブラウザはカメラ機能に対応していません。バーコードを直接入力してください。</div>';
       return null;
     }
-    const scanner = new Html5Qrcode(readerId);
+
     const config = { fps: 10, qrbox: { width: 250, height: 120 } };
     let lastErr = null;
+
+    // 試行1: facingMode: environment（背面カメラ指定）
     try{
-      await scanner.start({ facingMode: { ideal: 'environment' } }, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
-      return scanner;
+      const scanner1 = new Html5Qrcode(readerId);
+      await scanner1.start({ facingMode: { ideal: 'environment' } }, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
+      return scanner1;
     }catch(err){
       lastErr = err;
+      // DOMをリセットして再生成（同IDで再インスタンス化するため必要）
+      wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードをカメラに向けてください。うまく認識しない場合は下の欄に直接入力してください。</div>';
     }
+
+    // 試行2: getCamerasでカメラID直接指定
     try{
       const cams = await Html5Qrcode.getCameras();
       if(cams && cams.length){
         const back = cams.find(c=> /back|rear|environment|背面/i.test(c.label));
         const camId = back ? back.id : cams[cams.length-1].id;
-        await scanner.start(camId, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
-        return scanner;
+        const scanner2 = new Html5Qrcode(readerId);
+        await scanner2.start(camId, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
+        return scanner2;
       }
     }catch(err2){
       lastErr = err2;
     }
+
     window.__cameraRetry = function(){ startCameraInto(readerId, wrap, onDecoded); };
     wrap.innerHTML = '<div class="msg msg-error">'+describeCameraError(lastErr)+'</div><button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="window.__cameraRetry()">再試行</button>';
     return null;
