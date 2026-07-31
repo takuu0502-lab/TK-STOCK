@@ -2184,6 +2184,8 @@ window.addEventListener('storageReady', function(){
     return {
       id: uid('sq'),
       savedAt: new Date().toISOString(),
+      createdById: currentUser ? currentUser.id : null,
+      createdByName: currentUser ? currentUser.displayName : '',
       customer: document.getElementById('quoteCustomer').value.trim(),
       car: document.getElementById('quoteCar').value.trim(),
       staff: document.getElementById('quoteStaff').value.trim(),
@@ -2212,14 +2214,23 @@ window.addEventListener('storageReady', function(){
       wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">保存済みの見積はありません。</div>';
       return;
     }
-    const sorted = [...savedQuotes].sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
+    // 外部ユーザーは自分が作成した見積のみ表示
+    const visibleQuotes = isExternalUser()
+      ? savedQuotes.filter(q => q.createdById === (currentUser ? currentUser.id : null))
+      : savedQuotes;
+    if(!visibleQuotes.length){
+      wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">あなたが作成した見積はありません。</div>';
+      return;
+    }
+    const sorted = [...visibleQuotes].sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
     wrap.innerHTML = sorted.map(q=>{
       const d = new Date(q.savedAt);
       const dateStr = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const total = q.grandTotal ? '¥'+q.grandTotal.toLocaleString() : '';
+      const creatorTag = (!isExternalUser() && q.createdByName) ? ' <span style="font-size:10px;color:var(--text-3);background:var(--bg-1);border:1px solid var(--line);border-radius:4px;padding:1px 5px;">'+escapeHtml(q.createdByName)+'</span>' : '';
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);">'
         +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+(q.car?' <span style="font-size:11px;color:var(--text-3);font-weight:400;">'+escapeHtml(q.car)+'</span>':'')+'</div>'
+        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+(q.car?' <span style="font-size:11px;color:var(--text-3);font-weight:400;">'+escapeHtml(q.car)+'</span>':'')+creatorTag+'</div>'
         +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+(total?' ・ '+total:'')+'</div>'
         +'</div>'
         +'<button class="btn btn-amber btn-sm" data-load-quote="'+escapeHtml(q.id)+'">呼び出し</button>'
