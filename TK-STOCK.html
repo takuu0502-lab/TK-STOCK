@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -31,7 +33,11 @@
         const snapshot = await get(ref(db, path));
         if (snapshot.exists()) return { value: snapshot.val() };
         return null;
-      } catch(e) { console.error('FB get error', e); return null; }
+      } catch(e) {
+        console.error('FB get error', e);
+        window._fbGetError = e.message;
+        return null;
+      }
     },
     set: async (key, value, shared) => {
       try {
@@ -322,15 +328,18 @@
   .price-catalog td{padding:8px;font-size:13px;border-bottom:1px solid var(--line-soft);}
   .price-catalog tr:last-child td{border-bottom:none;}
   .price-catalog .price-num{font-family:var(--font-mono);font-weight:600;}
+
+  .visibility-toggle{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-2);cursor:pointer;user-select:none;white-space:nowrap;}
+  .visibility-toggle input[type=checkbox]{width:auto;padding:0;margin:0;accent-color:var(--amber);}
   .brand-rule-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .brand-rule-row .brand-rule-name{width:90px;font-size:13px;color:var(--text-1);flex:0 0 90px;}
-  .brand-rule-row select{width:170px;}
+  .brand-rule-row select{width:160px;font-size:12px;}
   .pricing-section-title{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text-1);margin:0 0 4px;}
   .pricing-section-divider{height:1px;background:var(--line);margin:28px 0 24px;}
   .brand-rule-row input{width:70px;}
   .brand-model-list{font-size:12px;color:var(--text-2);background:var(--bg-1);border-radius:6px;padding:10px 10px 2px;margin:-2px 0 10px 98px;line-height:1.6;}
   .model-rule-row{margin-bottom:8px;}
-  .model-rule-row select{width:150px;}
+  .model-rule-row select{width:150px;font-size:12px;}
   .breadcrumb b{color:var(--text-1);font-weight:600;}
 
   .stock-table{width:100%;border-collapse:collapse;}
@@ -360,6 +369,8 @@
   .msg-ok{background:var(--teal-dim);color:#146B48;border:1px solid #BEE8D3;}
 
   #reader{width:100%;max-width:360px;border-radius:8px;overflow:hidden;margin-top:12px;border:1px solid var(--line);}
+  #reader video{width:100% !important;max-height:200px;object-fit:cover;display:block;}
+  #reader canvas{max-height:200px;}
   .scan-hint{font-size:11.5px;color:var(--text-3);margin-top:6px;}
 
   .hist-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);}
@@ -399,6 +410,7 @@
     .detail-stats{grid-template-columns:1fr 1fr;gap:8px;}
     .brand{font-size:22px;}
   }
+
 </style>
 </head>
 <body>
@@ -424,7 +436,7 @@
       <input type="password" id="auth_password" autocomplete="current-password">
     </div>
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);margin-bottom:14px;cursor:pointer;">
-      <input type="checkbox" id="auth_remember" checked style="width:auto;">
+      <input type="checkbox" id="auth_remember" style="width:auto;">
       ログイン情報を記憶する
     </label>
     <div id="authMsg"></div>
@@ -527,11 +539,12 @@
       <label>基本設定（すべてのブランドの初期値）</label>
       <div class="row">
         <select id="pr_default_basis" style="flex:1;">
-          <option value="retail">希望小売価格から</option>
-          <option value="wholesale">A表価格から</option>
+          <option value="retail">小売価格から</option>
+          <option value="wholesale">A表から</option>
+          <option value="cost">仕入れから</option>
         </select>
         <input type="number" id="pr_default_percent" min="0" max="100" value="0" style="width:90px;">
-        <span style="align-self:center;font-size:13px;color:var(--text-2);">% OFF</span>
+        <span style="align-self:center;font-size:13px;color:var(--text-2);" id="pr_default_label">% OFF</span>
       </div>
     </div>
     <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
@@ -551,8 +564,8 @@
       <label>基本設定（すべてのブランドの初期値）</label>
       <div class="row">
         <select id="cr_default_basis" style="flex:1;">
-          <option value="retail">希望小売価格から</option>
-          <option value="wholesale">A表価格から</option>
+          <option value="retail">小売価格から</option>
+          <option value="wholesale">A表から</option>
         </select>
         <input type="number" id="cr_default_percent" min="0" max="100" value="0" style="width:90px;">
         <span style="align-self:center;font-size:13px;color:var(--text-2);">% OFF</span>
@@ -564,7 +577,42 @@
     <div style="margin-top:18px;">
       <button class="btn btn-amber" id="saveCostPricingRules">仕入れ価格の設定を保存</button>
     </div>
+
+    <div class="pricing-section-divider"></div>
+
+    <div class="pricing-section-title">外部向け販売価格の設定</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      外部アカウントでログインした場合に表示・適用される販売価格です。通常の販売価格とは独立して設定できます。ブランドごと・銘柄ごとの個別設定も可能です。
+    </p>
+    <div class="field" style="max-width:440px;">
+      <label>基本設定（すべてのブランドの初期値）</label>
+      <div class="row">
+        <select id="er_default_basis" style="flex:1;">
+          <option value="retail">小売価格から</option>
+          <option value="wholesale">A表から</option>
+          <option value="cost">仕入れから</option>
+        </select>
+        <input type="number" id="er_default_percent" min="0" max="100" value="0" style="width:90px;">
+        <span style="align-self:center;font-size:13px;color:var(--text-2);" id="er_default_label">% OFF</span>
+      </div>
+    </div>
+    <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
+    <div id="externalBrandRulesList" style="margin-top:8px;"></div>
+    <div id="externalPricingMsg"></div>
+    <div style="margin-top:18px;">
+      <button class="btn btn-amber" id="saveExternalPricingRules">外部向け価格の設定を保存</button>
+    </div>
+
+    <div class="pricing-section-divider"></div>
+
+    <div class="pricing-section-title">価格表取込</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      Excelファイル（.xlsx）から価格表を取り込み、在庫検索・見積もりに反映できます。取込済み価格表の削除もここから行えます。
+    </p>
+    <div id="importedCatalogsPreview" style="margin-bottom:12px;"></div>
+    <button class="btn btn-amber" id="openImportCatalogBtn">価格表を取込む（Excel）</button>
   </div>
+</div>
 
 </div>
 
@@ -750,6 +798,36 @@
   </div>
 </div>
 
+
+<div class="modal-overlay" id="importCatalogModal">
+  <div class="modal" style="max-width:560px;">
+    <h3>価格表取込（Excel）</h3>
+    <p style="font-size:12.5px;color:var(--text-2);margin:0 0 16px;">Excelファイルを選択してください。取込済みの価格表も管理できます。</p>
+
+    <div id="importedCatalogsList" style="margin-bottom:16px;"></div>
+
+    <div style="border-top:1px solid var(--line);padding-top:16px;">
+      <label style="font-size:12px;color:var(--text-2);margin-bottom:6px;display:block;">Excelファイルを選択</label>
+      <input type="file" id="importFileInput" accept=".xlsx,.xls" style="margin-bottom:10px;font-size:13px;">
+      <div class="field">
+        <label>ブランド名（例: TOPRUN）</label>
+        <input type="text" id="importBrandName" placeholder="ブランド名を入力">
+      </div>
+      <div class="field">
+        <label>価格表名（例: TOPRUN 2026年2月）</label>
+        <input type="text" id="importCatalogName" placeholder="管理用の名前">
+      </div>
+      <div id="importPreview" style="margin-top:12px;font-size:12.5px;color:var(--text-2);"></div>
+      <div id="importMsg" style="margin-top:8px;"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-amber" id="importExecBtn" style="flex:1;" disabled>取込実行</button>
+      <button class="btn btn-ghost" id="importCancelBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="accountsModal">
   <div class="modal">
     <h3>アカウント管理</h3>
@@ -822,6 +900,28 @@ window.addEventListener('storageReady', function(){
 
   const DISTINCT_BRANDS = Array.from(new Set(PRICE_CATALOG.map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
 
+  let importedItems = [];
+  let importedCatalogs = []; // [{id, name, brand, importedAt, items:[]}]
+  function getCatalog(){ return importedItems.length ? [...PRICE_CATALOG, ...importedItems] : PRICE_CATALOG; }
+  function getBrands(){
+    if(!importedItems.length) return DISTINCT_BRANDS;
+    return Array.from(new Set(getCatalog().map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
+  }
+  function rebuildImportedItems(){
+    importedItems = importedCatalogs.flatMap(c=>c.items||[]);
+  }
+  async function loadImportedCatalogs(){
+    try{
+      const r = await window.storage.get('importedCatalogs', SHARED);
+      importedCatalogs = r ? JSON.parse(r.value) : [];
+    }catch(e){ importedCatalogs = []; }
+    rebuildImportedItems();
+  }
+  async function saveImportedCatalogs(){
+    try{ await window.storage.set('importedCatalogs', JSON.stringify(importedCatalogs), SHARED); }
+    catch(e){ console.error('save importedCatalogs failed', e); }
+  }
+
   function defaultPriceRules(){
     return {default:{basis:'retail',percent:0}, byBrand:{REGNO:{basis:'retail',percent:30}}, byModel:{}};
   }
@@ -847,9 +947,14 @@ window.addEventListener('storageReady', function(){
   }
   function computeSellPrice(brand, model, wholesale, retail){
     const rule = ruleFor(brand, model);
+    const pct = Number(rule.percent) || 0;
+    if(rule.basis === 'cost'){
+      const cost = computeCostPrice(brand, model, wholesale, retail);
+      if(!cost) return null;
+      return Math.round(cost * (1 + pct/100));
+    }
     const base = rule.basis === 'wholesale' ? wholesale : retail;
     if(!base) return null;
-    const pct = Number(rule.percent) || 0;
     return Math.round(base * (1 - pct/100));
   }
 
@@ -859,19 +964,23 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('brandRulesList');
     document.getElementById('pr_default_basis').value = priceRules.default.basis || 'retail';
     document.getElementById('pr_default_percent').value = priceRules.default.percent || 0;
-    wrap.innerHTML = DISTINCT_BRANDS.map(brand=>{
+    const prLabel = document.getElementById('pr_default_label'); if(prLabel) prLabel.textContent = (priceRules.default.basis==='cost') ? '% 乗せ' : '% OFF';
+    wrap.innerHTML = getBrands().map(brand=>{
       const rule = priceRules.byBrand[brand];
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
         + '<select data-rule-basis="'+escapeHtml(brand)+'">'
-        + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
-        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
+        + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
+        + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+(isBrandVisible(brand)?' checked':'')+'>検索表示</label>'
         + '</div>';
       if(isOpen){
         html += '<div class="brand-model-list">';
@@ -882,11 +991,14 @@ window.addEventListener('storageReady', function(){
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-model-rule-basis="'+escapeHtml(key)+'">'
-            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
-            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
+            + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+            + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+(isModelVisible(brand,model)?' checked':'')+'>検索表示</label>'
             + '</div>';
         });
         html += '</div>';
@@ -901,7 +1013,43 @@ window.addEventListener('storageReady', function(){
         renderBrandRules();
       });
     });
+    wrap.querySelectorAll('[data-vis-brand]').forEach(chk=>{
+      chk.addEventListener('change', async ()=>{
+        const brand = chk.dataset.visBrand;
+        if(chk.checked){ catalogVisibility.hiddenBrands = catalogVisibility.hiddenBrands.filter(b=>b!==brand); }
+        else { if(!catalogVisibility.hiddenBrands.includes(brand)) catalogVisibility.hiddenBrands.push(brand); }
+        await saveCatalogVisibility();
+        renderPriceCatalog();
+      });
+    });
+    wrap.querySelectorAll('[data-vis-model]').forEach(chk=>{
+      chk.addEventListener('change', async ()=>{
+        const key = chk.dataset.visModel;
+        if(chk.checked){ catalogVisibility.hiddenModels = catalogVisibility.hiddenModels.filter(k=>k!==key); }
+        else { if(!catalogVisibility.hiddenModels.includes(key)) catalogVisibility.hiddenModels.push(key); }
+        await saveCatalogVisibility();
+        renderPriceCatalog();
+      });
+    });
+    // select変更時にラベルを動的更新
+    wrap.querySelectorAll('[data-rule-basis],[data-model-rule-basis],[data-ext-rule-basis],[data-ext-model-rule-basis]').forEach(sel=>{
+      sel.addEventListener('change', function(){
+        const row = this.closest('.brand-rule-row');
+        if(!row) return;
+        const lbl = row.querySelector('.pct-label');
+        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+      });
+    });
   }
+
+
+  // 基本設定のbasis変更でラベル更新
+  document.getElementById('pr_default_basis').addEventListener('change', function(){
+    document.getElementById('pr_default_label').textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+  });
+  document.getElementById('er_default_basis').addEventListener('change', function(){
+    document.getElementById('er_default_label').textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+  });
 
   document.getElementById('savePricingRules').addEventListener('click', async ()=>{
     priceRules.default = {
@@ -909,7 +1057,7 @@ window.addEventListener('storageReady', function(){
       percent: Number(document.getElementById('pr_default_percent').value) || 0
     };
     const byBrand = {};
-    DISTINCT_BRANDS.forEach(brand=>{
+    getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-rule-basis="'+brand+'"]');
       const percentEl = document.querySelector('[data-rule-percent="'+brand+'"]');
       const basis = basisEl.value;
@@ -919,7 +1067,7 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, priceRules.byModel || {});
     expandedBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m)));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
@@ -978,18 +1126,20 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('costBrandRulesList');
     document.getElementById('cr_default_basis').value = costRules.default.basis || 'wholesale';
     document.getElementById('cr_default_percent').value = costRules.default.percent || 0;
-    wrap.innerHTML = DISTINCT_BRANDS.map(brand=>{
+    wrap.innerHTML = getBrands().map(brand=>{
       const rule = costRules.byBrand[brand];
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedCostBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
         + '<select data-cost-rule-basis="'+escapeHtml(brand)+'">'
-        + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
-        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-cost-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
+        + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-cost-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
         + '</div>';
       if(isOpen){
@@ -1001,11 +1151,13 @@ window.addEventListener('storageReady', function(){
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-cost-model-rule-basis="'+escapeHtml(key)+'">'
-            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
-            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-cost-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
+            + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
             + '</div>';
         });
         html += '</div>';
@@ -1020,6 +1172,15 @@ window.addEventListener('storageReady', function(){
         renderCostBrandRules();
       });
     });
+    // select変更時にラベルを動的更新
+    wrap.querySelectorAll('[data-cost-rule-basis],[data-cost-model-rule-basis]').forEach(sel=>{
+      sel.addEventListener('change', function(){
+        const row = this.closest('.brand-rule-row');
+        if(!row) return;
+        const lbl = row.querySelector('.pct-label');
+        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+      });
+    });
   }
 
   document.getElementById('saveCostPricingRules').addEventListener('click', async ()=>{
@@ -1028,7 +1189,7 @@ window.addEventListener('storageReady', function(){
       percent: Number(document.getElementById('cr_default_percent').value) || 0
     };
     const byBrand = {};
-    DISTINCT_BRANDS.forEach(brand=>{
+    getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-cost-rule-basis="'+brand+'"]');
       const percentEl = document.querySelector('[data-cost-rule-percent="'+brand+'"]');
       const basis = basisEl.value;
@@ -1038,7 +1199,7 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, costRules.byModel || {});
     expandedCostBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(PRICE_CATALOG.filter(r=>r.b===brand).map(r=>r.m)));
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-cost-model-rule-basis="'+key+'"]');
@@ -1056,6 +1217,143 @@ window.addEventListener('storageReady', function(){
     costRules.byModel = byModel;
     await saveCostRules();
     document.getElementById('costPricingMsg').innerHTML = '<div class="msg msg-ok">仕入れ価格の設定を保存しました。</div>';
+    renderPriceCatalog();
+  });
+
+  // ---------- 外部向け価格ルール ----------
+  function defaultExternalPriceRules(){
+    return {default:{basis:'retail',percent:0}, byBrand:{}, byModel:{}};
+  }
+  let externalPriceRules = defaultExternalPriceRules();
+  async function loadExternalPriceRules(){
+    try{
+      const r = await window.storage.get('externalPriceRules', SHARED);
+      externalPriceRules = r ? JSON.parse(r.value) : defaultExternalPriceRules();
+    }catch(e){ externalPriceRules = defaultExternalPriceRules(); }
+    if(!externalPriceRules.byModel) externalPriceRules.byModel = {};
+    if(!externalPriceRules.byBrand) externalPriceRules.byBrand = {};
+  }
+  async function saveExternalPriceRules(){
+    try{ await window.storage.set('externalPriceRules', JSON.stringify(externalPriceRules), SHARED); }
+    catch(e){ console.error('save externalPriceRules failed', e); }
+  }
+  function externalRuleFor(brand, model){
+    const modelKey = brand+'||'+model;
+    if(externalPriceRules.byModel && externalPriceRules.byModel[modelKey]) return externalPriceRules.byModel[modelKey];
+    if(externalPriceRules.byBrand && externalPriceRules.byBrand[brand]) return externalPriceRules.byBrand[brand];
+    return externalPriceRules.default || {basis:'retail',percent:0};
+  }
+  function computeExternalSellPrice(brand, model, wholesale, retail){
+    const rule = externalRuleFor(brand, model);
+    const pct = Number(rule.percent) || 0;
+    if(rule.basis === 'cost'){
+      const cost = computeCostPrice(brand, model, wholesale, retail);
+      if(!cost) return null;
+      return Math.round(cost * (1 + pct/100));
+    }
+    const base = rule.basis === 'wholesale' ? wholesale : retail;
+    if(!base) return null;
+    return Math.round(base * (1 - pct/100));
+  }
+  function getEffectiveSellPrice(brand, model, wholesale, retail){
+    if(isExternalUser()) return computeExternalSellPrice(brand, model, wholesale, retail);
+    return computeSellPrice(brand, model, wholesale, retail);
+  }
+
+  let expandedExternalBrandModels = new Set();
+  function renderExternalBrandRules(){
+    const wrap = document.getElementById('externalBrandRulesList');
+    if(!wrap) return;
+    document.getElementById('er_default_basis').value = externalPriceRules.default.basis || 'retail';
+    document.getElementById('er_default_percent').value = externalPriceRules.default.percent || 0;
+    const erLabel = document.getElementById('er_default_label'); if(erLabel) erLabel.textContent = (externalPriceRules.default.basis==='cost') ? '% 乗せ' : '% OFF';
+    wrap.innerHTML = getBrands().map(brand=>{
+      const rule = externalPriceRules.byBrand[brand];
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const isOpen = expandedExternalBrandModels.has(brand);
+      let html = '<div class="brand-rule-row">'
+        + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
+        + '<select data-ext-rule-basis="'+escapeHtml(brand)+'">'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
+        + '</select>'
+        + '<input type="number" min="0" max="100" data-ext-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
+        + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+        + '<button type="button" class="btn btn-ghost btn-sm" data-ext-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
+        + '</div>';
+      if(isOpen){
+        html += '<div class="brand-model-list">';
+        html += '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">銘柄ごとに個別の基準・割引率を設定できます。</div>';
+        models.forEach(model=>{
+          const key = brand+'||'+model;
+          const mrule = externalPriceRules.byModel[key];
+          html += '<div class="brand-rule-row model-rule-row">'
+            + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
+            + '<select data-ext-model-rule-basis="'+escapeHtml(key)+'">'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
+            + '</select>'
+            + '<input type="number" min="0" max="100" data-ext-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
+            + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+            + '</div>';
+        });
+        html += '</div>';
+      }
+      return html;
+    }).join('');
+    wrap.querySelectorAll('[data-ext-toggle-models]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const brand = btn.dataset.extToggleModels;
+        if(expandedExternalBrandModels.has(brand)) expandedExternalBrandModels.delete(brand);
+        else expandedExternalBrandModels.add(brand);
+        renderExternalBrandRules();
+      });
+    });
+    // select変更時にラベルを動的更新
+    wrap.querySelectorAll('[data-ext-rule-basis],[data-ext-model-rule-basis]').forEach(sel=>{
+      sel.addEventListener('change', function(){
+        const row = this.closest('.brand-rule-row');
+        if(!row) return;
+        const lbl = row.querySelector('.pct-label');
+        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+      });
+    });
+  }
+
+  document.getElementById('saveExternalPricingRules').addEventListener('click', async ()=>{
+    externalPriceRules.default = {
+      basis: document.getElementById('er_default_basis').value,
+      percent: Number(document.getElementById('er_default_percent').value) || 0
+    };
+    const byBrand = {};
+    getBrands().forEach(brand=>{
+      const basisEl = document.querySelector('[data-ext-rule-basis="'+brand+'"]');
+      const percentEl = document.querySelector('[data-ext-rule-percent="'+brand+'"]');
+      if(!basisEl) return;
+      const basis = basisEl.value;
+      if(basis){ byBrand[brand] = {basis, percent: Number(percentEl.value) || 0}; }
+    });
+    const byModel = Object.assign({}, externalPriceRules.byModel || {});
+    expandedExternalBrandModels.forEach(brand=>{
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
+      models.forEach(model=>{
+        const key = brand+'||'+model;
+        const basisEl = document.querySelector('[data-ext-model-rule-basis="'+key+'"]');
+        const percentEl = document.querySelector('[data-ext-model-rule-percent="'+key+'"]');
+        if(!basisEl) return;
+        const basis = basisEl.value;
+        if(basis){ byModel[key] = {basis, percent: Number(percentEl.value) || 0}; }
+        else { delete byModel[key]; }
+      });
+    });
+    externalPriceRules.byBrand = byBrand;
+    externalPriceRules.byModel = byModel;
+    await saveExternalPriceRules();
+    document.getElementById('externalPricingMsg').innerHTML = '<div class="msg msg-ok">外部向け価格の設定を保存しました。</div>';
     renderPriceCatalog();
   });
 
@@ -1083,6 +1381,9 @@ window.addEventListener('storageReady', function(){
   async function loadData(){
     await loadPriceRules();
     await loadCostRules();
+    await loadExternalPriceRules();
+    await loadImportedCatalogs();
+    await loadCatalogVisibility();
     try{
       const c = await window.storage.get('categories', SHARED);
       categories = c ? JSON.parse(c.value) : [];
@@ -1173,7 +1474,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); }
+      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); }
     });
   });
 
@@ -1419,7 +1720,7 @@ window.addEventListener('storageReady', function(){
   }
   function findCatalogEntryForProduct(p){
     if(!p.spec || !p.name) return null;
-    return PRICE_CATALOG.find(r => r.s.indexOf(p.spec) !== -1 && p.name.indexOf(r.b) !== -1 && p.name.indexOf(r.m) !== -1) || null;
+    return getCatalog().find(r => r.s.indexOf(p.spec) !== -1 && p.name.indexOf(r.b) !== -1 && p.name.indexOf(r.m) !== -1) || null;
   }
   async function ensureProductForCatalogEntry(r){
     let product = findProductForCatalogEntry(r);
@@ -1467,7 +1768,7 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const query = (selectedTireWidth||'') + (selectedTireAspect||'') + (selectedTireInch||'');
-    let matches = PRICE_CATALOG.filter(r => !query || r.s.indexOf(query) !== -1);
+    let matches = getCatalog().filter(r => isItemVisible(r) && (!query || r.s.indexOf(query) !== -1));
     if(selectedCatalogModelKey){
       const [fb, fm] = selectedCatalogModelKey.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
@@ -1482,7 +1783,7 @@ window.addEventListener('storageReady', function(){
     matches.sort((a,b)=> (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja'));
     const showCost = !isExternalUser();
     const rows = matches.map((r,i)=>{
-      const sell = computeSellPrice(r.b, r.m, r.w, r.t);
+      const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
       const cost = computeCostPrice(r.b, r.m, r.w, r.t);
       const stock = stockForCatalogEntry(r);
       const cKey = r.b+'||'+r.m+'||'+r.s;
@@ -1504,7 +1805,7 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = '<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄 ・ チェックを入れると見積もりに追加できます</div>'
       + quoteBarHtml
-      + '<table><thead><tr><th class="no-print">選択</th><th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格</th>':'')+'<th>希望小売</th>'+(showCost?'<th>仕入れ価格</th>':'')+'<th>販売価格</th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      + '<table><thead><tr><th class="no-print">選択</th><th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 
     wrap.querySelectorAll('[data-catalog-chk]').forEach(cb=>{
       cb.addEventListener('change', ()=>{
@@ -1524,7 +1825,7 @@ window.addEventListener('storageReady', function(){
         const groups = [];
         for(const r of selectedMatches){
           const product = await ensureProductForCatalogEntry(r);
-          const sell = computeSellPrice(r.b, r.m, r.w, r.t);
+          const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
         }
         quoteGroups = groups;
@@ -1895,7 +2196,7 @@ window.addEventListener('storageReady', function(){
           }
           html += '</select></div>';
           html += '</div>';
-          const catalogModels = Array.from(new Set(PRICE_CATALOG.map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+          const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
           html += '<div style="margin-top:10px;">';
           html += '<label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:5px;">または銘柄で選ぶ（ブリヂストン価格表より）</label>';
           html += '<select id="specCatalogModel"><option value="">指定しない</option>';
@@ -2021,42 +2322,147 @@ window.addEventListener('storageReady', function(){
     return 'カメラを起動できませんでした'+(name ? '（'+name+'）' : '')+'。バーコードを直接入力してください。';
   }
 
+  // 写真撮影でバーコードをデコード（iOS Safari向けの確実な方法）
+  function addPhotoScanButton(wrap, onDecoded){
+    const photoInput = document.createElement('input');
+    photoInput.type = 'file';
+    photoInput.accept = 'image/*';
+    photoInput.capture = 'environment';
+    photoInput.style.display = 'none';
+    wrap.appendChild(photoInput);
+
+    const photoBtn = document.createElement('button');
+    photoBtn.className = 'btn btn-ghost btn-sm';
+    photoBtn.style.cssText = 'margin-top:8px;width:100%;font-size:13px;';
+    photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）';
+    photoBtn.addEventListener('click', ()=> photoInput.click());
+    wrap.appendChild(photoBtn);
+
+    photoInput.addEventListener('change', async function(){
+      const file = this.files[0];
+      if(!file) return;
+      photoBtn.textContent = '読み取り中...';
+      photoBtn.disabled = true;
+
+      // QuaggaJS で画像ファイルから1次元バーコードを読み取る
+      function quaggaDecode(dataUrl){
+        return new Promise((resolve, reject)=>{
+          if(typeof Quagga === 'undefined'){ reject(new Error('Quagga未ロード')); return; }
+          Quagga.decodeSingle({
+            src: dataUrl,
+            numOfWorkers: 0,
+            locate: true,
+            inputStream: { size: 1600 },
+            decoder: {
+              readers: ['ean_reader','ean_8_reader','code_128_reader',
+                        'upc_reader','upc_e_reader','code_39_reader','i2of5_reader'],
+              multiple: false
+            }
+          }, result => {
+            if(result && result.codeResult && result.codeResult.code){
+              resolve(result.codeResult.code);
+            } else {
+              reject(new Error('not detected'));
+            }
+          });
+        });
+      }
+
+      const reader = new FileReader();
+      reader.onload = async function(e){
+        const dataUrl = e.target.result;
+        let decoded = null;
+
+        // 試行1: QuaggaJS（EAN-13/JANに強い）
+        try{ decoded = await quaggaDecode(dataUrl); }catch(_){}
+
+        // 試行2: QuaggaJS・画像縮小版で再試行
+        if(!decoded){
+          try{
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise(r => img.onload = r);
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+            canvas.width = Math.round(img.naturalWidth * scale);
+            canvas.height = Math.round(img.naturalHeight * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const small = canvas.toDataURL('image/jpeg', 0.9);
+            decoded = await quaggaDecode(small);
+          }catch(_){}
+        }
+
+        if(decoded){
+          onDecoded(decoded);
+        } else {
+          photoBtn.textContent = '読み取れませんでした。バーコードを明るい場所でまっすぐ撮影してください';
+          photoBtn.disabled = false;
+          setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 4000);
+        }
+        photoInput.value = '';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function startCameraInto(readerId, wrap, onDecoded){
-    wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードをカメラに向けてください。うまく認識しない場合は下の欄に直接入力してください。</div>';
-    if(typeof Html5Qrcode === 'undefined'){
-      wrap.innerHTML = '<div class="msg msg-error">カメラスキャン機能を読み込めませんでした。通信環境をご確認のうえページを再読み込みしてください。</div>';
-      return null;
-    }
     if(!window.isSecureContext){
       wrap.innerHTML = '<div class="msg msg-error">'+describeCameraError({})+'</div>';
+      addPhotoScanButton(wrap, onDecoded);
       return null;
     }
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      wrap.innerHTML = '<div class="msg msg-error">このブラウザはカメラ機能に対応していません。バーコードを直接入力してください。</div>';
-      return null;
+
+    wrap.innerHTML = '<div id="'+readerId+'" style="width:100%;"></div>'
+      + '<div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。</div>';
+
+    // 写真スキャンボタンを常に表示（iPhone推奨）
+    addPhotoScanButton(wrap, onDecoded);
+
+    // QuaggaJS ライブスキャン
+    if(typeof Quagga !== 'undefined' && navigator.mediaDevices){
+      let detected = false;
+      return new Promise(resolve => {
+        Quagga.init({
+          inputStream: {
+            name: 'Live',
+            type: 'LiveStream',
+            target: document.getElementById(readerId),
+            constraints: { facingMode: 'environment', width: { ideal:640 }, height: { ideal:360 } }
+          },
+          locator: { patchSize: 'medium', halfSample: true },
+          numOfWorkers: 0,
+          frequency: 10,
+          decoder: {
+            readers: ['ean_reader','ean_8_reader','code_128_reader',
+                      'upc_reader','upc_e_reader','code_39_reader'],
+            multiple: false
+          },
+          locate: true
+        }, err => {
+          if(err){
+            // Quaggaが失敗しても写真スキャンボタンは残す
+            resolve(null);
+            return;
+          }
+          Quagga.start();
+          Quagga.onDetected(result => {
+            if(detected) return;
+            const code = result && result.codeResult && result.codeResult.code;
+            if(code && code.length >= 8){
+              detected = true;
+              Quagga.offDetected();
+              onDecoded(code);
+            }
+          });
+          resolve({
+            stop: ()=> new Promise(r=>{ try{ Quagga.stop(); }catch(_){} r(); }),
+            clear: ()=>{}
+          });
+        });
+      });
     }
-    const scanner = new Html5Qrcode(readerId);
-    const config = { fps: 10, qrbox: { width: 250, height: 120 } };
-    let lastErr = null;
-    try{
-      await scanner.start({ facingMode: { ideal: 'environment' } }, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
-      return scanner;
-    }catch(err){
-      lastErr = err;
-    }
-    try{
-      const cams = await Html5Qrcode.getCameras();
-      if(cams && cams.length){
-        const back = cams.find(c=> /back|rear|environment|背面/i.test(c.label));
-        const camId = back ? back.id : cams[cams.length-1].id;
-        await scanner.start(camId, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
-        return scanner;
-      }
-    }catch(err2){
-      lastErr = err2;
-    }
-    window.__cameraRetry = function(){ startCameraInto(readerId, wrap, onDecoded); };
-    wrap.innerHTML = '<div class="msg msg-error">'+describeCameraError(lastErr)+'</div><button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="window.__cameraRetry()">再試行</button>';
+
+    // フォールバック（getUserMedia非対応など）
     return null;
   }
 
@@ -2099,7 +2505,7 @@ window.addEventListener('storageReady', function(){
   }
   function populateTireModelSelect(){
     const sel = document.getElementById('f_tiremodel');
-    const catalogModels = Array.from(new Set(PRICE_CATALOG.map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+    const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
     let opts = '<option value="">直接入力</option>';
     catalogModels.forEach(key=>{
       opts += '<option value="'+escapeHtml(key)+'">'+escapeHtml(key.replace('||',' '))+'</option>';
@@ -2175,7 +2581,10 @@ window.addEventListener('storageReady', function(){
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
     modal.classList.add('show');
-    if(prefillBarcode && /^\d{8,}$/.test(prefillBarcode)) lookupJan(prefillBarcode);
+    if(prefillBarcode && /^\d{8,}$/.test(prefillBarcode)){
+      document.getElementById('f_barcode').value = prefillBarcode;
+      // JAN自動検索は日本のタイヤに対応していないため無効化
+    }
   }
   function openEditModal(id){
     const p = products.find(x=>x.id===id);
@@ -2597,8 +3006,16 @@ window.addEventListener('storageReady', function(){
 
   // ---------- アカウント / ログイン ----------
   async function loadAccounts(){
+    window._fbGetError = null;
     try{
       const a = await window.storage.get('accounts', SHARED);
+      if(window._fbGetError){
+        // Firebase読み込みエラー → 画面に表示
+        const el = document.getElementById('authMsg');
+        if(el) el.innerHTML = '<div class="msg msg-error">⚠️ Firebase接続エラー: ' + window._fbGetError + '<br>FirebaseコンソールでRealtimeDatabaseのルールを<br><code>".read":true, ".write":true</code> に設定してください。</div>';
+        accounts = [];
+        return;
+      }
       accounts = a ? JSON.parse(a.value) : [];
     }catch(e){ accounts = []; }
   }
@@ -2626,13 +3043,13 @@ window.addEventListener('storageReady', function(){
     await loadAccounts();
     syncAuthToggleAvailability();
     if(accounts.length === 0){
+      // Firebase接続エラーの場合はセットアップ画面ではなくログイン画面+エラーを表示
+      if(window._fbGetError){
+        showAuthScreen('login');
+        return;
+      }
       showAuthScreen('setup');
       return;
-    }
-    const session = await loadSession();
-    if(session && session.userId){
-      const acc = accounts.find(a=>a.id === session.userId);
-      if(acc){ loginSuccess(acc); return; }
     }
     showAuthScreen('login');
   }
@@ -2763,6 +3180,215 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('openAccounts').addEventListener('click', openAccountsModal);
+
+  // ---------- カタログ表示設定 ----------
+  let catalogVisibility = { hiddenBrands: [], hiddenModels: [] };
+  async function loadCatalogVisibility(){
+    try{
+      const r = await window.storage.get('catalogVisibility', SHARED);
+      catalogVisibility = r ? JSON.parse(r.value) : { hiddenBrands: [], hiddenModels: [] };
+    }catch(e){ catalogVisibility = { hiddenBrands: [], hiddenModels: [] }; }
+    if(!catalogVisibility.hiddenBrands) catalogVisibility.hiddenBrands = [];
+    if(!catalogVisibility.hiddenModels) catalogVisibility.hiddenModels = [];
+  }
+  async function saveCatalogVisibility(){
+    try{ await window.storage.set('catalogVisibility', JSON.stringify(catalogVisibility), SHARED); }
+    catch(e){ console.error('save catalogVisibility failed', e); }
+  }
+  function isBrandVisible(brand){ return !catalogVisibility.hiddenBrands.includes(brand); }
+  function isModelVisible(brand, model){ return !catalogVisibility.hiddenModels.includes(brand+'||'+model); }
+  function isItemVisible(r){ return isBrandVisible(r.b) && isModelVisible(r.b, r.m); }
+
+  // ---------- 価格表取込（Excel）----------
+  let parsedImportData = [];
+
+  function renderImportedCatalogsPreview(){
+    const wrap = document.getElementById('importedCatalogsPreview');
+    if(!wrap) return;
+    if(!importedCatalogs.length){ wrap.innerHTML = '<p style="font-size:12.5px;color:var(--text-3);">取込済みの価格表はありません。</p>'; return; }
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">取込済み価格表</div>'
+      + importedCatalogs.map(c=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;margin-bottom:6px;">'
+        + '<div><span style="font-weight:600;font-size:13px;">'+escapeHtml(c.name)+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);margin-left:8px;">'+c.items.length+'件 / '+c.importedAt+'</span></div>'
+        + '<button class="btn btn-ghost btn-sm" data-delete-catalog="'+escapeHtml(c.id)+'">削除</button>'
+        + '</div>').join('');
+    wrap.querySelectorAll('[data-delete-catalog]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.dataset.deleteCatalog;
+        importedCatalogs = importedCatalogs.filter(c=>c.id!==id);
+        rebuildImportedItems();
+        await saveImportedCatalogs();
+        renderImportedCatalogsPreview();
+        renderPriceCatalog();
+      });
+    });
+  }
+
+  function renderImportedCatalogsList(){
+    const wrap = document.getElementById('importedCatalogsList');
+    if(!wrap) return;
+    if(!importedCatalogs.length){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">取込済み価格表</div>'
+      + importedCatalogs.map(c=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;margin-bottom:6px;">'
+        + '<div><span style="font-weight:600;font-size:13px;">'+escapeHtml(c.name)+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);margin-left:8px;">'+c.items.length+'件</span></div>'
+        + '</div>').join('');
+  }
+
+  document.getElementById('openImportCatalogBtn').addEventListener('click', ()=>{
+    parsedImportData = [];
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importBrandName').value = '';
+    document.getElementById('importCatalogName').value = '';
+    document.getElementById('importPreview').innerHTML = '';
+    document.getElementById('importMsg').innerHTML = '';
+    document.getElementById('importExecBtn').disabled = true;
+    renderImportedCatalogsList();
+    document.getElementById('importCatalogModal').classList.add('show');
+  });
+
+  document.getElementById('importCancelBtn').addEventListener('click', ()=>{
+    document.getElementById('importCatalogModal').classList.remove('show');
+  });
+
+  document.getElementById('importFileInput').addEventListener('change', function(){
+    const file = this.files[0];
+    if(!file) return;
+    document.getElementById('importPreview').innerHTML = '読み込み中...';
+    document.getElementById('importExecBtn').disabled = true;
+    parsedImportData = [];
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+
+        // ヘッダー行をスキップして商品データを抽出
+        // サイズ列（/RまたはR含む文字列）と価格列（数値または文字列数値）を自動検出
+        const items = [];
+
+        // 数値または文字列（「9,800」「¥9800」等）を数値に変換するヘルパー
+        function toNum(v){
+          if(typeof v === 'number') return v;
+          if(typeof v === 'string'){
+            const n = Number(v.replace(/[¥,\s]/g,''));
+            if(!isNaN(n)) return n;
+          }
+          return null;
+        }
+
+        for(const row of rows){
+          if(!row || row.every(c=>c===null)) continue;
+          let sizeVal = null;
+          let priceVal = null;
+          let modelVal = null;
+
+          // サイズ文字列を探す（例: 195/65R15、▲付きも対応）
+          for(let i=0;i<row.length;i++){
+            const v = row[i];
+            if(v !== null && /\d+\/\d+R\d+/.test(String(v))) {
+              // サイズ部分だけ抽出（▲などのプレフィックスを除去）
+              const m = String(v).match(/\d+\/\d+R\d+[A-Z0-9]*/);
+              if(m) sizeVal = m[0];
+            }
+          }
+
+          // モデル名を探す（英数字2〜15文字、スラッシュなし、数字のみは除外）
+          for(let i=0;i<row.length;i++){
+            const v = row[i];
+            if(typeof v === 'string'){
+              const t = v.trim();
+              if(/^[A-Za-z][A-Za-z0-9\-_ ]{1,14}$/.test(t) && !/\//.test(t) && !/^\d+$/.test(t)){
+                modelVal = t;
+              }
+            }
+          }
+
+          // 価格を最後の数値（または文字列数値）から取得
+          for(let i=row.length-1;i>=0;i--){
+            const v = row[i];
+            const n = toNum(v);
+            if(n !== null && n > 1000 && n < 500000){ priceVal = n; break; }
+          }
+
+          if(sizeVal && priceVal){
+            // modelValがなければ空文字（ブランド名で代替）
+            items.push({s: sizeVal, m: modelVal || '', w: priceVal, t: null});
+          }
+        }
+
+        parsedImportData = items;
+        if(items.length > 0){
+          // ブランド名の自動補完（タイトル行から推測）
+          const titleRow = rows.find(r=>r&&r.some(c=>c&&typeof c==='string'&&c.length>3));
+          if(titleRow && !document.getElementById('importBrandName').value){
+            for(const c of titleRow){
+              if(typeof c==='string'){
+                const match = c.match(/([A-Z]{3,})/);
+                if(match){ document.getElementById('importBrandName').value = match[1]; break; }
+              }
+            }
+          }
+          if(!document.getElementById('importCatalogName').value){
+            document.getElementById('importCatalogName').value = file.name.replace(/\.xlsx?$/i,'');
+          }
+          document.getElementById('importPreview').innerHTML =
+            '<div class="msg msg-ok">'+items.length+'件のデータを検出しました。</div>'
+            + '<div style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;">'
+            + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+            + '<tr style="background:var(--bg-1);"><th style="padding:6px 8px;text-align:left;">銘柄</th><th style="padding:6px 8px;text-align:left;">サイズ</th><th style="padding:6px 8px;text-align:right;">卸価格</th></tr>'
+            + items.slice(0,20).map(r=>'<tr style="border-top:1px solid var(--line-soft);"><td style="padding:5px 8px;">'+escapeHtml(r.m||'—')+'</td><td style="padding:5px 8px;">'+escapeHtml(r.s)+'</td><td style="padding:5px 8px;text-align:right;">¥'+Math.round(r.w).toLocaleString('ja-JP')+'</td></tr>').join('')
+            + (items.length>20 ? '<tr><td colspan="3" style="padding:5px 8px;color:var(--text-3);">... 他 '+(items.length-20)+' 件</td></tr>' : '')
+            + '</table></div>';
+          document.getElementById('importExecBtn').disabled = false;
+        } else {
+          // デバッグ: 最初の5行を表示してユーザーに確認させる
+          const debugRows = rows.filter(r=>r&&r.some(c=>c!==null)).slice(0,5);
+          const debugHtml = debugRows.length > 0
+            ? '<details style="margin-top:8px;font-size:11px;"><summary style="cursor:pointer;color:var(--text-2);">ファイル内容を確認（最初の5行）</summary>'
+              + '<div style="overflow-x:auto;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:4px;margin-top:4px;">'
+              + '<table style="border-collapse:collapse;font-size:11px;white-space:nowrap;">'
+              + debugRows.map((r,ri)=>'<tr>'+(r||[]).map(c=>'<td style="padding:3px 6px;border:1px solid var(--line-soft);">'+escapeHtml(String(c??''))+'</td>').join('')+'</tr>').join('')
+              + '</table></div></details>'
+            : '';
+          document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">データを検出できませんでした。サイズ（例:195/65R15）と価格が含まれているか確認してください。</div>' + debugHtml;
+        }
+      }catch(err){
+        document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">ファイルの読み込みに失敗しました: '+escapeHtml(err.message)+'</div>';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  document.getElementById('importExecBtn').addEventListener('click', async ()=>{
+    const brand = document.getElementById('importBrandName').value.trim();
+    const name = document.getElementById('importCatalogName').value.trim();
+    const msgEl = document.getElementById('importMsg');
+    if(!brand){ msgEl.innerHTML = '<div class="msg msg-error">ブランド名を入力してください。</div>'; return; }
+    if(!name){ msgEl.innerHTML = '<div class="msg msg-error">価格表名を入力してください。</div>'; return; }
+    if(!parsedImportData.length){ msgEl.innerHTML = '<div class="msg msg-error">取込データがありません。</div>'; return; }
+
+    const items = parsedImportData.map(r=>({...r, b: brand}));
+    const catalog = {
+      id: uid('cat'),
+      name: name,
+      brand: brand,
+      importedAt: new Date().toLocaleDateString('ja-JP'),
+      items: items
+    };
+    // 同じブランドの既存データを置換
+    importedCatalogs = importedCatalogs.filter(c=>c.brand !== brand);
+    importedCatalogs.push(catalog);
+    rebuildImportedItems();
+    await saveImportedCatalogs();
+    renderPriceCatalog();
+    renderImportedCatalogsPreview();
+    msgEl.innerHTML = '<div class="msg msg-ok">'+items.length+'件を取込みました。</div>';
+    document.getElementById('importExecBtn').disabled = true;
+    setTimeout(()=>{ document.getElementById('importCatalogModal').classList.remove('show'); }, 1200);
+  });
+
   document.getElementById('accountsCancel').addEventListener('click', ()=> document.getElementById('accountsModal').classList.remove('show'));
 
   function openAccountsModal(){
