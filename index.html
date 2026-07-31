@@ -1887,7 +1887,14 @@ window.addEventListener('storageReady', function(){
       if(selectedSub !== null && p.subId !== selectedSub) return false;
       if(selectedSpec !== null && !(p.spec && p.spec.indexOf(selectedSpec) !== -1)) return false;
       if(selectedTireWidth !== null && !(p.spec && p.spec.indexOf(selectedTireWidth) !== -1)) return false;
-      if(selectedTireAspect !== null && !(p.spec && p.spec.indexOf(selectedTireAspect) !== -1)) return false;
+      if(selectedTireAspect !== null && !(p.spec && (
+        selectedTireAspect === 'NOASPECT'
+          // 扁平率なし専用フィルター: 幅の直後にRが来るサイズのみ
+          ? /^\d+R\d+/.test(p.spec)
+          : (p.spec.indexOf(selectedTireAspect) !== -1 ||
+             // 扁平率あり検索でもライトバン用（165R13等）を含める
+             (selectedTireWidth && selectedTireInch && p.spec.indexOf(selectedTireWidth + selectedTireInch) !== -1))
+      ))) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
       return true;
     });
@@ -2194,6 +2201,7 @@ window.addEventListener('storageReady', function(){
           html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
           html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
           html += '<select id="specTireAspect"><option value="">-</option>';
+          html += '<option value="NOASPECT"'+(selectedTireAspect==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
           for(let a=25; a<=80; a+=5){
             const val = '/'+a;
             html += '<option value="'+val+'"'+(selectedTireAspect===val?' selected':'')+'>'+a+'</option>';
