@@ -2365,7 +2365,8 @@ window.addEventListener('storageReady', function(){
             src: dataUrl,
             numOfWorkers: 0,
             locate: true,
-            inputStream: { size: 1600 },
+            inputStream: { size: 2048 },
+            locator: { patchSize: 'large', halfSample: false },
             decoder: {
               readers: ['ean_reader','ean_8_reader','code_128_reader',
                         'upc_reader','upc_e_reader','code_39_reader','i2of5_reader'],
@@ -2440,9 +2441,9 @@ window.addEventListener('storageReady', function(){
             name: 'Live',
             type: 'LiveStream',
             target: document.getElementById(readerId),
-            constraints: { facingMode: 'environment', width: { ideal:640 }, height: { ideal:360 } }
+            constraints: { facingMode: 'environment', width: { ideal:1920 }, height: { ideal:1080 } }
           },
-          locator: { patchSize: 'medium', halfSample: true },
+          locator: { patchSize: 'large', halfSample: false },
           numOfWorkers: 0,
           frequency: 10,
           decoder: {
