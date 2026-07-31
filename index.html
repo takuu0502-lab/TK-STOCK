@@ -332,13 +332,13 @@
   .visibility-toggle input[type=checkbox]{width:auto;padding:0;margin:0;accent-color:var(--amber);}
   .brand-rule-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .brand-rule-row .brand-rule-name{width:90px;font-size:13px;color:var(--text-1);flex:0 0 90px;}
-  .brand-rule-row select{width:170px;}
+  .brand-rule-row select{width:160px;font-size:12px;}
   .pricing-section-title{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text-1);margin:0 0 4px;}
   .pricing-section-divider{height:1px;background:var(--line);margin:28px 0 24px;}
   .brand-rule-row input{width:70px;}
   .brand-model-list{font-size:12px;color:var(--text-2);background:var(--bg-1);border-radius:6px;padding:10px 10px 2px;margin:-2px 0 10px 98px;line-height:1.6;}
   .model-rule-row{margin-bottom:8px;}
-  .model-rule-row select{width:150px;}
+  .model-rule-row select{width:150px;font-size:12px;}
   .breadcrumb b{color:var(--text-1);font-weight:600;}
 
   .stock-table{width:100%;border-collapse:collapse;}
@@ -536,9 +536,9 @@
       <label>基本設定（すべてのブランドの初期値）</label>
       <div class="row">
         <select id="pr_default_basis" style="flex:1;">
-          <option value="retail">希望小売価格から</option>
-          <option value="wholesale">A表価格から</option>
-          <option value="cost">仕入れ価格から</option>
+          <option value="retail">小売価格から</option>
+          <option value="wholesale">A表から</option>
+          <option value="cost">仕入れから</option>
         </select>
         <input type="number" id="pr_default_percent" min="0" max="100" value="0" style="width:90px;">
         <span style="align-self:center;font-size:13px;color:var(--text-2);" id="pr_default_label">% OFF</span>
@@ -561,8 +561,8 @@
       <label>基本設定（すべてのブランドの初期値）</label>
       <div class="row">
         <select id="cr_default_basis" style="flex:1;">
-          <option value="retail">希望小売価格から</option>
-          <option value="wholesale">A表価格から</option>
+          <option value="retail">小売価格から</option>
+          <option value="wholesale">A表から</option>
         </select>
         <input type="number" id="cr_default_percent" min="0" max="100" value="0" style="width:90px;">
         <span style="align-self:center;font-size:13px;color:var(--text-2);">% OFF</span>
@@ -585,9 +585,9 @@
       <label>基本設定（すべてのブランドの初期値）</label>
       <div class="row">
         <select id="er_default_basis" style="flex:1;">
-          <option value="retail">希望小売価格から</option>
-          <option value="wholesale">A表価格から</option>
-          <option value="cost">仕入れ価格から</option>
+          <option value="retail">小売価格から</option>
+          <option value="wholesale">A表から</option>
+          <option value="cost">仕入れから</option>
         </select>
         <input type="number" id="er_default_percent" min="0" max="100" value="0" style="width:90px;">
         <span style="align-self:center;font-size:13px;color:var(--text-2);" id="er_default_label">% OFF</span>
@@ -969,10 +969,10 @@ window.addEventListener('storageReady', function(){
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
         + '<select data-rule-basis="'+escapeHtml(brand)+'">'
-        + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
-        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -988,10 +988,10 @@ window.addEventListener('storageReady', function(){
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-model-rule-basis="'+escapeHtml(key)+'">'
-            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
-            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -1130,10 +1130,10 @@ window.addEventListener('storageReady', function(){
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
         + '<select data-cost-rule-basis="'+escapeHtml(brand)+'">'
-        + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
-        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-cost-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -1148,10 +1148,10 @@ window.addEventListener('storageReady', function(){
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-cost-model-rule-basis="'+escapeHtml(key)+'">'
-            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
-            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-cost-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -1271,10 +1271,10 @@ window.addEventListener('storageReady', function(){
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
         + '<select data-ext-rule-basis="'+escapeHtml(brand)+'">'
-        + '<option value=""'+(!rule?' selected':'')+'>基本設定を使用</option>'
-        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
+        + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-ext-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
@@ -1289,10 +1289,10 @@ window.addEventListener('storageReady', function(){
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-ext-model-rule-basis="'+escapeHtml(key)+'">'
-            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定を使用</option>'
-            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>希望小売価格から</option>'
-            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表価格から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
+            + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-ext-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
