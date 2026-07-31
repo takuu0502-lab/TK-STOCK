@@ -490,7 +490,10 @@
   </div>
 
   <div class="panel" id="tab-estimate" style="display:none;">
-    <h2 class="section-title">タイヤ見積もり</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h2 class="section-title" style="margin:0;">タイヤ見積もり</h2>
+      <button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes" style="font-size:12px;">📋 保存済み見積</button>
+    </div>
     <div id="estimateSearchPanel"></div>
     <div id="estimateCatalogWrap" style="margin-top:16px;"></div>
   </div>
@@ -2154,6 +2157,11 @@ window.addEventListener('storageReady', function(){
     document.getElementById('estTireInch').addEventListener('change', e=>{ estInch = e.target.value||null; });
     document.getElementById('estSearchGo').addEventListener('click', ()=>{
       renderPriceCatalog({ targetId:'estimateCatalogWrap', width:estWidth, aspect:estAspect, inch:estInch, modelKey:null });
+    });
+    document.getElementById('estOpenSavedQuotes').addEventListener('click', async ()=>{
+      await loadSavedQuotes();
+      renderSavedQuotesList();
+      document.getElementById('savedQuotesModal').classList.add('show');
     });
   }
 
