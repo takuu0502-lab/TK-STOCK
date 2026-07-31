@@ -975,7 +975,7 @@ window.addEventListener('storageReady', function(){
         + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
-        + '<span style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+        + '<span class="pct-label" style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
         + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+(isBrandVisible(brand)?' checked':'')+'>検索表示</label>'
         + '</div>';
@@ -994,7 +994,7 @@ window.addEventListener('storageReady', function(){
             + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れ価格から</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
-            + '<span style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+            + '<span class="pct-label" style="font-size:12px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
             + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+(isModelVisible(brand,model)?' checked':'')+'>検索表示</label>'
             + '</div>';
         });
@@ -1026,6 +1026,15 @@ window.addEventListener('storageReady', function(){
         else { if(!catalogVisibility.hiddenModels.includes(key)) catalogVisibility.hiddenModels.push(key); }
         await saveCatalogVisibility();
         renderPriceCatalog();
+      });
+    });
+    // select変更時にラベルを動的更新
+    wrap.querySelectorAll('[data-rule-basis],[data-model-rule-basis],[data-ext-rule-basis],[data-ext-model-rule-basis]').forEach(sel=>{
+      sel.addEventListener('change', function(){
+        const row = this.closest('.brand-rule-row');
+        if(!row) return;
+        const lbl = row.querySelector('.pct-label');
+        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
       });
     });
   }
