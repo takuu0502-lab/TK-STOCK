@@ -1781,7 +1781,10 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const query = (selectedTireWidth||'') + (selectedTireAspect||'') + (selectedTireInch||'');
-    let matches = getCatalog().filter(r => isItemVisible(r) && (!query || r.s.indexOf(query) !== -1));
+    // ライトバン用(165R13等)も一致させる: 扁平率なしの短縮パターンも試みる
+    const queryAlt = (selectedTireWidth && selectedTireInch && selectedTireAspect && selectedTireAspect !== 'NOASPECT')
+      ? (selectedTireWidth + selectedTireInch) : null;
+    let matches = getCatalog().filter(r => isItemVisible(r) && (!query || r.s.indexOf(query) !== -1 || (queryAlt && r.s.indexOf(queryAlt) !== -1)));
     if(selectedCatalogModelKey){
       const [fb, fm] = selectedCatalogModelKey.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
@@ -1893,7 +1896,11 @@ window.addEventListener('storageReady', function(){
           ? /^\d+R\d+/.test(p.spec)
           : (p.spec.indexOf(selectedTireAspect) !== -1 ||
              // 扁平率あり検索でもライトバン用（165R13等）を含める
-             (selectedTireWidth && selectedTireInch && p.spec.indexOf(selectedTireWidth + selectedTireInch) !== -1))
+             // インチ未選択でも幅だけで一致（"165R"を含むか）で判定
+             (selectedTireWidth && (
+               (selectedTireInch && p.spec.indexOf(selectedTireWidth + selectedTireInch) !== -1) ||
+               (!selectedTireInch && /^\d+R\d+/.test(p.spec) && p.spec.indexOf(selectedTireWidth) !== -1)
+             )))
       ))) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
       return true;
