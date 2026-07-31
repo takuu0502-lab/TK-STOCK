@@ -2341,59 +2341,71 @@ window.addEventListener('storageReady', function(){
       photoBtn.textContent = '読み取り中...';
       photoBtn.disabled = true;
 
+      const _f = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+        ? Html5QrcodeSupportedFormats
+        : {EAN_13:9,EAN_8:10,CODE_128:5,CODE_39:3,CODE_93:4,UPC_A:14,UPC_E:15,ITF:8,QR_CODE:0};
+      const fmts = [_f.EAN_13,_f.EAN_8,_f.CODE_128,_f.CODE_39,_f.CODE_93,_f.UPC_A,_f.UPC_E,_f.ITF,_f.QR_CODE];
+
+      // Canvasでスキャン用ファイルを生成するヘルパー
+      async function makeFile(img, deg, scale){
+        const sw = Math.round(img.naturalWidth * scale);
+        const sh = Math.round(img.naturalHeight * scale);
+        const rotated = deg === 90 || deg === 270;
+        const canvas = document.createElement('canvas');
+        canvas.width  = rotated ? sh : sw;
+        canvas.height = rotated ? sw : sh;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.rotate(deg * Math.PI / 180);
+        ctx.drawImage(img, -sw/2, -sh/2, sw, sh);
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
+        return new File([blob], 's.jpg', { type: 'image/jpeg' });
+      }
+
+      // Html5Qrcodeでファイルをスキャン
+      async function tryScan(f){
+        const old = document.getElementById('_ptmp');
+        if(old) old.remove();
+        const el = document.createElement('div');
+        el.id = '_ptmp';
+        el.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;';
+        document.body.appendChild(el);
+        const sc = new Html5Qrcode('_ptmp', { formatsToSupport: fmts, verbose: false });
+        return sc.scanFile(f, false);
+      }
+
       let decoded = null;
-      let errLog = [];
+      let lastErr = '';
 
-      // 試行1: BarcodeDetector API（iOS17+ / Android Chrome 対応）
-      if('BarcodeDetector' in window){
-        try{
-          const bd = new BarcodeDetector({
-            formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf','qr_code']
-          });
-          const img = new Image();
-          const url = URL.createObjectURL(file);
-          img.src = url;
-          await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
-          const results = await bd.detect(img);
-          URL.revokeObjectURL(url);
-          if(results.length > 0) decoded = results[0].rawValue;
-          else errLog.push('BD:not found');
-        }catch(e){ errLog.push('BD:'+(e.message||e)); }
-      }
+      // 画像読み込み
+      try{
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.src = url;
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+        URL.revokeObjectURL(url);
 
-      // 試行2: Html5Qrcode scanFile
-      if(!decoded){
-        try{
-          // 既存の一時要素を破棄して新規作成（状態リセット）
-          const old = document.getElementById('_photoTmp');
-          if(old) old.remove();
-          const tmpDiv = document.createElement('div');
-          tmpDiv.id = '_photoTmp';
-          tmpDiv.style.cssText = 'position:fixed;left:-9999px;top:0;width:320px;height:240px;overflow:hidden;visibility:hidden;';
-          document.body.appendChild(tmpDiv);
-
-          const _f = (typeof Html5QrcodeSupportedFormats !== 'undefined')
-            ? Html5QrcodeSupportedFormats
-            : {EAN_13:9,EAN_8:10,CODE_128:5,CODE_39:3,CODE_93:4,UPC_A:14,UPC_E:15,ITF:8,QR_CODE:0};
-          const fmts = [_f.EAN_13,_f.EAN_8,_f.CODE_128,_f.CODE_39,_f.CODE_93,_f.UPC_A,_f.UPC_E,_f.ITF,_f.QR_CODE];
-
-          const sc = new Html5Qrcode('_photoTmp', { formatsToSupport: fmts, verbose: false });
-          decoded = await sc.scanFile(file, false);
-        }catch(e){ errLog.push('H5:'+(e.message||String(e))); }
-      }
+        // 回転×スケールの組み合わせを順に試みる
+        // iPhoneはEXIF回転のため向きが90°ずれることがある
+        const angles  = [0, 90, 270, 180];
+        const scales  = [0.5, 1.0, 0.25];
+        outer: for(const deg of angles){
+          for(const sc of scales){
+            try{
+              const f2 = await makeFile(img, deg, sc);
+              decoded = await tryScan(f2);
+              if(decoded) break outer;
+            }catch(e){ lastErr = e.message||String(e); }
+          }
+        }
+      }catch(e){ lastErr = e.message||String(e); }
 
       if(decoded){
         onDecoded(decoded);
       } else {
-        // エラー詳細を表示して原因特定に役立てる
-        const detail = errLog.join(' / ');
-        photoBtn.textContent = '読み取れませんでした';
+        photoBtn.textContent = '読み取れませんでした。バーコードをまっすぐ正面から撮影してください';
         photoBtn.disabled = false;
-        // エラー詳細を小さく表示
-        let errEl = wrap.querySelector('._photoErr');
-        if(!errEl){ errEl = document.createElement('div'); errEl.className = '_photoErr'; errEl.style.cssText = 'font-size:10px;color:var(--text-3);margin-top:4px;word-break:break-all;'; wrap.appendChild(errEl); }
-        errEl.textContent = 'エラー: ' + detail;
-        setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 3000);
+        setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 4000);
       }
       this.value = '';
     });
