@@ -2111,7 +2111,7 @@ window.addEventListener('storageReady', function(){
       const tax = Math.floor(base*0.1);
       const total = base + tax;
       return '<div class="qpb">'
-        +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(g.name)+'</span>'+(g.spec?'<span class="qpb-spec">'+escapeHtml(g.spec)+'</span>':'')+'</div>'
+        +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(g.name)+'</span>'+(g.spec?'<span style="display:inline-flex;flex-direction:column;line-height:1.2;"><span style="font-size:9px;color:#888;font-weight:400;font-family:sans-serif;letter-spacing:0.5px;">サイズ</span><span class="qpb-spec">'+escapeHtml(g.spec)+'</span></span>':'')+'</div>'
         +'<table class="qpb-table">'
         +'<tr><td class="label">タイヤ価格</td><td class="num">'+g.qty+' 本</td><td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td><td class="num">&yen;'+tireSub.toLocaleString('ja-JP')+'</td></tr>'
         +laborRowsHtml
@@ -2134,9 +2134,9 @@ window.addEventListener('storageReady', function(){
       +'<div class="qp-customer-section">'
       +'<div class="qp-customer-left" style="display:flex;gap:24px;align-items:flex-end;">'
       +'<div><div class="qp-label">お客様名</div>'
-      +'<div class="qp-cname">'+(customer ? escapeHtml(customer)+' 様' : '　　　　　　　　　　 様')+'</div></div>'
+      +'<div class="qp-cname" style="margin-bottom:0;">'+(customer ? escapeHtml(customer)+' 様' : '　　　　　　　　　　 様')+'</div></div>'
       +'<div><div class="qp-label">車種</div>'
-      +'<div class="qp-car" style="font-size:15px;font-weight:600;border-bottom:2px solid #333;padding-bottom:3px;min-width:120px;color:#111;">'+(car ? escapeHtml(car) : '　　　　　　　　')+'</div></div>'
+      +'<div style="font-size:18px;font-weight:700;border-bottom:2px solid #333;padding-bottom:3px;min-width:140px;color:#111;display:inline-block;">'+(car ? escapeHtml(car) : '　　　　　　　')+'</div></div>'
       +'</div>'
       +'</div>'
       +'<div class="qp-blocks">'+blocksHtml+'</div>'
