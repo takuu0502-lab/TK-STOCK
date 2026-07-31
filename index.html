@@ -2129,22 +2129,23 @@ window.addEventListener('storageReady', function(){
     let html = '<div class="spec-search-panel">';
     html += '<div class="spec-step"><div class="spec-step-label">タイヤサイズを選択</div>';
     html += '<div class="tire-size-row">';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+    const selStyle = 'width:80px;';
+    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
     html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
-    html += '<select id="estTireWidth"><option value="">-</option>';
+    html += '<select id="estTireWidth" style="'+selStyle+'"><option value="">-</option>';
     for(let w=135;w<=355;w+=10){ html += '<option value="'+w+'"'+(estWidth===String(w)?' selected':'')+'>'+w+'</option>'; }
     html += '</select></div>';
     html += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
     html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
-    html += '<select id="estTireAspect"><option value="">-</option>';
+    html += '<select id="estTireAspect" style="'+selStyle+'"><option value="">-</option>';
     html += '<option value="NOASPECT"'+(estAspect==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
     for(let a=25;a<=80;a+=5){ const v='/'+a; html += '<option value="'+v+'"'+(estAspect===v?' selected':'')+'>'+a+'</option>'; }
     html += '</select></div>';
     html += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1 1 78px;">';
+    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
     html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
-    html += '<select id="estTireInch"><option value="">-</option>';
+    html += '<select id="estTireInch" style="'+selStyle+'"><option value="">-</option>';
     for(let i=12;i<=24;i++){ const v='R'+i; html += '<option value="'+v+'"'+(estInch===v?' selected':'')+'>'+i+'</option>'; }
     html += '</select></div>';
     html += '</div></div>';
