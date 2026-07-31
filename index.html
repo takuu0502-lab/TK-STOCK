@@ -3132,60 +3132,94 @@ window.addEventListener('storageReady', function(){
         const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
 
         // ヘッダー行をスキップして商品データを抽出
-        // サイズ列（/RまたはR含む文字列）と価格列（数値）を自動検出
+        // サイズ列（/RまたはR含む文字列）と価格列（数値または文字列数値）を自動検出
         const items = [];
-        let lastInch = null;
+
+        // 数値または文字列（「9,800」「¥9800」等）を数値に変換するヘルパー
+        function toNum(v){
+          if(typeof v === 'number') return v;
+          if(typeof v === 'string'){
+            const n = Number(v.replace(/[¥,\s]/g,''));
+            if(!isNaN(n)) return n;
+          }
+          return null;
+        }
+
         for(const row of rows){
           if(!row || row.every(c=>c===null)) continue;
-          // サイズ文字列を探す（例: 195/65R15）
           let sizeVal = null;
           let priceVal = null;
           let modelVal = null;
+
+          // サイズ文字列を探す（例: 195/65R15、▲付きも対応）
           for(let i=0;i<row.length;i++){
             const v = row[i];
-            if(typeof v === 'string' && /\d+\/\d+R\d+/.test(v)) sizeVal = v.trim();
-            if(typeof v === 'number' && v > 1000 && v < 500000 && !sizeVal) priceVal = v;
-          }
-          // モデル名を銘柄列から取得（3文字以上の英数字）
-          for(let i=0;i<row.length;i++){
-            const v = row[i];
-            if(typeof v === 'string' && /^[A-Za-z0-9]{2,}/.test(v.trim()) && v.trim().length <= 10 && !/\//.test(v)){
-              modelVal = v.trim();
+            if(v !== null && /\d+\/\d+R\d+/.test(String(v))) {
+              // サイズ部分だけ抽出（▲などのプレフィックスを除去）
+              const m = String(v).match(/\d+\/\d+R\d+[A-Z0-9]*/);
+              if(m) sizeVal = m[0];
             }
           }
-          // 価格を最後の数値から取得
+
+          // モデル名を探す（英数字2〜15文字、スラッシュなし、数字のみは除外）
+          for(let i=0;i<row.length;i++){
+            const v = row[i];
+            if(typeof v === 'string'){
+              const t = v.trim();
+              if(/^[A-Za-z][A-Za-z0-9\-_ ]{1,14}$/.test(t) && !/\//.test(t) && !/^\d+$/.test(t)){
+                modelVal = t;
+              }
+            }
+          }
+
+          // 価格を最後の数値（または文字列数値）から取得
           for(let i=row.length-1;i>=0;i--){
             const v = row[i];
-            if(typeof v === 'number' && v > 1000 && v < 500000){ priceVal = v; break; }
+            const n = toNum(v);
+            if(n !== null && n > 1000 && n < 500000){ priceVal = n; break; }
           }
-          if(sizeVal && priceVal && modelVal){
-            items.push({s: sizeVal, m: modelVal, w: priceVal, t: null});
+
+          if(sizeVal && priceVal){
+            // modelValがなければ空文字（ブランド名で代替）
+            items.push({s: sizeVal, m: modelVal || '', w: priceVal, t: null});
           }
         }
 
         parsedImportData = items;
         if(items.length > 0){
           // ブランド名の自動補完（タイトル行から推測）
-          const titleRow = rows.find(r=>r&&r[0]&&typeof r[0]==='string'&&r[0].length>3);
+          const titleRow = rows.find(r=>r&&r.some(c=>c&&typeof c==='string'&&c.length>3));
           if(titleRow && !document.getElementById('importBrandName').value){
-            const titleStr = String(titleRow[0]);
-            const match = titleStr.match(/([A-Z]{3,})/);
-            if(match) document.getElementById('importBrandName').value = match[1];
+            for(const c of titleRow){
+              if(typeof c==='string'){
+                const match = c.match(/([A-Z]{3,})/);
+                if(match){ document.getElementById('importBrandName').value = match[1]; break; }
+              }
+            }
           }
           if(!document.getElementById('importCatalogName').value){
-            document.getElementById('importCatalogName').value = file.name.replace(/\.xlsx?$/,'');
+            document.getElementById('importCatalogName').value = file.name.replace(/\.xlsx?$/i,'');
           }
           document.getElementById('importPreview').innerHTML =
             '<div class="msg msg-ok">'+items.length+'件のデータを検出しました。</div>'
             + '<div style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;">'
             + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
             + '<tr style="background:var(--bg-1);"><th style="padding:6px 8px;text-align:left;">銘柄</th><th style="padding:6px 8px;text-align:left;">サイズ</th><th style="padding:6px 8px;text-align:right;">卸価格</th></tr>'
-            + items.slice(0,20).map(r=>'<tr style="border-top:1px solid var(--line-soft);"><td style="padding:5px 8px;">'+escapeHtml(r.m)+'</td><td style="padding:5px 8px;">'+escapeHtml(r.s)+'</td><td style="padding:5px 8px;text-align:right;">¥'+r.w.toLocaleString('ja-JP')+'</td></tr>').join('')
+            + items.slice(0,20).map(r=>'<tr style="border-top:1px solid var(--line-soft);"><td style="padding:5px 8px;">'+escapeHtml(r.m||'—')+'</td><td style="padding:5px 8px;">'+escapeHtml(r.s)+'</td><td style="padding:5px 8px;text-align:right;">¥'+Math.round(r.w).toLocaleString('ja-JP')+'</td></tr>').join('')
             + (items.length>20 ? '<tr><td colspan="3" style="padding:5px 8px;color:var(--text-3);">... 他 '+(items.length-20)+' 件</td></tr>' : '')
             + '</table></div>';
           document.getElementById('importExecBtn').disabled = false;
         } else {
-          document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">データを検出できませんでした。サイズ（例:195/65R15）と価格が含まれているか確認してください。</div>';
+          // デバッグ: 最初の5行を表示してユーザーに確認させる
+          const debugRows = rows.filter(r=>r&&r.some(c=>c!==null)).slice(0,5);
+          const debugHtml = debugRows.length > 0
+            ? '<details style="margin-top:8px;font-size:11px;"><summary style="cursor:pointer;color:var(--text-2);">ファイル内容を確認（最初の5行）</summary>'
+              + '<div style="overflow-x:auto;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:4px;margin-top:4px;">'
+              + '<table style="border-collapse:collapse;font-size:11px;white-space:nowrap;">'
+              + debugRows.map((r,ri)=>'<tr>'+(r||[]).map(c=>'<td style="padding:3px 6px;border:1px solid var(--line-soft);">'+escapeHtml(String(c??''))+'</td>').join('')+'</tr>').join('')
+              + '</table></div></details>'
+            : '';
+          document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">データを検出できませんでした。サイズ（例:195/65R15）と価格が含まれているか確認してください。</div>' + debugHtml;
         }
       }catch(err){
         document.getElementById('importPreview').innerHTML = '<div class="msg msg-error">ファイルの読み込みに失敗しました: '+escapeHtml(err.message)+'</div>';
