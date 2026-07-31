@@ -368,7 +368,9 @@
   .msg-error{background:var(--red-dim);color:#8A2E1F;border:1px solid #F2C6BC;}
   .msg-ok{background:var(--teal-dim);color:#146B48;border:1px solid #BEE8D3;}
 
-  #reader{width:100%;max-width:360px;border-radius:8px;overflow:hidden;margin-top:12px;border:1px solid var(--line);}
+  #reader{width:100%;max-width:300px;border-radius:8px;overflow:hidden;margin-top:8px;border:1px solid var(--line);}
+  #reader video{width:100% !important;height:150px !important;object-fit:cover;display:block;}
+  #reader canvas{height:150px !important;}
   .scan-hint{font-size:11.5px;color:var(--text-3);margin-top:6px;}
 
   .hist-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);}
@@ -600,6 +602,19 @@
     <div style="margin-top:18px;">
       <button class="btn btn-amber" id="saveExternalPricingRules">外部向け価格の設定を保存</button>
     </div>
+
+    <div class="pricing-section-divider"></div>
+
+    <div class="pricing-section-title">API設定</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">
+      JANコードから商品名を自動入力するために、Yahoo!ショッピングAPIのClient IDを設定してください。<br>
+      取得先：<a href="https://developer.yahoo.co.jp/" target="_blank" style="color:var(--amber);">developer.yahoo.co.jp</a>（無料・Yahooアカウントがあれば即取得可能）
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;max-width:480px;">
+      <input type="text" id="yahooAppIdInput" placeholder="Yahoo! Client ID（アプリケーションID）" style="flex:1;font-size:13px;">
+      <button class="btn btn-amber btn-sm" id="saveYahooAppId">保存</button>
+    </div>
+    <div id="yahooAppIdMsg" style="margin-top:6px;font-size:12px;"></div>
 
     <div class="pricing-section-divider"></div>
 
@@ -2425,7 +2440,7 @@ window.addEventListener('storageReady', function(){
             name: 'Live',
             type: 'LiveStream',
             target: document.getElementById(readerId),
-            constraints: { facingMode: 'environment', width: { ideal:1280 }, height: { ideal:720 } }
+            constraints: { facingMode: 'environment', width: { ideal:640 }, height: { ideal:360 } }
           },
           locator: { patchSize: 'medium', halfSample: true },
           numOfWorkers: 0,
@@ -2518,32 +2533,48 @@ window.addEventListener('storageReady', function(){
   });
   document.getElementById('f_major').addEventListener('change', toggleTireNameField);
 
-  // ---------- JANコードルックアップ ----------
+  // ---------- JANコードルックアップ (Yahoo!ショッピングAPI) ----------
   async function lookupJan(code){
     const msgEl = document.getElementById('janLookupMsg');
     if(!code || code.length < 8){
       msgEl.innerHTML = '<div class="msg msg-error">8桁以上のコードを入力してください。</div>';
       return;
     }
+    const appId = localStorage.getItem('yahooAppId') || '';
+    if(!appId){
+      msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-2);">'
+        + '<b>Yahoo! Client IDを設定してください</b><br>'
+        + '<a href="https://developer.yahoo.co.jp/" target="_blank" style="color:var(--amber);">developer.yahoo.co.jp</a>で無料取得後、下に入力：<br>'
+        + '<div style="display:flex;gap:6px;margin-top:6px;">'
+        + '<input id="yahooAppIdInline" type="text" placeholder="Client ID（アプリケーションID）" style="flex:1;font-size:13px;padding:6px 8px;">'
+        + '<button id="yahooAppIdSaveInline" class="btn btn-amber btn-sm">保存</button>'
+        + '</div></div>';
+      document.getElementById('yahooAppIdSaveInline').addEventListener('click', ()=>{
+        const val = document.getElementById('yahooAppIdInline').value.trim();
+        if(val){ localStorage.setItem('yahooAppId', val); lookupJan(code); }
+      });
+      return;
+    }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('https://api.upcitemdb.com/prod/trial/lookup?upc=' + encodeURIComponent(code));
+      const url = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid='
+        + encodeURIComponent(appId)
+        + '&jan_code=' + encodeURIComponent(code)
+        + '&results=1&condition=new';
+      const res = await fetch(url);
       const data = await res.json();
-      if(data.code === 'OK' && data.items && data.items.length > 0){
-        const item = data.items[0];
-        const name = item.title || '';
-        const brand = item.brand || '';
-        const fullName = (brand && name.toLowerCase().indexOf(brand.toLowerCase()) === -1)
-          ? brand + ' ' + name : name;
-        if(fullName && !document.getElementById('f_name').value){
-          document.getElementById('f_name').value = fullName;
+      if(data.hits && data.hits.length > 0){
+        const item = data.hits[0];
+        const name = item.name || '';
+        if(name && !document.getElementById('f_name').value){
+          document.getElementById('f_name').value = name;
         }
-        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(fullName)+'</b></div>';
+        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(name)+'</b></div>';
       } else {
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報は見つかりませんでした。手動で入力してください。</div>';
       }
     } catch(e) {
-      msgEl.innerHTML = '<div class="msg msg-error">検索に失敗しました。ネットワーク接続を確認してください。</div>';
+      msgEl.innerHTML = '<div class="msg msg-error">商品情報は見つかりませんでした。手動で入力してください。</div>';
     }
   }
 
@@ -3229,6 +3260,24 @@ window.addEventListener('storageReady', function(){
         + '<span style="font-size:11px;color:var(--text-3);margin-left:8px;">'+c.items.length+'件</span></div>'
         + '</div>').join('');
   }
+
+  // ---------- Yahoo appid 設定 ----------
+  (function(){
+    const saved = localStorage.getItem('yahooAppId') || '';
+    const input = document.getElementById('yahooAppIdInput');
+    if(input && saved) input.value = saved;
+  })();
+  document.getElementById('saveYahooAppId').addEventListener('click', ()=>{
+    const val = document.getElementById('yahooAppIdInput').value.trim();
+    if(val){
+      localStorage.setItem('yahooAppId', val);
+      document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--green,#4caf50);">✓ 保存しました</span>';
+    } else {
+      localStorage.removeItem('yahooAppId');
+      document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--text-3);">削除しました</span>';
+    }
+    setTimeout(()=>{ document.getElementById('yahooAppIdMsg').innerHTML = ''; }, 3000);
+  });
 
   document.getElementById('openImportCatalogBtn').addEventListener('click', ()=>{
     parsedImportData = [];
