@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -2341,141 +2342,125 @@ window.addEventListener('storageReady', function(){
       photoBtn.textContent = '読み取り中...';
       photoBtn.disabled = true;
 
-      const _f = (typeof Html5QrcodeSupportedFormats !== 'undefined')
-        ? Html5QrcodeSupportedFormats
-        : {EAN_13:9,EAN_8:10,CODE_128:5,CODE_39:3,CODE_93:4,UPC_A:14,UPC_E:15,ITF:8,QR_CODE:0};
-      const fmts = [_f.EAN_13,_f.EAN_8,_f.CODE_128,_f.CODE_39,_f.CODE_93,_f.UPC_A,_f.UPC_E,_f.ITF,_f.QR_CODE];
-
-      // Canvasでスキャン用ファイルを生成するヘルパー
-      async function makeFile(img, deg, scale){
-        const sw = Math.round(img.naturalWidth * scale);
-        const sh = Math.round(img.naturalHeight * scale);
-        const rotated = deg === 90 || deg === 270;
-        const canvas = document.createElement('canvas');
-        canvas.width  = rotated ? sh : sw;
-        canvas.height = rotated ? sw : sh;
-        const ctx = canvas.getContext('2d');
-        ctx.translate(canvas.width/2, canvas.height/2);
-        ctx.rotate(deg * Math.PI / 180);
-        ctx.drawImage(img, -sw/2, -sh/2, sw, sh);
-        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
-        return new File([blob], 's.jpg', { type: 'image/jpeg' });
+      // QuaggaJS で画像ファイルから1次元バーコードを読み取る
+      function quaggaDecode(dataUrl){
+        return new Promise((resolve, reject)=>{
+          if(typeof Quagga === 'undefined'){ reject(new Error('Quagga未ロード')); return; }
+          Quagga.decodeSingle({
+            src: dataUrl,
+            numOfWorkers: 0,
+            locate: true,
+            inputStream: { size: 1600 },
+            decoder: {
+              readers: ['ean_reader','ean_8_reader','code_128_reader',
+                        'upc_reader','upc_e_reader','code_39_reader','i2of5_reader'],
+              multiple: false
+            }
+          }, result => {
+            if(result && result.codeResult && result.codeResult.code){
+              resolve(result.codeResult.code);
+            } else {
+              reject(new Error('not detected'));
+            }
+          });
+        });
       }
 
-      // Html5Qrcodeでファイルをスキャン
-      async function tryScan(f){
-        const old = document.getElementById('_ptmp');
-        if(old) old.remove();
-        const el = document.createElement('div');
-        el.id = '_ptmp';
-        el.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;';
-        document.body.appendChild(el);
-        const sc = new Html5Qrcode('_ptmp', { formatsToSupport: fmts, verbose: false });
-        return sc.scanFile(f, false);
-      }
+      const reader = new FileReader();
+      reader.onload = async function(e){
+        const dataUrl = e.target.result;
+        let decoded = null;
 
-      let decoded = null;
-      let lastErr = '';
+        // 試行1: QuaggaJS（EAN-13/JANに強い）
+        try{ decoded = await quaggaDecode(dataUrl); }catch(_){}
 
-      // 画像読み込み
-      try{
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.src = url;
-        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-        URL.revokeObjectURL(url);
-
-        // 回転×スケールの組み合わせを順に試みる
-        // iPhoneはEXIF回転のため向きが90°ずれることがある
-        const angles  = [0, 90, 270, 180];
-        const scales  = [0.5, 1.0, 0.25];
-        outer: for(const deg of angles){
-          for(const sc of scales){
-            try{
-              const f2 = await makeFile(img, deg, sc);
-              decoded = await tryScan(f2);
-              if(decoded) break outer;
-            }catch(e){ lastErr = e.message||String(e); }
-          }
+        // 試行2: QuaggaJS・画像縮小版で再試行
+        if(!decoded){
+          try{
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise(r => img.onload = r);
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+            canvas.width = Math.round(img.naturalWidth * scale);
+            canvas.height = Math.round(img.naturalHeight * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const small = canvas.toDataURL('image/jpeg', 0.9);
+            decoded = await quaggaDecode(small);
+          }catch(_){}
         }
-      }catch(e){ lastErr = e.message||String(e); }
 
-      if(decoded){
-        onDecoded(decoded);
-      } else {
-        photoBtn.textContent = '読み取れませんでした。バーコードをまっすぐ正面から撮影してください';
-        photoBtn.disabled = false;
-        setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 4000);
-      }
-      this.value = '';
+        if(decoded){
+          onDecoded(decoded);
+        } else {
+          photoBtn.textContent = '読み取れませんでした。バーコードを明るい場所でまっすぐ撮影してください';
+          photoBtn.disabled = false;
+          setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 4000);
+        }
+        photoInput.value = '';
+      };
+      reader.readAsDataURL(file);
     });
   }
 
   async function startCameraInto(readerId, wrap, onDecoded){
-    if(typeof Html5Qrcode === 'undefined'){
-      wrap.innerHTML = '<div class="msg msg-error">カメラスキャン機能を読み込めませんでした。通信環境をご確認のうえページを再読み込みしてください。</div>';
-      return null;
-    }
     if(!window.isSecureContext){
       wrap.innerHTML = '<div class="msg msg-error">'+describeCameraError({})+'</div>';
+      addPhotoScanButton(wrap, onDecoded);
       return null;
     }
 
-    wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。</div>';
+    wrap.innerHTML = '<div id="'+readerId+'" style="width:100%;"></div>'
+      + '<div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。</div>';
 
-    // 写真スキャンボタンを常に追加（iOS Safari対応）
+    // 写真スキャンボタンを常に表示（iPhone推奨）
     addPhotoScanButton(wrap, onDecoded);
 
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      return null;
+    // QuaggaJS ライブスキャン
+    if(typeof Quagga !== 'undefined' && navigator.mediaDevices){
+      let detected = false;
+      return new Promise(resolve => {
+        Quagga.init({
+          inputStream: {
+            name: 'Live',
+            type: 'LiveStream',
+            target: document.getElementById(readerId),
+            constraints: { facingMode: 'environment', width: { ideal:1280 }, height: { ideal:720 } }
+          },
+          locator: { patchSize: 'medium', halfSample: true },
+          numOfWorkers: 0,
+          frequency: 10,
+          decoder: {
+            readers: ['ean_reader','ean_8_reader','code_128_reader',
+                      'upc_reader','upc_e_reader','code_39_reader'],
+            multiple: false
+          },
+          locate: true
+        }, err => {
+          if(err){
+            // Quaggaが失敗しても写真スキャンボタンは残す
+            resolve(null);
+            return;
+          }
+          Quagga.start();
+          Quagga.onDetected(result => {
+            if(detected) return;
+            const code = result && result.codeResult && result.codeResult.code;
+            if(code && code.length >= 8){
+              detected = true;
+              Quagga.offDetected();
+              onDecoded(code);
+            }
+          });
+          resolve({
+            stop: ()=> new Promise(r=>{ try{ Quagga.stop(); }catch(_){} r(); }),
+            clear: ()=>{}
+          });
+        });
+      });
     }
 
-    // Html5QrcodeSupportedFormats が未定義の場合は数値で代替
-    const _fmt = (typeof Html5QrcodeSupportedFormats !== 'undefined')
-      ? Html5QrcodeSupportedFormats
-      : { EAN_13:9, EAN_8:10, CODE_128:5, CODE_39:3, CODE_93:4,
-          UPC_A:14, UPC_E:15, ITF:8, QR_CODE:0 };
-    const formatsToSupport = [
-      _fmt.EAN_13, _fmt.EAN_8, _fmt.CODE_128, _fmt.CODE_39,
-      _fmt.CODE_93, _fmt.UPC_A, _fmt.UPC_E, _fmt.ITF, _fmt.QR_CODE,
-    ];
-    const config = {
-      fps: 15,
-      qrbox: { width: 300, height: 100 },
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    };
-    let lastErr = null;
-
-    // 試行1: facingMode: environment（背面カメラ指定）
-    try{
-      const scanner1 = new Html5Qrcode(readerId, { formatsToSupport, verbose: false });
-      await scanner1.start({ facingMode: { ideal: 'environment' } }, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
-      return scanner1;
-    }catch(err){
-      lastErr = err;
-      wrap.innerHTML = '<div id="'+readerId+'"></div><div class="scan-hint">バーコードを枠の中に<b>横向き</b>に収めてください。</div>';
-      addPhotoScanButton(wrap, onDecoded);
-    }
-
-    // 試行2: getCamerasでカメラID直接指定
-    try{
-      const cams = await Html5Qrcode.getCameras();
-      if(cams && cams.length){
-        const back = cams.find(c=> /back|rear|environment|背面/i.test(c.label));
-        const camId = back ? back.id : cams[cams.length-1].id;
-        const scanner2 = new Html5Qrcode(readerId, { formatsToSupport, verbose: false });
-        await scanner2.start(camId, config, (decodedText)=>{ onDecoded(decodedText); }, ()=>{});
-        return scanner2;
-      }
-    }catch(err2){
-      lastErr = err2;
-    }
-
-    window.__cameraRetry = function(){ startCameraInto(readerId, wrap, onDecoded); };
-    const errDiv = document.createElement('div');
-    errDiv.innerHTML = '<div class="msg msg-error">'+describeCameraError(lastErr)+'</div>'
-      + '<button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="window.__cameraRetry()">再試行</button>';
-    wrap.insertBefore(errDiv, wrap.firstChild);
+    // フォールバック（getUserMedia非対応など）
     return null;
   }
 
