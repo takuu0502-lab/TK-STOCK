@@ -803,13 +803,28 @@
       <textarea id="quoteNote" rows="7" placeholder="備考・特記事項など" style="resize:vertical;width:100%;min-height:120px;"></textarea>
     </div>
 
-    <div class="modal-actions no-print">
-      <button class="btn btn-ghost" id="quoteClose">閉じる</button>
-      <button class="btn btn-amber" id="quotePrint">印刷する</button>
+    <div class="modal-actions no-print" style="justify-content:space-between;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="quoteClose">閉じる</button>
+        <button class="btn btn-ghost btn-sm" id="openSavedQuotes" style="font-size:12px;">📋 保存済み見積</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="quoteSave">保存</button>
+        <button class="btn btn-amber" id="quotePrint">印刷する</button>
+      </div>
     </div>
   </div>
 </div>
 
+<div class="modal-overlay" id="savedQuotesModal">
+  <div class="modal" style="max-width:560px;">
+    <h3>保存済み見積一覧</h3>
+    <div id="savedQuotesList" style="max-height:420px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="savedQuotesClose">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="importCatalogModal">
   <div class="modal" style="max-width:560px;">
@@ -2081,6 +2096,111 @@ window.addEventListener('storageReady', function(){
   document.getElementById('addSharedLabor').addEventListener('click', ()=>{
     sharedLaborLines.push({id:uid('l'),name:'',qty:1,unitPrice:''});
     renderSharedLabor(); renderQuoteLines();
+  });
+
+  // -------- 見積保存 --------
+  let savedQuotes = [];
+
+  async function loadSavedQuotes(){
+    try{
+      const r = await window.storage.get('savedQuotes', SHARED);
+      savedQuotes = r ? JSON.parse(r.value) : [];
+    }catch(e){ savedQuotes = []; }
+  }
+  async function persistSavedQuotes(){
+    try{ await window.storage.set('savedQuotes', JSON.stringify(savedQuotes), SHARED); }
+    catch(e){ console.error('savedQuotes save failed', e); }
+  }
+
+  function currentQuoteSnapshot(){
+    return {
+      id: uid('sq'),
+      savedAt: new Date().toISOString(),
+      customer: document.getElementById('quoteCustomer').value.trim(),
+      car: document.getElementById('quoteCar').value.trim(),
+      staff: document.getElementById('quoteStaff').value.trim(),
+      dateText: document.getElementById('quoteDate').textContent,
+      note: (document.getElementById('quoteNote')||{}).value||'',
+      groups: JSON.parse(JSON.stringify(quoteGroups)),
+      laborLines: JSON.parse(JSON.stringify(sharedLaborLines)),
+      grandTotal: Math.round(quoteGrandBase() * 1.1)
+    };
+  }
+
+  function loadQuoteSnapshot(q){
+    quoteGroups = JSON.parse(JSON.stringify(q.groups));
+    sharedLaborLines = JSON.parse(JSON.stringify(q.laborLines||[]));
+    document.getElementById('quoteCustomer').value = q.customer||'';
+    document.getElementById('quoteCar').value = q.car||'';
+    document.getElementById('quoteStaff').value = q.staff||'';
+    document.getElementById('quoteDate').textContent = q.dateText||new Date().toLocaleDateString('ja-JP');
+    if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = q.note||'';
+    renderAll();
+  }
+
+  function renderSavedQuotesList(){
+    const wrap = document.getElementById('savedQuotesList');
+    if(!savedQuotes.length){
+      wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">保存済みの見積はありません。</div>';
+      return;
+    }
+    const sorted = [...savedQuotes].sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
+    wrap.innerHTML = sorted.map(q=>{
+      const d = new Date(q.savedAt);
+      const dateStr = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      const total = q.grandTotal ? '¥'+q.grandTotal.toLocaleString() : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);">'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+(q.car?' <span style="font-size:11px;color:var(--text-3);font-weight:400;">'+escapeHtml(q.car)+'</span>':'')+'</div>'
+        +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+(total?' ・ '+total:'')+'</div>'
+        +'</div>'
+        +'<button class="btn btn-amber btn-sm" data-load-quote="'+escapeHtml(q.id)+'">呼び出し</button>'
+        +'<button class="btn btn-ghost btn-sm" data-del-quote="'+escapeHtml(q.id)+'" style="color:var(--red,#e53935);">削除</button>'
+        +'</div>';
+    }).join('');
+
+    wrap.querySelectorAll('[data-load-quote]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const q = savedQuotes.find(x=>x.id===btn.dataset.loadQuote);
+        if(!q) return;
+        loadQuoteSnapshot(q);
+        document.getElementById('savedQuotesModal').classList.remove('show');
+        document.getElementById('quoteModal').classList.add('show');
+      });
+    });
+    wrap.querySelectorAll('[data-del-quote]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const ok = await showConfirm('この見積を削除しますか？');
+        if(!ok) return;
+        savedQuotes = savedQuotes.filter(x=>x.id!==btn.dataset.delQuote);
+        await persistSavedQuotes();
+        renderSavedQuotesList();
+      });
+    });
+  }
+
+  document.getElementById('quoteSave').addEventListener('click', async ()=>{
+    if(quoteGroups.length === 0){ alert('品目がありません。'); return; }
+    const snap = currentQuoteSnapshot();
+    await loadSavedQuotes();
+    savedQuotes.push(snap);
+    await persistSavedQuotes();
+    const msg = document.createElement('div');
+    msg.className = 'msg msg-ok';
+    msg.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 20px;border-radius:8px;background:#4caf50;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+    msg.textContent = '見積を保存しました';
+    document.body.appendChild(msg);
+    setTimeout(()=>msg.remove(), 2500);
+  });
+
+  document.getElementById('openSavedQuotes').addEventListener('click', async ()=>{
+    await loadSavedQuotes();
+    renderSavedQuotesList();
+    document.getElementById('savedQuotesModal').classList.add('show');
+  });
+
+  document.getElementById('savedQuotesClose').addEventListener('click', ()=>{
+    document.getElementById('savedQuotesModal').classList.remove('show');
   });
 
   document.getElementById('quoteClose').addEventListener('click', ()=>{
