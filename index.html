@@ -3088,6 +3088,15 @@ window.addEventListener('storageReady', function(){
       showAuthScreen('setup');
       return;
     }
+    // 保存済みセッションがあれば自動ログイン
+    const session = await loadSession();
+    if(session && session.userId){
+      const acc = accounts.find(a => a.id === session.userId);
+      if(acc){
+        loginSuccess(acc);
+        return;
+      }
+    }
     showAuthScreen('login');
   }
 
