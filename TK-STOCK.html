@@ -2277,10 +2277,9 @@ window.addEventListener('storageReady', function(){
         savedQuotes.push(snap); // 万一見つからなければ新規追加
       }
     } else {
-      // 新規保存
+      // 新規保存（IDはセットしない＝常に新規追加）
       const snap = currentQuoteSnapshot();
       savedQuotes.push(snap);
-      currentEditingQuoteId = snap.id; // 以後は上書き対象にする
     }
     await persistSavedQuotes();
     const msg = document.createElement('div');
