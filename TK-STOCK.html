@@ -498,6 +498,8 @@
     <div id="estimateSearchPanel"></div>
     <div id="estSelectionBar" style="margin-top:10px;"></div>
     <div id="estimateCatalogWrap" style="margin-top:10px;"></div>
+    <div id="estimateCatalogFront" style="margin-top:10px;"></div>
+    <div id="estimateCatalogRear" style="margin-top:10px;"></div>
   </div>
 
   <div class="panel" id="tab-in" style="display:none;">
@@ -1931,7 +1933,8 @@ window.addEventListener('storageReady', function(){
     const quoteBarHtml = catalogQuoteSelection.size > 0
       ? '<div class="catalog-quote-bar">'+catalogQuoteSelection.size+'件選択中 <button class="btn btn-amber btn-sm" id="catalogQuoteBtn">見積もりを作成</button><button class="btn btn-ghost btn-sm" id="catalogClearBtn">選択クリア</button></div>'
       : '';
-    wrap.innerHTML = '<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'
+    const sectionLabel = (opts && opts.label) ? '<div style="font-size:14px;font-weight:700;margin-bottom:6px;">'+escapeHtml(opts.label)+'</div>' : '';
+    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + (forceTire ? quoteBarHtml : '')
       + '<table><thead><tr>'+(forceTire ? '<th class="no-print">選択</th>' : '')+'<th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
@@ -2212,44 +2215,107 @@ window.addEventListener('storageReady', function(){
 
   // -------- タイヤ見積もりタブ --------
   let estWidth = null, estAspect = null, estInch = null;
+  let estFrontWidth = null, estFrontAspect = null, estFrontInch = null;
+  let estRearWidth  = null, estRearAspect  = null, estRearInch  = null;
+  let estDualMode = false;
+
+  function buildSizeSelectors(prefix, w, a, i){
+    const s = 'width:78px;';
+    let h = '<div class="tire-size-row">';
+    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
+    h += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
+    h += '<select id="'+prefix+'Width" style="'+s+'"><option value="">-</option>';
+    for(let ww=135;ww<=355;ww+=10){ h += '<option value="'+ww+'"'+(w===String(ww)?' selected':'')+'>'+ww+'</option>'; }
+    h += '</select></div>';
+    h += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
+    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
+    h += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
+    h += '<select id="'+prefix+'Aspect" style="'+s+'"><option value="">-</option>';
+    h += '<option value="NOASPECT"'+(a==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
+    for(let aa=25;aa<=80;aa+=5){ const v='/'+aa; h += '<option value="'+v+'"'+(a===v?' selected':'')+'>'+aa+'</option>'; }
+    h += '</select></div>';
+    h += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
+    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
+    h += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
+    h += '<select id="'+prefix+'Inch" style="'+s+'"><option value="">-</option>';
+    for(let ii=12;ii<=24;ii++){ const v='R'+ii; h += '<option value="'+v+'"'+(i===v?' selected':'')+'>'+ii+'</option>'; }
+    h += '</select></div>';
+    h += '</div>';
+    return h;
+  }
 
   function renderEstimateTab(){
     const panel = document.getElementById('estimateSearchPanel');
     let html = '<div class="spec-search-panel">';
-    html += '<div class="spec-step"><div class="spec-step-label">タイヤサイズを選択</div>';
-    html += '<div class="tire-size-row">';
-    const selStyle = 'width:80px;';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-    html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
-    html += '<select id="estTireWidth" style="'+selStyle+'"><option value="">-</option>';
-    for(let w=135;w<=355;w+=10){ html += '<option value="'+w+'"'+(estWidth===String(w)?' selected':'')+'>'+w+'</option>'; }
-    html += '</select></div>';
-    html += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-    html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
-    html += '<select id="estTireAspect" style="'+selStyle+'"><option value="">-</option>';
-    html += '<option value="NOASPECT"'+(estAspect==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
-    for(let a=25;a<=80;a+=5){ const v='/'+a; html += '<option value="'+v+'"'+(estAspect===v?' selected':'')+'>'+a+'</option>'; }
-    html += '</select></div>';
-    html += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-    html += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
-    html += '<select id="estTireInch" style="'+selStyle+'"><option value="">-</option>';
-    for(let i=12;i<=24;i++){ const v='R'+i; html += '<option value="'+v+'"'+(estInch===v?' selected':'')+'>'+i+'</option>'; }
-    html += '</select></div>';
-    html += '</div></div>';
+
+    // 前後サイズ違いチェックボックス
+    html += '<div style="margin-bottom:10px;">'
+      + '<label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="estDualModeChk"'+(estDualMode?' checked':'')+' style="width:16px;height:16px;accent-color:var(--amber);">'
+      + '前後サイズ違い'
+      + '</label></div>';
+
+    if(estDualMode){
+      // フロント
+      html += '<div class="spec-step">';
+      html += '<div class="spec-step-label" style="color:var(--amber);font-weight:700;">🔵 フロント</div>';
+      html += buildSizeSelectors('estFront', estFrontWidth, estFrontAspect, estFrontInch);
+      html += '</div>';
+      // リア
+      html += '<div class="spec-step" style="margin-top:10px;">';
+      html += '<div class="spec-step-label" style="color:var(--teal,#2ab);">🔴 リア</div>';
+      html += buildSizeSelectors('estRear', estRearWidth, estRearAspect, estRearInch);
+      html += '</div>';
+    } else {
+      html += '<div class="spec-step"><div class="spec-step-label">タイヤサイズを選択</div>';
+      html += buildSizeSelectors('est', estWidth, estAspect, estInch);
+      html += '</div>';
+    }
+
     html += '<div class="spec-search-actions"><button class="btn btn-amber" id="estSearchGo">検索</button></div>';
     html += '</div>';
     panel.innerHTML = html;
 
-    document.getElementById('estTireWidth').addEventListener('change', e=>{ estWidth = e.target.value||null; });
-    document.getElementById('estTireAspect').addEventListener('change', e=>{ estAspect = e.target.value||null; });
-    document.getElementById('estTireInch').addEventListener('change', e=>{ estInch = e.target.value||null; });
-    document.getElementById('estSearchGo').addEventListener('click', ()=>{
-      const estOpts = { targetId:'estimateCatalogWrap', width:estWidth, aspect:estAspect, inch:estInch, modelKey:null };
-      window._lastEstOpts = estOpts;
-      renderPriceCatalog(estOpts);
+    // チェックボックス切り替え
+    document.getElementById('estDualModeChk').addEventListener('change', e=>{
+      estDualMode = e.target.checked;
+      // 結果エリアをクリア
+      document.getElementById('estimateCatalogWrap').innerHTML = '';
+      document.getElementById('estimateCatalogFront').innerHTML = '';
+      document.getElementById('estimateCatalogRear').innerHTML = '';
+      renderEstimateTab();
     });
+
+    if(estDualMode){
+      document.getElementById('estFrontWidth').addEventListener('change', e=>{ estFrontWidth = e.target.value||null; });
+      document.getElementById('estFrontAspect').addEventListener('change', e=>{ estFrontAspect = e.target.value||null; });
+      document.getElementById('estFrontInch').addEventListener('change', e=>{ estFrontInch = e.target.value||null; });
+      document.getElementById('estRearWidth').addEventListener('change', e=>{ estRearWidth = e.target.value||null; });
+      document.getElementById('estRearAspect').addEventListener('change', e=>{ estRearAspect = e.target.value||null; });
+      document.getElementById('estRearInch').addEventListener('change', e=>{ estRearInch = e.target.value||null; });
+    } else {
+      document.getElementById('estWidth').addEventListener('change', e=>{ estWidth = e.target.value||null; });
+      document.getElementById('estAspect').addEventListener('change', e=>{ estAspect = e.target.value||null; });
+      document.getElementById('estInch').addEventListener('change', e=>{ estInch = e.target.value||null; });
+    }
+
+    document.getElementById('estSearchGo').addEventListener('click', ()=>{
+      if(estDualMode){
+        document.getElementById('estimateCatalogWrap').innerHTML = '';
+        const frontOpts = { targetId:'estimateCatalogFront', width:estFrontWidth, aspect:estFrontAspect, inch:estFrontInch, modelKey:null, label:'🔵 フロント' };
+        const rearOpts  = { targetId:'estimateCatalogRear',  width:estRearWidth,  aspect:estRearAspect,  inch:estRearInch,  modelKey:null, label:'🔴 リア' };
+        window._lastEstOpts = frontOpts;
+        renderPriceCatalog(frontOpts);
+        renderPriceCatalog(rearOpts);
+      } else {
+        document.getElementById('estimateCatalogFront').innerHTML = '';
+        document.getElementById('estimateCatalogRear').innerHTML = '';
+        const estOpts = { targetId:'estimateCatalogWrap', width:estWidth, aspect:estAspect, inch:estInch, modelKey:null };
+        window._lastEstOpts = estOpts;
+        renderPriceCatalog(estOpts);
+      }
+    });
+
     document.getElementById('estOpenSavedQuotes').addEventListener('click', async ()=>{
       await loadSavedQuotes();
       renderSavedQuotesList();
