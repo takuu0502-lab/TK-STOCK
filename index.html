@@ -3703,12 +3703,13 @@ window.addEventListener('storageReady', function(){
     await loadAccounts();
     syncAuthToggleAvailability();
     if(accounts.length === 0){
-      if(window._fbGetError){
-        showAuthScreen('login');
-        return;
-      }
-      showAuthScreen('setup');
-      return;
+      if(window._fbGetError){ showAuthScreen('login'); return; }
+      showAuthScreen('setup'); return;
+    }
+    const savedId = sessionStorage.getItem('tkstock_session');
+    if(savedId){
+      const acc = accounts.find(a => a.id === savedId);
+      if(acc){ loginSuccess(acc); return; }
     }
     showAuthScreen('login');
   }
@@ -3789,6 +3790,7 @@ window.addEventListener('storageReady', function(){
 
   function loginSuccess(acc){
     currentUser = acc;
+    sessionStorage.setItem('tkstock_session', acc.id);
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
     renderUserBadge();
@@ -3849,6 +3851,7 @@ window.addEventListener('storageReady', function(){
 
   document.getElementById('logoutBtn').addEventListener('click', ()=>{
     currentUser = null;
+    sessionStorage.removeItem('tkstock_session');
     clearTimeout(_inactivityTimer);
     _inactivityTimer = null;
     document.getElementById('accountsModal').classList.remove('show');
@@ -3857,6 +3860,7 @@ window.addEventListener('storageReady', function(){
 
   document.getElementById('switchAccountBtn').addEventListener('click', ()=>{
     currentUser = null;
+    sessionStorage.removeItem('tkstock_session');
     clearTimeout(_inactivityTimer);
     _inactivityTimer = null;
     document.getElementById('accountsModal').classList.remove('show');
