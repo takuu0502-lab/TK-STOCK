@@ -1177,13 +1177,18 @@ window.addEventListener('storageReady', function(){
     const el = document.getElementById('costRuleDebug');
     if(!el) return;
     const def = costRules.default || {};
-    const regnoRule = costRuleFor('REGNO', 'REGNO GR-XⅢ');
-    const testCost = computeCostPrice('REGNO', 'REGNO GR-XⅢ', 14800, null);
+    const regnoRule = costRuleFor('REGNO', 'GR-XⅢ');
+    const testCost = computeCostPrice('REGNO', 'GR-XⅢ', 14800, 17500);
+    const testCatalogR = {b:'REGNO', m:'GR-XⅢ', s:'155/65R14', w:14800, t:17500};
+    const prod155 = findProductForCatalogEntry(testCatalogR);
     el.style.display = 'block';
     el.innerHTML = '<b>【診断情報】</b><br>'
       + '基本設定（Firebase読込値）: ' + (def.basis||'?') + ' から ' + (def.percent||0) + '% OFF<br>'
       + 'REGNO GR-XⅢ 適用ルール: ' + regnoRule.basis + ' から ' + regnoRule.percent + '% OFF<br>'
-      + 'REGNO GR-XⅢ 計算仕入れ価格 (A表14800): ¥' + (testCost !== null ? testCost.toLocaleString('ja-JP') : 'null');
+      + '155/65R14 計算仕入れ価格: ¥' + (testCost !== null ? testCost.toLocaleString('ja-JP') : 'null') + '<br>'
+      + '155/65R14 登録商品: ' + (prod155
+        ? prod155.name + ' / costPrice='+prod155.costPrice+' / _fixedCost='+prod155._fixedCost+' / _costManual='+prod155._costManual
+        : 'なし（登録なし）');
   }
 
   function renderCostBrandRules(){
@@ -1479,6 +1484,12 @@ window.addEventListener('storageReady', function(){
         }
         p.subId = null;
         delete p.category;
+      }
+      // 旧 _costManual / _sellManual フラグを削除（_fixedCost / _fixedSell に移行済み）
+      if('_costManual' in p || '_sellManual' in p){
+        migrated = true;
+        delete p._costManual;
+        delete p._sellManual;
       }
     });
     if(migrated) await saveProducts();
