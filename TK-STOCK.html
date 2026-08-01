@@ -216,8 +216,8 @@
   .quote-line-price{-moz-appearance:textfield;}
   .quote-line-price{width:100px;text-align:right;font-family:var(--font-mono);font-size:13px;}
   .quote-line-subtotal{width:100px;text-align:right;font-family:var(--font-mono);font-weight:600;font-size:13.5px;}
-  .quote-line-remove{background:transparent;border:none;color:var(--text-3);font-size:16px;padding:2px 6px;}
-  .quote-line-remove:hover{color:var(--red);}
+  .quote-line-remove{background:var(--bg-2);border:1px solid var(--line);border-radius:5px;color:var(--text-2);font-size:18px;font-weight:700;padding:2px 10px;cursor:pointer;line-height:1;}
+  .quote-line-remove:hover{background:var(--red);border-color:var(--red);color:#fff;}
   .quote-total{display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:700;font-family:var(--font-display);border-top:2px solid var(--line);margin-top:10px;padding-top:12px;}
   .quote-product-block{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
   .quote-product-header{font-size:14px;font-weight:700;color:var(--text-1);margin-bottom:4px;}
@@ -2381,7 +2381,7 @@ window.addEventListener('storageReady', function(){
   function renderSharedLaborAndLines(){ renderSharedLabor(); renderQuoteLines(); }
 
   document.getElementById('addSharedLabor').addEventListener('click', ()=>{
-    sharedLaborLines.push({id:uid('l'),name:'',qty:1,unitPrice:''});
+    sharedLaborLines.push({id:uid('l'),name:'',qty:4,unitPrice:''});
     renderSharedLabor(); renderQuoteLines();
   });
 
