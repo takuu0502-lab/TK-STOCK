@@ -1914,12 +1914,6 @@ window.addEventListener('storageReady', function(){
         document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
         document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('ja-JP');
         if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
-        catalogQuoteSelection = new Map();
-        renderEstSelectionBar();
-        // カタログのチェックボックス状態をリセット
-        if(window._lastEstOpts) renderPriceCatalog(window._lastEstOpts);
-        if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
-        if(window._lastEstRearOpts) renderPriceCatalog(window._lastEstRearOpts);
         currentEditingQuoteId = null;
         renderAll(); renderTotals();
         document.getElementById('quoteModal').classList.add('show');
@@ -2042,10 +2036,6 @@ window.addEventListener('storageReady', function(){
         document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
         document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('ja-JP');
         if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
-        catalogQuoteSelection = new Map();
-        renderEstSelectionBar();
-        // カタログのチェックボックス状態をリセット
-        renderPriceCatalog(opts);
         renderAll();
         renderTotals();
         currentEditingQuoteId = null;
