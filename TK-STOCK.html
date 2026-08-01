@@ -589,6 +589,7 @@
     <div style="margin-top:18px;">
       <button class="btn btn-amber" id="saveCostPricingRules">仕入れ価格の設定を保存</button>
     </div>
+    <div id="costRuleDebug" style="margin-top:12px;font-size:12px;color:var(--text-2);background:var(--bg-2);border-radius:6px;padding:10px;display:none;"></div>
 
     <div class="pricing-section-divider"></div>
 
@@ -1172,10 +1173,24 @@ window.addEventListener('storageReady', function(){
 
   let expandedCostBrandModels = new Set();
 
+  function updateCostRuleDebug(){
+    const el = document.getElementById('costRuleDebug');
+    if(!el) return;
+    const def = costRules.default || {};
+    const regnoRule = costRuleFor('REGNO', 'REGNO GR-XⅢ');
+    const testCost = computeCostPrice('REGNO', 'REGNO GR-XⅢ', 14800, null);
+    el.style.display = 'block';
+    el.innerHTML = '<b>【診断情報】</b><br>'
+      + '基本設定（Firebase読込値）: ' + (def.basis||'?') + ' から ' + (def.percent||0) + '% OFF<br>'
+      + 'REGNO GR-XⅢ 適用ルール: ' + regnoRule.basis + ' から ' + regnoRule.percent + '% OFF<br>'
+      + 'REGNO GR-XⅢ 計算仕入れ価格 (A表14800): ¥' + (testCost !== null ? testCost.toLocaleString('ja-JP') : 'null');
+  }
+
   function renderCostBrandRules(){
     const wrap = document.getElementById('costBrandRulesList');
     document.getElementById('cr_default_basis').value = costRules.default.basis || 'wholesale';
     document.getElementById('cr_default_percent').value = costRules.default.percent || 0;
+    updateCostRuleDebug();
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = costRules.byBrand[brand];
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
@@ -1269,6 +1284,8 @@ window.addEventListener('storageReady', function(){
     costRules.byModel = byModel;
     await saveCostRules();
     document.getElementById('costPricingMsg').innerHTML = '<div class="msg msg-ok">仕入れ価格の設定を保存しました。</div>';
+    // デバッグ表示更新
+    updateCostRuleDebug();
     renderPriceCatalog();
   });
 
