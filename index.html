@@ -456,6 +456,7 @@
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <div class="brand-sub" id="userBadge">ログイン者情報：</div>
         <button class="btn btn-ghost btn-sm" id="openAccounts" style="display:none;">アカウント管理</button>
+        <button class="btn btn-ghost btn-sm" id="switchAccountBtn" style="display:none;">切り替え</button>
         <button class="btn btn-ghost btn-sm" id="logoutBtn">ログアウト</button>
       </div>
     </div>
@@ -3639,10 +3640,10 @@ window.addEventListener('storageReady', function(){
     });
   });
 
-  function showAuthScreen(mode){
+  function showAuthScreen(mode, msg){
     syncAuthToggleAvailability();
     const submitBtn = document.getElementById('authSubmit');
-    document.getElementById('authMsg').innerHTML = '';
+    document.getElementById('authMsg').innerHTML = msg ? '<div class="msg msg-error" style="margin-bottom:8px;">⏱️ '+escapeHtml(msg)+'</div>' : '';
     document.getElementById('auth_username').value = '';
     document.getElementById('auth_password').value = '';
     document.getElementById('auth_displayname').value = '';
@@ -3709,6 +3710,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
     renderUserBadge();
+    _resetInactivity();
     loadData();
   }
 
@@ -3731,6 +3733,7 @@ window.addEventListener('storageReady', function(){
     const el = document.getElementById('userBadge');
     el.innerHTML = 'ログイン者情報：' + escapeHtml(currentUser.displayName) + ' <span class="'+roleBadgeClass(currentUser.role)+'">'+roleLabel(currentUser.role)+'</span>';
     document.getElementById('openAccounts').style.display = isAdminUser() ? 'inline-block' : 'none';
+    document.getElementById('switchAccountBtn').style.display = 'inline-block';
     applyRolePermissionsToUI();
   }
 
@@ -3744,8 +3747,38 @@ window.addEventListener('storageReady', function(){
     document.getElementById('openAddProduct').style.display = writable ? 'inline-block' : 'none';
   }
 
+  // ---------- 非活動タイムアウト ----------
+  const INACTIVITY_MS = 30 * 60 * 1000; // 30分
+  let _inactivityTimer = null;
+  function _resetInactivity(){
+    if(!currentUser) return;
+    clearTimeout(_inactivityTimer);
+    _inactivityTimer = setTimeout(async ()=>{
+      currentUser = null;
+      clearTimeout(_inactivityTimer);
+      _inactivityTimer = null;
+      await clearSession();
+      document.getElementById('accountsModal').classList.remove('show');
+      showAuthScreen('login', '一定時間操作がなかったため、再ログインしてください。');
+    }, INACTIVITY_MS);
+  }
+  ['mousemove','keydown','click','touchstart'].forEach(ev=>{
+    document.addEventListener(ev, _resetInactivity, {passive:true});
+  });
+
   document.getElementById('logoutBtn').addEventListener('click', async ()=>{
     currentUser = null;
+    clearTimeout(_inactivityTimer);
+    _inactivityTimer = null;
+    await clearSession();
+    document.getElementById('accountsModal').classList.remove('show');
+    showAuthScreen('login');
+  });
+
+  document.getElementById('switchAccountBtn').addEventListener('click', async ()=>{
+    currentUser = null;
+    clearTimeout(_inactivityTimer);
+    _inactivityTimer = null;
     await clearSession();
     document.getElementById('accountsModal').classList.remove('show');
     showAuthScreen('login');
