@@ -2720,20 +2720,31 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('printPreviewExec').addEventListener('click', ()=>{
-    // A4印刷可能高さ（上下マージン各10mmを除く）をpxで計算
-    const printableH = Math.floor((297 - 20) * 96 / 25.4); // ~1049px
-    const content = document.getElementById('quotePrintDiv');
-    const contentH = content ? content.scrollHeight : 0;
-    let scaleStyle = null;
-    if (contentH > printableH && contentH > 0) {
-      const scale = (printableH / contentH).toFixed(4);
-      scaleStyle = document.createElement('style');
-      scaleStyle.id = '_autoScale';
-      scaleStyle.textContent = '@media print { #quotePrintDiv { zoom: ' + scale + '; } }';
-      document.head.appendChild(scaleStyle);
-    }
     window.print();
-    if (scaleStyle) document.head.removeChild(scaleStyle);
+  });
+
+  // beforeprint時に@media print CSS適用後のサイズで計測してスケール計算
+  window.addEventListener('beforeprint', ()=>{
+    const content = document.getElementById('quotePrintDiv');
+    if (!content) return;
+    content.style.removeProperty('zoom');
+    // A4印刷可能高さ: (297-20)mm, 幅: (210-24)mm (@pageのmarginを除く)
+    const MM = 96 / 25.4;
+    const printableH = (297 - 20) * MM;
+    const printableW = (210 - 24) * MM;
+    const contentH = content.scrollHeight;
+    const contentW = content.scrollWidth;
+    const scaleH = contentH > 0 ? printableH / contentH : 1;
+    const scaleW = contentW > 0 ? printableW / contentW : 1;
+    const scale = Math.min(scaleH, scaleW, 1);
+    if (scale < 0.999) {
+      content.style.zoom = scale.toFixed(4);
+    }
+  });
+
+  window.addEventListener('afterprint', ()=>{
+    const content = document.getElementById('quotePrintDiv');
+    if (content) content.style.removeProperty('zoom');
   });
 
   function cleanName(name){
