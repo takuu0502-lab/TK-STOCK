@@ -3397,7 +3397,7 @@ window.addEventListener('storageReady', function(){
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div class="detail-cat">'+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+'</div>'
-      + '<button class="btn btn-sm btn-ghost" id="detailQrBtn" style="margin-top:8px;">📱 QRコードを発行</button>'
+      + '<button class="btn btn-ghost" id="detailQrBtn" style="margin-top:10px;font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
       + '</div>'
       + '<div class="detail-stats">'
       + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div class="detail-stat-value">'+p.stock+'</div></div>'
