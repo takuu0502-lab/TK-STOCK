@@ -1580,6 +1580,7 @@ window.addEventListener('storageReady', function(){
   let selectedTireInch = null;
   let selectedCatalogModelKey = null;
   let stockOnlyFilter = false;
+  let manualOnlyFilter = false;
   function resetSpecSelections(){
     selectedSpec = null;
     selectedTireWidth = null;
@@ -1588,6 +1589,11 @@ window.addEventListener('storageReady', function(){
     selectedCatalogModelKey = null;
     catalogQuoteSelection = new Map();
     stockOnlyFilter = false;
+    manualOnlyFilter = false;
+  }
+  function isManualProduct(p){
+    if(p._fromCatalog) return false;
+    return !findCatalogEntryForProduct(p);
   }
   let expanded = new Set();
   let specPanelOpen = false;
@@ -1908,6 +1914,13 @@ window.addEventListener('storageReady', function(){
       const m = selectedMajor !== null ? majorById(selectedMajor) : null;
       const isTire = m && m.name === 'タイヤ';
       if(!isTire || !(useWidth || useModel)){ wrap.innerHTML = ''; return; }
+      // 自社登録品のみフィルター中はカタログ表を非表示（自社登録品セクションのみ表示）
+      if(manualOnlyFilter){
+        wrap.innerHTML = '';
+        renderManualProductSection(wrap, useWidth, useAspect, useInch, forceTire,
+          !isExternalUser() && showCostInList, opts);
+        return;
+      }
     }
     const aspectPart = (useAspect && useAspect !== 'NOASPECT') ? useAspect : '';
     const query = (useWidth||'') + aspectPart + (useInch||'');
@@ -2115,16 +2128,18 @@ window.addEventListener('storageReady', function(){
     if(!filterEl) return;
     if(!hasResults){ filterEl.style.display = 'none'; filterEl.innerHTML = ''; return; }
     filterEl.style.display = 'block';
-    filterEl.innerHTML = '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+    filterEl.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;">'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="stockOnlyChk"'+(stockOnlyFilter?' checked':'')+'> 自店舗に在庫がある商品のみ表示'
-      + '</label>';
+      + '</label>'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="manualOnlyChk"'+(manualOnlyFilter?' checked':'')+'> 自社登録品のみ表示'
+      + '</label>'
+      + '</div>';
     const chk = document.getElementById('stockOnlyChk');
-    if(chk){
-      chk.addEventListener('change', ()=>{
-        stockOnlyFilter = chk.checked;
-        renderProductTable();
-      });
-    }
+    if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
+    const mchk = document.getElementById('manualOnlyChk');
+    if(mchk){ mchk.addEventListener('change', ()=>{ manualOnlyFilter = mchk.checked; renderProductTable(); renderPriceCatalog(); }); }
   }
 
   function renderProductTable(){
@@ -2152,7 +2167,8 @@ window.addEventListener('storageReady', function(){
       return true;
     });
     renderInventoryFilter(list.length > 0);
-    const filteredList = stockOnlyFilter ? list.filter(p=> p.stock > 0) : list;
+    let filteredList = stockOnlyFilter ? list.filter(p=> p.stock > 0) : list;
+    if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(list.length === 0){
       wrap.innerHTML = '<div class="empty-state">該当する商品がありません。「＋新規商品登録」から追加してください。</div>';
       return;
