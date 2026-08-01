@@ -3837,11 +3837,10 @@ window.addEventListener('storageReady', function(){
   function _resetInactivity(){
     if(!currentUser) return;
     clearTimeout(_inactivityTimer);
-    _inactivityTimer = setTimeout(async ()=>{
+    _inactivityTimer = setTimeout(()=>{
       currentUser = null;
       clearTimeout(_inactivityTimer);
       _inactivityTimer = null;
-      await clearSession();
       document.getElementById('accountsModal').classList.remove('show');
       showAuthScreen('login', '一定時間操作がなかったため、再ログインしてください。');
     }, INACTIVITY_MS);
@@ -3850,20 +3849,18 @@ window.addEventListener('storageReady', function(){
     document.addEventListener(ev, _resetInactivity, {passive:true});
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{
     currentUser = null;
     clearTimeout(_inactivityTimer);
     _inactivityTimer = null;
-    await clearSession();
     document.getElementById('accountsModal').classList.remove('show');
     showAuthScreen('login');
   });
 
-  document.getElementById('switchAccountBtn').addEventListener('click', async ()=>{
+  document.getElementById('switchAccountBtn').addEventListener('click', ()=>{
     currentUser = null;
     clearTimeout(_inactivityTimer);
     _inactivityTimer = null;
-    await clearSession();
     document.getElementById('accountsModal').classList.remove('show');
     showAuthScreen('login');
   });
