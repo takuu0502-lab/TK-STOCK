@@ -436,10 +436,7 @@
       <label>パスワード</label>
       <input type="password" id="auth_password" autocomplete="current-password">
     </div>
-    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);margin-bottom:14px;cursor:pointer;">
-      <input type="checkbox" id="auth_remember" style="width:auto;">
-      ログイン情報を記憶する
-    </label>
+    <input type="hidden" id="auth_remember" value="false">
     <div id="authMsg"></div>
     <button class="btn btn-amber" id="authSubmit" style="width:100%;margin-top:6px;">ログイン</button>
     <p style="font-size:11px;color:var(--text-3);margin-top:16px;line-height:1.6;">
@@ -3761,7 +3758,6 @@ window.addEventListener('storageReady', function(){
     document.getElementById('auth_username').value = '';
     document.getElementById('auth_password').value = '';
     document.getElementById('auth_displayname').value = '';
-    document.getElementById('auth_remember').checked = true;
     document.querySelectorAll('.auth-toggle-btn').forEach(b=>{
       b.classList.toggle('active', b.dataset.authmode === mode);
     });
@@ -3787,7 +3783,6 @@ window.addEventListener('storageReady', function(){
     const mode = document.getElementById('authSubmit').dataset.mode;
     const username = document.getElementById('auth_username').value.trim();
     const password = document.getElementById('auth_password').value;
-    const remember = document.getElementById('auth_remember').checked;
     const msgEl = document.getElementById('authMsg');
     if(!username || !password){
       msgEl.innerHTML = '<div class="msg msg-error">ログインIDとパスワードを入力してください。</div>';
@@ -3804,14 +3799,14 @@ window.addEventListener('storageReady', function(){
       const acc = {id: uid('u'), username, salt, hash, displayName, role: accounts.length === 0 ? 'admin' : 'staff'};
       accounts.push(acc);
       await saveAccounts();
-      if(remember){ await saveSession(acc.id); } else { await clearSession(); }
+      await clearSession();
       loginSuccess(acc);
     } else {
       const acc = accounts.find(a=>a.username === username);
       if(!acc){ msgEl.innerHTML = '<div class="msg msg-error">ログインIDまたはパスワードが違います。</div>'; return; }
       const hash = await sha256Hex(acc.salt + password);
       if(hash !== acc.hash){ msgEl.innerHTML = '<div class="msg msg-error">ログインIDまたはパスワードが違います。</div>'; return; }
-      if(remember){ await saveSession(acc.id); } else { await clearSession(); }
+      await clearSession();
       loginSuccess(acc);
     }
   }
