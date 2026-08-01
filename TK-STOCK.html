@@ -472,7 +472,6 @@
       <button class="tab-btn" data-tab="pricing">価格調整</button>
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes" style="display:none;">📋 保存済み見積</button>
       <button class="btn btn-ghost btn-sm" id="openSpecSearch">商品検索</button>
       <button class="btn btn-amber btn-sm" id="openAddProduct">＋ 新規商品登録</button>
       <button class="btn btn-amber btn-sm" id="quickScanBtn">スキャン</button>
@@ -1498,8 +1497,6 @@ window.addEventListener('storageReady', function(){
     ['list','estimate','in','out','history','pricing'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
     });
-    const savedQBtn = document.getElementById('estOpenSavedQuotes');
-    if(savedQBtn) savedQBtn.style.display = (tabName === 'estimate') ? 'inline-block' : 'none';
   }
 
   function showHomeState(){
@@ -2421,7 +2418,10 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="showCostEstChk"'+(showCostInEstimate?' checked':'')+' style="width:15px;height:15px;accent-color:var(--amber);">'
       + '仕入れ価格を表示'
       + '</label>'
+      + '<div style="display:flex;gap:8px;">'
+      + '<button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes">📋 保存済み見積</button>'
       + '<button class="btn btn-amber" id="estSearchGo">検索</button>'
+      + '</div>'
       + '</div>';
     html += '</div>';
     panel.innerHTML = html;
