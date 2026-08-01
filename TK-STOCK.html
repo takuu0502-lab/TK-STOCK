@@ -3245,12 +3245,20 @@ window.addEventListener('storageReady', function(){
     const m = majorById(p.majorId);
     const s = p.subId ? subById(p.majorId, p.subId) : null;
     const catalogEntry = findCatalogEntryForProduct(p);
-    let cost = p.costPrice || 0;
+    let cost = 0;
     let costIsAuto = false;
-    // 手入力の仕入れ原価が未設定の場合のみカタログから自動計算
-    if(!cost && catalogEntry){
-      const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
-      if(computed !== null){ cost = computed; costIsAuto = true; }
+    if(catalogEntry){
+      // カタログ商品：固定フラグがある場合のみ登録価格を使用、それ以外は価格調整ルールで計算
+      if(p._fixedCost && p.costPrice){
+        cost = p.costPrice;
+      } else {
+        const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
+        if(computed !== null){ cost = computed; costIsAuto = true; }
+        else { cost = p.costPrice || 0; }
+      }
+    } else {
+      // 自社登録商品（カタログ外）：登録価格をそのまま使用
+      cost = p.costPrice || 0;
     }
     const sell = p.sellPrice || 0;
     const margin = (cost && sell) ? (sell - cost) : null;
