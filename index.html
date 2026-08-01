@@ -717,6 +717,10 @@
         </label>
       </div>
     </div>
+    <div class="field" style="margin-top:8px;">
+      <label>備考・メモ</label>
+      <textarea id="f_memo" rows="3" placeholder="メモを入力（任意）" style="resize:vertical;width:100%;min-height:70px;"></textarea>
+    </div>
     <div id="modalMsg"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="modalCancel">キャンセル</button>
@@ -3196,6 +3200,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_price').value = '';
     document.getElementById('f_cost_fixed').checked = false;
     document.getElementById('f_sell_fixed').checked = false;
+    document.getElementById('f_memo').value = '';
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
@@ -3221,6 +3226,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_price').value = p.sellPrice || '';
     document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
+    document.getElementById('f_memo').value = p.memo || '';
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
     modal.classList.add('show');
@@ -3304,6 +3310,7 @@ window.addEventListener('storageReady', function(){
         + '<div id="detailActionMsg"></div>'
         + '</div>'
       ) : '')
+      + (p.memo ? '<div style="margin:12px 0;padding:10px 14px;background:var(--bg-2);border-radius:8px;border-left:3px solid var(--amber);"><div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">備考・メモ</div><div style="font-size:13.5px;color:var(--text-1);white-space:pre-wrap;">'+escapeHtml(p.memo)+'</div></div>' : '')
       + '<div class="detail-hist-title">入出庫履歴</div>'
       + '<div class="detail-hist-list">'+histHtml+'</div>';
 
@@ -3392,6 +3399,7 @@ window.addEventListener('storageReady', function(){
     const sellPrice = parseInt(document.getElementById('f_price').value || '0', 10);
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
+    const memo = document.getElementById('f_memo').value.trim();
     const msgEl = document.getElementById('modalMsg');
 
     if(!name){
@@ -3411,9 +3419,9 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell});
+      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell});
+      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     }
     await saveProducts();
     renderCatTree();
