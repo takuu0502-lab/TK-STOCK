@@ -1764,15 +1764,14 @@ window.addEventListener('storageReady', function(){
   }
   function findCatalogEntryForProduct(p){
     if(!p.spec || !p.name) return null;
-    const nameLower = p.name.toLowerCase().replace(/\s+/g,' ').trim();
     const spec = p.spec.trim();
+    const nameTrim = p.name.trim();
     return getCatalog().find(r => {
       // サイズ一致（部分一致）
       if(r.s.indexOf(spec) === -1 && spec.indexOf(r.s) === -1) return false;
-      // 商品名に brand と model の両方を含むか（大文字小文字無視）
-      const rb = r.b.toLowerCase();
-      const rm = r.m.toLowerCase();
-      return nameLower.indexOf(rb) !== -1 && nameLower.indexOf(rm) !== -1;
+      // ensureProductForCatalogEntryが生成する名前と完全一致するもののみ
+      const catalogName = r.b === r.m ? r.b : r.b + ' ' + r.m;
+      return nameTrim === catalogName;
     }) || null;
   }
   async function ensureProductForCatalogEntry(r){
