@@ -4118,11 +4118,13 @@ window.addEventListener('storageReady', function(){
 
   function renderAccountsList(){
     const wrap = document.getElementById('accountsList');
+    const isAdmin = currentUser && currentUser.role === 'admin';
     wrap.innerHTML = accounts.map(a=>
       '<div class="account-row"><div>'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
       + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span></div>'
       + (a.id !== currentUser.id
           ? '<div style="display:flex;align-items:center;gap:6px;">'
+            + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-edit-name="'+a.id+'" title="名前を編集">✏️</button>' : '')
             + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
             + '<option value="staff"'+(a.role==='staff'?' selected':'')+'>社員</option>'
             + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
@@ -4133,6 +4135,28 @@ window.addEventListener('storageReady', function(){
           : '<span style="font-size:11px;color:var(--text-3);">(自分)</span>')
       + '</div>'
     ).join('');
+    wrap.querySelectorAll('[data-edit-name]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const target = accounts.find(x=>x.id === b.dataset.editName);
+        if(!target) return;
+        const row = b.closest('.account-row');
+        const nameDiv = row.querySelector('div');
+        const orig = target.displayName;
+        nameDiv.innerHTML = '<input id="editNameInput_'+target.id+'" value="'+escapeHtml(orig)+'" style="font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);width:140px;">'
+          + ' <button class="btn btn-sm btn-amber" id="editNameSave_'+target.id+'">保存</button>'
+          + ' <button class="btn btn-sm btn-ghost" id="editNameCancel_'+target.id+'">キャンセル</button>';
+        document.getElementById('editNameSave_'+target.id).addEventListener('click', async ()=>{
+          const newName = document.getElementById('editNameInput_'+target.id).value.trim();
+          if(!newName){ alert('名前を入力してください。'); return; }
+          target.displayName = newName;
+          await saveAccounts();
+          renderAccountsList();
+        });
+        document.getElementById('editNameCancel_'+target.id).addEventListener('click', ()=>{
+          renderAccountsList();
+        });
+      });
+    });
     wrap.querySelectorAll('[data-change-role]').forEach(sel=>{
       sel.addEventListener('change', async ()=>{
         const target = accounts.find(x=>x.id === sel.dataset.changeRole);
