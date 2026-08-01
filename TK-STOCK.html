@@ -3389,12 +3389,15 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      // 仕入れ単価が入力されている場合は手動設定フラグをON、0/空なら解除
-      const _costManual = costPrice > 0;
-      const _sellManual = sellPrice > 0;
+      // カタログ計算値と異なる場合のみ手動設定とみなす
+      const catEntry = findCatalogEntryForProduct({name, spec}) || findCatalogEntryForProduct(p);
+      const computedCost = catEntry ? computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t) : null;
+      const computedSell = catEntry ? (getEffectiveSellPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t) || computeSellPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t)) : null;
+      const _costManual = costPrice > 0 && (computedCost === null || costPrice !== computedCost);
+      const _sellManual = sellPrice > 0 && (computedSell === null || sellPrice !== computedSell);
       Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual, _sellManual});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: costPrice > 0, _sellManual: sellPrice > 0});
+      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: false, _sellManual: false});
     }
     await saveProducts();
     renderCatTree();
