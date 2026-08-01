@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
@@ -412,6 +413,24 @@
     .brand{font-size:22px;}
   }
 
+/* ── QRコードモーダル ── */
+#qrModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;}
+#qrModal.show{display:flex;}
+#qrModalBox{background:var(--bg-1);border-radius:16px;padding:24px;max-width:340px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center;}
+#qrModalName{font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:4px;}
+#qrModalSpec{font-size:12.5px;color:var(--text-2);margin-bottom:16px;}
+#qrcode{display:inline-block;margin-bottom:10px;}
+#qrcode canvas,#qrcode img{border-radius:8px;}
+#qrModalCode{font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-bottom:18px;}
+.qr-label-print{display:none;}
+@media print{
+  body > *:not(#qrPrintArea){display:none!important;}
+  #qrPrintArea{display:block!important;padding:12px;}
+  .qr-label{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:12px 16px;text-align:center;page-break-inside:avoid;}
+  .qr-label-name{font-size:14px;font-weight:700;margin-bottom:2px;}
+  .qr-label-spec{font-size:11px;color:#666;margin-bottom:8px;}
+  .qr-label-code{font-size:10px;color:#888;margin-top:6px;font-family:monospace;}
+}
 /* ── トースト通知 ── */
 #toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
 .toast{background:#323232;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;pointer-events:none;}
@@ -420,6 +439,19 @@
 </head>
 <body>
 <div id="toast-container"></div>
+<div id="qrModal">
+  <div id="qrModalBox">
+    <div id="qrModalName"></div>
+    <div id="qrModalSpec"></div>
+    <div id="qrcode"></div>
+    <div id="qrModalCode"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-amber" id="qrPrintBtn">🖨 印刷</button>
+      <button class="btn btn-ghost" id="qrModalClose">閉じる</button>
+    </div>
+  </div>
+</div>
+<div id="qrPrintArea" style="display:none;"></div>
 
 <div class="auth-screen" id="authScreen" style="display:none;">
   <div class="auth-card">
@@ -1424,6 +1456,47 @@ window.addEventListener('storageReady', function(){
   });
 
   function uid(prefix){ return (prefix||'p') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  // ── QRコード生成 ──────────────────────────────
+  function openQrModal(p){
+    const qrValue = p.barcode || p.id;
+    const name = cleanName(p.name);
+    const spec = p.spec || '';
+    document.getElementById('qrModalName').textContent = name;
+    document.getElementById('qrModalSpec').textContent = spec;
+    document.getElementById('qrModalCode').textContent = qrValue;
+    const qrDiv = document.getElementById('qrcode');
+    qrDiv.innerHTML = '';
+    new QRCode(qrDiv, {
+      text: qrValue,
+      width: 180,
+      height: 180,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    document.getElementById('qrModal').classList.add('show');
+
+    document.getElementById('qrPrintBtn').onclick = ()=>{
+      const canvas = qrDiv.querySelector('canvas');
+      const imgSrc = canvas ? canvas.toDataURL() : (qrDiv.querySelector('img') ? qrDiv.querySelector('img').src : '');
+      document.getElementById('qrPrintArea').innerHTML =
+        '<div class="qr-label">'
+        + '<div class="qr-label-name">'+escapeHtml(name)+'</div>'
+        + (spec ? '<div class="qr-label-spec">'+escapeHtml(spec)+'</div>' : '')
+        + (imgSrc ? '<img src="'+imgSrc+'" style="width:150px;height:150px;">' : '')
+        + '<div class="qr-label-code">'+escapeHtml(qrValue)+'</div>'
+        + '</div>';
+      document.getElementById('qrPrintArea').style.display = 'block';
+      window.print();
+      document.getElementById('qrPrintArea').style.display = 'none';
+    };
+  }
+  document.getElementById('qrModalClose').addEventListener('click', ()=>{
+    document.getElementById('qrModal').classList.remove('show');
+  });
+  document.getElementById('qrModal').addEventListener('click', (e)=>{
+    if(e.target === document.getElementById('qrModal'))
+      document.getElementById('qrModal').classList.remove('show');
+  });
 
   function showToast(msg, duration){
     duration = duration || 2500;
@@ -3324,6 +3397,7 @@ window.addEventListener('storageReady', function(){
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div class="detail-cat">'+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+'</div>'
+      + '<button class="btn btn-sm btn-ghost" id="detailQrBtn" style="margin-top:8px;">📱 QRコードを発行</button>'
       + '</div>'
       + '<div class="detail-stats">'
       + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div class="detail-stat-value">'+p.stock+'</div></div>'
@@ -3379,6 +3453,7 @@ window.addEventListener('storageReady', function(){
       });
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
+    document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
     document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
 
     detailModal.classList.add('show');
