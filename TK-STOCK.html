@@ -1856,8 +1856,10 @@ window.addEventListener('storageReady', function(){
         const defaultQty = uniqueSizes2.size >= 2 ? 2 : 4;
         const groups = [];
         for(const r of selectedMatches){
-          const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-          groups.push({ id:uid('qg'), productId:null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
+          const sell = r._productId
+            ? (r._sellPrice || 0)
+            : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
         }
         quoteGroups = groups;
         sharedLaborLines = [];
@@ -1964,9 +1966,11 @@ window.addEventListener('storageReady', function(){
         const defaultQty = uniqueSizes.size >= 2 ? 2 : 4;
         const groups = [];
         for(const r of selectedMatches){
-          const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+          const sell = r._productId
+            ? (r._sellPrice || 0)
+            : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           if(opts && opts.targetId){
-            groups.push({ id:uid('qg'), productId:null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
+            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
           } else {
             const product = await ensureProductForCatalogEntry(r);
             groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
@@ -1993,6 +1997,91 @@ window.addEventListener('storageReady', function(){
         catalogQuoteSelection = new Map();
         renderPriceCatalog(opts);
         renderEstSelectionBar();
+      });
+    }
+
+    // 自社登録商品セクションを追記
+    renderManualProductSection(wrap, useWidth, useAspect, useInch, forceTire, showCost, opts);
+  }
+
+  // 自社登録商品（products配列）からサイズ一致するものを表示
+  function renderManualProductSection(wrap, useWidth, useAspect, useInch, forceTire, showCost, opts){
+    // タイヤカテゴリのmajorIdを取得
+    const tireCat = categories.find(c => c.name === 'タイヤ');
+    if(!tireCat) return;
+
+    // サイズ検索条件がない場合はスキップ
+    if(!useWidth && !useInch) return;
+
+    // productsからタイヤカテゴリかつサイズ一致するものを抽出
+    const matched = products.filter(p => {
+      if(p.majorId !== tireCat.id) return false;
+      if(!p.spec) return false;
+      const spec = p.spec;
+      if(useWidth && spec.indexOf(useWidth) === -1) return false;
+      if(useInch  && spec.indexOf(useInch)  === -1) return false;
+      if(useAspect && useAspect !== 'NOASPECT' && spec.indexOf(useAspect) === -1) return false;
+      if(useAspect === 'NOASPECT' && !/^\d+R\d+/.test(spec)) return false;
+      // カタログ由来（ensureProductForCatalogEntryで作成）は除外しない（両方表示）
+      return true;
+    });
+
+    if(matched.length === 0) return;
+
+    // 既存コンテンツに追記
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-top:14px;';
+
+    const chkPrefix = '_prod_';
+    const rows = matched.map((p, i) => {
+      const cKey = chkPrefix + p.id;
+      const checked = catalogQuoteSelection.has(cKey);
+      const sell = p.sellPrice || 0;
+      const cost = p.costPrice || 0;
+      return '<tr data-manual-idx="'+i+'">'
+        + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+i+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
+        + '<td style="color:var(--amber);font-weight:600;">'+escapeHtml(p.name)+'</td>'
+        + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec)+'</td>'
+        + (showCost ? '<td class="price-num" style="color:var(--text-2);">—</td>' : '')
+        + '<td class="price-num" style="color:var(--text-2);">—</td>'
+        + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost?'¥'+cost.toLocaleString('ja-JP'):'—')+'</td>' : '')
+        + '<td class="price-num" style="color:var(--amber);">'+(sell?'¥'+sell.toLocaleString('ja-JP'):'—')+'</td>'
+        + '<td class="price-num" style="color:'+(p.stock>0?'var(--teal)':'var(--text-3)')+';">'+p.stock+'</td>'
+        + '</tr>';
+    }).join('');
+
+    section.innerHTML = '<div class="price-catalog">'
+      + '<div class="price-catalog-title">自社登録商品（'+matched.length+'件）</div>'
+      + '<div class="price-catalog-sub no-print">手動登録されたタイヤ在庫</div>'
+      + '<table><thead><tr>'
+      + (forceTire ? '<th class="no-print">選択</th>' : '')
+      + '<th>商品名</th><th>サイズ</th>'
+      + (showCost?'<th>A表価格</th>':'')
+      + '<th>希望小売</th>'
+      + (showCost?'<th>仕入れ原価</th>':'')
+      + '<th>販売価格</th><th>在庫数</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+
+    wrap.appendChild(section);
+
+    // チェックボックスのイベント
+    if(forceTire){
+      section.querySelectorAll('[data-manual-chk]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const p = matched[Number(cb.dataset.manualChk)];
+          const cKey = chkPrefix + p.id;
+          if(cb.checked){
+            // catalogQuoteSelectionに登録（カタログエントリ互換形式）
+            catalogQuoteSelection.set(cKey, {
+              b: p.name, m: p.name, s: p.spec,
+              w: p.costPrice||0, t: null,
+              _productId: p.id, _sellPrice: p.sellPrice||0
+            });
+          } else {
+            catalogQuoteSelection.delete(cKey);
+          }
+          renderEstSelectionBar();
+        });
       });
     }
   }
