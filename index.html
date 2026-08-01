@@ -1896,8 +1896,7 @@ window.addEventListener('storageReady', function(){
       estBarQuoteBtn.addEventListener('click', async ()=>{
         const selectedMatches = Array.from(catalogQuoteSelection.values());
         if(selectedMatches.length === 0) return;
-        const uniqueSizes2 = new Set(selectedMatches.map(r=>r.s));
-        const defaultQty = uniqueSizes2.size >= 2 ? 2 : 4;
+        const defaultQty = 4;
         const groups = [];
         for(const r of selectedMatches){
           const _rProd2 = r._productId ? null : findProductForCatalogEntry(r);
@@ -1917,6 +1916,10 @@ window.addEventListener('storageReady', function(){
         if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
         catalogQuoteSelection = new Map();
         renderEstSelectionBar();
+        // カタログのチェックボックス状態をリセット
+        if(window._lastEstOpts) renderPriceCatalog(window._lastEstOpts);
+        if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
+        if(window._lastEstRearOpts) renderPriceCatalog(window._lastEstRearOpts);
         currentEditingQuoteId = null;
         renderAll(); renderTotals();
         document.getElementById('quoteModal').classList.add('show');
@@ -2016,8 +2019,7 @@ window.addEventListener('storageReady', function(){
         // Map.values()で全選択済みエントリ取得（複数サイズ対応）
         const selectedMatches = Array.from(catalogQuoteSelection.values());
         // 前後異サイズ判定：ユニークサイズが2種以上ならqty:2、同一サイズのみならqty:4
-        const uniqueSizes = new Set(selectedMatches.map(r=>r.s));
-        const defaultQty = uniqueSizes.size >= 2 ? 2 : 4;
+        const defaultQty = 4;
         const groups = [];
         for(const r of selectedMatches){
           const _rProd = r._productId ? null : findProductForCatalogEntry(r);
@@ -2030,7 +2032,7 @@ window.addEventListener('storageReady', function(){
             groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
           } else {
             const product = await ensureProductForCatalogEntry(r);
-            groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:1, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
+            groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:4, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
           }
         }
         quoteGroups = groups;
@@ -2042,6 +2044,8 @@ window.addEventListener('storageReady', function(){
         if(document.getElementById('quoteNote')) document.getElementById('quoteNote').value = '';
         catalogQuoteSelection = new Map();
         renderEstSelectionBar();
+        // カタログのチェックボックス状態をリセット
+        renderPriceCatalog(opts);
         renderAll();
         renderTotals();
         currentEditingQuoteId = null;
