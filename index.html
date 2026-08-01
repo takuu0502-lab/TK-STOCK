@@ -412,9 +412,14 @@
     .brand{font-size:22px;}
   }
 
+/* ── トースト通知 ── */
+#toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:#323232;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
 </style>
 </head>
 <body>
+<div id="toast-container"></div>
 
 <div class="auth-screen" id="authScreen" style="display:none;">
   <div class="auth-card">
@@ -1134,7 +1139,7 @@ window.addEventListener('storageReady', function(){
     priceRules.byBrand = byBrand;
     priceRules.byModel = byModel;
     await savePriceRules();
-    document.getElementById('pricingMsg').innerHTML = '<div class="msg msg-ok">販売価格の設定を保存しました。</div>';
+    showToast('販売価格の設定を保存しました。');
     renderPriceCatalog();
   });
 
@@ -1275,7 +1280,7 @@ window.addEventListener('storageReady', function(){
     costRules.byBrand = byBrand;
     costRules.byModel = byModel;
     await saveCostRules();
-    document.getElementById('costPricingMsg').innerHTML = '<div class="msg msg-ok">仕入れ価格の設定を保存しました。</div>';
+    showToast('仕入れ価格の設定を保存しました。');
     // デバッグ表示更新
     updateCostRuleDebug();
     renderPriceCatalog();
@@ -1414,11 +1419,25 @@ window.addEventListener('storageReady', function(){
     externalPriceRules.byBrand = byBrand;
     externalPriceRules.byModel = byModel;
     await saveExternalPriceRules();
-    document.getElementById('externalPricingMsg').innerHTML = '<div class="msg msg-ok">外部向け価格の設定を保存しました。</div>';
+    showToast('外部向け価格の設定を保存しました。');
     renderPriceCatalog();
   });
 
   function uid(prefix){ return (prefix||'p') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  function showToast(msg, duration){
+    duration = duration || 2500;
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    c.appendChild(t);
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ t.classList.add('show'); }); });
+    setTimeout(()=>{
+      t.classList.remove('show');
+      setTimeout(()=>{ t.remove(); }, 300);
+    }, duration);
+  }
 
   async function sha256Hex(str){
     const enc = new TextEncoder().encode(str);
