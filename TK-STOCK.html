@@ -2720,7 +2720,20 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('printPreviewExec').addEventListener('click', ()=>{
+    // A4印刷可能高さ（上下マージン各10mmを除く）をpxで計算
+    const printableH = Math.floor((297 - 20) * 96 / 25.4); // ~1049px
+    const content = document.getElementById('quotePrintDiv');
+    const contentH = content ? content.scrollHeight : 0;
+    let scaleStyle = null;
+    if (contentH > printableH && contentH > 0) {
+      const scale = (printableH / contentH).toFixed(4);
+      scaleStyle = document.createElement('style');
+      scaleStyle.id = '_autoScale';
+      scaleStyle.textContent = '@media print { #quotePrintDiv { zoom: ' + scale + '; } }';
+      document.head.appendChild(scaleStyle);
+    }
     window.print();
+    if (scaleStyle) document.head.removeChild(scaleStyle);
   });
 
   function cleanName(name){
