@@ -2037,10 +2037,12 @@ window.addEventListener('storageReady', function(){
       const cKey = chkPrefix + p.id;
       const checked = catalogQuoteSelection.has(cKey);
       const sell = p.sellPrice || 0;
-      // 詳細画面と同じく：カタログエントリがあれば自動計算、なければ手入力値
+      // 手入力の仕入れ原価を優先、未設定時のみカタログから自動計算
       let cost = p.costPrice || 0;
-      const catEntry = findCatalogEntryForProduct(p);
-      if(catEntry){ const computed = computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t); if(computed !== null) cost = computed; }
+      if(!cost){
+        const catEntry = findCatalogEntryForProduct(p);
+        if(catEntry){ const computed = computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t); if(computed !== null) cost = computed; }
+      }
       return '<tr data-manual-idx="'+i+'">'
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+i+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
         + '<td style="color:var(--amber);font-weight:600;text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
