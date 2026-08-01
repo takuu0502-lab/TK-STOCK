@@ -3774,14 +3774,12 @@ window.addEventListener('storageReady', function(){
       const acc = {id: uid('u'), username, salt, hash, displayName, role: accounts.length === 0 ? 'admin' : 'staff'};
       accounts.push(acc);
       await saveAccounts();
-      await clearSession();
       loginSuccess(acc);
     } else {
       const acc = accounts.find(a=>a.username === username);
       if(!acc){ msgEl.innerHTML = '<div class="msg msg-error">ログインIDまたはパスワードが違います。</div>'; return; }
       const hash = await sha256Hex(acc.salt + password);
       if(hash !== acc.hash){ msgEl.innerHTML = '<div class="msg msg-error">ログインIDまたはパスワードが違います。</div>'; return; }
-      await clearSession();
       loginSuccess(acc);
     }
   }
