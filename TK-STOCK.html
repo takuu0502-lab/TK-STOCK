@@ -704,10 +704,16 @@
       <div class="field" style="flex:1;">
         <label>仕入れ原価（1点あたり・円）</label>
         <input type="number" id="f_cost" min="0" placeholder="例) 8000">
+        <label style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="f_cost_fixed"> この価格を固定（価格調整ルールを無視）
+        </label>
       </div>
       <div class="field" style="flex:1;">
         <label>販売価格（1点あたり・円）</label>
         <input type="number" id="f_price" min="0" placeholder="例) 12000">
+        <label style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="f_sell_fixed"> この価格を固定（価格調整ルールを無視）
+        </label>
       </div>
     </div>
     <div id="modalMsg"></div>
@@ -1949,12 +1955,12 @@ window.addEventListener('storageReady', function(){
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     const rows = matches.map((r,i)=>{
-      // 商品詳細で手動設定した価格を優先、なければ計算値を使用
+      // 価格調整ルールを優先、固定価格フラグがある場合のみ商品登録値を使用
       const _prod = findProductForCatalogEntry(r);
-      const cost = (_prod && _prod._costManual && _prod.costPrice)
+      const cost = (_prod && _prod._fixedCost && _prod.costPrice)
         ? _prod.costPrice
         : computeCostPrice(r.b, r.m, r.w, r.t);
-      const sell = (_prod && _prod._sellManual && _prod.sellPrice)
+      const sell = (_prod && _prod._fixedSell && _prod.sellPrice)
         ? _prod.sellPrice
         : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
       const stock = stockForCatalogEntry(r);
@@ -3186,6 +3192,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_minstock').value = 0;
     document.getElementById('f_cost').value = '';
     document.getElementById('f_price').value = '';
+    document.getElementById('f_cost_fixed').checked = false;
+    document.getElementById('f_sell_fixed').checked = false;
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
@@ -3209,6 +3217,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_minstock').value = p.minStock;
     document.getElementById('f_cost').value = p.costPrice || '';
     document.getElementById('f_price').value = p.sellPrice || '';
+    document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
+    document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
     modal.classList.add('show');
@@ -3370,6 +3380,8 @@ window.addEventListener('storageReady', function(){
     const minStock = parseInt(document.getElementById('f_minstock').value || '0', 10);
     const costPrice = parseInt(document.getElementById('f_cost').value || '0', 10);
     const sellPrice = parseInt(document.getElementById('f_price').value || '0', 10);
+    const _fixedCost = document.getElementById('f_cost_fixed').checked;
+    const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const msgEl = document.getElementById('modalMsg');
 
     if(!name){
@@ -3389,15 +3401,9 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      // カタログ計算値と異なる場合のみ手動設定とみなす
-      const catEntry = findCatalogEntryForProduct({name, spec}) || findCatalogEntryForProduct(p);
-      const computedCost = catEntry ? computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t) : null;
-      const computedSell = catEntry ? (getEffectiveSellPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t) || computeSellPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t)) : null;
-      const _costManual = costPrice > 0 && (computedCost === null || costPrice !== computedCost);
-      const _sellManual = sellPrice > 0 && (computedSell === null || sellPrice !== computedSell);
-      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual, _sellManual});
+      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: false, _sellManual: false});
+      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell});
     }
     await saveProducts();
     renderCatTree();
