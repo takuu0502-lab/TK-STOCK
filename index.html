@@ -1597,7 +1597,8 @@ window.addEventListener('storageReady', function(){
   }
 
   function findByBarcode(code){
-    return products.find(p => p.barcode === code.trim());
+    const c = code.trim();
+    return products.find(p => p.barcode === c) || products.find(p => p.id === c);
   }
   function majorById(id){ return categories.find(c=>c.id===id); }
   function subById(majorId, subId){
