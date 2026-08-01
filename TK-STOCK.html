@@ -2040,7 +2040,7 @@ window.addEventListener('storageReady', function(){
       const cost = p.costPrice || 0;
       return '<tr data-manual-idx="'+i+'">'
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+i+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
-        + '<td style="color:var(--amber);font-weight:600;">'+escapeHtml(p.name)+'</td>'
+        + '<td style="color:var(--amber);font-weight:600;text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
         + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec)+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--text-2);">—</td>' : '')
         + '<td class="price-num" style="color:var(--text-2);">—</td>'
@@ -2063,6 +2063,11 @@ window.addEventListener('storageReady', function(){
       + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 
     wrap.appendChild(section);
+
+    // 商品名クリックで詳細編集
+    section.querySelectorAll('[data-manual-detail]').forEach(td => {
+      td.addEventListener('click', () => openProductDetail(td.dataset.manualDetail));
+    });
 
     // チェックボックスのイベント
     if(forceTire){
