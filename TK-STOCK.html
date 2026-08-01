@@ -1926,7 +1926,7 @@ window.addEventListener('storageReady', function(){
     const query = (useWidth||'') + aspectPart + (useInch||'');
     // ライトバン用(165R13等): 扁平率あり検索でも幅+インチのみパターンも試みる
     const queryAlt = (useWidth && useInch && aspectPart) ? (useWidth + useInch) : null;
-    let matches = getCatalog().filter(r => isItemVisible(r) && (!query || r.s.indexOf(query) !== -1 || (queryAlt && r.s.indexOf(queryAlt) !== -1)));
+    let matches = getCatalog().filter(r => (!forceTire || isItemVisible(r)) && (!query || r.s.indexOf(query) !== -1 || (queryAlt && r.s.indexOf(queryAlt) !== -1)));
     if(useModel){
       const [fb, fm] = useModel.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
