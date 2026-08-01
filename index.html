@@ -3535,6 +3535,7 @@ window.addEventListener('storageReady', function(){
   function renderHistory(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
+    list = list.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
     if(list.length === 0){
       el.innerHTML = '<div class="empty-state">まだ入出庫履歴がありません。</div>';
       return;
