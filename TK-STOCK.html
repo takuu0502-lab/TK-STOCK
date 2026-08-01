@@ -3310,7 +3310,11 @@ window.addEventListener('storageReady', function(){
         + '<div id="detailActionMsg"></div>'
         + '</div>'
       ) : '')
-      + (p.memo ? '<div style="margin:12px 0;padding:10px 14px;background:var(--bg-2);border-radius:8px;border-left:3px solid var(--amber);"><div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">備考・メモ</div><div style="font-size:13.5px;color:var(--text-1);white-space:pre-wrap;">'+escapeHtml(p.memo)+'</div></div>' : '')
+      + '<div style="margin:12px 0;padding:10px 14px;background:var(--bg-2);border-radius:8px;border-left:3px solid var(--amber);">'
+      + '<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">備考・メモ</div>'
+      + '<textarea id="detailMemo" rows="3" placeholder="メモを入力…" style="width:100%;resize:vertical;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13.5px;padding:7px 10px;box-sizing:border-box;"'+(writable?'':' readonly')+'>'+escapeHtml(p.memo||'')+'</textarea>'
+      + (writable ? '<div style="text-align:right;margin-top:6px;"><button class="btn btn-amber btn-sm" id="detailMemoSave">メモを保存</button></div>' : '')
+      + '</div>'
       + '<div class="detail-hist-title">入出庫履歴</div>'
       + '<div class="detail-hist-list">'+histHtml+'</div>';
 
@@ -3325,6 +3329,16 @@ window.addEventListener('storageReady', function(){
       });
       document.getElementById('detailStockIn').addEventListener('click', ()=> doDetailStockChange(id, 'in'));
       document.getElementById('detailStockOut').addEventListener('click', ()=> doDetailStockChange(id, 'out'));
+    }
+    if(writable){
+      document.getElementById('detailMemoSave').addEventListener('click', async ()=>{
+        const p2 = products.find(x=>x.id===id);
+        if(!p2) return;
+        p2.memo = document.getElementById('detailMemo').value.trim();
+        await saveProducts();
+        const btn = document.getElementById('detailMemoSave');
+        if(btn){ btn.textContent = '保存しました'; setTimeout(()=>{ if(btn) btn.textContent = 'メモを保存'; }, 1500); }
+      });
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
