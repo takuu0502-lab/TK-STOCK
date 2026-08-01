@@ -1940,7 +1940,11 @@ window.addEventListener('storageReady', function(){
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     const rows = matches.map((r,i)=>{
       const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-      const cost = computeCostPrice(r.b, r.m, r.w, r.t);
+      // 商品詳細で手動設定した仕入れ単価を優先、なければ計算値を使用
+      const _prod = findProductForCatalogEntry(r);
+      const cost = (_prod && _prod._costManual && _prod.costPrice)
+        ? _prod.costPrice
+        : computeCostPrice(r.b, r.m, r.w, r.t);
       const stock = stockForCatalogEntry(r);
       const cKey = r.b+'||'+r.m+'||'+r.s;
       const checked = catalogQuoteSelection.has(cKey);
@@ -3370,9 +3374,11 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice});
+      // 仕入れ単価が入力されている場合は手動設定フラグをON、0/空なら解除
+      const _costManual = costPrice > 0;
+      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice});
+      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: costPrice > 0});
     }
     await saveProducts();
     renderCatTree();
