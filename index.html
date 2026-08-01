@@ -472,6 +472,7 @@
       <button class="tab-btn" data-tab="pricing">価格調整</button>
     </div>
     <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes" style="display:none;">📋 保存済み見積</button>
       <button class="btn btn-ghost btn-sm" id="openSpecSearch">商品検索</button>
       <button class="btn btn-amber btn-sm" id="openAddProduct">＋ 新規商品登録</button>
       <button class="btn btn-amber btn-sm" id="quickScanBtn">スキャン</button>
@@ -492,10 +493,7 @@
   </div>
 
   <div class="panel" id="tab-estimate" style="display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-      <h2 class="section-title" style="margin:0;">タイヤ見積もり</h2>
-      <button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes" style="font-size:12px;">📋 保存済み見積</button>
-    </div>
+    <h2 class="section-title">タイヤ見積もり</h2>
     <div id="estimateSearchPanel"></div>
     <div id="estSelectionBar" style="margin-top:10px;"></div>
     <div id="estimateCatalogWrap" style="margin-top:10px;"></div>
@@ -1500,6 +1498,8 @@ window.addEventListener('storageReady', function(){
     ['list','estimate','in','out','history','pricing'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
     });
+    const savedQBtn = document.getElementById('estOpenSavedQuotes');
+    if(savedQBtn) savedQBtn.style.display = (tabName === 'estimate') ? 'inline-block' : 'none';
   }
 
   function showHomeState(){
