@@ -1801,7 +1801,8 @@ window.addEventListener('storageReady', function(){
   }
 
   let catalogQuoteSelection = new Map(); // key:"brand||model||size" → entry object（複数サイズ対応）
-  let showCostInList = true; // 在庫一覧の価格表で仕入れ価格を表示するか
+  let showCostInList = true;     // 在庫一覧の価格表で仕入れ価格を表示するか
+  let showCostInEstimate = true; // タイヤ見積タブで仕入れ価格を表示するか
 
   // 選択済みタイヤの常時表示バー（前後異サイズ対応）
   function renderEstSelectionBar(){
@@ -1914,7 +1915,7 @@ window.addEventListener('storageReady', function(){
     }
     matches.sort((a,b)=> (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja'));
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
-    const showCost = !isExternalUser() && (forceTire ? true : showCostInList);
+    const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     const rows = matches.map((r,i)=>{
       const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
       const cost = computeCostPrice(r.b, r.m, r.w, r.t);
@@ -2274,9 +2275,30 @@ window.addEventListener('storageReady', function(){
       html += '</div>';
     }
 
-    html += '<div class="spec-search-actions"><button class="btn btn-amber" id="estSearchGo">検索</button></div>';
+    html += '<div class="spec-search-actions" style="justify-content:space-between;align-items:center;">'
+      + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="showCostEstChk"'+(showCostInEstimate?' checked':'')+' style="width:15px;height:15px;accent-color:var(--amber);">'
+      + '仕入れ価格を表示'
+      + '</label>'
+      + '<button class="btn btn-amber" id="estSearchGo">検索</button>'
+      + '</div>';
     html += '</div>';
     panel.innerHTML = html;
+
+    // 仕入れ価格表示切り替え
+    document.getElementById('showCostEstChk').addEventListener('change', e=>{
+      showCostInEstimate = e.target.checked;
+      // 現在表示中のカタログを再描画
+      ['estimateCatalogWrap','estimateCatalogFront','estimateCatalogRear'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el && el.innerHTML) {
+          const lastOpts = id === 'estimateCatalogWrap' ? window._lastEstOpts : null;
+          if(lastOpts) renderPriceCatalog(lastOpts);
+        }
+      });
+      if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
+      if(window._lastEstRearOpts)  renderPriceCatalog(window._lastEstRearOpts);
+    });
 
     // チェックボックス切り替え
     document.getElementById('estDualModeChk').addEventListener('change', e=>{
@@ -2306,7 +2328,8 @@ window.addEventListener('storageReady', function(){
         document.getElementById('estimateCatalogWrap').innerHTML = '';
         const frontOpts = { targetId:'estimateCatalogFront', width:estFrontWidth, aspect:estFrontAspect, inch:estFrontInch, modelKey:null, label:'🔵 フロント' };
         const rearOpts  = { targetId:'estimateCatalogRear',  width:estRearWidth,  aspect:estRearAspect,  inch:estRearInch,  modelKey:null, label:'🔴 リア' };
-        window._lastEstOpts = frontOpts;
+        window._lastEstFrontOpts = frontOpts;
+        window._lastEstRearOpts  = rearOpts;
         renderPriceCatalog(frontOpts);
         renderPriceCatalog(rearOpts);
       } else {
