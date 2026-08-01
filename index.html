@@ -982,7 +982,8 @@ window.addEventListener('storageReady', function(){
     const modelKey = brand+'||'+model;
     const mr = priceRules.byModel && priceRules.byModel[modelKey];
     if(mr && (mr.percent > 0 || mr.basis === 'cost')) return mr;
-    if(priceRules.byBrand && priceRules.byBrand[brand]) return priceRules.byBrand[brand];
+    const br = priceRules.byBrand && priceRules.byBrand[brand];
+    if(br && (br.percent > 0 || br.basis === 'cost')) return br;
     return priceRules.default || {basis:'retail',percent:0};
   }
   function computeSellPrice(brand, model, wholesale, retail){
@@ -1150,9 +1151,9 @@ window.addEventListener('storageReady', function(){
   function costRuleFor(brand, model){
     const modelKey = brand+'||'+model;
     const mr = costRules.byModel && costRules.byModel[modelKey];
-    // percent=0かつcostベースでないモデルルールは「親設定を使う」とみなしてスキップ
     if(mr && (mr.percent > 0 || mr.basis === 'cost')) return mr;
-    if(costRules.byBrand && costRules.byBrand[brand]) return costRules.byBrand[brand];
+    const br = costRules.byBrand && costRules.byBrand[brand];
+    if(br && (br.percent > 0 || br.basis === 'cost')) return br;
     return costRules.default || {basis:'wholesale',percent:0};
   }
   function computeCostPrice(brand, model, wholesale, retail){
