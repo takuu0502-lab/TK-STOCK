@@ -1869,9 +1869,12 @@ window.addEventListener('storageReady', function(){
         const defaultQty = uniqueSizes2.size >= 2 ? 2 : 4;
         const groups = [];
         for(const r of selectedMatches){
+          const _rProd2 = r._productId ? null : findProductForCatalogEntry(r);
           const sell = r._productId
             ? (r._sellPrice || 0)
-            : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+            : (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
+              ? _rProd2.sellPrice
+              : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
         }
         quoteGroups = groups;
@@ -1939,12 +1942,14 @@ window.addEventListener('storageReady', function(){
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     const rows = matches.map((r,i)=>{
-      const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-      // 商品詳細で手動設定した仕入れ単価を優先、なければ計算値を使用
+      // 商品詳細で手動設定した価格を優先、なければ計算値を使用
       const _prod = findProductForCatalogEntry(r);
       const cost = (_prod && _prod._costManual && _prod.costPrice)
         ? _prod.costPrice
         : computeCostPrice(r.b, r.m, r.w, r.t);
+      const sell = (_prod && _prod._sellManual && _prod.sellPrice)
+        ? _prod.sellPrice
+        : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
       const stock = stockForCatalogEntry(r);
       const cKey = r.b+'||'+r.m+'||'+r.s;
       const checked = catalogQuoteSelection.has(cKey);
@@ -1990,9 +1995,12 @@ window.addEventListener('storageReady', function(){
         const defaultQty = uniqueSizes.size >= 2 ? 2 : 4;
         const groups = [];
         for(const r of selectedMatches){
+          const _rProd = r._productId ? null : findProductForCatalogEntry(r);
           const sell = r._productId
             ? (r._sellPrice || 0)
-            : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+            : (_rProd && _rProd._sellManual && _rProd.sellPrice)
+              ? _rProd.sellPrice
+              : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           if(opts && opts.targetId){
             groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
           } else {
@@ -3376,9 +3384,10 @@ window.addEventListener('storageReady', function(){
       const p = products.find(x=>x.id===editingId);
       // 仕入れ単価が入力されている場合は手動設定フラグをON、0/空なら解除
       const _costManual = costPrice > 0;
-      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual});
+      const _sellManual = sellPrice > 0;
+      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual, _sellManual});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: costPrice > 0});
+      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: costPrice > 0, _sellManual: sellPrice > 0});
     }
     await saveProducts();
     renderCatTree();
