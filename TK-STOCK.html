@@ -980,7 +980,8 @@ window.addEventListener('storageReady', function(){
   }
   function ruleFor(brand, model){
     const modelKey = brand+'||'+model;
-    if(priceRules.byModel && priceRules.byModel[modelKey]) return priceRules.byModel[modelKey];
+    const mr = priceRules.byModel && priceRules.byModel[modelKey];
+    if(mr && (mr.percent > 0 || mr.basis === 'cost')) return mr;
     if(priceRules.byBrand && priceRules.byBrand[brand]) return priceRules.byBrand[brand];
     return priceRules.default || {basis:'retail',percent:0};
   }
@@ -1113,8 +1114,9 @@ window.addEventListener('storageReady', function(){
         const percentEl = document.querySelector('[data-model-rule-percent="'+key+'"]');
         if(!basisEl) return;
         const basis = basisEl.value;
-        if(basis){
-          byModel[key] = {basis: basis, percent: Number(percentEl.value) || 0};
+        const pct = Number(percentEl.value) || 0;
+        if(basis && (pct > 0 || basis === 'cost')){
+          byModel[key] = {basis: basis, percent: pct};
         } else {
           delete byModel[key];
         }
@@ -1147,7 +1149,9 @@ window.addEventListener('storageReady', function(){
   }
   function costRuleFor(brand, model){
     const modelKey = brand+'||'+model;
-    if(costRules.byModel && costRules.byModel[modelKey]) return costRules.byModel[modelKey];
+    const mr = costRules.byModel && costRules.byModel[modelKey];
+    // percent=0かつcostベースでないモデルルールは「親設定を使う」とみなしてスキップ
+    if(mr && (mr.percent > 0 || mr.basis === 'cost')) return mr;
     if(costRules.byBrand && costRules.byBrand[brand]) return costRules.byBrand[brand];
     return costRules.default || {basis:'wholesale',percent:0};
   }
@@ -1245,8 +1249,10 @@ window.addEventListener('storageReady', function(){
         const percentEl = document.querySelector('[data-cost-model-rule-percent="'+key+'"]');
         if(!basisEl) return;
         const basis = basisEl.value;
-        if(basis){
-          byModel[key] = {basis: basis, percent: Number(percentEl.value) || 0};
+        const pct = Number(percentEl.value) || 0;
+        // basis未設定 or percent=0（かつcostベースでない）は「親設定を使う」とみなしてルール削除
+        if(basis && (pct > 0 || basis === 'cost')){
+          byModel[key] = {basis: basis, percent: pct};
         } else {
           delete byModel[key];
         }
