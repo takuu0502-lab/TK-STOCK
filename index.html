@@ -3166,7 +3166,8 @@ window.addEventListener('storageReady', function(){
     const catalogEntry = findCatalogEntryForProduct(p);
     let cost = p.costPrice || 0;
     let costIsAuto = false;
-    if(catalogEntry){
+    // 手入力の仕入れ原価が未設定の場合のみカタログから自動計算
+    if(!cost && catalogEntry){
       const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
       if(computed !== null){ cost = computed; costIsAuto = true; }
     }
