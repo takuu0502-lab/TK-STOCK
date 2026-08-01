@@ -589,6 +589,7 @@
     <div style="margin-top:18px;">
       <button class="btn btn-amber" id="saveCostPricingRules">仕入れ価格の設定を保存</button>
     </div>
+    <div id="costRuleDebug" style="margin-top:12px;font-size:12px;color:var(--text-2);background:var(--bg-2);border-radius:6px;padding:10px;display:none;"></div>
 
     <div class="pricing-section-divider"></div>
 
@@ -704,10 +705,16 @@
       <div class="field" style="flex:1;">
         <label>仕入れ原価（1点あたり・円）</label>
         <input type="number" id="f_cost" min="0" placeholder="例) 8000">
+        <label style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="f_cost_fixed"> この価格を固定（価格調整ルールを無視）
+        </label>
       </div>
       <div class="field" style="flex:1;">
         <label>販売価格（1点あたり・円）</label>
         <input type="number" id="f_price" min="0" placeholder="例) 12000">
+        <label style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="f_sell_fixed"> この価格を固定（価格調整ルールを無視）
+        </label>
       </div>
     </div>
     <div id="modalMsg"></div>
@@ -1166,10 +1173,15 @@ window.addEventListener('storageReady', function(){
 
   let expandedCostBrandModels = new Set();
 
+  function updateCostRuleDebug(){
+    // 診断は不要なので何もしない
+  }
+
   function renderCostBrandRules(){
     const wrap = document.getElementById('costBrandRulesList');
     document.getElementById('cr_default_basis').value = costRules.default.basis || 'wholesale';
     document.getElementById('cr_default_percent').value = costRules.default.percent || 0;
+    updateCostRuleDebug();
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = costRules.byBrand[brand];
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
@@ -1263,6 +1275,8 @@ window.addEventListener('storageReady', function(){
     costRules.byModel = byModel;
     await saveCostRules();
     document.getElementById('costPricingMsg').innerHTML = '<div class="msg msg-ok">仕入れ価格の設定を保存しました。</div>';
+    // デバッグ表示更新
+    updateCostRuleDebug();
     renderPriceCatalog();
   });
 
@@ -1456,6 +1470,12 @@ window.addEventListener('storageReady', function(){
         }
         p.subId = null;
         delete p.category;
+      }
+      // 旧 _costManual / _sellManual フラグを削除（_fixedCost / _fixedSell に移行済み）
+      if('_costManual' in p || '_sellManual' in p){
+        migrated = true;
+        delete p._costManual;
+        delete p._sellManual;
       }
     });
     if(migrated) await saveProducts();
@@ -1931,9 +1951,7 @@ window.addEventListener('storageReady', function(){
     }
     const aspectPart = (useAspect && useAspect !== 'NOASPECT') ? useAspect : '';
     const query = (useWidth||'') + aspectPart + (useInch||'');
-    // ライトバン用(165R13等): 扁平率あり検索でも幅+インチのみパターンも試みる
-    const queryAlt = (useWidth && useInch && aspectPart) ? (useWidth + useInch) : null;
-    let matches = getCatalog().filter(r => (!forceTire || isItemVisible(r)) && (!query || r.s.indexOf(query) !== -1 || (queryAlt && r.s.indexOf(queryAlt) !== -1)));
+    let matches = getCatalog().filter(r => (!forceTire || isItemVisible(r)) && (!query || r.s.indexOf(query) !== -1));
     if(useModel){
       const [fb, fm] = useModel.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
@@ -1949,14 +1967,10 @@ window.addEventListener('storageReady', function(){
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     const rows = matches.map((r,i)=>{
-      // 商品詳細で手動設定した価格を優先、なければ計算値を使用
+      // カタログ表示は常に価格調整ルールで計算（商品登録の個別価格は使用しない）
       const _prod = findProductForCatalogEntry(r);
-      const cost = (_prod && _prod._costManual && _prod.costPrice)
-        ? _prod.costPrice
-        : computeCostPrice(r.b, r.m, r.w, r.t);
-      const sell = (_prod && _prod._sellManual && _prod.sellPrice)
-        ? _prod.sellPrice
-        : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+      const cost = computeCostPrice(r.b, r.m, r.w, r.t);
+      const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
       const stock = stockForCatalogEntry(r);
       const cKey = r.b+'||'+r.m+'||'+r.s;
       const checked = catalogQuoteSelection.has(cKey);
@@ -2171,13 +2185,7 @@ window.addEventListener('storageReady', function(){
         selectedTireAspect === 'NOASPECT'
           // 扁平率なし専用フィルター: 幅の直後にRが来るサイズのみ
           ? /^\d+R\d+/.test(p.spec)
-          : (p.spec.indexOf(selectedTireAspect) !== -1 ||
-             // 扁平率あり検索でもライトバン用（165R13等）を含める
-             // インチ未選択でも幅だけで一致（"165R"を含むか）で判定
-             (selectedTireWidth && (
-               (selectedTireInch && p.spec.indexOf(selectedTireWidth + selectedTireInch) !== -1) ||
-               (!selectedTireInch && /^\d+R\d+/.test(p.spec) && p.spec.indexOf(selectedTireWidth) !== -1)
-             )))
+          : p.spec.indexOf(selectedTireAspect) !== -1
       ))) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
       return true;
@@ -3186,6 +3194,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_minstock').value = 0;
     document.getElementById('f_cost').value = '';
     document.getElementById('f_price').value = '';
+    document.getElementById('f_cost_fixed').checked = false;
+    document.getElementById('f_sell_fixed').checked = false;
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
@@ -3209,6 +3219,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_minstock').value = p.minStock;
     document.getElementById('f_cost').value = p.costPrice || '';
     document.getElementById('f_price').value = p.sellPrice || '';
+    document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
+    document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
     modal.classList.add('show');
@@ -3225,12 +3237,20 @@ window.addEventListener('storageReady', function(){
     const m = majorById(p.majorId);
     const s = p.subId ? subById(p.majorId, p.subId) : null;
     const catalogEntry = findCatalogEntryForProduct(p);
-    let cost = p.costPrice || 0;
+    let cost = 0;
     let costIsAuto = false;
-    // 手入力の仕入れ原価が未設定の場合のみカタログから自動計算
-    if(!cost && catalogEntry){
-      const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
-      if(computed !== null){ cost = computed; costIsAuto = true; }
+    if(catalogEntry){
+      // カタログ商品：固定フラグがある場合のみ登録価格を使用、それ以外は価格調整ルールで計算
+      if(p._fixedCost && p.costPrice){
+        cost = p.costPrice;
+      } else {
+        const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
+        if(computed !== null){ cost = computed; costIsAuto = true; }
+        else { cost = p.costPrice || 0; }
+      }
+    } else {
+      // 自社登録商品（カタログ外）：登録価格をそのまま使用
+      cost = p.costPrice || 0;
     }
     const sell = p.sellPrice || 0;
     const margin = (cost && sell) ? (sell - cost) : null;
@@ -3370,6 +3390,8 @@ window.addEventListener('storageReady', function(){
     const minStock = parseInt(document.getElementById('f_minstock').value || '0', 10);
     const costPrice = parseInt(document.getElementById('f_cost').value || '0', 10);
     const sellPrice = parseInt(document.getElementById('f_price').value || '0', 10);
+    const _fixedCost = document.getElementById('f_cost_fixed').checked;
+    const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const msgEl = document.getElementById('modalMsg');
 
     if(!name){
@@ -3389,15 +3411,9 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      // カタログ計算値と異なる場合のみ手動設定とみなす
-      const catEntry = findCatalogEntryForProduct({name, spec}) || findCatalogEntryForProduct(p);
-      const computedCost = catEntry ? computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t) : null;
-      const computedSell = catEntry ? (getEffectiveSellPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t) || computeSellPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t)) : null;
-      const _costManual = costPrice > 0 && (computedCost === null || costPrice !== computedCost);
-      const _sellManual = sellPrice > 0 && (computedSell === null || sellPrice !== computedSell);
-      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual, _sellManual});
+      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _costManual: false, _sellManual: false});
+      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell});
     }
     await saveProducts();
     renderCatTree();
