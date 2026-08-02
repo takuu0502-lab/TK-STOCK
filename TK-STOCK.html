@@ -3334,11 +3334,13 @@ window.addEventListener('storageReady', function(){
         throw new Error('APIから無効な応答が返されました。');
       }
       if(!res.ok){
-        const detail = data.message || data.error_description || data.localizedMessage || JSON.stringify(data);
+        const detail = data.message || data.error_description || data.localizedMessage || data._raw || JSON.stringify(data);
+        const debug = data._debug ? JSON.stringify(data._debug) : '';
         msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
           + 'Yahoo APIエラー (HTTP ' + (data._status || res.status) + ')<br>'
-          + '<span style="color:var(--text-3);font-size:11px;word-break:break-all;">' + escapeHtml(detail) + '</span><br>'
-          + '<button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
+          + '<span style="color:var(--text-3);font-size:11px;word-break:break-all;">' + escapeHtml(detail) + '</span>'
+          + (debug ? '<br><span style="color:var(--text-3);font-size:10px;word-break:break-all;">' + escapeHtml(debug) + '</span>' : '')
+          + '<br><button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
           + '</div>';
         document.getElementById('yahooResetBtn').addEventListener('click', async ()=>{
           await window.storage.set('yahooAppId', '', SHARED); lookupJan(code);
