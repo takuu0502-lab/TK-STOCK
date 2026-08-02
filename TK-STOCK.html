@@ -2376,9 +2376,11 @@ window.addEventListener('storageReady', function(){
       const color = gaugeColor(p.stock, p.minStock);
       const catEntry = findCatalogEntryForProduct(p);
       const brandName = catEntry ? catEntry.b : '';
+      const _pMajor = majorById(p.majorId);
+      const _isTire = _pMajor && _pMajor.name === 'タイヤ';
       const low = (p.minStock > 0 && p.stock <= p.minStock);
       return '<tr class="clickable-row" data-detail="'+p.id+'">'
-        + '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>'
+        + (!_isTire ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
         + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div></td>'
