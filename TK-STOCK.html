@@ -1039,9 +1039,10 @@ window.addEventListener('storageReady', function(){
   function ruleFor(brand, model){
     const modelKey = brand+'||'+model;
     const mr = priceRules.byModel && priceRules.byModel[modelKey];
-    if(mr && (mr.percent > 0 || mr.basis === 'cost')) return mr;
+    const _isSpecialBasis = b => b === 'cost' || b === 'retail_on' || b === 'wholesale_on';
+    if(mr && (mr.percent > 0 || _isSpecialBasis(mr.basis))) return mr;
     const br = priceRules.byBrand && priceRules.byBrand[brand];
-    if(br && (br.percent > 0 || br.basis === 'cost')) return br;
+    if(br && (br.percent > 0 || _isSpecialBasis(br.basis))) return br;
     return priceRules.default || {basis:'retail',percent:0};
   }
   function computeSellPrice(brand, model, wholesale, retail){
@@ -1052,9 +1053,10 @@ window.addEventListener('storageReady', function(){
       if(!cost) return null;
       return Math.round(cost * (1 + pct/100));
     }
-    const base = rule.basis === 'wholesale' ? wholesale : retail;
+    const base = (rule.basis === 'wholesale' || rule.basis === 'wholesale_on') ? wholesale : retail;
     if(!base) return null;
-    return Math.round(base * (1 - pct/100));
+    const isMarkup = rule.basis === 'retail_on' || rule.basis === 'wholesale_on';
+    return Math.round(base * (isMarkup ? (1 + pct/100) : (1 - pct/100)));
   }
 
   let expandedBrandModels = new Set();
@@ -1072,12 +1074,14 @@ window.addEventListener('storageReady', function(){
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
         + '<select data-rule-basis="'+escapeHtml(brand)+'">'
         + '<option value=""'+(!rule?' selected':'')+'>基本設定</option>'
-        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から</option>'
-        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から</option>'
-        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから</option>'
+        + '<option value="retail"'+(rule&&rule.basis==='retail'?' selected':'')+'>小売価格から（OFF）</option>'
+        + '<option value="retail_on"'+(rule&&rule.basis==='retail_on'?' selected':'')+'>小売価格から（乗せ）</option>'
+        + '<option value="wholesale"'+(rule&&rule.basis==='wholesale'?' selected':'')+'>A表から（OFF）</option>'
+        + '<option value="wholesale_on"'+(rule&&rule.basis==='wholesale_on'?' selected':'')+'>A表から（乗せ）</option>'
+        + '<option value="cost"'+(rule&&rule.basis==='cost'?' selected':'')+'>仕入れから（乗せ）</option>'
         + '</select>'
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
-        + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&rule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+        + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&(rule.basis==='cost'||rule.basis==='retail_on'||rule.basis==='wholesale_on'))?'% 乗せ':'% OFF')+'</span>'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
         + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+(isBrandVisible(brand)?' checked':'')+'>検索表示</label>'
         + '</div>';
@@ -1091,12 +1095,14 @@ window.addEventListener('storageReady', function(){
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-model-rule-basis="'+escapeHtml(key)+'">'
             + '<option value=""'+(!mrule?' selected':'')+'>ブランド設定</option>'
-            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から</option>'
-            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から</option>'
-            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから</option>'
+            + '<option value="retail"'+(mrule&&mrule.basis==='retail'?' selected':'')+'>小売価格から（OFF）</option>'
+            + '<option value="retail_on"'+(mrule&&mrule.basis==='retail_on'?' selected':'')+'>小売価格から（乗せ）</option>'
+            + '<option value="wholesale"'+(mrule&&mrule.basis==='wholesale'?' selected':'')+'>A表から（OFF）</option>'
+            + '<option value="wholesale_on"'+(mrule&&mrule.basis==='wholesale_on'?' selected':'')+'>A表から（乗せ）</option>'
+            + '<option value="cost"'+(mrule&&mrule.basis==='cost'?' selected':'')+'>仕入れから（乗せ）</option>'
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
-            + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&mrule.basis==='cost')?'% 乗せ':'% OFF')+'</span>'
+            + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&(mrule.basis==='cost'||mrule.basis==='retail_on'||mrule.basis==='wholesale_on'))?'% 乗せ':'% OFF')+'</span>'
             + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+(isModelVisible(brand,model)?' checked':'')+'>検索表示</label>'
             + '</div>';
         });
@@ -1136,7 +1142,7 @@ window.addEventListener('storageReady', function(){
         const row = this.closest('.brand-rule-row');
         if(!row) return;
         const lbl = row.querySelector('.pct-label');
-        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+        if(lbl) lbl.textContent = (this.value === 'cost' || this.value === 'retail_on' || this.value === 'wholesale_on') ? '% 乗せ' : '% OFF';
       });
     });
   }
@@ -1285,7 +1291,7 @@ window.addEventListener('storageReady', function(){
         const row = this.closest('.brand-rule-row');
         if(!row) return;
         const lbl = row.querySelector('.pct-label');
-        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+        if(lbl) lbl.textContent = (this.value === 'cost' || this.value === 'retail_on' || this.value === 'wholesale_on') ? '% 乗せ' : '% OFF';
       });
     });
   }
@@ -1362,9 +1368,10 @@ window.addEventListener('storageReady', function(){
       if(!cost) return null;
       return Math.round(cost * (1 + pct/100));
     }
-    const base = rule.basis === 'wholesale' ? wholesale : retail;
+    const base = (rule.basis === 'wholesale' || rule.basis === 'wholesale_on') ? wholesale : retail;
     if(!base) return null;
-    return Math.round(base * (1 - pct/100));
+    const isMarkup = rule.basis === 'retail_on' || rule.basis === 'wholesale_on';
+    return Math.round(base * (isMarkup ? (1 + pct/100) : (1 - pct/100)));
   }
   function getEffectiveSellPrice(brand, model, wholesale, retail){
     if(isExternalUser()) return computeExternalSellPrice(brand, model, wholesale, retail);
@@ -1430,7 +1437,7 @@ window.addEventListener('storageReady', function(){
         const row = this.closest('.brand-rule-row');
         if(!row) return;
         const lbl = row.querySelector('.pct-label');
-        if(lbl) lbl.textContent = this.value === 'cost' ? '% 乗せ' : '% OFF';
+        if(lbl) lbl.textContent = (this.value === 'cost' || this.value === 'retail_on' || this.value === 'wholesale_on') ? '% 乗せ' : '% OFF';
       });
     });
   }
@@ -3651,7 +3658,6 @@ window.addEventListener('storageReady', function(){
 
     document.getElementById('productDetailBody').innerHTML = ''
       + '<div class="detail-header">'
-      + (p.brand ? '<div style="font-size:12px;font-weight:600;color:var(--amber);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">'+escapeHtml(p.brand)+'</div>' : '')
       + '<div class="detail-name">'+escapeHtml(cleanName(p.name))+'</div>'
       + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
       + (p.supplierId && suppliers.find(s=>s.id===p.supplierId) ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">🏢 仕入先：'+escapeHtml(suppliers.find(s=>s.id===p.supplierId).name)+'</div>' : '')
