@@ -3142,46 +3142,27 @@ window.addEventListener('storageReady', function(){
     // 写真スキャンボタンを常に表示（iPhone推奨）
     addPhotoScanButton(wrap, onDecoded);
 
-    // QuaggaJS ライブスキャン
-    if(typeof Quagga !== 'undefined' && navigator.mediaDevices){
+    // Html5Qrcode ライブスキャン（QRコード＋バーコード両対応）
+    if(typeof Html5Qrcode !== 'undefined' && navigator.mediaDevices){
       let detected = false;
       return new Promise(resolve => {
-        Quagga.init({
-          inputStream: {
-            name: 'Live',
-            type: 'LiveStream',
-            target: document.getElementById(readerId),
-            constraints: { facingMode: 'environment', width: { ideal:1920 }, height: { ideal:1080 } }
-          },
-          locator: { patchSize: 'large', halfSample: false },
-          numOfWorkers: 0,
-          frequency: 10,
-          decoder: {
-            readers: ['ean_reader','ean_8_reader','code_128_reader',
-                      'upc_reader','upc_e_reader','code_39_reader'],
-            multiple: false
-          },
-          locate: true
-        }, err => {
-          if(err){
-            // Quaggaが失敗しても写真スキャンボタンは残す
-            resolve(null);
-            return;
-          }
-          Quagga.start();
-          Quagga.onDetected(result => {
+        const scanner = new Html5Qrcode(readerId);
+        scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+          (decodedText) => {
             if(detected) return;
-            const code = result && result.codeResult && result.codeResult.code;
-            if(code && code.length >= 8){
-              detected = true;
-              Quagga.offDetected();
-              onDecoded(code);
-            }
-          });
+            detected = true;
+            onDecoded(decodedText);
+          },
+          () => {}
+        ).then(() => {
           resolve({
-            stop: ()=> new Promise(r=>{ try{ Quagga.stop(); }catch(_){} r(); }),
-            clear: ()=>{}
+            stop: ()=> scanner.stop().catch(()=>{}),
+            clear: ()=>{ try{ scanner.clear(); }catch(_){} }
           });
+        }).catch(() => {
+          resolve(null);
         });
       });
     }
