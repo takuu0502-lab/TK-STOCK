@@ -3319,40 +3319,23 @@ window.addEventListener('storageReady', function(){
       return;
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
-
-    function showResetIdMsg(detail){
-      msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
-        + 'Yahoo! Client IDが無効です。IDをリセットして再入力してください。<br>'
-        + '<span style="color:var(--text-3);font-size:11px;">' + escapeHtml(detail) + '</span><br>'
-        + '<button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
-        + '</div>';
-      document.getElementById('yahooResetBtn').addEventListener('click', ()=>{
-        localStorage.removeItem('yahooAppId');
-        lookupJan(code);
-      });
-    }
-
     try {
-      const url = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch'
-        + '?appid=' + encodeURIComponent(appId)
-        + '&jan_code=' + encodeURIComponent(code)
-        + '&results=1';
-      let res, text;
-      try {
-        res = await fetch(url);
-        text = await res.text();
-      } catch(fetchErr){
-        showResetIdMsg('通信エラー：' + fetchErr.message);
-        return;
-      }
+      const res = await fetch('/api/lookup?jan=' + encodeURIComponent(code) + '&appid=' + encodeURIComponent(appId));
+      const text = await res.text();
       let data;
       try { data = JSON.parse(text); } catch(_){
-        showResetIdMsg('APIからJSONが取得できませんでした。');
-        return;
+        throw new Error('APIから無効な応答が返されました。');
       }
       if(!res.ok){
         const detail = data.message || data.error_description || data.localizedMessage || ('HTTP ' + res.status);
-        showResetIdMsg(detail);
+        msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
+          + 'Client IDが無効です。リセットして再入力してください。<br>'
+          + '<span style="color:var(--text-3);font-size:11px;">' + escapeHtml(detail) + '</span><br>'
+          + '<button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
+          + '</div>';
+        document.getElementById('yahooResetBtn').addEventListener('click', ()=>{
+          localStorage.removeItem('yahooAppId'); lookupJan(code);
+        });
         return;
       }
       const hits = data.hits || [];
@@ -3365,7 +3348,7 @@ window.addEventListener('storageReady', function(){
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報はYahoo!ショッピングに登録されていません。手動で入力してください。</div>';
       }
     } catch(e) {
-      showResetIdMsg(e.message);
+      msgEl.innerHTML = '<div class="msg msg-error">APIエラー：'+escapeHtml(e.message)+'</div>';
     }
   }
 
