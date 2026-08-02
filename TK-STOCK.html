@@ -3318,7 +3318,7 @@ window.addEventListener('storageReady', function(){
       msgEl.innerHTML = '<div class="msg msg-error">8桁以上のコードを入力してください。</div>';
       return;
     }
-    const appId = await window.storage.get('yahooAppId') || '';
+    const appId = await window.storage.get('yahooAppId', SHARED) || '';
     if(!appId){
       msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-2);">'
         + '<b>Yahoo! Client IDを設定してください</b><br>'
@@ -3341,7 +3341,7 @@ window.addEventListener('storageReady', function(){
           + '<button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
           + '</div>';
         document.getElementById('yahooResetBtn').addEventListener('click', async ()=>{
-          await window.storage.set('yahooAppId', ''); lookupJan(code);
+          await window.storage.set('yahooAppId', '', SHARED); lookupJan(code);
         });
         return;
       }
@@ -4098,17 +4098,17 @@ window.addEventListener('storageReady', function(){
 
   // ---------- Yahoo appid 設定（Firebase共有） ----------
   (async function(){
-    const saved = await window.storage.get('yahooAppId') || '';
+    const saved = await window.storage.get('yahooAppId', SHARED) || '';
     const input = document.getElementById('yahooAppIdInput');
     if(input && saved) input.value = saved;
   })();
   document.getElementById('saveYahooAppId').addEventListener('click', async ()=>{
     const val = document.getElementById('yahooAppIdInput').value.trim();
     if(val){
-      await window.storage.set('yahooAppId', val);
+      await window.storage.set('yahooAppId', val, SHARED);
       document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--green,#4caf50);">✓ 保存しました（全端末に反映）</span>';
     } else {
-      await window.storage.set('yahooAppId', '');
+      await window.storage.set('yahooAppId', '', SHARED);
       document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--text-3);">削除しました</span>';
     }
     setTimeout(()=>{ document.getElementById('yahooAppIdMsg').innerHTML = ''; }, 3000);
