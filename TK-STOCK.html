@@ -963,6 +963,7 @@ window.addEventListener('storageReady', function(){
   let transactions = [];
   let categories = [];
   let editingId = null;
+  let janDict = {};
   let accounts = [];
   let currentUser = null;
 
@@ -3307,6 +3308,22 @@ window.addEventListener('storageReady', function(){
       .trim();
   }
 
+  // ---------- JANコード辞書（自己学習型） ----------
+  async function loadJanDict(){
+    try {
+      const r = await window.storage.get('janDict', SHARED);
+      janDict = (r && typeof r === 'object' && !Array.isArray(r)) ? r
+              : (r && typeof r === 'string') ? JSON.parse(r)
+              : {};
+    } catch(_){ janDict = {}; }
+  }
+  async function saveToJanDict(janCode, data){
+    if(!janCode || janCode.length < 8) return;
+    janDict[janCode] = Object.assign(janDict[janCode] || {}, data);
+    try { await window.storage.set('janDict', janDict, SHARED); } catch(_){}
+  }
+  loadJanDict();
+
   // ---------- JANコードルックアップ ----------
   async function lookupJan(code){
     const msgEl = document.getElementById('janLookupMsg');
@@ -3314,14 +3331,27 @@ window.addEventListener('storageReady', function(){
       msgEl.innerHTML = '<div class="msg msg-error">8桁以上のコードを入力してください。</div>';
       return;
     }
-    // まず既存商品から検索
+    // 既存登録商品から検索
     const found = findByBarcode(code);
     if(found){
-      msgEl.innerHTML = '<div class="msg msg-ok">商品が見つかりました：<b>'+escapeHtml(cleanName(found.name))+'</b></div>';
+      msgEl.innerHTML = '<div class="msg msg-ok">登録済み商品：<b>'+escapeHtml(cleanName(found.name))+'</b></div>';
       if(!document.getElementById('f_name').value) document.getElementById('f_name').value = cleanName(found.name);
       return;
     }
-    msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-2);">商品が見つかりませんでした。商品名を手動で入力してください。</div>';
+    // JANコード辞書から検索
+    const dictEntry = janDict[code];
+    if(dictEntry && dictEntry.name){
+      if(!document.getElementById('f_name').value) document.getElementById('f_name').value = dictEntry.name;
+      if(dictEntry.spec && !document.getElementById('f_spec').value) document.getElementById('f_spec').value = dictEntry.spec;
+      if(dictEntry.majorId){
+        populateMajorSelect(dictEntry.majorId);
+        if(dictEntry.subId) populateSubSelect(dictEntry.majorId, dictEntry.subId);
+        toggleTireNameField();
+      }
+      msgEl.innerHTML = '<div class="msg msg-ok">📖 辞書から自動入力しました：<b>'+escapeHtml(dictEntry.name)+'</b></div>';
+      return;
+    }
+    msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-3);">新しい商品です。商品名を入力して保存すると次回から自動入力されます。</div>';
     return;
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
@@ -3632,6 +3662,10 @@ window.addEventListener('storageReady', function(){
       Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
       products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+    }
+    // JANコード辞書に自動保存
+    if(barcode && /^\d{8,}$/.test(barcode)){
+      await saveToJanDict(barcode, {name, spec, majorId, subId});
     }
     await saveProducts();
     renderCatTree();
