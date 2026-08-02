@@ -655,13 +655,15 @@
 
     <div class="pricing-section-title">API設定</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">
-      JANコードから商品名を自動入力するために、楽天APIのアプリケーションIDを設定してください。<br>
-      取得先：<a href="https://webservice.rakuten.co.jp/" target="_blank" style="color:var(--amber);">webservice.rakuten.co.jp</a>（無料・楽天アカウントがあれば即取得可能）<br>
-      「アプリ登録」→ アプリ名・URLを入力 → <b>アプリID（applicationId）</b>をコピー
+      JANコードから商品名を自動入力するために、楽天APIの認証情報を設定してください。<br>
+      取得先：<a href="https://webservice.rakuten.co.jp/app/list" target="_blank" style="color:var(--amber);">webservice.rakuten.co.jp</a> →「詳細を見る」→ アプリケーションID・アクセスキーをコピー
     </p>
-    <div style="display:flex;gap:8px;align-items:center;max-width:480px;">
-      <input type="text" id="yahooAppIdInput" placeholder="楽天 アプリケーションID" style="flex:1;font-size:13px;">
-      <button class="btn btn-amber btn-sm" id="saveYahooAppId">保存</button>
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:480px;">
+      <input type="text" id="yahooAppIdInput" placeholder="アプリケーションID（例：94afef5f-...）" style="font-size:13px;width:100%;box-sizing:border-box;">
+      <input type="text" id="rakutenAccessKeyInput" placeholder="アクセスキー（例：pk_rBnX4f...）" style="font-size:13px;width:100%;box-sizing:border-box;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-amber btn-sm" id="saveYahooAppId">保存</button>
+      </div>
     </div>
     <div id="yahooAppIdMsg" style="margin-top:6px;font-size:12px;"></div>
 
@@ -3312,7 +3314,7 @@ window.addEventListener('storageReady', function(){
       .trim();
   }
 
-  // ---------- JANコードルックアップ (楽天商品検索API) ----------
+  // ---------- JANコードルックアップ (楽天商品検索API 2026-04-01) ----------
   async function lookupJan(code){
     const msgEl = document.getElementById('janLookupMsg');
     if(!code || code.length < 8){
@@ -3320,17 +3322,20 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const appId = await window.storage.get('yahooAppId', SHARED) || '';
-    if(!appId){
+    const accessKey = await window.storage.get('rakutenAccessKey', SHARED) || '';
+    if(!appId || !accessKey){
       msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-2);">'
-        + '<b>楽天アプリケーションIDを設定してください</b><br>'
-        + '設定画面のAPI設定欄に入力して保存してください。';
+        + '<b>楽天APIの認証情報を設定してください</b><br>'
+        + '設定画面のAPI設定欄でアプリケーションIDとアクセスキーを入力して保存してください。';
       return;
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706'
+      const res = await fetch('https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401'
         + '?format=json'
+        + '&formatVersion=2'
         + '&applicationId=' + encodeURIComponent(appId)
+        + '&accessKey=' + encodeURIComponent(accessKey)
         + '&keyword=' + encodeURIComponent(code)
         + '&hits=1');
       const text = await res.text();
@@ -3342,15 +3347,17 @@ window.addEventListener('storageReady', function(){
         const detail = data.error_description || data.message || ('HTTP ' + res.status);
         msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
           + 'APIエラー：' + escapeHtml(detail) + '<br>'
-          + '<button id="rakutenResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">アプリIDをリセット</button>'
+          + '<button id="rakutenResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">認証情報をリセット</button>'
           + '</div>';
         document.getElementById('rakutenResetBtn').addEventListener('click', async ()=>{
-          await window.storage.set('yahooAppId', '', SHARED); lookupJan(code);
+          await window.storage.set('yahooAppId', '', SHARED);
+          await window.storage.set('rakutenAccessKey', '', SHARED);
+          lookupJan(code);
         });
         return;
       }
       const items = data.Items || [];
-      const item = items[0] && items[0].Item;
+      const item = items[0];
       const rawName = item && item.itemName;
       const itemName = rawName ? cleanYahooName(rawName) : null;
       if(itemName){
@@ -4100,19 +4107,23 @@ window.addEventListener('storageReady', function(){
         + '</div>').join('');
   }
 
-  // ---------- Yahoo appid 設定（Firebase共有） ----------
+  // ---------- 楽天API設定（Firebase共有） ----------
   (async function(){
-    const saved = await window.storage.get('yahooAppId', SHARED) || '';
-    const input = document.getElementById('yahooAppIdInput');
-    if(input && saved) input.value = saved;
+    const appId = await window.storage.get('yahooAppId', SHARED) || '';
+    const accessKey = await window.storage.get('rakutenAccessKey', SHARED) || '';
+    const appIdInput = document.getElementById('yahooAppIdInput');
+    const accessKeyInput = document.getElementById('rakutenAccessKeyInput');
+    if(appIdInput && appId) appIdInput.value = appId;
+    if(accessKeyInput && accessKey) accessKeyInput.value = accessKey;
   })();
   document.getElementById('saveYahooAppId').addEventListener('click', async ()=>{
-    const val = document.getElementById('yahooAppIdInput').value.trim();
-    if(val){
-      await window.storage.set('yahooAppId', val, SHARED);
+    const appId = document.getElementById('yahooAppIdInput').value.trim();
+    const accessKey = document.getElementById('rakutenAccessKeyInput').value.trim();
+    await window.storage.set('yahooAppId', appId, SHARED);
+    await window.storage.set('rakutenAccessKey', accessKey, SHARED);
+    if(appId && accessKey){
       document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--green,#4caf50);">✓ 保存しました（全端末に反映）</span>';
     } else {
-      await window.storage.set('yahooAppId', '', SHARED);
       document.getElementById('yahooAppIdMsg').innerHTML = '<span style="color:var(--text-3);">削除しました</span>';
     }
     setTimeout(()=>{ document.getElementById('yahooAppIdMsg').innerHTML = ''; }, 3000);
