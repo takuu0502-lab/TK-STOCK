@@ -1180,7 +1180,7 @@ window.addEventListener('storageReady', function(){
         if(!basisEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
-        if(basis && (pct > 0 || basis === 'cost')){
+        if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
           byModel[key] = {basis: basis, percent: pct};
         } else {
           delete byModel[key];
@@ -1321,7 +1321,7 @@ window.addEventListener('storageReady', function(){
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
         // basis未設定 or percent=0（かつcostベースでない）は「親設定を使う」とみなしてルール削除
-        if(basis && (pct > 0 || basis === 'cost')){
+        if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
           byModel[key] = {basis: basis, percent: pct};
         } else {
           delete byModel[key];
@@ -2106,7 +2106,7 @@ window.addEventListener('storageReady', function(){
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
         + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
         + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
-        + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+r.w.toLocaleString('ja-JP')+'</td>' : '')
+        + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b==='SEIBERLING' ? '—' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
         + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost!==null ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</td>' : '')
         + '<td class="price-num" style="color:var(--amber);">'+(sell!==null ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</td>'
