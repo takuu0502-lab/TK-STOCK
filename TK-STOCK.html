@@ -3188,18 +3188,34 @@ window.addEventListener('storageReady', function(){
 
           await video.play();
 
+          let quaggaBusy = false;
           function tick(){
             if(detected) return;
             if(video.readyState === video.HAVE_ENOUGH_DATA){
               canvas.width = video.videoWidth;
               canvas.height = video.videoHeight;
               ctx.drawImage(video, 0, 0);
+
+              // QRコード（jsQR）
               const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-              if(code && code.data){
-                detected = true;
-                onDecoded(code.data);
-                return;
+              const qr = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+              if(qr && qr.data){ detected = true; onDecoded(qr.data); return; }
+
+              // バーコード（Quagga）
+              if(!quaggaBusy && typeof Quagga !== 'undefined'){
+                quaggaBusy = true;
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                Quagga.decodeSingle({
+                  src: dataUrl, numOfWorkers: 0, locate: true,
+                  inputStream: { size: 800 },
+                  decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader'] }
+                }, result => {
+                  quaggaBusy = false;
+                  if(!detected && result && result.codeResult && result.codeResult.code){
+                    detected = true;
+                    onDecoded(result.codeResult.code);
+                  }
+                });
               }
             }
             rafId = requestAnimationFrame(tick);
