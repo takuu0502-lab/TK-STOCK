@@ -4392,72 +4392,115 @@ window.addEventListener('storageReady', function(){
     reader.onload = function(e){
       try{
         const wb = XLSX.read(e.target.result, {type:'array'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
 
-        // ヘッダー行をスキップして商品データを抽出
-        // サイズ列（/RまたはR含む文字列）と価格列（数値または文字列数値）を自動検出
-        const items = [];
-
-        // 数値または文字列（「9,800」「¥9800」等）を数値に変換するヘルパー
-        function toNum(v){
-          if(typeof v === 'number') return v;
-          if(typeof v === 'string'){
-            const n = Number(v.replace(/[¥,\s]/g,''));
-            if(!isNaN(n)) return n;
-          }
-          return null;
-        }
-
-        for(const row of rows){
-          if(!row || row.every(c=>c===null)) continue;
-          let sizeVal = null;
-          let priceVal = null;
-          let modelVal = null;
-
-          // サイズ文字列を探す（例: 195/65R15、▲付きも対応）
-          for(let i=0;i<row.length;i++){
-            const v = row[i];
-            if(v !== null && /\d+\/\d+R\d+/.test(String(v))) {
-              // サイズ部分だけ抽出（▲などのプレフィックスを除去）
-              const m = String(v).match(/\d+\/\d+R\d+[A-Z0-9]*/);
-              if(m) sizeVal = m[0];
+        // ── ブリヂストンA表形式の検出 ──
+        function isBridgestoneFormat(wb){
+          for(const sn of wb.SheetNames){
+            const ws = wb.Sheets[sn];
+            const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, range:0});
+            for(const row of (rows||[]).slice(0,5)){
+              if((row||[]).some(c=>typeof c==='string' && c.includes('ブリヂストン'))) return true;
             }
           }
+          return false;
+        }
 
-          // モデル名を探す（英数字2〜15文字、スラッシュなし、数字のみは除外）
-          for(let i=0;i<row.length;i++){
-            const v = row[i];
-            if(typeof v === 'string'){
-              const t = v.trim();
-              if(/^[A-Za-z][A-Za-z0-9\-_ ]{1,14}$/.test(t) && !/\//.test(t) && !/^\d+$/.test(t)){
-                modelVal = t;
+        // ── ブリヂストンA表専用パーサー（全シート対応）──
+        function parseBridgestone(wb){
+          const items = [];
+          for(const sn of wb.SheetNames){
+            if(!sn.startsWith('P_')) continue;
+            const ws = wb.Sheets[sn];
+            const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+            // '商品名'が列2にある行をモデルヘッダー行として検出
+            let modelRowIdx = -1;
+            const modelMap = {}; // colIdx -> modelName
+            for(let ri=0; ri<Math.min(15, rows.length); ri++){
+              const row = rows[ri];
+              if(row && String(row[2]||'').trim()==='商品名'){
+                modelRowIdx = ri;
+                for(let ci=3; ci<row.length; ci++){
+                  const v = row[ci];
+                  if(typeof v==='string' && v.trim() && v.trim()!=='メ希'){
+                    modelMap[ci] = v.trim();
+                  }
+                }
+                break;
+              }
+            }
+            if(modelRowIdx<0 || Object.keys(modelMap).length===0) continue;
+            // データ行をスキャン
+            for(let ri=modelRowIdx+1; ri<rows.length; ri++){
+              const row = rows[ri];
+              if(!row) continue;
+              // 列2からタイヤサイズ抽出
+              const sv = String(row[2]||'');
+              const sm = sv.match(/(\d+\/\d+R\d+[A-Z0-9]*)/);
+              if(!sm) continue;
+              const size = sm[1];
+              // 各モデル列の次の列から卸価格を取得
+              for(const [ciStr, modelName] of Object.entries(modelMap)){
+                const ci = parseInt(ciStr);
+                const priceV = row[ci+1];
+                if(typeof priceV==='number' && priceV>=1000 && priceV<=500000){
+                  items.push({s:size, m:modelName, b:'ブリヂストン', w:Math.round(priceV), t:null});
+                }
               }
             }
           }
+          return items;
+        }
 
-          // 価格を最後の数値（または文字列数値）から取得
-          for(let i=row.length-1;i>=0;i--){
-            const v = row[i];
-            const n = toNum(v);
-            if(n !== null && n > 1000 && n < 500000){ priceVal = n; break; }
+        let items = [];
+        let isBs = isBridgestoneFormat(wb);
+
+        if(isBs){
+          items = parseBridgestone(wb);
+          document.getElementById('importBrandName').value = 'ブリヂストン';
+        } else {
+          // 汎用パーサー（既存ロジック）
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+          function toNum(v){
+            if(typeof v==='number') return v;
+            if(typeof v==='string'){ const n=Number(v.replace(/[¥,\s]/g,'')); if(!isNaN(n)) return n; }
+            return null;
           }
-
-          if(sizeVal && priceVal){
-            // modelValがなければ空文字（ブランド名で代替）
-            items.push({s: sizeVal, m: modelVal || '', w: priceVal, t: null});
+          for(const row of rows){
+            if(!row || row.every(c=>c===null)) continue;
+            let sizeVal=null, priceVal=null, modelVal=null;
+            for(let i=0;i<row.length;i++){
+              const v=row[i];
+              if(v!==null && /\d+\/\d+R\d+/.test(String(v))){
+                const m=String(v).match(/\d+\/\d+R\d+[A-Z0-9]*/);
+                if(m) sizeVal=m[0];
+              }
+            }
+            for(let i=0;i<row.length;i++){
+              const v=row[i];
+              if(typeof v==='string'){
+                const t=v.trim();
+                if(/^[A-Za-z][A-Za-z0-9\-_ ]{1,14}$/.test(t) && !/\//.test(t) && !/^\d+$/.test(t)) modelVal=t;
+              }
+            }
+            for(let i=row.length-1;i>=0;i--){
+              const n=toNum(row[i]);
+              if(n!==null && n>1000 && n<500000){ priceVal=n; break; }
+            }
+            if(sizeVal && priceVal) items.push({s:sizeVal, m:modelVal||'', w:priceVal, t:null});
           }
         }
 
         parsedImportData = items;
         if(items.length > 0){
-          // ブランド名の自動補完（タイトル行から推測）
-          const titleRow = rows.find(r=>r&&r.some(c=>c&&typeof c==='string'&&c.length>3));
-          if(titleRow && !document.getElementById('importBrandName').value){
-            for(const c of titleRow){
-              if(typeof c==='string'){
-                const match = c.match(/([A-Z]{3,})/);
-                if(match){ document.getElementById('importBrandName').value = match[1]; break; }
+          if(!isBs){
+            // 汎用：ブランド名の自動補完
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+            const titleRow = rows.find(r=>r&&r.some(c=>c&&typeof c==='string'&&c.length>3));
+            if(titleRow && !document.getElementById('importBrandName').value){
+              for(const c of titleRow){
+                if(typeof c==='string'){ const match=c.match(/([A-Z]{3,})/); if(match){ document.getElementById('importBrandName').value=match[1]; break; } }
               }
             }
           }
