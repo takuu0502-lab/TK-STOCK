@@ -3296,6 +3296,21 @@ window.addEventListener('storageReady', function(){
   });
   document.getElementById('f_major').addEventListener('change', toggleTireNameField);
 
+  // ---------- Yahoo商品名クリーニング ----------
+  function cleanYahooName(name){
+    return name
+      // 【】〔〕[]《》内の販促文字を除去
+      .replace(/[【〔\[《][^【〔\[《】〕\]》]*?(送料無料|ポイント|セール|特価|在庫|あす楽|即納|新品|正規品|保証|キャンペーン|クーポン|割引|OFF|off|SALE|sale|円引|プレゼント|ギフト|ラッピング|限定|今だけ|期間|激安|最安|お買い得|まとめ買い|代引|税込|税抜|送料)[^【〔\[《】〕\]》]*?[】〕\]》]/g, '')
+      // 残った単独の販促ワード
+      .replace(/送料無料|ポイント\d+倍?|あす楽|即納|在庫あり|新品|〔[^〕]*〕/g, '')
+      // 先頭・末尾の記号・スペース
+      .replace(/^[\s　！!★☆◆◇■□●○▼▲×※・,，/／\-—]+/, '')
+      .replace(/[\s　！!★☆◆◇■□●○▼▲×※・,，/／\-—]+$/, '')
+      // 連続スペース
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
   // ---------- JANコードルックアップ (Yahoo!ショッピングAPI) ----------
   async function lookupJan(code){
     const msgEl = document.getElementById('janLookupMsg');
@@ -3327,10 +3342,10 @@ window.addEventListener('storageReady', function(){
         throw new Error('APIから無効な応答が返されました。');
       }
       if(!res.ok){
-        const detail = data.message || data.error_description || data.localizedMessage || ('HTTP ' + res.status);
+        const detail = data.message || data.error_description || data.localizedMessage || JSON.stringify(data);
         msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
-          + 'Client IDが無効です。リセットして再入力してください。<br>'
-          + '<span style="color:var(--text-3);font-size:11px;">' + escapeHtml(detail) + '</span><br>'
+          + 'Yahoo APIエラー (HTTP ' + (data._status || res.status) + ')<br>'
+          + '<span style="color:var(--text-3);font-size:11px;word-break:break-all;">' + escapeHtml(detail) + '</span><br>'
           + '<button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
           + '</div>';
         document.getElementById('yahooResetBtn').addEventListener('click', ()=>{
@@ -3340,7 +3355,8 @@ window.addEventListener('storageReady', function(){
       }
       const hits = data.hits || [];
       const item = Array.isArray(hits) ? hits[0] : null;
-      const itemName = item && item.name;
+      const rawName = item && item.name;
+      const itemName = rawName ? cleanYahooName(rawName) : null;
       if(itemName){
         if(!document.getElementById('f_name').value) document.getElementById('f_name').value = itemName;
         msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(itemName)+'</b></div>';
