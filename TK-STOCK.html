@@ -655,11 +655,12 @@
 
     <div class="pricing-section-title">API設定</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">
-      JANコードから商品名を自動入力するために、Yahoo!ショッピングAPIのClient IDを設定してください。<br>
-      取得先：<a href="https://developer.yahoo.co.jp/" target="_blank" style="color:var(--amber);">developer.yahoo.co.jp</a>（無料・Yahooアカウントがあれば即取得可能）
+      JANコードから商品名を自動入力するために、楽天APIのアプリケーションIDを設定してください。<br>
+      取得先：<a href="https://webservice.rakuten.co.jp/" target="_blank" style="color:var(--amber);">webservice.rakuten.co.jp</a>（無料・楽天アカウントがあれば即取得可能）<br>
+      「アプリ登録」→ アプリ名・URLを入力 → <b>アプリID（applicationId）</b>をコピー
     </p>
     <div style="display:flex;gap:8px;align-items:center;max-width:480px;">
-      <input type="text" id="yahooAppIdInput" placeholder="Yahoo! Client ID（アプリケーションID）" style="flex:1;font-size:13px;">
+      <input type="text" id="yahooAppIdInput" placeholder="楽天 アプリケーションID" style="flex:1;font-size:13px;">
       <button class="btn btn-amber btn-sm" id="saveYahooAppId">保存</button>
     </div>
     <div id="yahooAppIdMsg" style="margin-top:6px;font-size:12px;"></div>
@@ -3311,7 +3312,7 @@ window.addEventListener('storageReady', function(){
       .trim();
   }
 
-  // ---------- JANコードルックアップ (Yahoo!ショッピングAPI) ----------
+  // ---------- JANコードルックアップ (楽天商品検索API) ----------
   async function lookupJan(code){
     const msgEl = document.getElementById('janLookupMsg');
     if(!code || code.length < 8){
@@ -3321,44 +3322,42 @@ window.addEventListener('storageReady', function(){
     const appId = await window.storage.get('yahooAppId', SHARED) || '';
     if(!appId){
       msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-2);">'
-        + '<b>Yahoo! Client IDを設定してください</b><br>'
-        + '設定画面のYahoo! Client ID欄に入力して保存してください。';
+        + '<b>楽天アプリケーションIDを設定してください</b><br>'
+        + '設定画面のAPI設定欄に入力して保存してください。';
       return;
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch'
-        + '?appid=' + encodeURIComponent(appId)
-        + '&jan_code=' + encodeURIComponent(code)
-        + '&results=1');
+      const res = await fetch('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706'
+        + '?format=json'
+        + '&applicationId=' + encodeURIComponent(appId)
+        + '&keyword=' + encodeURIComponent(code)
+        + '&hits=1');
       const text = await res.text();
       let data;
       try { data = JSON.parse(text); } catch(_){
         throw new Error('APIから無効な応答が返されました。');
       }
       if(!res.ok){
-        const detail = data.message || data.error_description || data.localizedMessage || data._raw || JSON.stringify(data);
-        const debug = data._debug ? JSON.stringify(data._debug) : '';
+        const detail = data.error_description || data.message || ('HTTP ' + res.status);
         msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
-          + 'Yahoo APIエラー (HTTP ' + (data._status || res.status) + ')<br>'
-          + '<span style="color:var(--text-3);font-size:11px;word-break:break-all;">' + escapeHtml(detail) + '</span>'
-          + (debug ? '<br><span style="color:var(--text-3);font-size:10px;word-break:break-all;">' + escapeHtml(debug) + '</span>' : '')
-          + '<br><button id="yahooResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">Client IDをリセット</button>'
+          + 'APIエラー：' + escapeHtml(detail) + '<br>'
+          + '<button id="rakutenResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">アプリIDをリセット</button>'
           + '</div>';
-        document.getElementById('yahooResetBtn').addEventListener('click', async ()=>{
+        document.getElementById('rakutenResetBtn').addEventListener('click', async ()=>{
           await window.storage.set('yahooAppId', '', SHARED); lookupJan(code);
         });
         return;
       }
-      const hits = data.hits || [];
-      const item = Array.isArray(hits) ? hits[0] : null;
-      const rawName = item && item.name;
+      const items = data.Items || [];
+      const item = items[0] && items[0].Item;
+      const rawName = item && item.itemName;
       const itemName = rawName ? cleanYahooName(rawName) : null;
       if(itemName){
         if(!document.getElementById('f_name').value) document.getElementById('f_name').value = itemName;
         msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(itemName)+'</b></div>';
       } else {
-        msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報はYahoo!ショッピングに登録されていません。手動で入力してください。</div>';
+        msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報は楽天市場に登録されていません。手動で入力してください。</div>';
       }
     } catch(e) {
       msgEl.innerHTML = '<div class="msg msg-error">APIエラー：'+escapeHtml(e.message)+'</div>';
