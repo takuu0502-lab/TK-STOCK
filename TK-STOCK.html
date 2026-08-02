@@ -274,54 +274,59 @@
   #printPreviewToolbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f5f4ef;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:1;border-radius:4px 4px 0 0;}
   #printPreviewTitle{font-size:13.5px;font-weight:600;color:#333;}
   #printPreviewBody{padding:15mm 14mm;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Neue',sans-serif;font-size:10.5pt;color:#111;line-height:1.55;}
-  body.printing > *{display:none !important;}
   @media print{
     @page{size:A4 portrait;margin:10mm 12mm 10mm 12mm;}
-    body > *{display:none !important;}
-    #printPreviewOverlay{display:block !important;position:static !important;background:none !important;padding:0 !important;overflow:visible !important;}
-    #printPreviewInner{width:100% !important;box-shadow:none !important;border-radius:0 !important;}
-    #printPreviewToolbar{display:none !important;}
-    #printPreviewBody{padding:0 !important;}
-    #quotePrintDiv{display:block !important;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Neue',sans-serif;font-size:9pt;color:#111;line-height:1.4;}
+    /* 見積書印刷モード */
+    body[data-printing="estimate"] > *{display:none !important;}
+    body[data-printing="estimate"] #printPreviewOverlay{display:block !important;position:static !important;background:none !important;padding:0 !important;overflow:visible !important;}
+    body[data-printing="estimate"] #printPreviewInner{width:100% !important;box-shadow:none !important;border-radius:0 !important;}
+    body[data-printing="estimate"] #printPreviewToolbar{display:none !important;}
+    body[data-printing="estimate"] #printPreviewBody{padding:0 !important;}
+    body[data-printing="estimate"] #quotePrintDiv{display:block !important;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Neue',sans-serif;font-size:9pt;color:#111;line-height:1.4;}
     /* タイトルエリア */
-    .qp-top{display:flex;justify-content:space-between;align-items:stretch;margin-bottom:6pt;border-bottom:2pt solid #222;padding-bottom:5pt;}
-    .qp-title-block{}
-    .qp-title{font-size:20pt;font-weight:700;letter-spacing:3pt;margin-bottom:1pt;}
-    .qp-subtitle{font-size:7.5pt;color:#555;}
+    body[data-printing="estimate"] .qp-top{display:flex;justify-content:space-between;align-items:stretch;margin-bottom:6pt;border-bottom:2pt solid #222;padding-bottom:5pt;}
+    body[data-printing="estimate"] .qp-title{font-size:20pt;font-weight:700;letter-spacing:3pt;margin-bottom:1pt;}
+    body[data-printing="estimate"] .qp-subtitle{font-size:7.5pt;color:#555;}
     /* 店舗情報（右上） */
-    .qp-shop-block{text-align:right;font-size:7.5pt;color:#333;line-height:1.6;}
-    .qp-shop-name{font-size:10.5pt;font-weight:700;color:#111;margin-bottom:2pt;}
+    body[data-printing="estimate"] .qp-shop-block{text-align:right;font-size:7.5pt;color:#333;line-height:1.6;}
+    body[data-printing="estimate"] .qp-shop-name{font-size:10.5pt;font-weight:700;color:#111;margin-bottom:2pt;}
     /* お客様情報 */
-    .qp-customer-section{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8pt;padding-bottom:5pt;border-bottom:0.5pt solid #bbb;}
-    .qp-customer-left{}
-    .qp-label{font-size:7pt;color:#888;margin-bottom:1pt;}
-    .qp-cname{font-size:13pt;font-weight:700;border-bottom:1.5pt solid #333;padding-bottom:2pt;min-width:130pt;display:inline-block;margin-bottom:0;}
-    .qp-car{font-size:9pt;color:#444;}
-    .qp-customer-right{text-align:right;font-size:8pt;color:#333;line-height:1.8;}
-    .qp-meta-label{color:#888;font-size:7.5pt;}
+    body[data-printing="estimate"] .qp-customer-section{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8pt;padding-bottom:5pt;border-bottom:0.5pt solid #bbb;}
+    body[data-printing="estimate"] .qp-label{font-size:7pt;color:#888;margin-bottom:1pt;}
+    body[data-printing="estimate"] .qp-cname{font-size:13pt;font-weight:700;border-bottom:1.5pt solid #333;padding-bottom:2pt;min-width:130pt;display:inline-block;margin-bottom:0;}
+    body[data-printing="estimate"] .qp-car{font-size:9pt;color:#444;}
+    body[data-printing="estimate"] .qp-customer-right{text-align:right;font-size:8pt;color:#333;line-height:1.8;}
+    body[data-printing="estimate"] .qp-meta-label{color:#888;font-size:7.5pt;}
     /* 銘柄ブロック */
-    .qp-blocks{margin-bottom:7pt;}
-    .qpb{border:1pt solid #333;border-radius:3pt;padding:5pt 8pt;margin-bottom:6pt;page-break-inside:avoid;}
-    .qpb-header{display:flex;align-items:flex-end;gap:8pt;margin-bottom:4pt;border-bottom:0.5pt solid #bbb;padding-bottom:3pt;}
-    .qpb-name{font-size:10pt;font-weight:700;line-height:1.2;}
-    .qpb-spec{font-size:10pt;font-weight:700;color:#222;font-family:monospace;line-height:1.2;}
-    .qpb-table{width:100%;border-collapse:collapse;}
-    .qpb-table tr td{padding:2pt 4pt;font-size:8.5pt;border-bottom:0.5pt solid #eee;}
-    .qpb-table tr:last-child td{border-bottom:none;}
-    .qpb-table td.num{text-align:right;font-family:monospace;white-space:nowrap;}
-    .qpb-table td.label{color:#444;width:45%;}
-    .qpb-sep{border-top:0.5pt solid #bbb;margin:3pt 0;}
-    .qpb-total-row{display:flex;justify-content:flex-end;gap:14pt;align-items:baseline;margin-top:2pt;}
-    .qpb-sub{font-size:7.5pt;color:#666;}
-    .qpb-sub span{font-family:monospace;}
-    .qpb-tax{font-size:7.5pt;color:#888;}
-    .qpb-tax span{font-family:monospace;}
-    .qpb-grand{font-size:11pt;font-weight:700;}
-    .qpb-grand span{font-family:monospace;}
+    body[data-printing="estimate"] .qp-blocks{margin-bottom:7pt;}
+    body[data-printing="estimate"] .qpb{border:1pt solid #333;border-radius:3pt;padding:5pt 8pt;margin-bottom:6pt;page-break-inside:avoid;}
+    body[data-printing="estimate"] .qpb-header{display:flex;align-items:flex-end;gap:8pt;margin-bottom:4pt;border-bottom:0.5pt solid #bbb;padding-bottom:3pt;}
+    body[data-printing="estimate"] .qpb-name{font-size:10pt;font-weight:700;line-height:1.2;}
+    body[data-printing="estimate"] .qpb-spec{font-size:10pt;font-weight:700;color:#222;font-family:monospace;line-height:1.2;}
+    body[data-printing="estimate"] .qpb-table{width:100%;border-collapse:collapse;}
+    body[data-printing="estimate"] .qpb-table tr td{padding:2pt 4pt;font-size:8.5pt;border-bottom:0.5pt solid #eee;}
+    body[data-printing="estimate"] .qpb-table tr:last-child td{border-bottom:none;}
+    body[data-printing="estimate"] .qpb-table td.num{text-align:right;font-family:monospace;white-space:nowrap;}
+    body[data-printing="estimate"] .qpb-table td.label{color:#444;width:45%;}
+    body[data-printing="estimate"] .qpb-sep{border-top:0.5pt solid #bbb;margin:3pt 0;}
+    body[data-printing="estimate"] .qpb-total-row{display:flex;justify-content:flex-end;gap:14pt;align-items:baseline;margin-top:2pt;}
+    body[data-printing="estimate"] .qpb-sub{font-size:7.5pt;color:#666;}
+    body[data-printing="estimate"] .qpb-sub span{font-family:monospace;}
+    body[data-printing="estimate"] .qpb-tax{font-size:7.5pt;color:#888;}
+    body[data-printing="estimate"] .qpb-tax span{font-family:monospace;}
+    body[data-printing="estimate"] .qpb-grand{font-size:11pt;font-weight:700;}
+    body[data-printing="estimate"] .qpb-grand span{font-family:monospace;}
     /* 備考 */
-    .qp-note-section{border:0.5pt solid #bbb;border-radius:2pt;padding:5pt 8pt;min-height:30pt;}
-    .qp-note-title{font-size:7.5pt;font-weight:700;color:#555;margin-bottom:3pt;}
-    .qp-note-body{font-size:8.5pt;color:#333;white-space:pre-wrap;min-height:22pt;}
+    body[data-printing="estimate"] .qp-note-section{border:0.5pt solid #bbb;border-radius:2pt;padding:5pt 8pt;min-height:30pt;}
+    body[data-printing="estimate"] .qp-note-title{font-size:7.5pt;font-weight:700;color:#555;margin-bottom:3pt;}
+    body[data-printing="estimate"] .qp-note-body{font-size:8.5pt;color:#333;white-space:pre-wrap;min-height:22pt;}
+    /* QRコード印刷モード */
+    body[data-printing="qr"] > *:not(#qrPrintArea){display:none!important;}
+    body[data-printing="qr"] #qrPrintArea{display:block!important;padding:12px;}
+    body[data-printing="qr"] .qr-label{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:12px 16px;text-align:center;page-break-inside:avoid;}
+    body[data-printing="qr"] .qr-label-name{font-size:14px;font-weight:700;margin-bottom:2px;}
+    body[data-printing="qr"] .qr-label-spec{font-size:11px;color:#666;margin-bottom:8px;}
+    body[data-printing="qr"] .qr-label-code{font-size:10px;color:#888;margin-top:6px;font-family:monospace;}
   }
   .price-catalog-title{font-size:12.5px;font-weight:600;color:var(--text-1);margin-bottom:2px;}
   .price-catalog-sub{font-size:11px;color:var(--text-3);margin-bottom:10px;}
@@ -424,14 +429,6 @@
 #qrcode canvas,#qrcode img{border-radius:8px;}
 #qrModalCode{font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-bottom:18px;}
 .qr-label-print{display:none;}
-@media print{
-  body > *:not(#qrPrintArea){display:none!important;}
-  #qrPrintArea{display:block!important;padding:12px;}
-  .qr-label{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:12px 16px;text-align:center;page-break-inside:avoid;}
-  .qr-label-name{font-size:14px;font-weight:700;margin-bottom:2px;}
-  .qr-label-spec{font-size:11px;color:#666;margin-bottom:8px;}
-  .qr-label-code{font-size:10px;color:#888;margin-top:6px;font-family:monospace;}
-}
 /* ── トースト通知 ── */
 #toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
 .toast{background:#323232;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;pointer-events:none;}
@@ -1494,6 +1491,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('qrPrintBtn').onclick = ()=>{
       const canvas = qrDiv.querySelector('canvas');
       const imgSrc = canvas ? canvas.toDataURL() : (qrDiv.querySelector('img') ? qrDiv.querySelector('img').src : '');
+      document.getElementById('qrPrintArea').style.display = 'block';
       document.getElementById('qrPrintArea').innerHTML =
         '<div class="qr-label">'
         + '<div class="qr-label-name">'+escapeHtml(name)+'</div>'
@@ -1501,9 +1499,8 @@ window.addEventListener('storageReady', function(){
         + (imgSrc ? '<img src="'+imgSrc+'" style="width:150px;height:150px;">' : '')
         + '<div class="qr-label-code">'+escapeHtml(qrValue)+'</div>'
         + '</div>';
-      document.getElementById('qrPrintArea').style.display = 'block';
+      document.body.dataset.printing = 'qr';
       window.print();
-      document.getElementById('qrPrintArea').style.display = 'none';
     };
   }
   document.getElementById('qrModalClose').addEventListener('click', ()=>{
@@ -2841,7 +2838,13 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('printPreviewExec').addEventListener('click', ()=>{
+    document.body.dataset.printing = 'estimate';
     window.print();
+  });
+
+  window.addEventListener('afterprint', ()=>{
+    delete document.body.dataset.printing;
+    document.getElementById('qrPrintArea').style.display = 'none';
   });
 
   // beforeprint時に@media print CSS適用後のサイズで計測してスケール計算
