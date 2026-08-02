@@ -4286,6 +4286,21 @@ window.addEventListener('storageReady', function(){
         date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
         itemType: itemType, reservation: reservation
       });
+      // 予約品（客注品）入庫時は客注リストにも自動追加
+      if(kind === 'in' && itemType === 'reserved' && reservation){
+        if(!p.customerOrders) p.customerOrders = [];
+        const noteparts = [];
+        if(reservation.car) noteparts.push(reservation.car);
+        if(reservation.installDate) noteparts.push('取付日: '+reservation.installDate);
+        if(reservation.staff) noteparts.push('担当: '+reservation.staff);
+        p.customerOrders.push({
+          id: uid('co'),
+          name: reservation.customer,
+          qty: qty,
+          note: noteparts.join(' / '),
+          date: new Date().toISOString()
+        });
+      }
       await saveProducts();
       await saveTransactions();
       renderCatTree();
