@@ -698,9 +698,19 @@
       <label>タイヤ銘柄（ブリヂストン価格表より）</label>
       <select id="f_tiremodel"></select>
     </div>
+    <div class="row">
+      <div class="field" style="flex:1;">
+        <label>ブランド名</label>
+        <input type="text" id="f_brand" placeholder="例) ブリヂストン、ヨコハマ">
+      </div>
+      <div class="field" style="flex:1;">
+        <label>品番</label>
+        <input type="text" id="f_partno" placeholder="例) NH200C、AW21">
+      </div>
+    </div>
     <div class="field">
       <label>商品名</label>
-      <input type="text" id="f_name" placeholder="例) ヨコハマ BluEarth 195/65R15">
+      <input type="text" id="f_name" placeholder="例) ECOPIA NH200C">
     </div>
     <div class="field">
       <label>規格・仕様（サイズ等）</label>
@@ -3342,6 +3352,8 @@ window.addEventListener('storageReady', function(){
     const dictEntry = janDict[code];
     if(dictEntry && dictEntry.name){
       if(!document.getElementById('f_name').value) document.getElementById('f_name').value = dictEntry.name;
+      if(dictEntry.brand && !document.getElementById('f_brand').value) document.getElementById('f_brand').value = dictEntry.brand;
+      if(dictEntry.partno && !document.getElementById('f_partno').value) document.getElementById('f_partno').value = dictEntry.partno;
       if(dictEntry.spec && !document.getElementById('f_spec').value) document.getElementById('f_spec').value = dictEntry.spec;
       if(dictEntry.majorId){
         populateMajorSelect(dictEntry.majorId);
@@ -3411,6 +3423,8 @@ window.addEventListener('storageReady', function(){
     editingId = null;
     document.getElementById('modalTitle').textContent = '新規商品登録';
     document.getElementById('f_barcode').value = prefillBarcode || '';
+    document.getElementById('f_brand').value = '';
+    document.getElementById('f_partno').value = '';
     document.getElementById('f_name').value = '';
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
@@ -3437,6 +3451,8 @@ window.addEventListener('storageReady', function(){
     editingId = id;
     document.getElementById('modalTitle').textContent = '商品情報を編集';
     document.getElementById('f_barcode').value = p.barcode;
+    document.getElementById('f_brand').value = p.brand || '';
+    document.getElementById('f_partno').value = p.partno || '';
     document.getElementById('f_name').value = p.name;
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
@@ -3625,6 +3641,8 @@ window.addEventListener('storageReady', function(){
 
   document.getElementById('modalSave').addEventListener('click', async ()=>{
     const barcode = document.getElementById('f_barcode').value.trim();
+    const brand = document.getElementById('f_brand').value.trim();
+    const partno = document.getElementById('f_partno').value.trim();
     const tireModelVal = document.getElementById('f_tiremodel').value;
     let name = document.getElementById('f_name').value.trim();
     if(!name && tireModelVal){
@@ -3659,13 +3677,13 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      Object.assign(p, {barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+      Object.assign(p, {barcode, brand, partno, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
-      products.push({id: uid('p'), barcode, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+      products.push({id: uid('p'), barcode, brand, partno, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
-      await saveToJanDict(barcode, {name, spec, majorId, subId});
+      await saveToJanDict(barcode, {name, brand, partno, spec, majorId, subId});
     }
     await saveProducts();
     renderCatTree();
@@ -3768,6 +3786,8 @@ window.addEventListener('storageReady', function(){
     editPanel.style.cssText = 'margin-top:14px;border-top:1px solid var(--border);padding-top:12px;';
     editPanel.innerHTML = '<summary style="cursor:pointer;font-size:13px;color:var(--text-2);user-select:none;">✏️ 商品情報を編集</summary>'
       + '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">'
+      + '<div class="row" style="gap:8px;"><div class="field" style="flex:1;"><label>ブランド名</label><input type="text" id="lc_brand" value="'+escapeHtml(p.brand||'')+'" style="width:100%;box-sizing:border-box;"></div>'
+      + '<div class="field" style="flex:1;"><label>品番</label><input type="text" id="lc_partno" value="'+escapeHtml(p.partno||'')+'" style="width:100%;box-sizing:border-box;"></div></div>'
       + '<div class="field"><label>商品名</label><input type="text" id="lc_name" value="'+escapeHtml(p.name)+'" style="width:100%;box-sizing:border-box;"></div>'
       + '<div class="row" style="gap:8px;">'
       + '<div class="field" style="flex:1;"><label>大分類</label><select id="lc_major" style="width:100%;">'+majorOptions+'</select></div>'
@@ -3796,14 +3816,16 @@ window.addEventListener('storageReady', function(){
     document.getElementById('lcSaveBtn').addEventListener('click', async ()=>{
       const name = document.getElementById('lc_name').value.trim();
       if(!name){ document.getElementById('lcSaveMsg').innerHTML='<span style="color:var(--red);">商品名を入力してください</span>'; return; }
+      const brand = document.getElementById('lc_brand').value.trim();
+      const partno = document.getElementById('lc_partno').value.trim();
       const majorId = document.getElementById('lc_major').value;
       const subId = document.getElementById('lc_sub').value || null;
       const spec = document.getElementById('lc_spec').value.trim();
       const costPrice = parseInt(document.getElementById('lc_cost').value||'0',10);
       const sellPrice = parseInt(document.getElementById('lc_price').value||'0',10);
       const memo = document.getElementById('lc_memo').value.trim();
-      Object.assign(p, {name, majorId, subId, spec, costPrice, sellPrice, memo});
-      if(p.barcode && /^\d{8,}$/.test(p.barcode)) await saveToJanDict(p.barcode, {name, spec, majorId, subId});
+      Object.assign(p, {name, brand, partno, majorId, subId, spec, costPrice, sellPrice, memo});
+      if(p.barcode && /^\d{8,}$/.test(p.barcode)) await saveToJanDict(p.barcode, {name, brand, partno, spec, majorId, subId});
       await saveProducts();
       renderCatTree(); renderProductTable();
       document.getElementById('lcSaveMsg').innerHTML='<span style="color:var(--green,#4caf50);">✓ 保存しました</span>';
