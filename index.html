@@ -3341,9 +3341,9 @@ window.addEventListener('storageReady', function(){
         throw new Error('APIから無効な応答が返されました。');
       }
       if(!res.ok){
-        const detail = data.error_description || data.message || ('HTTP ' + res.status);
+        const detail = data.error_description || data.message || data._raw || JSON.stringify(data);
         msgEl.innerHTML = '<div class="msg msg-error" style="font-size:12px;">'
-          + 'APIエラー：' + escapeHtml(detail) + '<br>'
+          + 'APIエラー(HTTP ' + (data._status||res.status) + ')：' + escapeHtml(detail) + '<br>'
           + '<button id="rakutenResetBtn" class="btn btn-sm" style="margin-top:6px;font-size:12px;">認証情報をリセット</button>'
           + '</div>';
         document.getElementById('rakutenResetBtn').addEventListener('click', async ()=>{
