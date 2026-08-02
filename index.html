@@ -676,6 +676,20 @@
 
     <div class="pricing-section-divider"></div>
 
+    <div class="pricing-section-title">ブランド名一括設定</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      登録済み商品のブランド名をカタログのブランド名で一括更新します。商品情報にすでにブランド名が入力されている商品はスキップされます。
+    </p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-amber" id="bulkSetBrandBtn">カタログのブランド名を一括適用</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);">
+        <input type="checkbox" id="bulkBrandOverwrite"> 既存のブランド名も上書きする
+      </label>
+    </div>
+    <div id="bulkBrandMsg" style="margin-top:10px;font-size:13px;"></div>
+
+    <div class="pricing-section-divider"></div>
+
     <div class="pricing-section-title">価格表取込</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
       Excelファイル（.xlsx）から価格表を取り込み、在庫検索・見積もりに反映できます。取込済み価格表の削除もここから行えます。
@@ -1472,6 +1486,30 @@ window.addEventListener('storageReady', function(){
       });
     });
   }
+
+  document.getElementById('bulkSetBrandBtn').addEventListener('click', async ()=>{
+    const overwrite = document.getElementById('bulkBrandOverwrite').checked;
+    const msgEl = document.getElementById('bulkBrandMsg');
+    let updated = 0, skipped = 0;
+    products.forEach(p => {
+      if(!overwrite && p.brand) { skipped++; return; }
+      const entry = findCatalogEntryForProduct(p);
+      if(entry && entry.b){
+        p.brand = entry.b;
+        updated++;
+      } else {
+        skipped++;
+      }
+    });
+    if(updated > 0){
+      await saveProducts();
+      renderProductTable();
+      msgEl.innerHTML = '<span style="color:var(--teal);">✓ '+updated+'件を更新しました。'+(skipped>0?' '+skipped+'件はスキップ。':'')+'</span>';
+    } else {
+      msgEl.innerHTML = '<span style="color:var(--text-2);">更新対象の商品がありませんでした。'+(skipped>0?' '+skipped+'件はスキップ。':'')+'</span>';
+    }
+    setTimeout(()=>{ msgEl.innerHTML=''; }, 4000);
+  });
 
   document.getElementById('saveExternalPricingRules').addEventListener('click', async ()=>{
     externalPriceRules.default = {
