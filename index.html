@@ -3588,7 +3588,9 @@ window.addEventListener('storageReady', function(){
 
     document.getElementById('productDetailBody').innerHTML = ''
       + '<div class="detail-header">'
+      + (p.brand ? '<div style="font-size:12px;font-weight:600;color:var(--amber);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">'+escapeHtml(p.brand)+'</div>' : '')
       + '<div class="detail-name">'+escapeHtml(cleanName(p.name))+'</div>'
+      + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div class="detail-cat">'+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+'</div>'
