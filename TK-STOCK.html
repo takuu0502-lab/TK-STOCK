@@ -3097,10 +3097,24 @@ window.addEventListener('storageReady', function(){
         const dataUrl = e.target.result;
         let decoded = null;
 
-        // 試行1: QuaggaJS（EAN-13/JANに強い）
-        try{ decoded = await quaggaDecode(dataUrl); }catch(_){}
+        // 試行1: Html5Qrcode（QRコード＋バーコード対応）
+        if(!decoded && typeof Html5Qrcode !== 'undefined'){
+          try{
+            const tmpId = 'qr-tmp-' + Date.now();
+            const tmpDiv = document.createElement('div');
+            tmpDiv.id = tmpId;
+            tmpDiv.style.display = 'none';
+            document.body.appendChild(tmpDiv);
+            const h5 = new Html5Qrcode(tmpId, { verbose: false });
+            decoded = await h5.scanFile(file, false).catch(()=> null);
+            try{ tmpDiv.remove(); }catch(_){}
+          }catch(_){}
+        }
 
-        // 試行2: QuaggaJS・画像縮小版で再試行
+        // 試行2: QuaggaJS（EAN-13/JANバーコードに強い）
+        if(!decoded){ try{ decoded = await quaggaDecode(dataUrl); }catch(_){} }
+
+        // 試行3: QuaggaJS・画像縮小版で再試行
         if(!decoded){
           try{
             const img = new Image();
@@ -3119,7 +3133,7 @@ window.addEventListener('storageReady', function(){
         if(decoded){
           onDecoded(decoded);
         } else {
-          photoBtn.textContent = '読み取れませんでした。バーコードを明るい場所でまっすぐ撮影してください';
+          photoBtn.textContent = '読み取れませんでした。明るい場所でまっすぐ撮影してください';
           photoBtn.disabled = false;
           setTimeout(()=>{ photoBtn.textContent = '📷 写真で読み取る（iPhone推奨）'; }, 4000);
         }
@@ -3149,12 +3163,8 @@ window.addEventListener('storageReady', function(){
         const scanner = new Html5Qrcode(readerId, { verbose: false });
         const config = {
           fps: 10,
-          qrbox: (w, h) => {
-            const size = Math.min(w, h, 280);
-            return { width: size, height: size };
-          },
-          rememberLastUsedCamera: false,
-          supportedScanTypes: []
+          qrbox: { width: 250, height: 250 },
+          rememberLastUsedCamera: false
         };
         scanner.start(
           { facingMode: 'environment' },
