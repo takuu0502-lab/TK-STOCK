@@ -3180,7 +3180,7 @@ window.addEventListener('storageReady', function(){
           readerEl.appendChild(video);
 
           const overlay = document.createElement('div');
-          overlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid var(--amber);border-radius:12px;pointer-events:none;box-sizing:border-box;';
+          overlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;height:60%;max-width:220px;max-height:220px;border:3px solid var(--amber);border-radius:12px;pointer-events:none;box-sizing:border-box;';
           readerEl.appendChild(overlay);
 
           const canvas = document.createElement('canvas');
