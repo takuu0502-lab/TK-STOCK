@@ -362,7 +362,7 @@
   .lookup-card{background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:16px;}
   .lookup-card .p-name{font-size:16px;font-weight:600;color:var(--text-1);}
   .lookup-card .p-meta{font-size:12.5px;color:var(--text-2);margin-top:2px;font-family:var(--font-mono);}
-  .qty-stepper{display:flex;align-items:center;gap:10px;margin-top:14px;}
+  .qty-stepper{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:nowrap;}
   .qty-stepper button{width:36px;height:36px;border-radius:6px;background:var(--bg-3);border:1px solid var(--line);color:var(--text-1);font-size:18px;}
   .qty-stepper input{width:70px;text-align:center;font-family:var(--font-mono);font-size:16px;font-weight:600;}
 
@@ -3105,6 +3105,21 @@ window.addEventListener('storageReady', function(){
         const dataUrl = e.target.result;
         let decoded = null;
 
+        // 試行0: BarcodeDetector API（最高精度・最速）
+        if(!decoded && 'BarcodeDetector' in window){
+          try{
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise(r=>{ img.onload=r; img.onerror=r; });
+            const supported = await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+            const want = ['ean_13','ean_8','upc_a','upc_e','code_128','qr_code'];
+            const formats = supported.length ? want.filter(f=>supported.includes(f)) : want;
+            const det = new BarcodeDetector({ formats });
+            const results = await det.detect(img);
+            if(results && results.length) decoded = results[0].rawValue;
+          }catch(_){}
+        }
+
         // 試行1: Html5Qrcode（QRコード＋バーコード対応）
         if(!decoded && typeof Html5Qrcode !== 'undefined'){
           try{
@@ -3159,7 +3174,7 @@ window.addEventListener('storageReady', function(){
     }
 
     wrap.innerHTML = '<div id="'+readerId+'" style="width:100%;"></div>'
-      + '<div class="scan-hint">QRコード・バーコードを枠の中に収めてください。</div>';
+      + '<div class="scan-hint">バーコードを横向きにして枠の中に収めてください。明るい場所ではっきり映すと読み取りやすくなります。</div>';
 
     // 写真スキャンボタンを常に表示（iPhone推奨）
     addPhotoScanButton(wrap, onDecoded);
@@ -3172,8 +3187,14 @@ window.addEventListener('storageReady', function(){
       return new Promise(async resolve => {
         try{
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal:1280 }, height: { ideal:720 } }
+            video: { facingMode: 'environment', width: { ideal:1920 }, height: { ideal:1080 } }
           });
+
+          // 連続オートフォーカスを有効化（対応端末のみ）
+          const track = stream.getVideoTracks()[0];
+          if(track && track.applyConstraints){
+            track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
+          }
 
           const readerEl = document.getElementById(readerId);
           readerEl.innerHTML = '';
@@ -3195,35 +3216,80 @@ window.addEventListener('storageReady', function(){
 
           await video.play();
 
+          // BarcodeDetector API（iOS17+ / Android Chrome 内蔵、最高精度）
+          let barcodeDetector = null;
+          if('BarcodeDetector' in window){
+            try{
+              const supported = await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+              const want = ['ean_13','ean_8','upc_a','upc_e','code_128','qr_code'];
+              const formats = supported.length ? want.filter(f=>supported.includes(f)) : want;
+              if(formats.length) barcodeDetector = new BarcodeDetector({ formats });
+            }catch(_){}
+          }
+
           let quaggaBusy = false;
-          function tick(){
+          let detecting = false;
+          async function tick(){
             if(detected) return;
-            if(video.readyState === video.HAVE_ENOUGH_DATA){
+            if(!detecting && video.readyState === video.HAVE_ENOUGH_DATA){
+              detecting = true;
+
+              // ── BarcodeDetector（最優先）──
+              if(barcodeDetector){
+                try{
+                  const barcodes = await barcodeDetector.detect(video);
+                  for(const b of barcodes){
+                    if(b.rawValue && !detected){
+                      detected = true;
+                      try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+                      detecting = false;
+                      onDecoded(b.rawValue);
+                      return;
+                    }
+                  }
+                }catch(_){}
+                detecting = false;
+                rafId = requestAnimationFrame(tick);
+                return;
+              }
+
+              // ── フォールバック: jsQR + Quagga ──
               canvas.width = video.videoWidth;
               canvas.height = video.videoHeight;
               ctx.drawImage(video, 0, 0);
 
-              // QRコード（jsQR）
+              // QRコード（jsQR）全体スキャン
               const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
               const qr = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-              if(qr && qr.data){ detected = true; onDecoded(qr.data); return; }
+              if(qr && qr.data){ detected = true; detecting = false; onDecoded(qr.data); return; }
 
-              // バーコード（Quagga）
+              // バーコード（Quagga）中央領域をクロップして精度向上
               if(!quaggaBusy && typeof Quagga !== 'undefined'){
                 quaggaBusy = true;
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                const cx = Math.floor(canvas.width * 0.1);
+                const cy = Math.floor(canvas.height * 0.2);
+                const cw = Math.floor(canvas.width * 0.8);
+                const ch = Math.floor(canvas.height * 0.6);
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = cw; cropCanvas.height = ch;
+                cropCanvas.getContext('2d').drawImage(video, cx, cy, cw, ch, 0, 0, cw, ch);
+                const dataUrl = cropCanvas.toDataURL('image/jpeg', 0.92);
                 Quagga.decodeSingle({
                   src: dataUrl, numOfWorkers: 0, locate: true,
-                  inputStream: { size: 800 },
-                  decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader'] }
+                  inputStream: { size: 1200 },
+                  locator: { patchSize: 'medium', halfSample: false },
+                  decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader','upc_e_reader'] }
                 }, result => {
                   quaggaBusy = false;
                   if(!detected && result && result.codeResult && result.codeResult.code){
                     detected = true;
+                    try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+                    detecting = false;
                     onDecoded(result.codeResult.code);
                   }
                 });
               }
+              detecting = false;
             }
             rafId = requestAnimationFrame(tick);
           }
@@ -3771,7 +3837,7 @@ window.addEventListener('storageReady', function(){
       + '<button type="button" data-step="-1">\u2212</button>'
       + '<input type="number" id="'+kind+'Qty" value="1" min="1">'
       + '<button type="button" data-step="1">\uFF0B</button>'
-      + '<button class="btn '+actionClass+'" id="'+kind+'Confirm" style="margin-left:8px;">'+actionLabel+'</button>'
+      + '<button class="btn '+actionClass+'" id="'+kind+'Confirm" style="margin-left:8px;white-space:nowrap;flex-shrink:0;">'+actionLabel+'</button>'
       + '</div>'
       + '<div id="'+kind+'ActionMsg"></div>'
       + '</div>';
