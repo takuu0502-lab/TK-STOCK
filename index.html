@@ -1221,6 +1221,8 @@ window.addEventListener('storageReady', function(){
     return costRules.default || {basis:'wholesale',percent:0};
   }
   function computeCostPrice(brand, model, wholesale, retail){
+    // SEIBERLING: r.w はそのまま仕入れ価格（卸価格表の価格）
+    if(brand === 'SEIBERLING') return wholesale || null;
     const rule = costRuleFor(brand, model);
     const base = rule.basis === 'wholesale' ? wholesale : retail;
     if(!base) return null;
