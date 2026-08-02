@@ -3757,6 +3757,59 @@ window.addEventListener('storageReady', function(){
       + '</div>'
       + '<div id="'+kind+'ActionMsg"></div>'
       + '</div>';
+    // 商品編集パネルを追加
+    const majorOptions = categories.map(c=>`<option value="${c.id}"${c.id===p.majorId?' selected':''}>${escapeHtml(c.name)}</option>`).join('');
+    const subOpts = (()=>{
+      const mc = categories.find(c=>c.id===p.majorId);
+      if(!mc||!mc.subs||!mc.subs.length) return '<option value="">（なし）</option>';
+      return '<option value="">（なし）</option>'+mc.subs.map(s=>`<option value="${s.id}"${s.id===p.subId?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
+    })();
+    const editPanel = document.createElement('details');
+    editPanel.style.cssText = 'margin-top:14px;border-top:1px solid var(--border);padding-top:12px;';
+    editPanel.innerHTML = '<summary style="cursor:pointer;font-size:13px;color:var(--text-2);user-select:none;">✏️ 商品情報を編集</summary>'
+      + '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">'
+      + '<div class="field"><label>商品名</label><input type="text" id="lc_name" value="'+escapeHtml(p.name)+'" style="width:100%;box-sizing:border-box;"></div>'
+      + '<div class="row" style="gap:8px;">'
+      + '<div class="field" style="flex:1;"><label>大分類</label><select id="lc_major" style="width:100%;">'+majorOptions+'</select></div>'
+      + '<div class="field" style="flex:1;"><label>小分類</label><select id="lc_sub" style="width:100%;">'+subOpts+'</select></div>'
+      + '</div>'
+      + '<div class="field"><label>規格・仕様</label><input type="text" id="lc_spec" value="'+escapeHtml(p.spec||'')+'" style="width:100%;box-sizing:border-box;"></div>'
+      + '<div class="row" style="gap:8px;">'
+      + '<div class="field" style="flex:1;"><label>仕入原価（円）</label><input type="number" id="lc_cost" value="'+(p.costPrice||'')+'" style="width:100%;box-sizing:border-box;"></div>'
+      + '<div class="field" style="flex:1;"><label>販売価格（円）</label><input type="number" id="lc_price" value="'+(p.sellPrice||'')+'" style="width:100%;box-sizing:border-box;"></div>'
+      + '</div>'
+      + '<div class="field"><label>メモ</label><input type="text" id="lc_memo" value="'+escapeHtml(p.memo||'')+'" style="width:100%;box-sizing:border-box;"></div>'
+      + '<button class="btn btn-amber btn-sm" id="lcSaveBtn" style="align-self:flex-start;">商品情報を保存</button>'
+      + '<div id="lcSaveMsg" style="font-size:12px;"></div>'
+      + '</div>';
+    resultEl.querySelector('.lookup-card').appendChild(editPanel);
+
+    // 大分類変更時に小分類を更新
+    document.getElementById('lc_major').addEventListener('change', function(){
+      const mc = categories.find(c=>c.id===this.value);
+      const subSel = document.getElementById('lc_sub');
+      subSel.innerHTML = '<option value="">（なし）</option>';
+      if(mc && mc.subs) mc.subs.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; subSel.appendChild(o); });
+    });
+
+    // 商品情報保存ボタン
+    document.getElementById('lcSaveBtn').addEventListener('click', async ()=>{
+      const name = document.getElementById('lc_name').value.trim();
+      if(!name){ document.getElementById('lcSaveMsg').innerHTML='<span style="color:var(--red);">商品名を入力してください</span>'; return; }
+      const majorId = document.getElementById('lc_major').value;
+      const subId = document.getElementById('lc_sub').value || null;
+      const spec = document.getElementById('lc_spec').value.trim();
+      const costPrice = parseInt(document.getElementById('lc_cost').value||'0',10);
+      const sellPrice = parseInt(document.getElementById('lc_price').value||'0',10);
+      const memo = document.getElementById('lc_memo').value.trim();
+      Object.assign(p, {name, majorId, subId, spec, costPrice, sellPrice, memo});
+      if(p.barcode && /^\d{8,}$/.test(p.barcode)) await saveToJanDict(p.barcode, {name, spec, majorId, subId});
+      await saveProducts();
+      renderCatTree(); renderProductTable();
+      document.getElementById('lcSaveMsg').innerHTML='<span style="color:var(--green,#4caf50);">✓ 保存しました</span>';
+      setTimeout(()=>{ if(document.getElementById('lcSaveMsg')) document.getElementById('lcSaveMsg').innerHTML=''; },2000);
+    });
+
     const qtyInput = document.getElementById(kind+'Qty');
     resultEl.querySelectorAll('[data-step]').forEach(b=>{
       b.addEventListener('click', ()=>{
