@@ -12,7 +12,7 @@ export async function onRequest(context) {
   }
 
   // accessKeyをクエリパラメータとヘッダー両方で送信
-  const rakutenUrl = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401'
+  const rakutenUrl = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701'
     + '?format=json'
     + '&formatVersion=2'
     + '&applicationId=' + encodeURIComponent(appid)
@@ -25,7 +25,9 @@ export async function onRequest(context) {
       headers: {
         'accessKey': accessKey,
         'Accept': 'application/json',
-        'User-Agent': 'TK-STOCK/1.0'
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+        'Origin': 'https://tk-stock.pages.dev',
+        'Referer': 'https://tk-stock.pages.dev/'
       }
     });
     const text = await res.text();
