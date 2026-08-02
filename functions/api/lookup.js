@@ -17,7 +17,12 @@ export async function onRequest(context) {
     + '&results=1';
 
   try {
-    const res = await fetch(yahooUrl);
+    const res = await fetch(yahooUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TK-STOCK/1.0)',
+        'Accept': 'application/json'
+      }
+    });
     const text = await res.text();
 
     let parsed;
@@ -29,7 +34,12 @@ export async function onRequest(context) {
         + '?appid=' + encodeURIComponent(appid)
         + '&query=' + encodeURIComponent(jan)
         + '&results=1';
-      const res2 = await fetch(fallbackUrl);
+      const res2 = await fetch(fallbackUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; TK-STOCK/1.0)',
+          'Accept': 'application/json'
+        }
+      });
       const text2 = await res2.text();
       let parsed2;
       try { parsed2 = JSON.parse(text2); } catch (_) { parsed2 = null; }
