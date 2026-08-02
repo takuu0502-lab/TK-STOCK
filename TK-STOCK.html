@@ -2374,7 +2374,8 @@ window.addEventListener('storageReady', function(){
       const max = Math.max(p.stock, p.minStock*2, 5, 1);
       const pct = Math.min(100, Math.round((p.stock / max) * 100));
       const color = gaugeColor(p.stock, p.minStock);
-      const brandName = p.brand || '';
+      const _catE = findCatalogEntryForProduct(p);
+      const brandName = p.brand || (_catE ? _catE.b : '');
       const _pMajor = majorById(p.majorId);
       const _isTire = _pMajor && _pMajor.name === 'タイヤ';
       const low = (p.minStock > 0 && p.stock <= p.minStock);
@@ -3694,7 +3695,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('productDetailBody').innerHTML = ''
       + '<div class="detail-header">'
       + '<div class="detail-name">'+escapeHtml(cleanName(p.name))+'</div>'
-      + (p.brand ? '<div style="font-size:13px;color:var(--amber);margin-top:3px;font-weight:600;">'+escapeHtml(p.brand)+'</div>' : '')
+      + ((p.brand || (catalogEntry && catalogEntry.b)) ? '<div style="font-size:13px;color:var(--amber);margin-top:3px;font-weight:600;">'+escapeHtml(p.brand || catalogEntry.b)+'</div>' : '')
       + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
       + (p.supplierId && suppliers.find(s=>s.id===p.supplierId) ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">仕入先：'+escapeHtml(suppliers.find(s=>s.id===p.supplierId).name)+'</div>' : '')
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
