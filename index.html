@@ -709,6 +709,13 @@
       </div>
     </div>
     <div class="field">
+      <label>仕入先</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select id="f_supplier" style="flex:1;"></select>
+        <button type="button" id="addSupplierBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap;flex-shrink:0;">＋追加</button>
+      </div>
+    </div>
+    <div class="field">
       <label>商品名</label>
       <input type="text" id="f_name" placeholder="例) ECOPIA NH200C">
     </div>
@@ -974,6 +981,7 @@ window.addEventListener('storageReady', function(){
   let categories = [];
   let editingId = null;
   let janDict = {};
+  let suppliers = [];
   let accounts = [];
   let currentUser = null;
 
@@ -1602,6 +1610,23 @@ window.addEventListener('storageReady', function(){
   async function saveCategories(){
     try{ await window.storage.set('categories', JSON.stringify(categories), SHARED); }
     catch(e){ console.error('save categories failed', e); }
+  }
+  async function loadSuppliers(){
+    try{
+      const r = await window.storage.get('suppliers', SHARED);
+      suppliers = r ? JSON.parse(r.value) : [];
+    }catch(_){ suppliers = []; }
+    if(!Array.isArray(suppliers)) suppliers = [];
+  }
+  async function saveSuppliers(){
+    try{ await window.storage.set('suppliers', JSON.stringify(suppliers), SHARED); }
+    catch(e){ console.error('save suppliers failed', e); }
+  }
+  function populateSupplierSelect(selectedId){
+    const sel = document.getElementById('f_supplier');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">（未設定）</option>'
+      + suppliers.map(s=>`<option value="${s.id}"${s.id===selectedId?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
   }
 
   function findByBarcode(code){
@@ -3399,6 +3424,7 @@ window.addEventListener('storageReady', function(){
     try { await window.storage.set('janDict', janDict, SHARED); } catch(_){}
   }
   loadJanDict();
+  loadSuppliers();
 
   // ---------- JANコードルックアップ ----------
   async function lookupJan(code){
@@ -3472,6 +3498,15 @@ window.addEventListener('storageReady', function(){
     }
   }
 
+  document.getElementById('addSupplierBtn').addEventListener('click', async ()=>{
+    const name = prompt('仕入先名を入力してください');
+    if(!name || !name.trim()) return;
+    const newS = { id: uid('sup'), name: name.trim() };
+    suppliers.push(newS);
+    await saveSuppliers();
+    populateSupplierSelect(newS.id);
+  });
+
   document.getElementById('janLookupBtn').addEventListener('click', ()=>{
     const code = document.getElementById('f_barcode').value.trim();
     lookupJan(code);
@@ -3491,6 +3526,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_barcode').value = prefillBarcode || '';
     document.getElementById('f_brand').value = '';
     document.getElementById('f_partno').value = '';
+    populateSupplierSelect('');
     document.getElementById('f_name').value = '';
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
@@ -3519,6 +3555,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_barcode').value = p.barcode;
     document.getElementById('f_brand').value = p.brand || '';
     document.getElementById('f_partno').value = p.partno || '';
+    populateSupplierSelect(p.supplierId || '');
     document.getElementById('f_name').value = p.name;
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
@@ -3591,6 +3628,7 @@ window.addEventListener('storageReady', function(){
       + (p.brand ? '<div style="font-size:12px;font-weight:600;color:var(--amber);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">'+escapeHtml(p.brand)+'</div>' : '')
       + '<div class="detail-name">'+escapeHtml(cleanName(p.name))+'</div>'
       + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
+      + (p.supplierId && suppliers.find(s=>s.id===p.supplierId) ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">🏢 仕入先：'+escapeHtml(suppliers.find(s=>s.id===p.supplierId).name)+'</div>' : '')
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div class="detail-cat">'+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+'</div>'
@@ -3711,6 +3749,7 @@ window.addEventListener('storageReady', function(){
     const barcode = document.getElementById('f_barcode').value.trim();
     const brand = document.getElementById('f_brand').value.trim();
     const partno = document.getElementById('f_partno').value.trim();
+    const supplierId = document.getElementById('f_supplier').value || '';
     const tireModelVal = document.getElementById('f_tiremodel').value;
     let name = document.getElementById('f_name').value.trim();
     if(!name && tireModelVal){
@@ -3745,9 +3784,9 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      Object.assign(p, {barcode, brand, partno, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
-      products.push({id: uid('p'), barcode, brand, partno, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
