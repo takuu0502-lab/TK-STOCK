@@ -2108,7 +2108,7 @@ window.addEventListener('storageReady', function(){
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
         + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
         + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
-        + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b==='SEIBERLING'||r.b==='TOPRUN'||r.b.startsWith('LUFT RV')||r.b==='LUFTRV' ? '—' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
+        + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b.startsWith('LUFT RV')||r.b==='LUFTRV' ? '\u2014' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
         + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost!==null ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</td>' : '')
         + '<td class="price-num" style="color:var(--amber);">'+(sell!==null ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</td>'
