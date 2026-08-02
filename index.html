@@ -3146,10 +3146,19 @@ window.addEventListener('storageReady', function(){
     if(typeof Html5Qrcode !== 'undefined' && navigator.mediaDevices){
       let detected = false;
       return new Promise(resolve => {
-        const scanner = new Html5Qrcode(readerId);
+        const scanner = new Html5Qrcode(readerId, { verbose: false });
+        const config = {
+          fps: 10,
+          qrbox: (w, h) => {
+            const size = Math.min(w, h, 280);
+            return { width: size, height: size };
+          },
+          rememberLastUsedCamera: false,
+          supportedScanTypes: []
+        };
         scanner.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+          config,
           (decodedText) => {
             if(detected) return;
             detected = true;
