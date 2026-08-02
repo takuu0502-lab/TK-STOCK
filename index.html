@@ -3331,11 +3331,10 @@ window.addEventListener('storageReady', function(){
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701'
+      const res = await fetch('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601'
         + '?format=json'
         + '&formatVersion=2'
         + '&applicationId=' + encodeURIComponent(appId)
-        + '&accessKey=' + encodeURIComponent(accessKey)
         + '&keyword=' + encodeURIComponent(code)
         + '&hits=1');
       const text = await res.text();
