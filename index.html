@@ -3320,12 +3320,23 @@ window.addEventListener('storageReady', function(){
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('/api/lookup?jan=' + encodeURIComponent(code) + '&appid=' + encodeURIComponent(appId));
-      if(!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      if(data.name){
-        if(!document.getElementById('f_name').value) document.getElementById('f_name').value = data.name;
-        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(data.name)+'</b></div>';
+      const url = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch'
+        + '?appid=' + encodeURIComponent(appId)
+        + '&jan_code=' + encodeURIComponent(code)
+        + '&results=1';
+      const res = await fetch(url);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(_){
+        throw new Error('APIからJSONが取得できませんでした。Client IDが正しいか確認してください。');
+      }
+      if(!res.ok) throw new Error('HTTP ' + res.status + (data.message ? '：' + data.message : ''));
+      const hits = data.hits || (data.totalResultsReturned && data.ResultSet && data.ResultSet.Result) || [];
+      const item = Array.isArray(hits) ? hits[0] : (hits['0'] || null);
+      const itemName = item && (item.name || (item.Product && item.Product.name));
+      if(itemName){
+        if(!document.getElementById('f_name').value) document.getElementById('f_name').value = itemName;
+        msgEl.innerHTML = '<div class="msg msg-ok">商品情報が見つかりました：<b>'+escapeHtml(itemName)+'</b></div>';
       } else {
         msgEl.innerHTML = '<div class="msg msg-error">このJANコードの商品情報はYahoo!ショッピングに登録されていません。手動で入力してください。</div>';
       }
