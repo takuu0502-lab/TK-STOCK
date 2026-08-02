@@ -404,20 +404,86 @@
   .res-tag{font-size:10.5px;padding:2px 7px;border-radius:4px;background:var(--amber-dim);color:var(--amber);margin-left:6px;font-weight:600;}
 
   @media (max-width:640px){
-    .list-layout{flex-direction:column;}
-    .cat-tree{width:100%;flex:none;}
+    /* ── レイアウト基本 ── */
+    .app{padding-bottom:60px;}
+    .header{padding:14px 12px 0;}
+    .panel{margin:0 8px;padding:14px 12px;}
+
+    /* ── ヘッダー：ユーザー情報を折りたたんでコンパクトに ── */
+    .brand{font-size:20px;}
+    .brand-row{gap:6px;}
+    .brand-sub{font-size:11px;}
+    .user-badge{font-size:11px;flex-wrap:wrap;gap:4px;}
+
+    /* ── タブ：横スクロール ── */
+    .tabs{padding:10px 8px 0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:6px;justify-content:flex-start;scrollbar-width:none;}
+    .tabs::-webkit-scrollbar{display:none;}
+    .tabs-group{flex-wrap:nowrap;gap:4px;}
+    .tab-btn{font-size:11.5px;padding:8px 10px;white-space:nowrap;flex-shrink:0;}
+
+    /* ── アクションボタン群 ── */
+    .tabs .btn{font-size:11.5px;padding:7px 10px;white-space:nowrap;flex-shrink:0;}
+
+    /* ── カテゴリツリー ── */
+    .list-layout{flex-direction:column;gap:10px;}
+    .cat-tree{width:100%;flex:none;max-height:160px;overflow-y:auto;}
+    .table-area{min-width:0;}
+
+    /* ── 在庫テーブル：カード表示 ── */
     .stock-table thead{display:none;}
     .stock-table, .stock-table tbody, .stock-table tr, .stock-table td{display:block;width:100%;}
-    .stock-table tr{border-bottom:1px solid var(--line);padding:10px 0;}
-    .stock-table td{padding:3px 0;border-bottom:none;}
-    .stock-table td:before{content:attr(data-label);color:var(--text-3);font-size:10.5px;text-transform:uppercase;display:block;margin-bottom:2px;}
-    .app{padding-bottom:40px;}
-    .header{padding:18px 14px 0;}
-    .panel{margin:0 12px;padding:14px;}
-    .tabs{padding:14px 12px 0;}
-    .modal{padding:16px;max-width:100%;}
+    .stock-table tr{border-bottom:1px solid var(--line);padding:10px 4px;position:relative;}
+    .stock-table td{padding:2px 0;border-bottom:none;font-size:13px;}
+    .stock-table td:before{content:attr(data-label);color:var(--text-3);font-size:10px;text-transform:uppercase;display:block;margin-bottom:1px;letter-spacing:0.3px;}
+
+    /* ── 価格カタログ表：横スクロール ── */
+    .price-catalog{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .price-catalog table{min-width:480px;}
+
+    /* ── モーダル：ほぼフルスクリーン ── */
+    .modal-overlay{padding:0;align-items:flex-end;}
+    .modal{padding:18px 14px;max-width:100%;width:100%;border-radius:14px 14px 0 0;max-height:92vh;}
+    #accountsModal .modal{max-width:100%;}
+
+    /* ── モーダルのボタン ── */
+    .modal-actions{flex-wrap:wrap;gap:8px;}
+    .modal-actions .btn{flex:1;min-width:80px;padding:12px 10px;font-size:14px;text-align:center;}
+
+    /* ── 商品詳細 ── */
     .detail-stats{grid-template-columns:1fr 1fr;gap:8px;}
-    .brand{font-size:22px;}
+    .detail-name{font-size:19px;}
+    .detail-action-row{gap:8px;}
+    .detail-action-btn{padding:12px 6px;font-size:14px;}
+
+    /* ── フォーム ── */
+    .row{gap:8px;}
+    input[type=text],input[type=number],input[type=date],select{font-size:16px;padding:10px 11px;}
+    .field{margin-bottom:10px;}
+
+    /* ── タイヤサイズ選択 ── */
+    .tire-size-row{flex-wrap:wrap;gap:4px 0;}
+    .tire-size-col select{width:80px;font-size:13px;}
+    .tire-size-col:first-of-type select{width:88px;}
+    .tire-size-col:last-of-type select{width:70px;}
+
+    /* ── 価格設定：ブランドルール行を縦並びに ── */
+    .brand-rule-row{flex-wrap:wrap;gap:6px;}
+    .brand-rule-row .brand-rule-name{width:100%;flex:0 0 100%;font-weight:600;}
+    .brand-rule-row select{flex:1;min-width:120px;}
+    .brand-rule-row input{width:70px;}
+    .brand-model-list{margin-left:0;}
+
+    /* ── 見積行 ── */
+    .quote-line-row{flex-wrap:wrap;gap:6px;}
+    .quote-line-main{width:100%;flex:0 0 100%;}
+    .quote-line-qty{width:50px;}
+    .quote-line-price{width:88px;}
+    .quote-line-subtotal{width:88px;}
+
+    /* ── 入出庫スキャン ── */
+    .qty-stepper{gap:8px;}
+    .qty-stepper button{width:44px;height:44px;font-size:20px;}
+    .qty-stepper input{width:64px;font-size:18px;}
   }
 
 /* ── QRコードモーダル ── */
