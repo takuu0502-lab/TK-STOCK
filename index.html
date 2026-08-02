@@ -1223,7 +1223,7 @@ window.addEventListener('storageReady', function(){
   }
   function computeCostPrice(brand, model, wholesale, retail){
     // SEIBERLING・TOPRUN・LUFT RV系: r.w はそのまま仕入れ価格（卸価格＝A表価格）
-    if(brand === 'SEIBERLING' || brand === 'TOPRUN' || /^LUFT\s*RV/i.test(brand)) return wholesale || null;
+    if(brand === 'SEIBERLING' || brand === 'TOPRUN' || /^LUFT/i.test(brand)) return wholesale || null;
     const rule = costRuleFor(brand, model);
     const base = rule.basis === 'wholesale' ? wholesale : retail;
     if(!base) return null;
@@ -4504,11 +4504,20 @@ window.addEventListener('storageReady', function(){
             // 汎用：ブランド名の自動補完
             const ws = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-            const titleRow = rows.find(r=>r&&r.some(c=>c&&typeof c==='string'&&c.length>3));
-            if(titleRow && !document.getElementById('importBrandName').value){
-              for(const c of titleRow){
-                if(typeof c==='string'){ const match=c.match(/([A-Z]{3,})/); if(match){ document.getElementById('importBrandName').value=match[1]; break; } }
+            // ブランド名の自動検出：全角文字行をスキップしてASCII大文字が含まれる行を探す
+            let detectedBrand = '';
+            for(const row of rows.slice(0, 10)){
+              if(!row) continue;
+              for(const c of row){
+                if(typeof c==='string'){
+                  const match = c.match(/([A-Z]{3,}(?:\s*[A-Z0-9Ⅱ]+)*)/);
+                  if(match){ detectedBrand = match[1].trim(); break; }
+                }
               }
+              if(detectedBrand) break;
+            }
+            if(detectedBrand && !document.getElementById('importBrandName').value){
+              document.getElementById('importBrandName').value = detectedBrand;
             }
           }
           if(!document.getElementById('importCatalogName').value){
