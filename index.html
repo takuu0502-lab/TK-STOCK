@@ -3327,7 +3327,10 @@ window.addEventListener('storageReady', function(){
     }
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
     try {
-      const res = await fetch('/api/lookup?jan=' + encodeURIComponent(code) + '&appid=' + encodeURIComponent(appId));
+      const res = await fetch('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch'
+        + '?appid=' + encodeURIComponent(appId)
+        + '&jan_code=' + encodeURIComponent(code)
+        + '&results=1');
       const text = await res.text();
       let data;
       try { data = JSON.parse(text); } catch(_){
