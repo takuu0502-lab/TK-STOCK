@@ -2374,8 +2374,7 @@ window.addEventListener('storageReady', function(){
       const max = Math.max(p.stock, p.minStock*2, 5, 1);
       const pct = Math.min(100, Math.round((p.stock / max) * 100));
       const color = gaugeColor(p.stock, p.minStock);
-      const catEntry = findCatalogEntryForProduct(p);
-      const brandName = catEntry ? catEntry.b : '';
+      const brandName = p.brand || '';
       const _pMajor = majorById(p.majorId);
       const _isTire = _pMajor && _pMajor.name === 'タイヤ';
       const low = (p.minStock > 0 && p.stock <= p.minStock);
