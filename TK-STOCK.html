@@ -2838,37 +2838,60 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('printPreviewExec').addEventListener('click', ()=>{
-    document.body.dataset.printing = 'estimate';
-    window.print();
+    const content = document.getElementById('quotePrintDiv').innerHTML;
+    const css = `
+      @page{size:A4 portrait;margin:10mm 12mm 10mm 12mm;}
+      body{font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Neue',sans-serif;font-size:9pt;color:#111;line-height:1.4;margin:0;padding:0;}
+      /* タイトルエリア */
+      .qp-top{display:flex;justify-content:space-between;align-items:stretch;margin-bottom:6pt;border-bottom:2pt solid #222;padding-bottom:5pt;}
+      .qp-title{font-size:20pt;font-weight:700;letter-spacing:3pt;margin-bottom:1pt;}
+      .qp-subtitle{font-size:7.5pt;color:#555;}
+      /* 店舗情報 */
+      .qp-shop-block{text-align:right;font-size:7.5pt;color:#333;line-height:1.6;}
+      .qp-shop-name{font-size:10.5pt;font-weight:700;color:#111;margin-bottom:2pt;}
+      /* お客様情報 */
+      .qp-customer-section{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8pt;padding-bottom:5pt;border-bottom:0.5pt solid #bbb;}
+      .qp-label{font-size:7pt;color:#888;margin-bottom:1pt;}
+      .qp-cname{font-size:13pt;font-weight:700;border-bottom:1.5pt solid #333;padding-bottom:2pt;min-width:130pt;display:inline-block;margin-bottom:0;}
+      .qp-car{font-size:9pt;color:#444;}
+      .qp-meta-label{color:#888;font-size:7.5pt;}
+      /* 銘柄ブロック */
+      .qp-blocks{margin-bottom:7pt;}
+      .qpb{border:1pt solid #333;border-radius:3pt;padding:5pt 8pt;margin-bottom:6pt;page-break-inside:avoid;}
+      .qpb-header{display:flex;align-items:flex-end;gap:8pt;margin-bottom:4pt;border-bottom:0.5pt solid #bbb;padding-bottom:3pt;}
+      .qpb-name{font-size:10pt;font-weight:700;line-height:1.2;}
+      .qpb-spec{font-size:10pt;font-weight:700;color:#222;font-family:monospace;line-height:1.2;}
+      .qpb-table{width:100%;border-collapse:collapse;}
+      .qpb-table tr td{padding:2pt 4pt;font-size:8.5pt;border-bottom:0.5pt solid #eee;}
+      .qpb-table tr:last-child td{border-bottom:none;}
+      .qpb-table td.num{text-align:right;font-family:monospace;white-space:nowrap;}
+      .qpb-table td.label{color:#444;width:45%;}
+      .qpb-sep{border-top:0.5pt solid #bbb;margin:3pt 0;}
+      .qpb-total-row{display:flex;justify-content:flex-end;gap:14pt;align-items:baseline;margin-top:2pt;}
+      .qpb-sub{font-size:7.5pt;color:#666;}
+      .qpb-sub span{font-family:monospace;}
+      .qpb-tax{font-size:7.5pt;color:#888;}
+      .qpb-tax span{font-family:monospace;}
+      .qpb-grand{font-size:11pt;font-weight:700;}
+      .qpb-grand span{font-family:monospace;}
+      /* 備考 */
+      .qp-note-section{border:0.5pt solid #bbb;border-radius:2pt;padding:5pt 8pt;min-height:30pt;}
+      .qp-note-title{font-size:7.5pt;font-weight:700;color:#555;margin-bottom:3pt;}
+      .qp-note-body{font-size:8.5pt;color:#333;white-space:pre-wrap;min-height:22pt;}
+    `;
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>御見積書</title><style>${css}</style></head><body>${content}</body></html>`;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if(!w){ alert('ポップアップがブロックされています。ブラウザのポップアップ許可設定をご確認ください。'); return; }
+    w.document.write(html);
+    w.document.close();
+    // ロード完了後に印刷ダイアログを表示
+    w.addEventListener('load', ()=>{ w.focus(); w.print(); });
+    setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
   });
 
   window.addEventListener('afterprint', ()=>{
     delete document.body.dataset.printing;
     document.getElementById('qrPrintArea').style.display = 'none';
-  });
-
-  // beforeprint時に@media print CSS適用後のサイズで計測してスケール計算
-  window.addEventListener('beforeprint', ()=>{
-    const content = document.getElementById('quotePrintDiv');
-    if (!content) return;
-    content.style.removeProperty('zoom');
-    // A4印刷可能高さ: (297-20)mm, 幅: (210-24)mm (@pageのmarginを除く)
-    const MM = 96 / 25.4;
-    const printableH = (297 - 20) * MM;
-    const printableW = (210 - 24) * MM;
-    const contentH = content.scrollHeight;
-    const contentW = content.scrollWidth;
-    const scaleH = contentH > 0 ? printableH / contentH : 1;
-    const scaleW = contentW > 0 ? printableW / contentW : 1;
-    const scale = Math.min(scaleH, scaleW, 1);
-    if (scale < 0.999) {
-      content.style.zoom = scale.toFixed(4);
-    }
-  });
-
-  window.addEventListener('afterprint', ()=>{
-    const content = document.getElementById('quotePrintDiv');
-    if (content) content.style.removeProperty('zoom');
   });
 
   function cleanName(name){
