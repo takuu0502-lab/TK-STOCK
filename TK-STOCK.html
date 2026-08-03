@@ -2606,7 +2606,26 @@ window.addEventListener('storageReady', function(){
       : '<thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th></tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
-      tr.addEventListener('click', ()=> openProductDetail(tr.dataset.detail));
+      tr.addEventListener('click', ()=>{
+        // 出庫タブがアクティブな場合はカートに追加
+        if(document.getElementById('tab-out').style.display !== 'none'){
+          const p = products.find(x=>x.id===tr.dataset.detail);
+          if(p){
+            if(p.stock <= 0){
+              const r = document.getElementById('outResult');
+              if(r){ r.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫がありません（在庫数: 0）。</div>'; setTimeout(()=>{ r.innerHTML=''; },2500); }
+              return;
+            }
+            addToOutboundCart(p);
+            const r = document.getElementById('outResult');
+            if(r){ r.innerHTML='<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+'  をリストに追加しました</div>'; setTimeout(()=>{ r.innerHTML=''; },2000); }
+            // 商品一覧パネルを閉じてカートにスクロール
+            document.getElementById('specSearchPanel').style.display='none';
+          }
+          return;
+        }
+        openProductDetail(tr.dataset.detail);
+      });
     });
     wrap.querySelectorAll('[data-edit-id]').forEach(btn=>{
       btn.addEventListener('click', e=>{ e.stopPropagation(); openEditModal(btn.dataset.editId); });
