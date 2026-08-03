@@ -938,6 +938,30 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="provisionalFormModal">
+  <div class="modal" style="max-width:380px;">
+    <h3 style="margin-top:0;">🔖 仮出庫の登録</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;">
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">お客様名 <span style="color:var(--red);">*</span></label>
+        <input type="text" id="prov_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
+        <input type="date" id="prov_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div style="font-size:12px;color:var(--text-3);padding:8px 10px;background:var(--bg-2);border-radius:8px;">
+        ※在庫数は変わりません。確定時に出庫処理されます。
+      </div>
+    </div>
+    <div id="provFormError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="provFormCancelBtn">キャンセル</button>
+      <button class="btn btn-amber" id="provFormOkBtn">登録する</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="quoteModal">
   <div class="modal" id="quotePrintArea" style="max-width:700px;">
 
@@ -1858,6 +1882,40 @@ window.addEventListener('storageReady', function(){
     stopAllScanners();
     startScanner('in');
   });
+
+  function showProvisionalForm(){
+    return new Promise((resolve)=>{
+      const overlay = document.getElementById('provisionalFormModal');
+      const customerInput = document.getElementById('prov_customer');
+      const dateInput = document.getElementById('prov_date');
+      const errorEl = document.getElementById('provFormError');
+      customerInput.value = '';
+      dateInput.value = '';
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+      overlay.classList.add('show');
+      setTimeout(()=>{ customerInput.focus(); }, 100);
+      const okBtn = document.getElementById('provFormOkBtn');
+      const cancelBtn = document.getElementById('provFormCancelBtn');
+      function cleanup(result){
+        overlay.classList.remove('show');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk(){
+        const name = customerInput.value.trim();
+        const date = dateInput.value;
+        errorEl.style.display = 'none';
+        if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
+        if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
+        cleanup({ customerName: name, scheduledDate: date });
+      }
+      function onCancel(){ cleanup(null); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
 
   function showConfirm(message){
     return new Promise((resolve)=>{
@@ -4691,19 +4749,9 @@ window.addEventListener('storageReady', function(){
         if(!canWriteData()) return;
         if(outboundCart.length===0) return;
         // お客様名・予定日入力フォームをモーダルで表示
-        const formHtml = '<div style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">'
-          + '<div class="field"><label>お客様名 <span style="color:var(--red);">*</span></label>'
-          + '<input type="text" id="prov_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;"></div>'
-          + '<div class="field"><label>引き渡し予定日 <span style="color:var(--red);">*</span></label>'
-          + '<input type="date" id="prov_date" style="width:100%;box-sizing:border-box;"></div>'
-          + '<div style="font-size:12px;color:var(--text-3);">※在庫数は変わりません。確定時に出庫処理されます。</div>'
-          + '</div>';
-        const ok = await showConfirm('仮出庫の登録', formHtml);
-        if(!ok) return;
-        const customerName = (document.getElementById('prov_customer')||{}).value?.trim();
-        const scheduledDate = (document.getElementById('prov_date')||{}).value;
-        if(!customerName){ alert('お客様名を入力してください。'); return; }
-        if(!scheduledDate){ alert('引き渡し予定日を入力してください。'); return; }
+        const formResult = await showProvisionalForm();
+        if(!formResult) return;
+        const { customerName, scheduledDate } = formResult;
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
