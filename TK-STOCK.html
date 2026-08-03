@@ -4553,32 +4553,29 @@ window.addEventListener('storageReady', function(){
       + '<div style="font-size:14px;font-weight:700;color:var(--red);">出庫リスト（未確定）</div>'
       + '<button class="btn btn-ghost btn-sm" id="outCartClear" style="font-size:12px;">クリア</button>'
       + '</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead><tr style="border-bottom:2px solid var(--line);">'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">商品名</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">サイズ</th>'
-      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);">数量</th>'
-      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);">在庫</th>'
-      + '<th style="padding:4px;"></th>'
-      + '</tr></thead><tbody>';
+      + '<div>';
     outboundCart.forEach((item, idx)=>{
       const over = item.qty > item.maxStock;
-      html += '<tr style="border-bottom:1px solid var(--line-soft);">'
-        + '<td style="padding:8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
-        + '<td style="padding:8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
-        + '<td style="padding:8px;">'
-        + '<div class="qty-stepper" style="justify-content:center;">'
+      html += '<div style="border-bottom:1px solid var(--line-soft);padding:10px 0;">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-weight:600;color:var(--text-1);font-size:14px;word-break:break-all;">'+escapeHtml(cleanName(item.name))+'</div>'
+        + (item.spec ? '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(item.spec)+'</div>' : '')
+        + '</div>'
+        + '<button class="btn btn-ghost btn-sm out-remove-btn" data-out-idx="'+idx+'" style="color:var(--red);font-size:18px;padding:2px 8px;line-height:1;flex-shrink:0;">×</button>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+        + '<div class="qty-stepper">'
         + '<button type="button" data-out-idx="'+idx+'" data-step="-1">−</button>'
-        + '<input type="number" class="out-qty-input" data-out-idx="'+idx+'" value="'+item.qty+'" min="1" max="'+item.maxStock+'" style="width:52px;'+(over?'border-color:var(--red);':'')+'">'
+        + '<input type="number" class="out-qty-input" data-out-idx="'+idx+'" value="'+item.qty+'" min="1" max="'+item.maxStock+'" style="width:52px;'+(over?'border-color:var(--red);color:var(--red);':'')+'">'
         + '<button type="button" data-out-idx="'+idx+'" data-step="1">＋</button>'
-        + '</div></td>'
-        + '<td style="padding:8px;text-align:center;color:var(--text-3);">'+item.maxStock+'</td>'
-        + '<td style="padding:4px 6px;text-align:center;">'
-        + '<button class="btn btn-ghost btn-sm out-remove-btn" data-out-idx="'+idx+'" style="color:var(--red);font-size:18px;padding:2px 8px;line-height:1;">×</button>'
-        + '</td></tr>';
+        + '</div>'
+        + '<div style="font-size:12px;color:'+(over?'var(--red)':'var(--text-3)')+';">在庫: '+item.maxStock+(over?' <b>超過</b>':'')+'</div>'
+        + '</div>'
+        + '</div>';
     });
     const hasError = outboundCart.some(x=>x.qty>x.maxStock);
-    html += '</tbody></table>'
+    html += '</div>'
       + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">'+outboundCart.length+' 商品 / 合計 '+totalQty+' 本</div>'
       + (hasError ? '<div class="msg msg-error" style="margin-top:8px;">在庫数を超える数量があります。確認してください。</div>' : '')
       + '<button class="btn btn-red" id="outBatchConfirmBtn" style="width:100%;margin-top:14px;padding:14px 0;font-size:16px;font-weight:700;border-radius:10px;letter-spacing:0.5px;"'+(hasError?' disabled':'')+'>一括出庫確定（'+outboundCart.length+' 商品）</button>'
@@ -4696,28 +4693,24 @@ window.addEventListener('storageReady', function(){
       + '<div style="font-size:14px;font-weight:700;color:var(--teal);">入庫リスト（未確定）</div>'
       + '<button class="btn btn-ghost btn-sm" id="inCartClear" style="font-size:12px;">クリア</button>'
       + '</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead><tr style="border-bottom:2px solid var(--line);">'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">商品名</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">サイズ</th>'
-      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);">数量</th>'
-      + '<th style="padding:4px;"></th>'
-      + '</tr></thead><tbody>';
+      + '<div>';
     inboundCart.forEach((item, idx)=>{
-      html += '<tr style="border-bottom:1px solid var(--line-soft);">'
-        + '<td style="padding:8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
-        + '<td style="padding:8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
-        + '<td style="padding:8px;">'
-        + '<div class="qty-stepper" style="justify-content:center;">'
+      html += '<div style="border-bottom:1px solid var(--line-soft);padding:10px 0;">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-weight:600;color:var(--text-1);font-size:14px;word-break:break-all;">'+escapeHtml(cleanName(item.name))+'</div>'
+        + (item.spec ? '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(item.spec)+'</div>' : '')
+        + '</div>'
+        + '<button class="btn btn-ghost btn-sm cart-remove-btn" data-cart-idx="'+idx+'" style="color:var(--red);font-size:18px;padding:2px 8px;line-height:1;flex-shrink:0;">×</button>'
+        + '</div>'
+        + '<div class="qty-stepper">'
         + '<button type="button" data-cart-idx="'+idx+'" data-step="-1">−</button>'
         + '<input type="number" class="cart-qty-input" data-cart-idx="'+idx+'" value="'+item.qty+'" min="1" style="width:52px;">'
         + '<button type="button" data-cart-idx="'+idx+'" data-step="1">＋</button>'
-        + '</div></td>'
-        + '<td style="padding:4px 6px;text-align:center;">'
-        + '<button class="btn btn-ghost btn-sm cart-remove-btn" data-cart-idx="'+idx+'" style="color:var(--red);font-size:18px;padding:2px 8px;line-height:1;">×</button>'
-        + '</td></tr>';
+        + '</div>'
+        + '</div>';
     });
-    html += '</tbody></table>'
+    html += '</div>'
       + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">'+inboundCart.length+' 商品 / 合計 '+totalQty+' 本</div>'
       + '<button class="btn btn-teal" id="inBatchConfirmBtn" style="width:100%;margin-top:14px;padding:14px 0;font-size:16px;font-weight:700;border-radius:10px;letter-spacing:0.5px;">一括入庫確定（'+inboundCart.length+' 商品）</button>'
       + '<div id="inBatchMsg" style="margin-top:8px;"></div>'
