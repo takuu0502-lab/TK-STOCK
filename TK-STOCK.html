@@ -2531,12 +2531,7 @@ window.addEventListener('storageReady', function(){
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => p.customerOrders && p.customerOrders.length > 0);
     if(recentFilter){
-      filteredList = filteredList.slice().sort((a,b)=>{
-        if(!a.createdAt && !b.createdAt) return 0;
-        if(!a.createdAt) return 1;
-        if(!b.createdAt) return -1;
-        return new Date(b.createdAt)-new Date(a.createdAt);
-      });
+      filteredList = filteredList.filter(p => p.createdAt).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
     }
     if(list.length === 0){
       wrap.innerHTML = '<div class="empty-state">該当する商品がありません。「＋新規商品登録」から追加してください。</div>';
