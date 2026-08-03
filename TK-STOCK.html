@@ -4165,7 +4165,7 @@ window.addEventListener('storageReady', function(){
     function renderDetailProvList(){
       const el = document.getElementById('detailProvList');
       if(!el) return;
-      const entries = provisionalOutbounds.filter(po=>po.items.some(i=>i.productId===id));
+      const entries = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===id));
       if(entries.length === 0){
         el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">仮出庫なし</div>';
         return;
