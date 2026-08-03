@@ -4078,10 +4078,14 @@ window.addEventListener('storageReady', function(){
         const myItems = po.items.filter(i=>i.productId===id);
         const qty = myItems.reduce((s,i)=>s+i.qty,0);
         const [statusLabel, statusColor] = statusMap[po.status]||statusMap.pending;
-        return '<div style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;">'
+        const isPending = po.status === 'pending';
+        return '<div data-jump-prov-id="'+po.id+'" style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;'+(isPending?'cursor:pointer;':'')+(isPending?'transition:box-shadow 0.15s;':'')+'" '+(isPending?'title="出庫タブで確認する"':'')+' >'
           +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
           +'<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
+          +'<div style="display:flex;align-items:center;gap:6px;">'
           +'<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
+          +(isPending?'<span style="font-size:10px;color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px;">詳細 →</span>':'')
+          +'</div>'
           +'</div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">'
           +'<div><div style="color:var(--text-3);font-size:10px;">👤 お客様</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'様</div></div>'
@@ -4092,6 +4096,26 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           +'</div>';
       }).join('');
+
+      // 未確定カードクリック → 出庫タブへ遷移
+      el.querySelectorAll('[data-jump-prov-id]').forEach(card=>{
+        const provId = card.dataset.jumpProvId;
+        const po = provisionalOutbounds.find(x=>x.id===provId);
+        if(!po || po.status !== 'pending') return;
+        card.addEventListener('click', ()=>{
+          detailModal.classList.remove('show');
+          switchTab('out');
+          setTimeout(()=>{
+            const target = document.getElementById('prov-entry-'+provId);
+            if(!target) return;
+            target.open = true;
+            target.scrollIntoView({ behavior:'smooth', block:'center' });
+            target.style.transition = 'box-shadow 0.3s';
+            target.style.boxShadow = '0 0 0 3px var(--amber)';
+            setTimeout(()=>{ target.style.boxShadow = ''; }, 1800);
+          }, 300);
+        });
+      });
     }
     renderDetailProvList();
 
@@ -4661,7 +4685,7 @@ window.addEventListener('storageReady', function(){
       const d = new Date(entry.date);
       const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const totalQty = entry.items.reduce((s,x)=>s+x.qty,0);
-      html += '<details style="margin-bottom:8px;border:2px solid var(--amber);border-radius:8px;overflow:hidden;">'
+      html += '<details id="prov-entry-'+entry.id+'" style="margin-bottom:8px;border:2px solid var(--amber);border-radius:8px;overflow:hidden;">'
         + '<summary style="list-style:none;background:var(--amber-dim);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-size:13px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName)+'様</div>'
