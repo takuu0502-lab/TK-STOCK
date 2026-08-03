@@ -4032,7 +4032,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="detail-stats">'
       + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
       + '<div class="detail-stat-value">'+p.stock+'</div>'
-      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+provQty+'本</div>':''; })()
+      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+provQty+'本</div>':''; })()
       + '</div></div>'
       + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
@@ -5121,7 +5121,7 @@ window.addEventListener('storageReady', function(){
           return '<details style="margin-bottom:10px;border:1px solid var(--amber);border-radius:8px;overflow:hidden;">'
             +'<summary style="list-style:none;background:rgba(232,160,32,0.08);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
             +'<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">'
-            +'<span class="hist-type" style="background:var(--amber);color:#000;">仮出庫</span>'
+            +'<span class="hist-type" style="background:var(--amber);color:#fff;">仮出庫</span>'
             +'<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
             +'<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
             +(batch.user?'<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>':'')
