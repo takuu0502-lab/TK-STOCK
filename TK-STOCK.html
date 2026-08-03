@@ -2562,8 +2562,8 @@ window.addEventListener('storageReady', function(){
       const _pMajor = majorById(p.majorId);
       const _isTire = _pMajor && _pMajor.name === 'タイヤ';
       const low = (p.minStock > 0 && p.stock <= p.minStock);
-      // タイヤでも p.brand が直接設定されていれば表示
-      const showBrand = !_isTire || p.brand;
+      // タイヤはカタログの銘柄名（モデル名）と一致する場合は非表示、ユーザーが独自設定した場合のみ表示
+      const showBrand = !_isTire || (p.brand && p.brand !== (_catE ? _catE.b : ''));
       const createdStr = p.createdAt ? (()=>{ const d=new Date(p.createdAt); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })() : '';
       return '<tr class="clickable-row" data-detail="'+p.id+'">'
         + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
