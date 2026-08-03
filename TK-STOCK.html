@@ -2545,19 +2545,21 @@ window.addEventListener('storageReady', function(){
       wrap.innerHTML = '<div class="empty-state" style="color:var(--text-3);">自店舗在庫無し</div>';
       return;
     }
-    filteredList.sort((a,b)=>{
-      // 検索したタイヤサイズに一致する商品を先頭に表示
-      const hasSize = p => p.spec && (
-        (!selectedTireWidth  || p.spec.indexOf(selectedTireWidth)  !== -1) &&
-        (!selectedTireInch   || p.spec.indexOf(selectedTireInch)   !== -1) &&
-        (!selectedTireAspect || selectedTireAspect === 'NOASPECT' || p.spec.indexOf(selectedTireAspect) !== -1)
-      );
-      const aMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(a) : false;
-      const bMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(b) : false;
-      if(aMatch && !bMatch) return -1;
-      if(!aMatch && bMatch) return 1;
-      return a.name.localeCompare(b.name,'ja');
-    });
+    if(!recentFilter){
+      filteredList.sort((a,b)=>{
+        // 検索したタイヤサイズに一致する商品を先頭に表示
+        const hasSize = p => p.spec && (
+          (!selectedTireWidth  || p.spec.indexOf(selectedTireWidth)  !== -1) &&
+          (!selectedTireInch   || p.spec.indexOf(selectedTireInch)   !== -1) &&
+          (!selectedTireAspect || selectedTireAspect === 'NOASPECT' || p.spec.indexOf(selectedTireAspect) !== -1)
+        );
+        const aMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(a) : false;
+        const bMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(b) : false;
+        if(aMatch && !bMatch) return -1;
+        if(!aMatch && bMatch) return 1;
+        return a.name.localeCompare(b.name,'ja');
+      });
+    }
     let rows = filteredList.map(p=>{
       const max = Math.max(p.stock, p.minStock*2, 5, 1);
       const pct = Math.min(100, Math.round((p.stock / max) * 100));
