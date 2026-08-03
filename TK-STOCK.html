@@ -1918,7 +1918,7 @@ window.addEventListener('storageReady', function(){
             + '<span class="cat-dot" style="background:'+color.text+';"></span>'
             + '<span class="cat-label">'+escapeHtml(cat.name)+'</span>'
             + '<span class="cat-count">'+countForMajor(cat.id)+'</span>'
-            + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
+            + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="move-major-up" data-id="'+cat.id+'" title="上へ">&#9650;</button><button class="icon-btn" data-action="move-major-down" data-id="'+cat.id+'" title="下へ">&#9660;</button><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
             + '</div>';
       if(isOpen){
         cat.subs.forEach(sub=>{
@@ -1967,7 +1967,17 @@ window.addEventListener('storageReady', function(){
 
   async function handleCatAction(action, majorId, id){
     if(!canWriteData()) return;
-    if(action === 'rename-major'){
+    if(action === 'move-major-up'){
+      const idx = categories.findIndex(c=>c.id===majorId);
+      if(idx <= 0) return;
+      [categories[idx-1], categories[idx]] = [categories[idx], categories[idx-1]];
+      await saveCategories(); renderCatTree();
+    } else if(action === 'move-major-down'){
+      const idx = categories.findIndex(c=>c.id===majorId);
+      if(idx < 0 || idx >= categories.length-1) return;
+      [categories[idx], categories[idx+1]] = [categories[idx+1], categories[idx]];
+      await saveCategories(); renderCatTree();
+    } else if(action === 'rename-major'){
       const cat = majorById(majorId);
       const name = prompt('大分類の名称を変更', cat.name);
       if(name && name.trim()){ cat.name = name.trim(); await saveCategories(); renderCatTree(); renderProductTable(); }
