@@ -533,7 +533,11 @@
     .qty-stepper input{width:64px;font-size:18px;}
   }
 
-/* ── QRコードモーダル ── */
+/* ── QR設定ボタン ── */
+  .qr-opt-btn{padding:6px 14px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .12s;}
+  .qr-opt-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .qr-opt-btn.active{border-color:var(--amber);background:var(--amber-dim);color:var(--amber);}
+  /* ── QRコードモーダル ── */
 #qrModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;}
 #qrModal.show{display:flex;}
 #qrModalBox{background:var(--bg-1);border-radius:16px;padding:24px;max-width:340px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center;}
@@ -564,6 +568,72 @@
   </div>
 </div>
 <div id="qrPrintArea" style="display:none;"></div>
+
+<!-- QR印刷設定モーダル -->
+<div class="modal-overlay" id="qrSettingsModal">
+  <div class="modal" style="max-width:560px;width:95%;">
+    <h3 style="margin-top:0;font-size:16px;">🖨 QR印刷の設定</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <!-- 左: 設定項目 -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- 1行の枚数 -->
+        <div class="field">
+          <label style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;">1行の枚数</label>
+          <div style="display:flex;gap:6px;margin-top:6px;" id="qrColGroup">
+            <button type="button" class="qr-opt-btn active" data-qr-cols="2">2枚</button>
+            <button type="button" class="qr-opt-btn" data-qr-cols="3">3枚</button>
+            <button type="button" class="qr-opt-btn" data-qr-cols="4">4枚</button>
+            <button type="button" class="qr-opt-btn" data-qr-cols="5">5枚</button>
+          </div>
+        </div>
+        <!-- QRサイズ -->
+        <div class="field">
+          <label style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;">QRコードサイズ</label>
+          <div style="display:flex;gap:6px;margin-top:6px;" id="qrSizeGroup">
+            <button type="button" class="qr-opt-btn" data-qr-size="80">小</button>
+            <button type="button" class="qr-opt-btn active" data-qr-size="120">中</button>
+            <button type="button" class="qr-opt-btn" data-qr-size="160">大</button>
+          </div>
+        </div>
+        <!-- 表示項目 -->
+        <div class="field">
+          <label style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;">表示項目</label>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="qrShowName" checked style="accent-color:var(--amber);width:15px;height:15px;"> 商品名
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="qrShowSpec" checked style="accent-color:var(--amber);width:15px;height:15px;"> 規格・サイズ
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="qrShowPartno" style="accent-color:var(--amber);width:15px;height:15px;"> 品番
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="qrShowCode" checked style="accent-color:var(--amber);width:15px;height:15px;"> コード値
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- 右: プレビュー -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">プレビュー</div>
+        <div id="qrSettingsPreview" style="background:var(--bg-0);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;justify-content:center;min-height:180px;align-items:center;">
+          <div id="qrPreviewLabel" style="border:1px solid #ccc;border-radius:8px;padding:10px 14px;text-align:center;display:inline-block;">
+            <div id="qrPvName" style="font-size:13px;font-weight:700;margin-bottom:2px;">商品名サンプル</div>
+            <div id="qrPvSpec" style="font-size:11px;color:#666;margin-bottom:6px;">205/65R15</div>
+            <div id="qrPvQr" style="margin-bottom:4px;"></div>
+            <div id="qrPvCode" style="font-size:10px;color:#888;font-family:monospace;">SAMPLE-ID-001</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-3);">※実際の商品情報で印刷されます</div>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn btn-ghost" id="qrSettingsCancelBtn">キャンセル</button>
+      <button class="btn btn-amber" id="qrSettingsPrintBtn">🖨 この設定で印刷する</button>
+    </div>
+  </div>
+</div>
 
 <div class="auth-screen" id="authScreen" style="display:none;">
   <div class="auth-card">
@@ -3544,40 +3614,141 @@ window.addEventListener('storageReady', function(){
       renderProductTable();
       switchTab('out');
     });
-    // QR一括印刷
+    // QR一括印刷 → 設定モーダルを開く
     document.getElementById('bulkQrBtn').addEventListener('click', ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
       if(ps.length===0) return;
-      const printArea = document.getElementById('qrPrintArea');
-      printArea.innerHTML = '';
-      printArea.style.display = 'block';
-      let pending = ps.length;
-      ps.forEach(p=>{
-        const qrValue = p.barcode || p.id;
-        const name = cleanName(p.name);
-        const spec = p.spec || '';
-        const wrapper = document.createElement('div');
-        wrapper.className = 'qr-label';
-        wrapper.style.cssText = 'display:inline-block;margin:6px;vertical-align:top;';
-        wrapper.innerHTML = '<div class="qr-label-name">'+escapeHtml(name)+'</div>'
-          +(spec?'<div class="qr-label-spec">'+escapeHtml(spec)+'</div>':'')
-          +'<div id="qrBulk_'+escapeHtml(p.id)+'"></div>'
-          +'<div class="qr-label-code">'+escapeHtml(qrValue)+'</div>';
-        printArea.appendChild(wrapper);
-        const qrDiv = wrapper.querySelector('#qrBulk_'+p.id);
-        new QRCode(qrDiv, { text: qrValue, width:120, height:120, correctLevel: QRCode.CorrectLevel.M });
-      });
-      // QRコード描画を待ってから印刷
-      setTimeout(()=>{
-        document.body.dataset.printing = 'qr';
-        window.print();
-      }, 500);
+      openQrSettings(ps);
     });
     // 選択解除
     document.getElementById('bulkClearBtn').addEventListener('click', ()=>{
       selectedProducts.clear(); updateBulkBar(); renderProductTable();
     });
   });
+
+  // ── QR印刷設定モーダル ─────────────────────────────
+  let qrSettings = {
+    cols: 2,
+    size: 120,
+    showName: true,
+    showSpec: true,
+    showPartno: false,
+    showCode: true
+  };
+
+  function loadQrSettings(){
+    try {
+      const saved = localStorage.getItem('qrPrintSettings');
+      if(saved) qrSettings = Object.assign(qrSettings, JSON.parse(saved));
+    } catch(e){}
+  }
+  function saveQrSettings(){
+    try { localStorage.setItem('qrPrintSettings', JSON.stringify(qrSettings)); } catch(e){}
+  }
+
+  function openQrSettings(products_to_print){
+    loadQrSettings();
+    const modal = document.getElementById('qrSettingsModal');
+    modal.classList.add('show');
+
+    // ボタン選択状態を復元
+    function applyColUI(){
+      document.querySelectorAll('#qrColGroup .qr-opt-btn').forEach(b=>{
+        b.classList.toggle('active', Number(b.dataset.qrCols)===qrSettings.cols);
+      });
+    }
+    function applySizeUI(){
+      document.querySelectorAll('#qrSizeGroup .qr-opt-btn').forEach(b=>{
+        b.classList.toggle('active', Number(b.dataset.qrSize)===qrSettings.size);
+      });
+    }
+    applyColUI(); applySizeUI();
+    document.getElementById('qrShowName').checked = qrSettings.showName;
+    document.getElementById('qrShowSpec').checked = qrSettings.showSpec;
+    document.getElementById('qrShowPartno').checked = qrSettings.showPartno;
+    document.getElementById('qrShowCode').checked = qrSettings.showCode;
+
+    // プレビュー生成
+    function renderPreview(){
+      const pvQr = document.getElementById('qrPvQr');
+      pvQr.innerHTML = '';
+      new QRCode(pvQr, { text:'SAMPLE-001', width: Math.min(qrSettings.size, 120), height: Math.min(qrSettings.size, 120), correctLevel: QRCode.CorrectLevel.M });
+      document.getElementById('qrPvName').style.display = qrSettings.showName ? '' : 'none';
+      document.getElementById('qrPvSpec').style.display = qrSettings.showSpec ? '' : 'none';
+      document.getElementById('qrPvCode').style.display = qrSettings.showCode ? '' : 'none';
+      document.getElementById('qrPreviewLabel').style.padding = qrSettings.size >= 160 ? '14px 18px' : '10px 14px';
+    }
+    renderPreview();
+
+    // 設定変更イベント
+    function onSettingChange(){ renderPreview(); saveQrSettings(); }
+
+    document.querySelectorAll('#qrColGroup .qr-opt-btn').forEach(b=>{
+      b.onclick = ()=>{ qrSettings.cols = Number(b.dataset.qrCols); applyColUI(); onSettingChange(); };
+    });
+    document.querySelectorAll('#qrSizeGroup .qr-opt-btn').forEach(b=>{
+      b.onclick = ()=>{ qrSettings.size = Number(b.dataset.qrSize); applySizeUI(); onSettingChange(); };
+    });
+    ['qrShowName','qrShowSpec','qrShowPartno','qrShowCode'].forEach(id=>{
+      document.getElementById(id).onchange = ()=>{
+        qrSettings.showName = document.getElementById('qrShowName').checked;
+        qrSettings.showSpec = document.getElementById('qrShowSpec').checked;
+        qrSettings.showPartno = document.getElementById('qrShowPartno').checked;
+        qrSettings.showCode = document.getElementById('qrShowCode').checked;
+        onSettingChange();
+      };
+    });
+
+    // キャンセル
+    document.getElementById('qrSettingsCancelBtn').onclick = ()=>{
+      modal.classList.remove('show');
+    };
+
+    // 印刷実行
+    document.getElementById('qrSettingsPrintBtn').onclick = ()=>{
+      modal.classList.remove('show');
+      executeQrBulkPrint(products_to_print);
+    };
+  }
+
+  function executeQrBulkPrint(ps){
+    const printArea = document.getElementById('qrPrintArea');
+    printArea.innerHTML = '';
+    printArea.style.display = 'block';
+
+    // グリッドラッパー
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat('+qrSettings.cols+',auto);gap:8px;padding:8px;';
+    printArea.appendChild(grid);
+
+    ps.forEach(p=>{
+      const qrValue = p.barcode || p.id;
+      const name = cleanName(p.name);
+      const spec = p.spec || '';
+      const partno = p.partno || '';
+      const labelSize = qrSettings.size;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'qr-label';
+      wrapper.style.cssText = 'text-align:center;page-break-inside:avoid;';
+      let inner = '';
+      if(qrSettings.showName) inner += '<div class="qr-label-name" style="font-size:'+(labelSize>=160?'15':'13')+'px;">'+escapeHtml(name)+'</div>';
+      if(qrSettings.showSpec && spec) inner += '<div class="qr-label-spec" style="font-size:'+(labelSize>=160?'12':'10')+'px;">'+escapeHtml(spec)+'</div>';
+      if(qrSettings.showPartno && partno) inner += '<div style="font-size:10px;color:#888;margin-bottom:4px;">'+escapeHtml(partno)+'</div>';
+      inner += '<div id="qrBulkG_'+p.id.replace(/[^a-zA-Z0-9]/g,'_')+'"></div>';
+      if(qrSettings.showCode) inner += '<div class="qr-label-code" style="font-size:10px;">'+escapeHtml(qrValue)+'</div>';
+      wrapper.innerHTML = inner;
+      grid.appendChild(wrapper);
+
+      const qrDiv = wrapper.querySelector('[id^="qrBulkG_"]');
+      new QRCode(qrDiv, { text: qrValue, width: labelSize, height: labelSize, correctLevel: QRCode.CorrectLevel.M });
+    });
+
+    setTimeout(()=>{
+      document.body.dataset.printing = 'qr';
+      window.print();
+    }, 600);
+  }
 
   window.addEventListener('afterprint', ()=>{
     delete document.body.dataset.printing;
