@@ -4943,44 +4943,79 @@ window.addEventListener('storageReady', function(){
       return;
     }
 
-    // 日付ごとにグループ化
-    const groups = {};
+    // 日付ごとにグループ化（第1階層）
+    const dayGroups = {};
     list.slice(0, 500).forEach(t=>{
       const d = new Date(t.date);
-      const key = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
-      if(!groups[key]) groups[key] = [];
-      groups[key].push(t);
+      const dayKey = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
+      if(!dayGroups[dayKey]) dayGroups[dayKey] = [];
+      dayGroups[dayKey].push(t);
     });
 
-    el.innerHTML = Object.entries(groups).map(([date, items])=>{
-      const inQty  = items.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
-      const outQty = items.filter(t=>t.type==='out').reduce((s,t)=>s+t.qty,0);
-      const summary = (inQty ? '<span style="color:var(--teal);">入庫 +'+inQty+'</span>' : '')
-                    + (inQty && outQty ? ' / ' : '')
-                    + (outQty ? '<span style="color:var(--red);">出庫 -'+outQty+'</span>' : '');
-      const rows = items.map(t=>{
-        const d2 = new Date(t.date);
-        const timeStr = String(d2.getHours()).padStart(2,'0')+':'+String(d2.getMinutes()).padStart(2,'0');
-        const resTag = t.itemType === 'reserved' ? '<span class="res-tag">客注</span>' : '';
-        const resLine = (t.itemType === 'reserved' && t.reservation)
-          ? '<div class="hist-sub">取付予定: '+escapeHtml(t.reservation.installDate)+' ・ お客様: '+escapeHtml(t.reservation.customer)+' ・ 車種: '+escapeHtml(t.reservation.car)+'</div>'
-          : '';
-        return '<div class="hist-row">'
-          + '<span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span>'
-          + '<div class="hist-info">'
-          + '<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div>'
-          + '<div class="hist-sub">'+timeStr+(t.user ? ' ・ 担当: '+escapeHtml(t.user) : '')+'</div>'
-          + resLine
+    el.innerHTML = Object.entries(dayGroups).map(([dayKey, dayItems])=>{
+      const dayInQty  = dayItems.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
+      const dayOutQty = dayItems.filter(t=>t.type==='out').reduce((s,t)=>s+t.qty,0);
+      const daySummary = (dayInQty ? '<span style="color:var(--teal);">入庫 +'+dayInQty+'</span>' : '')
+                       + (dayInQty && dayOutQty ? ' / ' : '')
+                       + (dayOutQty ? '<span style="color:var(--red);">出庫 −'+dayOutQty+'</span>' : '');
+
+      // 同じ date（一括確定時刻）でグループ化（第2階層）
+      const batchMap = {};
+      dayItems.forEach(t=>{
+        const bKey = t.date+'|'+(t.type||'')+'|'+(t.user||'');
+        if(!batchMap[bKey]) batchMap[bKey] = { date:t.date, type:t.type, user:t.user||'', items:[] };
+        batchMap[bKey].items.push(t);
+      });
+      const batches = Object.values(batchMap).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+      const batchHtml = batches.map(batch=>{
+        const bd = new Date(batch.date);
+        const timeStr = String(bd.getHours()).padStart(2,'0')+':'+String(bd.getMinutes()).padStart(2,'0');
+        const isBulk = batch.items.length > 1;
+        const bQty = batch.items.reduce((s,t)=>s+t.qty,0);
+        const typeColor = batch.type==='in' ? 'var(--teal)' : 'var(--red)';
+        const typeLabel = batch.type==='in' ? '入庫' : '出庫';
+        const typeSign  = batch.type==='in' ? '+' : '−';
+
+        const headerLabel = isBulk
+          ? timeStr+' の一括'+typeLabel+'（'+batch.items.length+' 商品 / '+bQty+' 本）'
+          : timeStr+' の'+typeLabel;
+
+        const rows = batch.items.map(t=>{
+          const resTag = t.itemType==='reserved' ? '<span class="res-tag">客注</span>' : '';
+          const resLine = (t.itemType==='reserved' && t.reservation)
+            ? '<div class="hist-sub">取付予定: '+escapeHtml(t.reservation.installDate)+' ・ お客様: '+escapeHtml(t.reservation.customer)+' ・ 車種: '+escapeHtml(t.reservation.car)+'</div>'
+            : '';
+          const p = products.find(x=>x.id===t.productId);
+          const sub = [p&&p.brand?p.brand:'', p&&p.partno?'品番:'+p.partno:'', p&&p.spec?p.spec:''].filter(Boolean).join(' ・ ');
+          return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+'">'
+            + '<div class="hist-info">'
+            + '<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div>'
+            + (sub ? '<div class="hist-sub">'+escapeHtml(sub)+'</div>' : '')
+            + resLine
+            + '</div>'
+            + '<div class="hist-qty" style="color:'+typeColor+';">'+typeSign+t.qty+'</div>'
+            + '</div>';
+        }).join('');
+
+        return '<div style="margin-bottom:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">'
+          + '<div style="background:var(--bg-2);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          + '<div style="display:flex;align-items:center;gap:8px;">'
+          + '<span class="hist-type '+(batch.type==='in'?'hist-in':'hist-out')+'">'+typeLabel+'</span>'
+          + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
           + '</div>'
-          + '<div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div>'
+          + (batch.user ? '<span style="font-size:11px;color:var(--text-3);">'+escapeHtml(batch.user)+'</span>' : '')
+          + '</div>'
+          + rows
           + '</div>';
       }).join('');
-      return '<div style="margin-bottom:18px;">'
-        + '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:2px solid var(--line);margin-bottom:6px;">'
-        + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+date+'</span>'
-        + '<span style="font-size:12px;">'+summary+'</span>'
+
+      return '<div style="margin-bottom:20px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:2px solid var(--line);margin-bottom:8px;">'
+        + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+dayKey+'</span>'
+        + '<span style="font-size:12px;">'+daySummary+'</span>'
         + '</div>'
-        + rows
+        + batchHtml
         + '</div>';
     }).join('');
   }
