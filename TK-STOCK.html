@@ -1889,6 +1889,7 @@ window.addEventListener('storageReady', function(){
   let stockOnlyFilter = true;
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
+  let recentFilter = false;
   function resetSpecSelections(){
     selectedSpec = null;
     selectedTireWidth = null;
@@ -2492,6 +2493,9 @@ window.addEventListener('storageReady', function(){
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;color:var(--amber);font-weight:600;">'
       + '<input type="checkbox" id="customerOrderChk"'+(customerOrderFilter?' checked':'')+'> 客注のみ表示'
       + '</label>'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;color:var(--teal);font-weight:600;">'
+      + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
+      + '</label>'
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
@@ -2499,6 +2503,8 @@ window.addEventListener('storageReady', function(){
     if(mchk){ mchk.addEventListener('change', ()=>{ manualOnlyFilter = mchk.checked; renderProductTable(); renderPriceCatalog(); }); }
     const cchk = document.getElementById('customerOrderChk');
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
+    const rchk = document.getElementById('recentChk');
+    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
   }
 
   function renderProductTable(){
@@ -2523,6 +2529,9 @@ window.addEventListener('storageReady', function(){
     let filteredList = stockOnlyFilter ? list.filter(p=> p.stock > 0) : list;
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => p.customerOrders && p.customerOrders.length > 0);
+    if(recentFilter){
+      filteredList = filteredList.filter(p => p.createdAt).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+    }
     if(list.length === 0){
       wrap.innerHTML = '<div class="empty-state">該当する商品がありません。「＋新規商品登録」から追加してください。</div>';
       return;
@@ -2555,17 +2564,25 @@ window.addEventListener('storageReady', function(){
       const low = (p.minStock > 0 && p.stock <= p.minStock);
       // タイヤでも p.brand が直接設定されていれば表示
       const showBrand = !_isTire || p.brand;
+      const createdStr = p.createdAt ? (()=>{ const d=new Date(p.createdAt); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })() : '';
       return '<tr class="clickable-row" data-detail="'+p.id+'">'
         + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
         + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+'</td>'
+        + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
         + '</tr>';
     }).join('');
-    wrap.innerHTML = '<table class="stock-table"><thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    const thead = recentFilter
+      ? '<thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th><th>登録日時</th></tr></thead>'
+      : '<thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th></tr></thead>';
+    wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
       tr.addEventListener('click', ()=> openProductDetail(tr.dataset.detail));
+    });
+    wrap.querySelectorAll('[data-edit-id]').forEach(btn=>{
+      btn.addEventListener('click', e=>{ e.stopPropagation(); openEditModal(btn.dataset.editId); });
     });
   }
 
@@ -4219,7 +4236,7 @@ window.addEventListener('storageReady', function(){
       const p = products.find(x=>x.id===editingId);
       Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
