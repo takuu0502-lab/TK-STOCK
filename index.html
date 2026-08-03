@@ -5103,18 +5103,21 @@ window.addEventListener('storageReady', function(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
 
-    // 日付フィルター
-    if(historyDateFilter !== 'all'){
+    // 日付フィルター（共通処理）
+    function applyDateFilter(items, dateField){
+      if(historyDateFilter === 'all') return items;
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
       const weekStart = todayStart - (now.getDay() === 0 ? 6 : now.getDay()-1) * 86400000;
-      list = list.filter(t=>{
-        const ts = new Date(t.date).getTime();
+      return items.filter(x=>{
+        const ts = new Date(x[dateField]).getTime();
         if(historyDateFilter === 'today') return ts >= todayStart;
         if(historyDateFilter === 'week')  return ts >= weekStart;
         return true;
       });
     }
+
+    list = applyDateFilter(list, 'date');
 
     // テキスト検索
     if(historySearchText){
@@ -5128,13 +5131,20 @@ window.addEventListener('storageReady', function(){
       });
     }
 
-    list = list.slice().sort((a,b)=>{
-      const da = a.date ? new Date(a.date).getTime() : 0;
-      const db = b.date ? new Date(b.date).getTime() : 0;
-      return db - da;
-    });
+    list = list.slice().sort((a,b)=>(new Date(b.date)||0)-(new Date(a.date)||0));
 
-    if(list.length === 0){
+    // 仮出庫リスト（フィルター適用）
+    let provList = (historyFilter === 'all' || historyFilter === 'out') ? provisionalOutbounds.slice() : [];
+    provList = applyDateFilter(provList, 'date');
+    if(historySearchText){
+      const q = historySearchText.toLowerCase();
+      provList = provList.filter(po=>{
+        if((po.customerName||'').toLowerCase().includes(q)) return true;
+        return po.items.some(i=>(i.name||'').toLowerCase().includes(q)||(i.brand||'').toLowerCase().includes(q));
+      });
+    }
+
+    if(list.length === 0 && provList.length === 0){
       el.innerHTML = '<div class="empty-state">履歴がありません。</div>';
       return;
     }
@@ -5144,39 +5154,94 @@ window.addEventListener('storageReady', function(){
     list.slice(0, 500).forEach(t=>{
       const d = new Date(t.date);
       const dayKey = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
-      if(!dayGroups[dayKey]) dayGroups[dayKey] = [];
-      dayGroups[dayKey].push(t);
+      if(!dayGroups[dayKey]) dayGroups[dayKey] = { txns:[], provs:[] };
+      dayGroups[dayKey].txns.push(t);
+    });
+    provList.forEach(po=>{
+      const d = new Date(po.date);
+      const dayKey = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
+      if(!dayGroups[dayKey]) dayGroups[dayKey] = { txns:[], provs:[] };
+      dayGroups[dayKey].provs.push(po);
     });
 
-    el.innerHTML = Object.entries(dayGroups).map(([dayKey, dayItems])=>{
-      const dayInQty  = dayItems.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
-      const dayOutQty = dayItems.filter(t=>t.type==='out').reduce((s,t)=>s+t.qty,0);
-      const daySummary = (dayInQty ? '<span style="color:var(--teal);">入庫 +'+dayInQty+'</span>' : '')
-                       + (dayInQty && dayOutQty ? ' / ' : '')
-                       + (dayOutQty ? '<span style="color:var(--red);">出庫 −'+dayOutQty+'</span>' : '');
+    const sortedDayKeys = Object.keys(dayGroups).sort((a,b)=>new Date(b)-new Date(a));
 
-      // 同じ date（一括確定時刻）でグループ化（第2階層）
+    el.innerHTML = sortedDayKeys.map(dayKey=>{
+      const { txns: dayItems, provs: dayProvs } = dayGroups[dayKey];
+      const dayInQty   = dayItems.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
+      const dayOutQty  = dayItems.filter(t=>t.type==='out').reduce((s,t)=>s+t.qty,0);
+      const dayProvQty = dayProvs.reduce((s,po)=>s+po.items.reduce((ss,i)=>ss+i.qty,0),0);
+      const parts = [];
+      if(dayInQty)  parts.push('<span style="color:var(--teal);">入庫 +'+dayInQty+'</span>');
+      if(dayOutQty) parts.push('<span style="color:var(--red);">出庫 −'+dayOutQty+'</span>');
+      if(dayProvQty)parts.push('<span style="color:var(--amber);">仮出庫 '+dayProvQty+'本</span>');
+      const daySummary = parts.join(' / ');
+
+      // 通常トランザクションのバッチグループ
       const batchMap = {};
       dayItems.forEach(t=>{
         const bKey = t.date+'|'+(t.type||'')+'|'+(t.user||'');
-        if(!batchMap[bKey]) batchMap[bKey] = { date:t.date, type:t.type, user:t.user||'', items:[] };
+        if(!batchMap[bKey]) batchMap[bKey] = { date:t.date, type:t.type, user:t.user||'', items:[], isProv:false };
         batchMap[bKey].items.push(t);
       });
+      // 仮出庫をバッチとして追加
+      dayProvs.forEach(po=>{
+        batchMap['prov_'+po.id] = { date:po.date, type:'provisional', user:po.staff||'', items:[], isProv:true, provEntry:po };
+      });
+
       const batches = Object.values(batchMap).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
       const batchHtml = batches.map(batch=>{
         const bd = new Date(batch.date);
         const timeStr = String(bd.getHours()).padStart(2,'0')+':'+String(bd.getMinutes()).padStart(2,'0');
+
+        if(batch.isProv){
+          const po = batch.provEntry;
+          const totalQty = po.items.reduce((s,i)=>s+i.qty,0);
+          const isBulk = po.items.length > 1;
+          const statusMap = { pending:['🔖 未確定','var(--amber)'], confirmed:['✅ 確定済','var(--teal)'], cancelled:['❌ キャンセル','var(--text-3)'] };
+          const [statusLabel, statusColor] = statusMap[po.status]||statusMap.pending;
+          const headerLabel = isBulk
+            ? timeStr+' の仮出庫（'+po.items.length+' 商品 / '+totalQty+' 本）'
+            : timeStr+' の仮出庫';
+          const rows = po.items.map(item=>{
+            const sub = [item.brand||'', item.partno?'品番:'+item.partno:'', item.spec||''].filter(Boolean).join(' ・ ');
+            return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+'">'
+              +'<div class="hist-info">'
+              +'<div class="hist-name">'+escapeHtml(cleanName(item.name))+'</div>'
+              +(sub?'<div class="hist-sub">'+escapeHtml(sub)+'</div>':'')
+              +'</div>'
+              +'<div class="hist-qty" style="color:var(--amber);">'+item.qty+'本</div>'
+              +'</div>';
+          }).join('');
+          return '<details style="margin-bottom:10px;border:1px solid var(--amber);border-radius:8px;overflow:hidden;">'
+            +'<summary style="list-style:none;background:rgba(232,160,32,0.08);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
+            +'<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">'
+            +'<span class="hist-type" style="background:var(--amber);color:#000;">仮出庫</span>'
+            +'<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
+            +'<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
+            +(batch.user?'<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>':'')
+            +'</div>'
+            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="hist-arrow">▼</span></div>'
+            +'</summary>'
+            +'<div style="padding:0 4px;">'
+            +'<div style="padding:8px 10px;font-size:12px;color:var(--text-2);background:rgba(232,160,32,0.05);border-bottom:1px solid var(--line);">'
+            +'お客様: <strong>'+escapeHtml(po.customerName)+'</strong>　引き渡し予定: <strong>'+escapeHtml(po.scheduledDate)+'</strong>'
+            +'</div>'
+            +rows
+            +'</div>'
+            +'</details>';
+        }
+
+        // 通常トランザクション
         const isBulk = batch.items.length > 1;
         const bQty = batch.items.reduce((s,t)=>s+t.qty,0);
         const typeColor = batch.type==='in' ? 'var(--teal)' : 'var(--red)';
         const typeLabel = batch.type==='in' ? '入庫' : '出庫';
         const typeSign  = batch.type==='in' ? '+' : '−';
-
         const headerLabel = isBulk
           ? timeStr+' の一括'+typeLabel+'（'+batch.items.length+' 商品 / '+bQty+' 本）'
           : timeStr+' の'+typeLabel;
-
         const rows = batch.items.map(t=>{
           const resTag = t.itemType==='reserved' ? '<span class="res-tag">客注</span>' : '';
           const resLine = (t.itemType==='reserved' && t.reservation)
@@ -5185,39 +5250,34 @@ window.addEventListener('storageReady', function(){
           const p = products.find(x=>x.id===t.productId);
           const sub = [p&&p.brand?p.brand:'', p&&p.partno?'品番:'+p.partno:'', p&&p.spec?p.spec:''].filter(Boolean).join(' ・ ');
           return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+'">'
-            + '<div class="hist-info">'
-            + '<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div>'
-            + (sub ? '<div class="hist-sub">'+escapeHtml(sub)+'</div>' : '')
-            + resLine
-            + '</div>'
-            + '<div class="hist-qty" style="color:'+typeColor+';">'+typeSign+t.qty+'</div>'
-            + '</div>';
+            +'<div class="hist-info">'
+            +'<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div>'
+            +(sub?'<div class="hist-sub">'+escapeHtml(sub)+'</div>':'')
+            +resLine
+            +'</div>'
+            +'<div class="hist-qty" style="color:'+typeColor+';">'+typeSign+t.qty+'</div>'
+            +'</div>';
         }).join('');
-
         return '<details style="margin-bottom:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">'
-          + '<summary style="list-style:none;background:var(--bg-2);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
-          + '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">'
-          + '<span class="hist-type '+(batch.type==='in'?'hist-in':'hist-out')+'">'+typeLabel+'</span>'
-          + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
-          + (batch.user ? '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>' : '')
-          + '</div>'
-          + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
-          + '<span class="hist-arrow">▼</span>'
-          + '</div>'
-          + '</summary>'
-          + '<div style="padding:0 4px;">'
-          + rows
-          + '</div>'
-          + '</details>';
+          +'<summary style="list-style:none;background:var(--bg-2);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
+          +'<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">'
+          +'<span class="hist-type '+(batch.type==='in'?'hist-in':'hist-out')+'">'+typeLabel+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
+          +(batch.user?'<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>':'')
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="hist-arrow">▼</span></div>'
+          +'</summary>'
+          +'<div style="padding:0 4px;">'+rows+'</div>'
+          +'</details>';
       }).join('');
 
       return '<div style="margin-bottom:20px;">'
-        + '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:2px solid var(--line);margin-bottom:8px;">'
-        + '<span style="font-size:16px;font-weight:700;color:var(--text-1);">'+dayKey+'</span>'
-        + '<span style="font-size:14px;">'+daySummary+'</span>'
-        + '</div>'
-        + batchHtml
-        + '</div>';
+        +'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:2px solid var(--line);margin-bottom:8px;">'
+        +'<span style="font-size:16px;font-weight:700;color:var(--text-1);">'+dayKey+'</span>'
+        +'<span style="font-size:14px;">'+daySummary+'</span>'
+        +'</div>'
+        +batchHtml
+        +'</div>';
     }).join('');
   }
 
