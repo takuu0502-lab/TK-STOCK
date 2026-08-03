@@ -384,8 +384,6 @@
   details summary::-webkit-details-marker{display:none;}
   details summary .hist-arrow{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--bg-3);color:var(--text-2);font-size:11px;transition:transform 0.2s;flex-shrink:0;}
   details[open] summary .hist-arrow{transform:rotate(180deg);}
-  .hist-batch-user{display:none;font-size:11px;color:var(--text-3);}
-  details[open] .hist-batch-user{display:inline;}
   .hist-row{display:flex;align-items:center;gap:12px;padding:11px 8px;border-bottom:1px solid var(--line-soft);}
   .hist-row:last-child{border-bottom:none;}
   .hist-type{font-size:11px;font-weight:700;padding:4px 9px;border-radius:4px;min-width:44px;text-align:center;}
@@ -5005,12 +5003,12 @@ window.addEventListener('storageReady', function(){
 
         return '<details style="margin-bottom:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">'
           + '<summary style="list-style:none;background:var(--bg-2);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
-          + '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
+          + '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">'
           + '<span class="hist-type '+(batch.type==='in'?'hist-in':'hist-out')+'">'+typeLabel+'</span>'
           + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
+          + (batch.user ? '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>' : '')
           + '</div>'
           + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
-          + (batch.user ? '<span class="hist-batch-user">'+escapeHtml(batch.user)+'</span>' : '')
           + '<span class="hist-arrow">▼</span>'
           + '</div>'
           + '</summary>'
