@@ -4621,17 +4621,19 @@ window.addEventListener('storageReady', function(){
         if(!ok) return;
         const msgEl = document.getElementById('outBatchMsg');
         if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
+        const batchDate = new Date().toISOString();
+        const batchItems = [];
         for(const item of outboundCart){
           const p=products.find(x=>x.id===item.productId);
           if(!p) continue;
           if(item.qty>p.stock){ if(msgEl) msgEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫数を超えています。</div>'; return; }
           p.stock -= item.qty;
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
-            type:'out', qty:item.qty, date:new Date().toISOString(),
+            type:'out', qty:item.qty, date:batchDate,
             user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
-          outboundSession.push({ name:p.name, spec:p.spec||'', qty:item.qty,
-            user:currentUser?currentUser.displayName:'', date:new Date().toISOString() });
+          batchItems.push({ name:p.name, spec:p.spec||'', qty:item.qty });
         }
+        if(batchItems.length>0) outboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:batchItems });
         await saveProducts();
         await saveTransactions();
         renderCatTree(); renderProductTable(); renderHistory(); renderOutboundSession();
@@ -4651,27 +4653,31 @@ window.addEventListener('storageReady', function(){
     if(!wrap||!list) return;
     if(outboundSession.length===0){ wrap.style.display='none'; return; }
     wrap.style.display='block';
-    list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead><tr style="border-bottom:2px solid var(--line);">'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">No.</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">商品名</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">サイズ・規格</th>'
-      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);font-weight:600;">数量</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">時刻</th>'
-      + '</tr></thead><tbody>'
-      + outboundSession.map((item,i)=>{
-          const d=new Date(item.date);
-          const t=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-          return '<tr style="border-bottom:1px solid var(--line-soft);">'
-            +'<td style="padding:7px 8px;color:var(--text-3);">'+(i+1)+'</td>'
-            +'<td style="padding:7px 8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
-            +'<td style="padding:7px 8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
-            +'<td style="padding:7px 8px;text-align:center;color:var(--red);font-weight:700;">−'+item.qty+'</td>'
-            +'<td style="padding:7px 8px;color:var(--text-3);font-family:var(--font-mono);font-size:12px;">'+t+'</td>'
-            +'</tr>';
-        }).join('')
-      + '</tbody></table>'
-      + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">合計 '+outboundSession.length+' 件 / '+outboundSession.reduce((s,x)=>s+x.qty,0)+' 本</div>';
+    const totalItems = outboundSession.reduce((s,b)=>s+b.items.length,0);
+    const totalQty   = outboundSession.reduce((s,b)=>s+b.items.reduce((ss,x)=>ss+x.qty,0),0);
+    let html = '';
+    outboundSession.slice().reverse().forEach((batch, bi)=>{
+      const d=new Date(batch.batchDate);
+      const t=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      const bQty=batch.items.reduce((s,x)=>s+x.qty,0);
+      html += '<div style="margin-bottom:12px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">'
+        + '<div style="background:var(--bg-2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">'
+        + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+t+' の出庫</span>'
+        + '<span style="font-size:12px;color:var(--text-3);">'+batch.items.length+' 商品 / '+bQty+' 本</span>'
+        + '</div>';
+      batch.items.forEach((item,i)=>{
+        html += '<div style="padding:8px 12px;border-top:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-weight:600;color:var(--text-1);font-size:13px;">'+escapeHtml(cleanName(item.name))+'</div>'
+          + (item.spec?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(item.spec)+'</div>':'')
+          + '</div>'
+          + '<div style="font-weight:700;color:var(--red);font-size:14px;flex-shrink:0;">−'+item.qty+'</div>'
+          + '</div>';
+      });
+      html += '</div>';
+    });
+    list.innerHTML = html
+      + '<div style="font-size:12px;color:var(--text-3);text-align:right;">合計 '+totalItems+' 件 / '+totalQty+' 本</div>';
   }
 
   // 一括入庫カート
@@ -4747,16 +4753,18 @@ window.addEventListener('storageReady', function(){
       if(inboundCart.length===0) return;
       const msgEl = document.getElementById('inBatchMsg');
       if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
+      const batchDate = new Date().toISOString();
+      const batchItems = [];
       for(const item of inboundCart){
         const p = products.find(x=>x.id===item.productId);
         if(!p) continue;
         p.stock += item.qty;
         transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
-          type:'in', qty:item.qty, date:new Date().toISOString(),
+          type:'in', qty:item.qty, date:batchDate,
           user: currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
-        inboundSession.push({ name:p.name, spec:p.spec||'', qty:item.qty,
-          user:currentUser?currentUser.displayName:'', date:new Date().toISOString(), itemType:'stock' });
+        batchItems.push({ name:p.name, spec:p.spec||'', qty:item.qty, itemType:'stock' });
       }
+      if(batchItems.length>0) inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:batchItems });
       await saveProducts();
       await saveTransactions();
       renderCatTree(); renderProductTable(); renderHistory(); renderInboundSession();
@@ -4776,32 +4784,35 @@ window.addEventListener('storageReady', function(){
     if(!wrap || !list) return;
     if(inboundSession.length === 0){ wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
-    list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead><tr style="border-bottom:2px solid var(--line);">'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">No.</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">商品名</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">サイズ・規格</th>'
-      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);font-weight:600;">数量</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">区分</th>'
-      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">時刻</th>'
-      + '</tr></thead><tbody>'
-      + inboundSession.map((item, i)=>{
-          const d = new Date(item.date);
-          const t = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-          const tag = item.itemType === 'reserved'
-            ? '<span style="font-size:10px;background:var(--amber-dim);color:var(--amber);padding:1px 6px;border-radius:4px;">客注</span>'
-            : '<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 6px;border-radius:4px;">在庫品</span>';
-          return '<tr style="border-bottom:1px solid var(--line-soft);">'
-            + '<td style="padding:7px 8px;color:var(--text-3);">'+( i+1)+'</td>'
-            + '<td style="padding:7px 8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
-            + '<td style="padding:7px 8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
-            + '<td style="padding:7px 8px;text-align:center;color:var(--teal);font-weight:700;">+'+item.qty+'</td>'
-            + '<td style="padding:7px 8px;">'+tag+'</td>'
-            + '<td style="padding:7px 8px;color:var(--text-3);font-family:var(--font-mono);font-size:12px;">'+t+'</td>'
-            + '</tr>';
-        }).join('')
-      + '</tbody></table>'
-      + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">合計 '+inboundSession.length+' 件 / '+inboundSession.reduce((s,x)=>s+x.qty,0)+' 本</div>';
+    const totalItems = inboundSession.reduce((s,b)=>s+b.items.length,0);
+    const totalQty   = inboundSession.reduce((s,b)=>s+b.items.reduce((ss,x)=>ss+x.qty,0),0);
+    let html = '';
+    inboundSession.slice().reverse().forEach((batch)=>{
+      const d=new Date(batch.batchDate);
+      const t=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      const bQty=batch.items.reduce((s,x)=>s+x.qty,0);
+      html += '<div style="margin-bottom:12px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">'
+        + '<div style="background:var(--bg-2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">'
+        + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+t+' の入庫</span>'
+        + '<span style="font-size:12px;color:var(--text-3);">'+batch.items.length+' 商品 / '+bQty+' 本</span>'
+        + '</div>';
+      batch.items.forEach((item)=>{
+        const tag = item.itemType==='reserved'
+          ? '<span style="font-size:10px;background:var(--amber-dim);color:var(--amber);padding:1px 6px;border-radius:4px;flex-shrink:0;">客注</span>'
+          : '';
+        html += '<div style="padding:8px 12px;border-top:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-weight:600;color:var(--text-1);font-size:13px;">'+escapeHtml(cleanName(item.name))+'</div>'
+          + (item.spec?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(item.spec)+'</div>':'')
+          + '</div>'
+          + tag
+          + '<div style="font-weight:700;color:var(--teal);font-size:14px;flex-shrink:0;">+'+item.qty+'</div>'
+          + '</div>';
+      });
+      html += '</div>';
+    });
+    list.innerHTML = html
+      + '<div style="font-size:12px;color:var(--text-3);text-align:right;">合計 '+totalItems+' 件 / '+totalQty+' 本</div>';
   }
 
   document.getElementById('inSessionClearBtn').addEventListener('click', ()=>{
