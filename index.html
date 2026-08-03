@@ -152,25 +152,33 @@
 
   /* category tree */
   .list-layout{display:flex;gap:18px;margin-top:16px;align-items:flex-start;}
-  .cat-tree{width:220px;flex:0 0 220px;background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:6px;}
+  .cat-tree{width:230px;flex:0 0 230px;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:8px 6px;}
   .table-area{flex:1;min-width:0;}
-  .cat-row{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:5px;cursor:pointer;font-size:13px;color:var(--text-2);position:relative;}
+  /* すべて行 */
+  .cat-row{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-2);position:relative;transition:background 0.12s;}
   .cat-row:hover{background:var(--bg-2);}
   .cat-row.selected{background:var(--amber-dim);color:var(--amber);}
-  .cat-row.sub{padding-left:26px;font-size:12.5px;}
-  .cat-row .chevron{width:12px;font-size:10px;color:var(--text-3);flex:0 0 auto;}
-  .cat-row .cat-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;}
+  /* 大分類行 */
+  .cat-row.major-row{font-weight:600;font-size:13px;color:var(--text-1);margin-top:2px;}
+  .cat-row.major-row.selected{background:var(--amber-dim);color:var(--amber);}
+  /* 中分類グループ（大分類展開時） */
+  .cat-sub-group{margin-left:10px;padding-left:10px;border-left:2px solid var(--line);margin-bottom:2px;}
+  .cat-row.sub{padding:5px 8px;font-size:12.5px;border-radius:5px;color:var(--text-2);}
+  .cat-row.sub.selected{background:var(--amber-dim);color:var(--amber);}
+  .cat-row .chevron{width:13px;font-size:9px;color:var(--text-3);flex:0 0 auto;display:inline-block;transition:transform 0.15s;}
+  .cat-row.major-row.open .chevron{transform:rotate(90deg);}
+  .cat-row .cat-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
   .cat-row .cat-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .cat-row .cat-count{font-family:var(--font-mono);font-size:11px;color:var(--text-3);}
-  .cat-row.selected .cat-count{color:var(--amber);}
-  .cat-row .cat-actions{display:none;gap:2px;}
+  .cat-count-badge{font-family:var(--font-mono);font-size:10.5px;background:var(--bg-3);color:var(--text-3);padding:1px 6px;border-radius:10px;white-space:nowrap;flex:0 0 auto;}
+  .cat-row.selected .cat-count-badge{background:var(--amber-dim);color:var(--amber);}
+  .cat-row .cat-actions{display:none;gap:2px;align-items:center;}
   .cat-row:hover .cat-actions{display:flex;}
-  .icon-btn{background:transparent;border:none;color:var(--text-3);font-size:12px;padding:2px 4px;line-height:1;}
-  .icon-btn:hover{color:var(--text-1);}
-  .cat-row.add-row{color:var(--text-3);font-style:normal;}
+  .icon-btn{background:transparent;border:none;color:var(--text-3);font-size:12px;padding:2px 5px;line-height:1;border-radius:4px;cursor:pointer;}
+  .icon-btn:hover{color:var(--text-1);background:var(--bg-3);}
+  .cat-row.add-row{color:var(--text-3);font-style:normal;font-size:12px;}
   .cat-row.drag-over{background:var(--amber-dim);border:1px dashed var(--amber);}
   .cat-row.add-row:hover{color:var(--amber);}
-  .tree-divider{height:1px;background:var(--line);margin:6px 4px;}
+  .tree-divider{height:1px;background:var(--line);margin:8px 4px;}
 
   .breadcrumb{font-size:12.5px;color:var(--text-2);margin-bottom:10px;font-family:var(--font-mono);}
   .spec-search-panel{background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-top:14px;}
@@ -2119,31 +2127,36 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('catTree');
     const writable = canWriteData();
     let html = '';
-    html += '<div class="cat-row'+(selectedMajor===null?' selected':'')+'" data-root="1"><span class="chevron"></span><span class="cat-label">すべて</span><span class="cat-count">'+products.length+'</span></div>';
+    html += '<div class="cat-row'+(selectedMajor===null?' selected':'')+'" data-root="1">'
+          + '<span class="cat-label" style="font-size:12px;color:inherit;">すべて</span>'
+          + '<span class="cat-count-badge">'+products.length+'</span>'
+          + '</div>';
     categories.forEach(cat=>{
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
       const color = colorForMajor(cat.id);
-      html += '<div class="cat-row'+(isSel?' selected':'')+'" data-major="'+cat.id+'"'+(writable?' draggable="true" data-draggable-major="'+cat.id+'"':'')+' style="'+(writable?'cursor:grab;':'')+'">'
-            + (writable ? '<span class="cat-drag-handle" style="color:var(--text-3);font-size:14px;margin-right:2px;cursor:grab;" title="ドラッグして並び替え">&#8801;</span>' : '')
-            + '<span class="chevron">'+(cat.subs.length ? (isOpen?'\u25BE':'\u25B8') : '')+'</span>'
+      html += '<div class="cat-row major-row'+(isSel?' selected':'')+( isOpen?' open':'')+'" data-major="'+cat.id+'"'+(writable?' draggable="true" data-draggable-major="'+cat.id+'"':'')+' style="'+(writable?'cursor:grab;':'')+'">'
+            + (writable ? '<span class="cat-drag-handle" style="color:var(--text-3);font-size:13px;flex:0 0 auto;cursor:grab;" title="ドラッグして並び替え">&#8801;</span>' : '')
+            + '<span class="chevron" style="font-size:9px;">'+(cat.subs.length ? '\u25B8' : '')+'</span>'
             + '<span class="cat-dot" style="background:'+color.text+';"></span>'
             + '<span class="cat-label">'+escapeHtml(cat.name)+'</span>'
-            + '<span class="cat-count">'+countForMajor(cat.id)+'</span>'
+            + '<span class="cat-count-badge">'+countForMajor(cat.id)+'</span>'
             + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
             + '</div>';
       if(isOpen){
+        html += '<div class="cat-sub-group">';
         cat.subs.forEach(sub=>{
           const isSubSel = selectedMajor === cat.id && selectedSub === sub.id;
           html += '<div class="cat-row sub'+(isSubSel?' selected':'')+'" data-major="'+cat.id+'" data-sub="'+sub.id+'">'
                 + '<span class="cat-label">'+escapeHtml(sub.name)+'</span>'
-                + '<span class="cat-count">'+countForSub(cat.id, sub.id)+'</span>'
+                + '<span class="cat-count-badge">'+countForSub(cat.id, sub.id)+'</span>'
                 + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-sub" data-major="'+cat.id+'" data-id="'+sub.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-sub" data-major="'+cat.id+'" data-id="'+sub.id+'" title="削除">&times;</button></span>' : '')
                 + '</div>';
         });
         if(writable){
-          html += '<div class="cat-row sub add-row" data-add-sub="'+cat.id+'"><span class="cat-label">＋ 中分類を追加</span></div>';
+          html += '<div class="cat-row sub add-row" data-add-sub="'+cat.id+'"><span class="cat-label" style="font-size:11.5px;">＋ 中分類を追加</span></div>';
         }
+        html += '</div>';
       }
     });
     html += '<div class="tree-divider"></div>';
