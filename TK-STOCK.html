@@ -612,9 +612,10 @@
     </div>
     <div id="inReaderWrap"></div>
     <div id="inResult"></div>
+    <div id="inCartWrap"></div>
     <div id="inSessionWrap" style="margin-top:24px;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:14px;font-weight:700;color:var(--text-1);">今回の作業リスト</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-1);">完了リスト（今回）</div>
         <button class="btn btn-ghost btn-sm" id="inSessionClearBtn" style="font-size:12px;">リストをクリア</button>
       </div>
       <div id="inSessionList"></div>
@@ -1089,6 +1090,7 @@ window.addEventListener('storageReady', function(){
   let products = [];
   let transactions = [];
   let inboundSession = []; // 今回の作業中スキャンリスト（セッション限り）
+  let inboundCart = [];   // スキャン済み・未確定リスト（一括入庫用）
   let categories = [];
   let editingId = null;
   let janDict = {};
@@ -4286,6 +4288,14 @@ window.addEventListener('storageReady', function(){
         }
         return;
       }
+      if(kind === 'in'){
+        addToInboundCart(p);
+        resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
+        barcodeInput.value = '';
+        setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
+        barcodeInput.focus();
+        return;
+      }
       renderLookupCard(kind, p);
     }
     lookupBtn.addEventListener('click', ()=>{
@@ -4472,6 +4482,105 @@ window.addEventListener('storageReady', function(){
       }
       msgEl.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+p.stock+'）。</div>';
       document.getElementById(kind+'Barcode').value = '';
+    });
+  }
+
+  // 一括入庫カート
+  function addToInboundCart(p){
+    const existing = inboundCart.find(item=>item.productId===p.id);
+    if(existing){ existing.qty++; } else {
+      inboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, spec: p.spec||'', qty: 1 });
+    }
+    renderInboundCart();
+  }
+
+  function renderInboundCart(){
+    const wrap = document.getElementById('inCartWrap');
+    if(!wrap) return;
+    if(inboundCart.length === 0){ wrap.innerHTML = ''; return; }
+    const totalQty = inboundCart.reduce((s,x)=>s+x.qty, 0);
+    let html = '<div style="margin-top:20px;border:2px solid var(--teal);border-radius:10px;padding:16px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--teal);">入庫リスト（未確定）</div>'
+      + '<button class="btn btn-ghost btn-sm" id="inCartClear" style="font-size:12px;">クリア</button>'
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--line);">'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">商品名</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">サイズ</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);">数量</th>'
+      + '<th style="padding:4px;"></th>'
+      + '</tr></thead><tbody>';
+    inboundCart.forEach((item, idx)=>{
+      html += '<tr style="border-bottom:1px solid var(--line-soft);">'
+        + '<td style="padding:8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
+        + '<td style="padding:8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
+        + '<td style="padding:8px;">'
+        + '<div class="qty-stepper" style="justify-content:center;">'
+        + '<button type="button" data-cart-idx="'+idx+'" data-step="-1">−</button>'
+        + '<input type="number" class="cart-qty-input" data-cart-idx="'+idx+'" value="'+item.qty+'" min="1" style="width:52px;">'
+        + '<button type="button" data-cart-idx="'+idx+'" data-step="1">＋</button>'
+        + '</div></td>'
+        + '<td style="padding:4px 6px;text-align:center;">'
+        + '<button class="btn btn-ghost btn-sm cart-remove-btn" data-cart-idx="'+idx+'" style="color:var(--red);font-size:18px;padding:2px 8px;line-height:1;">×</button>'
+        + '</td></tr>';
+    });
+    html += '</tbody></table>'
+      + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">'+inboundCart.length+' 商品 / 合計 '+totalQty+' 本</div>'
+      + '<button class="btn btn-teal" id="inBatchConfirmBtn" style="width:100%;margin-top:14px;padding:14px 0;font-size:16px;font-weight:700;border-radius:10px;letter-spacing:0.5px;">一括入庫確定（'+inboundCart.length+' 商品）</button>'
+      + '<div id="inBatchMsg" style="margin-top:8px;"></div>'
+      + '</div>';
+    wrap.innerHTML = html;
+
+    document.getElementById('inCartClear').addEventListener('click', ()=>{
+      if(!confirm('入庫リストをクリアしますか？')) return;
+      inboundCart = []; renderInboundCart();
+    });
+    wrap.querySelectorAll('[data-step]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx=parseInt(btn.dataset.cartIdx,10);
+        inboundCart[idx].qty = Math.max(1, inboundCart[idx].qty + parseInt(btn.dataset.step,10));
+        renderInboundCart();
+      });
+    });
+    wrap.querySelectorAll('.cart-qty-input').forEach(input=>{
+      input.addEventListener('change', ()=>{
+        const idx=parseInt(input.dataset.cartIdx,10);
+        const v=parseInt(input.value,10);
+        if(v>=1) inboundCart[idx].qty=v;
+        renderInboundCart();
+      });
+    });
+    wrap.querySelectorAll('.cart-remove-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        inboundCart.splice(parseInt(btn.dataset.cartIdx,10),1);
+        renderInboundCart();
+      });
+    });
+    document.getElementById('inBatchConfirmBtn').addEventListener('click', async ()=>{
+      if(!canWriteData()) return;
+      if(inboundCart.length===0) return;
+      const msgEl = document.getElementById('inBatchMsg');
+      if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
+      for(const item of inboundCart){
+        const p = products.find(x=>x.id===item.productId);
+        if(!p) continue;
+        p.stock += item.qty;
+        transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
+          type:'in', qty:item.qty, date:new Date().toISOString(),
+          user: currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
+        inboundSession.push({ name:p.name, spec:p.spec||'', qty:item.qty,
+          user:currentUser?currentUser.displayName:'', date:new Date().toISOString(), itemType:'stock' });
+      }
+      await saveProducts();
+      await saveTransactions();
+      renderCatTree(); renderProductTable(); renderHistory(); renderInboundSession();
+      const count = inboundCart.length;
+      inboundCart = [];
+      renderInboundCart();
+      const msg2 = document.getElementById('inBatchMsg');
+      if(msg2){ msg2.innerHTML='<div class="msg msg-ok">'+count+' 商品の入庫処理が完了しました。</div>';
+        setTimeout(()=>{ const e=document.getElementById('inBatchMsg'); if(e) e.innerHTML=''; },3000); }
     });
   }
 
