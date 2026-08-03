@@ -966,6 +966,35 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="provisionalEditModal">
+  <div class="modal" style="max-width:420px;">
+    <h3 style="margin-top:0;">✏️ 仮出庫の編集</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;">
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">お客様名 <span style="color:var(--red);">*</span></label>
+        <input type="text" id="provEdit_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
+        <input type="date" id="provEdit_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">車種名</label>
+        <input type="text" id="provEdit_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">商品・本数</div>
+        <div id="provEdit_items"></div>
+      </div>
+    </div>
+    <div id="provEditError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="provEditCancelBtn">キャンセル</button>
+      <button class="btn btn-amber" id="provEditOkBtn">保存する</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="quoteModal">
   <div class="modal" id="quotePrintArea" style="max-width:700px;">
 
@@ -1887,6 +1916,65 @@ window.addEventListener('storageReady', function(){
     stopAllScanners();
     startScanner('in');
   });
+
+  function showProvisionalEditForm(entry){
+    return new Promise((resolve)=>{
+      const overlay = document.getElementById('provisionalEditModal');
+      document.getElementById('provEdit_customer').value = entry.customerName || '';
+      document.getElementById('provEdit_date').value = entry.scheduledDate || '';
+      document.getElementById('provEdit_car').value = entry.carName || '';
+      const itemsEl = document.getElementById('provEdit_items');
+      itemsEl.innerHTML = entry.items.map((item, i)=>{
+        const sub = [item.brand||'', item.spec||''].filter(Boolean).join(' ');
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-2);border-radius:8px;margin-bottom:6px;">'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
+          +(sub?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(sub)+'</div>':'')
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+          +'<button type="button" class="prov-edit-step" data-idx="'+i+'" data-step="-1" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>'
+          +'<input type="number" id="provEdit_qty_'+i+'" value="'+item.qty+'" min="1" style="width:52px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:14px;padding:4px 6px;">'
+          +'<button type="button" class="prov-edit-step" data-idx="'+i+'" data-step="1" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">＋</button>'
+          +'<span style="font-size:12px;color:var(--text-3);">本</span>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+      itemsEl.querySelectorAll('.prov-edit-step').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const idx = parseInt(btn.dataset.idx);
+          const qtyInput = document.getElementById('provEdit_qty_'+idx);
+          const cur = parseInt(qtyInput.value||'1',10);
+          qtyInput.value = Math.max(1, cur + parseInt(btn.dataset.step));
+        });
+      });
+      const errorEl = document.getElementById('provEditError');
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+      overlay.classList.add('show');
+      setTimeout(()=>{ document.getElementById('provEdit_customer').focus(); }, 100);
+      const okBtn = document.getElementById('provEditOkBtn');
+      const cancelBtn = document.getElementById('provEditCancelBtn');
+      function cleanup(result){
+        overlay.classList.remove('show');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk(){
+        const name = document.getElementById('provEdit_customer').value.trim();
+        const date = document.getElementById('provEdit_date').value;
+        const car  = document.getElementById('provEdit_car').value.trim();
+        errorEl.style.display = 'none';
+        if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_customer').focus(); return; }
+        if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_date').focus(); return; }
+        const qtys = entry.items.map((_,i)=> Math.max(1, parseInt(document.getElementById('provEdit_qty_'+i).value||'1',10)));
+        cleanup({ customerName:name, scheduledDate:date, carName:car, qtys });
+      }
+      function onCancel(){ cleanup(null); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
 
   function showProvisionalForm(){
     return new Promise((resolve)=>{
@@ -4717,6 +4805,7 @@ window.addEventListener('storageReady', function(){
       });
       html += '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'
         + '<button class="btn btn-red btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:100px;">出庫確定</button>'
+        + '<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:80px;border-color:var(--teal);color:var(--teal);">編集</button>'
         + '<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:100px;color:var(--red);border-color:var(--red);">仮出庫取り消し</button>'
         + '<button class="btn btn-ghost btn-sm prov-back-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:80px;">戻る</button>'
         + '</div>'
@@ -4746,6 +4835,26 @@ window.addEventListener('storageReady', function(){
         entry.status = 'confirmed';
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
         renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
+      });
+    });
+
+    wrap.querySelectorAll('.prov-edit-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
+        if(!entry) return;
+        const result = await showProvisionalEditForm(entry);
+        if(!result) return;
+        entry.customerName  = result.customerName;
+        entry.scheduledDate = result.scheduledDate;
+        entry.carName       = result.carName;
+        entry.items.forEach((item, i)=>{ item.qty = result.qtys[i]; });
+        await saveProvisionalOutbounds();
+        renderProductTable();
+        renderHistory();
+        renderProvisionalList();
+        const target = document.getElementById('prov-entry-'+entry.id);
+        if(target){ target.open = true; }
       });
     });
 
