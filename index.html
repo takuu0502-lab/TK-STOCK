@@ -4538,7 +4538,7 @@ window.addEventListener('storageReady', function(){
     if(existing){
       if(existing.qty < p.stock) existing.qty++;
     } else {
-      outboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, partno: p.partno||'', spec: p.spec||'', qty: 1, maxStock: p.stock });
+      outboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, brand: p.brand||'', partno: p.partno||'', spec: p.spec||'', qty: 1, maxStock: p.stock });
     }
     renderOutboundCart();
   }
@@ -4561,6 +4561,7 @@ window.addEventListener('storageReady', function(){
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-weight:600;color:var(--text-1);font-size:14px;word-break:break-all;">'+escapeHtml(cleanName(item.name))+'</div>'
         + '<div style="font-size:12px;color:var(--text-2);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;">'
+        + (item.brand ? '<span style="color:var(--amber);font-weight:600;">'+escapeHtml(item.brand)+'</span>' : '')
         + (item.partno ? '<span>品番: '+escapeHtml(item.partno)+'</span>' : '')
         + (item.spec ? '<span>'+escapeHtml(item.spec)+'</span>' : '')
         + '</div>'
@@ -4687,7 +4688,7 @@ window.addEventListener('storageReady', function(){
   function addToInboundCart(p){
     const existing = inboundCart.find(item=>item.productId===p.id);
     if(existing){ existing.qty++; } else {
-      inboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, partno: p.partno||'', spec: p.spec||'', qty: 1 });
+      inboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, brand: p.brand||'', partno: p.partno||'', spec: p.spec||'', qty: 1 });
     }
     renderInboundCart();
   }
@@ -4709,6 +4710,7 @@ window.addEventListener('storageReady', function(){
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-weight:600;color:var(--text-1);font-size:14px;word-break:break-all;">'+escapeHtml(cleanName(item.name))+'</div>'
         + '<div style="font-size:12px;color:var(--text-2);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;">'
+        + (item.brand ? '<span style="color:var(--amber);font-weight:600;">'+escapeHtml(item.brand)+'</span>' : '')
         + (item.partno ? '<span>品番: '+escapeHtml(item.partno)+'</span>' : '')
         + (item.spec ? '<span>'+escapeHtml(item.spec)+'</span>' : '')
         + '</div>'
