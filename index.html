@@ -2071,7 +2071,7 @@ window.addEventListener('storageReady', function(){
 
   function renderBreadcrumb(){
     const el = document.getElementById('breadcrumb');
-    const segments = ['検索履歴'];
+    const segments = [];
     if(selectedMajor !== null){
       const m = majorById(selectedMajor);
       if(m) segments.push(m.name);
