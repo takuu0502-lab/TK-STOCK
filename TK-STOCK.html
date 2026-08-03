@@ -4048,6 +4048,7 @@ window.addEventListener('storageReady', function(){
         + '<button class="btn btn-teal detail-action-btn" id="detailStockIn">入庫する</button>'
         + '<button class="btn btn-red detail-action-btn" id="detailStockOut">出庫する</button>'
         + '</div>'
+        + '<button class="btn btn-ghost detail-action-btn" id="detailProvisionalOut" style="width:100%;margin-top:8px;border:2px solid var(--amber);color:var(--amber);font-size:13px;">🔖 仮出庫として登録</button>'
         + '<div id="detailActionMsg"></div>'
         + '</div>'
       ) : '')
@@ -4220,6 +4221,33 @@ window.addEventListener('storageReady', function(){
       });
       document.getElementById('detailStockIn').addEventListener('click', ()=> doDetailStockChange(id, 'in'));
       document.getElementById('detailStockOut').addEventListener('click', ()=> doDetailStockChange(id, 'out'));
+      document.getElementById('detailProvisionalOut').addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const p2 = products.find(x=>x.id===id);
+        if(!p2) return;
+        const qty = parseInt(document.getElementById('detailQty').value || '1', 10);
+        const msgEl = document.getElementById('detailActionMsg');
+        if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
+        const formResult = await showProvisionalForm();
+        if(!formResult) return;
+        const { customerName, scheduledDate } = formResult;
+        const entry = {
+          id: uid('pob'),
+          date: new Date().toISOString(),
+          customerName,
+          scheduledDate,
+          staff: currentUser ? currentUser.displayName : '',
+          items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty }],
+          status: 'pending'
+        };
+        provisionalOutbounds.unshift(entry);
+        await saveProvisionalOutbounds();
+        renderProductTable();
+        renderHistory();
+        renderProvisionalList();
+        if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">🔖 仮出庫として登録しました。</div>';
+          setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
+      });
     }
     if(writable){
       document.getElementById('detailMemoSave').addEventListener('click', async ()=>{
