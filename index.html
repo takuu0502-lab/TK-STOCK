@@ -179,6 +179,24 @@
   .cat-row.drag-over{background:var(--amber-dim);border:1px dashed var(--amber);}
   .cat-row.add-row:hover{color:var(--amber);}
   .tree-divider{height:1px;background:var(--line);margin:8px 4px;}
+  /* 一括操作バー */
+  #bulkActionBar{position:fixed;bottom:0;left:0;right:0;background:var(--text-1);color:#fff;padding:12px 20px;display:none;align-items:center;gap:10px;z-index:800;box-shadow:0 -2px 12px rgba(0,0,0,.25);flex-wrap:wrap;}
+  #bulkActionBar.show{display:flex;}
+  #bulkActionBar .bulk-count{font-size:13px;font-weight:700;margin-right:6px;white-space:nowrap;}
+  #bulkActionBar .btn-bulk{font-size:12px;padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-weight:600;white-space:nowrap;}
+  .btn-bulk-teal{background:var(--teal);color:#fff;}
+  .btn-bulk-teal:hover{opacity:.85;}
+  .btn-bulk-out{background:var(--amber);color:#fff;}
+  .btn-bulk-out:hover{opacity:.85;}
+  .btn-bulk-prov{background:#e8a020;color:#fff;}
+  .btn-bulk-prov:hover{opacity:.85;}
+  .btn-bulk-qr{background:#555;color:#fff;}
+  .btn-bulk-qr:hover{opacity:.85;}
+  .btn-bulk-clear{background:transparent;color:#ccc;border:1px solid #666 !important;}
+  .btn-bulk-clear:hover{color:#fff;border-color:#aaa !important;}
+  /* チェックボックス列 */
+  .stock-table th.chk-col,.stock-table td.chk-col{width:36px;padding:0 4px 0 8px;text-align:center;}
+  .row-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--amber);}
 
   .breadcrumb{font-size:12.5px;color:var(--text-2);margin-bottom:10px;font-family:var(--font-mono);}
   .spec-search-panel{background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-top:14px;}
@@ -223,6 +241,8 @@
   .detail-hist-list{max-height:260px;overflow-y:auto;}
   .clickable-row{cursor:pointer;}
   .clickable-row:hover{background:var(--bg-1);}
+  .clickable-row.row-selected{background:var(--amber-dim) !important;}
+  .clickable-row.row-selected:hover{background:#f5e3c5 !important;}
   .price-catalog{background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:16px;}
   .quote-bar{align-items:center;gap:12px;background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--amber);font-weight:600;}
   .quote-line-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line-soft);}
@@ -616,6 +636,17 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- 一括操作バー -->
+<div id="bulkActionBar">
+  <span class="bulk-count" id="bulkCount">0件選択中</span>
+  <button class="btn-bulk btn-bulk-teal" id="bulkInBtn">📥 入庫登録</button>
+  <button class="btn-bulk btn-bulk-out" id="bulkOutBtn">📤 出庫登録</button>
+  <button class="btn-bulk btn-bulk-prov" id="bulkProvBtn">🔖 仮出庫登録</button>
+  <button class="btn-bulk btn-bulk-qr" id="bulkQrBtn">🖨 QR印刷</button>
+  <button class="btn-bulk btn-bulk-clear" id="bulkClearBtn">選択解除</button>
+</div>
 
   <div class="panel" id="tab-estimate" style="display:none;">
     <h2 class="section-title">タイヤ見積もり</h2>
@@ -2091,6 +2122,7 @@ window.addEventListener('storageReady', function(){
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let recentFilter = false;
+  let selectedProducts = new Set(); // 一括操作用選択商品ID
   function resetSpecSelections(){
     selectedSpec = null;
     selectedTireWidth = null;
@@ -2779,7 +2811,9 @@ window.addEventListener('storageReady', function(){
       // タイヤはカタログの銘柄名（モデル名）と一致する場合は非表示、ユーザーが独自設定した場合のみ表示
       const showBrand = !_isTire || (p.brand && p.brand !== (_catE ? _catE.b : ''));
       const createdStr = p.createdAt ? (()=>{ const d=new Date(p.createdAt); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })() : '';
-      return '<tr class="clickable-row" data-detail="'+p.id+'">'
+      const isChecked = selectedProducts.has(p.id);
+      return '<tr class="clickable-row'+(isChecked?' row-selected':'')+'" data-detail="'+p.id+'">'
+        + '<td class="chk-col"><input type="checkbox" class="row-chk" data-chk-id="'+p.id+'"'+(isChecked?' checked':'')+' onclick="event.stopPropagation();"></td>'
         + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
@@ -2788,10 +2822,14 @@ window.addEventListener('storageReady', function(){
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
         + '</tr>';
     }).join('');
+    const allChecked = filteredList.length > 0 && filteredList.every(p=>selectedProducts.has(p.id));
+    const someChecked = filteredList.some(p=>selectedProducts.has(p.id));
+    const headerChk = '<th class="chk-col"><input type="checkbox" class="row-chk" id="bulkSelectAll"'+(allChecked?' checked':( someChecked?' style="accent-color:var(--amber);"':''))+' title="全選択/解除"></th>';
     const thead = recentFilter
-      ? '<thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th><th>登録日時</th></tr></thead>'
-      : '<thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th></tr></thead>';
+      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th><th>登録日時</th></tr></thead>'
+      : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th></tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
+    updateBulkBar();
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
       tr.addEventListener('click', ()=>{
         // 出庫タブがアクティブな場合はカートに追加
@@ -2817,6 +2855,47 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-edit-id]').forEach(btn=>{
       btn.addEventListener('click', e=>{ e.stopPropagation(); openEditModal(btn.dataset.editId); });
     });
+    // チェックボックス個別
+    wrap.querySelectorAll('.row-chk[data-chk-id]').forEach(chk=>{
+      chk.addEventListener('change', ()=>{
+        if(chk.checked) selectedProducts.add(chk.dataset.chkId);
+        else selectedProducts.delete(chk.dataset.chkId);
+        updateBulkBar();
+        // 行の強調と全選択チェック状態を更新（再描画せず）
+        const tr = chk.closest('tr');
+        if(tr){ tr.classList.toggle('row-selected', chk.checked); }
+        const allChk = document.getElementById('bulkSelectAll');
+        if(allChk){
+          const allRows = wrap.querySelectorAll('.row-chk[data-chk-id]');
+          allChk.checked = allRows.length > 0 && [...allRows].every(c=>c.checked);
+        }
+      });
+    });
+    // 全選択チェックボックス
+    const allChkEl = document.getElementById('bulkSelectAll');
+    if(allChkEl){
+      allChkEl.addEventListener('change', ()=>{
+        wrap.querySelectorAll('.row-chk[data-chk-id]').forEach(chk=>{
+          chk.checked = allChkEl.checked;
+          if(allChkEl.checked) selectedProducts.add(chk.dataset.chkId);
+          else selectedProducts.delete(chk.dataset.chkId);
+          const tr = chk.closest('tr');
+          if(tr) tr.classList.toggle('row-selected', allChkEl.checked);
+        });
+        updateBulkBar();
+      });
+    }
+  }
+
+  function updateBulkBar(){
+    const bar = document.getElementById('bulkActionBar');
+    const count = document.getElementById('bulkCount');
+    if(selectedProducts.size > 0){
+      bar.classList.add('show');
+      count.textContent = selectedProducts.size + '件選択中';
+    } else {
+      bar.classList.remove('show');
+    }
   }
 
   // ---------- 見積書 ----------
@@ -3411,6 +3490,96 @@ window.addEventListener('storageReady', function(){
     // ロード完了後に印刷ダイアログを表示
     w.addEventListener('load', ()=>{ w.focus(); w.print(); });
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
+  });
+
+  // ── 一括操作バー ──────────────────────────────
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // 入庫
+    document.getElementById('bulkInBtn').addEventListener('click', ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length===0) return;
+      ps.forEach(p=>addToInboundCart(p));
+      selectedProducts.clear(); updateBulkBar();
+      switchTab('in');
+    });
+    // 出庫
+    document.getElementById('bulkOutBtn').addEventListener('click', ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length===0) return;
+      ps.forEach(p=>{ if(p.stock>0) addToOutboundCart(p); });
+      selectedProducts.clear(); updateBulkBar();
+      switchTab('out');
+    });
+    // 仮出庫
+    document.getElementById('bulkProvBtn').addEventListener('click', async ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length===0) return;
+      const formResult = await showProvisionalForm();
+      if(!formResult) return;
+      const { customerName, scheduledDate, carName } = formResult;
+      // 在庫超過チェック
+      const overItems = ps.filter(p=>{
+        const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id))
+          .reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+        return (provQty + 1) > p.stock;
+      });
+      if(overItems.length > 0){
+        const names = overItems.map(p=>cleanName(p.name)).join('、');
+        const ok = await showConfirm('以下の商品は在庫数を超えた仮出庫になります：
+'+names+'
+
+それでも登録しますか？');
+        if(!ok) return;
+      }
+      const entry = {
+        id: uid('pob'),
+        date: new Date().toISOString(),
+        customerName,
+        scheduledDate,
+        carName: carName||'',
+        staff: currentUser?.displayName || '',
+        items: ps.map(p=>({ productId: p.id, name: p.name, brand: p.brand||'', spec: p.spec||'', partno: p.partno||'', qty: 1 })),
+        status: 'pending'
+      };
+      provisionalOutbounds.push(entry);
+      await saveProvisionalOutbounds();
+      selectedProducts.clear(); updateBulkBar();
+      renderProductTable();
+      switchTab('out');
+    });
+    // QR一括印刷
+    document.getElementById('bulkQrBtn').addEventListener('click', ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length===0) return;
+      const printArea = document.getElementById('qrPrintArea');
+      printArea.innerHTML = '';
+      printArea.style.display = 'block';
+      let pending = ps.length;
+      ps.forEach(p=>{
+        const qrValue = p.barcode || p.id;
+        const name = cleanName(p.name);
+        const spec = p.spec || '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'qr-label';
+        wrapper.style.cssText = 'display:inline-block;margin:6px;vertical-align:top;';
+        wrapper.innerHTML = '<div class="qr-label-name">'+escapeHtml(name)+'</div>'
+          +(spec?'<div class="qr-label-spec">'+escapeHtml(spec)+'</div>':'')
+          +'<div id="qrBulk_'+escapeHtml(p.id)+'"></div>'
+          +'<div class="qr-label-code">'+escapeHtml(qrValue)+'</div>';
+        printArea.appendChild(wrapper);
+        const qrDiv = wrapper.querySelector('#qrBulk_'+p.id);
+        new QRCode(qrDiv, { text: qrValue, width:120, height:120, correctLevel: QRCode.CorrectLevel.M });
+      });
+      // QRコード描画を待ってから印刷
+      setTimeout(()=>{
+        document.body.dataset.printing = 'qr';
+        window.print();
+      }, 500);
+    });
+    // 選択解除
+    document.getElementById('bulkClearBtn').addEventListener('click', ()=>{
+      selectedProducts.clear(); updateBulkBar(); renderProductTable();
+    });
   });
 
   window.addEventListener('afterprint', ()=>{
