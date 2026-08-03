@@ -824,11 +824,11 @@
     </div>
     <div class="row">
       <div class="field" style="flex:1;">
-        <label>大分類</label>
+        <label>大カテゴリー</label>
         <select id="f_major"></select>
       </div>
       <div class="field" style="flex:1;">
-        <label>小分類</label>
+        <label>小カテゴリー</label>
         <select id="f_sub"></select>
       </div>
     </div>
@@ -2142,17 +2142,17 @@ window.addEventListener('storageReady', function(){
                 + '</div>';
         });
         if(writable){
-          html += '<div class="cat-row sub add-row" data-add-sub="'+cat.id+'"><span class="cat-label">＋ 小分類を追加</span></div>';
+          html += '<div class="cat-row sub add-row" data-add-sub="'+cat.id+'"><span class="cat-label">＋ 小カテゴリーを追加</span></div>';
         }
       }
     });
     html += '<div class="tree-divider"></div>';
     if(writable){
-      html += '<div class="cat-row add-row" data-add-major="1"><span class="cat-label">＋ 大分類を追加</span></div>';
+      html += '<div class="cat-row add-row" data-add-major="1"><span class="cat-label">＋ 大カテゴリーを追加</span></div>';
     }
     wrap.innerHTML = html;
 
-    // ドラッグ&ドロップで大分類並び替え
+    // ドラッグ&ドロップで大カテゴリー並び替え
     if(writable){
       let dragSrcId = null;
       wrap.querySelectorAll('[data-draggable-major]').forEach(row=>{
@@ -2226,29 +2226,29 @@ window.addEventListener('storageReady', function(){
       await saveCategories(); renderCatTree();
     } else if(action === 'rename-major'){
       const cat = majorById(majorId);
-      const name = prompt('大分類の名称を変更', cat.name);
+      const name = prompt('大カテゴリーの名称を変更', cat.name);
       if(name && name.trim()){ cat.name = name.trim(); await saveCategories(); renderCatTree(); renderProductTable(); }
     } else if(action === 'delete-major'){
       const cat = majorById(majorId);
       if(countForMajor(majorId) > 0){
-        alert('この大分類には商品が登録されているため削除できません。先に商品の分類を変更してください。');
+        alert('この大カテゴリーには商品が登録されているため削除できません。先に商品の分類を変更してください。');
         return;
       }
-      if(!confirm('大分類「'+cat.name+'」を削除しますか？')) return;
+      if(!confirm('大カテゴリー「'+cat.name+'」を削除しますか？')) return;
       categories = categories.filter(c=>c.id!==majorId);
       if(selectedMajor===majorId){ selectedMajor=null; selectedSub=null; }
       await saveCategories(); renderCatTree(); renderProductTable();
     } else if(action === 'rename-sub'){
       const sub = subById(majorId, id);
-      const name = prompt('小分類の名称を変更', sub.name);
+      const name = prompt('小カテゴリーの名称を変更', sub.name);
       if(name && name.trim()){ sub.name = name.trim(); await saveCategories(); renderCatTree(); renderProductTable(); }
     } else if(action === 'delete-sub'){
       const sub = subById(majorId, id);
       if(countForSub(majorId, id) > 0){
-        alert('この小分類には商品が登録されているため削除できません。先に商品の分類を変更してください。');
+        alert('この小カテゴリーには商品が登録されているため削除できません。先に商品の分類を変更してください。');
         return;
       }
-      if(!confirm('小分類「'+sub.name+'」を削除しますか？')) return;
+      if(!confirm('小カテゴリー「'+sub.name+'」を削除しますか？')) return;
       const cat = majorById(majorId);
       cat.subs = cat.subs.filter(s=>s.id!==id);
       if(selectedSub===id) selectedSub=null;
@@ -2258,14 +2258,14 @@ window.addEventListener('storageReady', function(){
 
   async function addMajorCategory(){
     if(!canWriteData()) return;
-    const name = prompt('新しい大分類の名称を入力してください');
+    const name = prompt('新しい大カテゴリーの名称を入力してください');
     if(!name || !name.trim()) return;
     categories.push({id: uid('c'), name: name.trim(), subs: []});
     await saveCategories(); renderCatTree(); renderProductTable();
   }
   async function addSubCategory(majorId){
     if(!canWriteData()) return;
-    const name = prompt('新しい小分類の名称を入力してください');
+    const name = prompt('新しい小カテゴリーの名称を入力してください');
     if(!name || !name.trim()) return;
     const cat = majorById(majorId);
     cat.subs.push({id: uid('s'), name: name.trim()});
@@ -3419,7 +3419,7 @@ window.addEventListener('storageReady', function(){
 
     let html = '<div class="spec-search-panel">';
 
-    html += '<div class="spec-step"><div class="spec-step-label">1. 大分類</div><div class="spec-step-tabs">';
+    html += '<div class="spec-step"><div class="spec-step-label">1. 大カテゴリー</div><div class="spec-step-tabs">';
     categories.forEach(cat=>{
       const active = selectedMajor === cat.id;
       html += '<span class="chip'+(active?' active':'')+'" data-spec-major="'+cat.id+'">'+escapeHtml(cat.name)+'</span>';
@@ -3429,7 +3429,7 @@ window.addEventListener('storageReady', function(){
     if(selectedMajor !== null){
       const m = majorById(selectedMajor);
       if(m && m.subs.length){
-        html += '<div class="spec-step"><div class="spec-step-label">2. 小分類</div><div class="spec-step-tabs">';
+        html += '<div class="spec-step"><div class="spec-step-label">2. 小カテゴリー</div><div class="spec-step-tabs">';
         html += '<span class="chip'+(selectedSub===null?' active':'')+'" data-spec-sub="">すべて</span>';
         m.subs.forEach(sub=>{
           const active = selectedSub === sub.id;
@@ -4431,7 +4431,7 @@ window.addEventListener('storageReady', function(){
       return;
     }
     if(!majorId){
-      msgEl.innerHTML = '<div class="msg msg-error">大分類を選択してください。</div>';
+      msgEl.innerHTML = '<div class="msg msg-error">大カテゴリーを選択してください。</div>';
       return;
     }
     if(barcode){
@@ -4573,8 +4573,8 @@ window.addEventListener('storageReady', function(){
       + '<div class="field" style="flex:1;"><label>品番</label><input type="text" id="lc_partno" value="'+escapeHtml(p.partno||'')+'" style="width:100%;box-sizing:border-box;"></div></div>'
       + '<div class="field"><label>商品名</label><input type="text" id="lc_name" value="'+escapeHtml(p.name)+'" style="width:100%;box-sizing:border-box;"></div>'
       + '<div class="row" style="gap:8px;">'
-      + '<div class="field" style="flex:1;"><label>大分類</label><select id="lc_major" style="width:100%;">'+majorOptions+'</select></div>'
-      + '<div class="field" style="flex:1;"><label>小分類</label><select id="lc_sub" style="width:100%;">'+subOpts+'</select></div>'
+      + '<div class="field" style="flex:1;"><label>大カテゴリー</label><select id="lc_major" style="width:100%;">'+majorOptions+'</select></div>'
+      + '<div class="field" style="flex:1;"><label>小カテゴリー</label><select id="lc_sub" style="width:100%;">'+subOpts+'</select></div>'
       + '</div>'
       + '<div class="field"><label>規格・仕様</label><input type="text" id="lc_spec" value="'+escapeHtml(p.spec||'')+'" style="width:100%;box-sizing:border-box;"></div>'
       + '<div class="row" style="gap:8px;">'
@@ -4587,7 +4587,7 @@ window.addEventListener('storageReady', function(){
       + '</div>';
     resultEl.querySelector('.lookup-card').appendChild(editPanel);
 
-    // 大分類変更時に小分類を更新
+    // 大カテゴリー変更時に小カテゴリーを更新
     document.getElementById('lc_major').addEventListener('change', function(){
       const mc = categories.find(c=>c.id===this.value);
       const subSel = document.getElementById('lc_sub');
