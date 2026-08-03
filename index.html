@@ -1854,6 +1854,7 @@ window.addEventListener('storageReady', function(){
     ['list','estimate','in','out','history','pricing'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
     });
+    if(tabName === 'out'){ renderProvisionalList(); }
   }
 
   function showHomeState(){
