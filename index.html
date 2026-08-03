@@ -612,6 +612,13 @@
     </div>
     <div id="inReaderWrap"></div>
     <div id="inResult"></div>
+    <div id="inSessionWrap" style="margin-top:24px;display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700;color:var(--text-1);">今回の作業リスト</div>
+        <button class="btn btn-ghost btn-sm" id="inSessionClearBtn" style="font-size:12px;">リストをクリア</button>
+      </div>
+      <div id="inSessionList"></div>
+    </div>
   </div>
 
   <div class="panel" id="tab-out" style="display:none;">
@@ -629,13 +636,21 @@
   </div>
 
   <div class="panel" id="tab-history" style="display:none;">
-    <div class="row" style="justify-content:space-between;">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <h2 class="section-title" style="margin:0;">入出庫履歴</h2>
-      <div class="row">
+      <div class="row" style="gap:6px;flex-wrap:wrap;">
         <span class="chip active" data-htype="all">すべて</span>
         <span class="chip" data-htype="in">入庫のみ</span>
         <span class="chip" data-htype="out">出庫のみ</span>
       </div>
+    </div>
+    <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap;">
+      <div class="row" style="gap:6px;">
+        <span class="chip active" data-hdate="all">すべての日付</span>
+        <span class="chip" data-hdate="today">本日</span>
+        <span class="chip" data-hdate="week">今週</span>
+      </div>
+      <input type="text" id="historySearch" placeholder="商品名・サイズで検索" style="flex:1;min-width:180px;max-width:300px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
     </div>
     <div id="historyList" style="margin-top:14px;"></div>
   </div>
@@ -1073,6 +1088,7 @@ window.addEventListener('storageReady', function(){
   const SHARED = true;
   let products = [];
   let transactions = [];
+  let inboundSession = []; // 今回の作業中スキャンリスト（セッション限り）
   let categories = [];
   let editingId = null;
   let janDict = {};
@@ -4420,10 +4436,63 @@ window.addEventListener('storageReady', function(){
       renderCatTree();
       renderProductTable();
       renderHistory();
+      // 入庫時は作業中リストに追加
+      if(kind === 'in'){
+        inboundSession.push({
+          name: p.name,
+          spec: p.spec || '',
+          qty: qty,
+          user: currentUser ? currentUser.displayName : '',
+          date: new Date().toISOString(),
+          itemType: itemType
+        });
+        renderInboundSession();
+      }
       msgEl.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+p.stock+'）。</div>';
       document.getElementById(kind+'Barcode').value = '';
     });
   }
+
+  // 入庫作業中リスト描画
+  function renderInboundSession(){
+    const wrap = document.getElementById('inSessionWrap');
+    const list = document.getElementById('inSessionList');
+    if(!wrap || !list) return;
+    if(inboundSession.length === 0){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--line);">'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">No.</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">商品名</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">サイズ・規格</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);font-weight:600;">数量</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">区分</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">時刻</th>'
+      + '</tr></thead><tbody>'
+      + inboundSession.map((item, i)=>{
+          const d = new Date(item.date);
+          const t = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+          const tag = item.itemType === 'reserved'
+            ? '<span style="font-size:10px;background:var(--amber-dim);color:var(--amber);padding:1px 6px;border-radius:4px;">客注</span>'
+            : '<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 6px;border-radius:4px;">在庫品</span>';
+          return '<tr style="border-bottom:1px solid var(--line-soft);">'
+            + '<td style="padding:7px 8px;color:var(--text-3);">'+( i+1)+'</td>'
+            + '<td style="padding:7px 8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
+            + '<td style="padding:7px 8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
+            + '<td style="padding:7px 8px;text-align:center;color:var(--teal);font-weight:700;">+'+item.qty+'</td>'
+            + '<td style="padding:7px 8px;">'+tag+'</td>'
+            + '<td style="padding:7px 8px;color:var(--text-3);font-family:var(--font-mono);font-size:12px;">'+t+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>'
+      + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">合計 '+inboundSession.length+' 件 / '+inboundSession.reduce((s,x)=>s+x.qty,0)+' 本</div>';
+  }
+
+  document.getElementById('inSessionClearBtn').addEventListener('click', ()=>{
+    if(!confirm('作業リストをクリアしますか？')) return;
+    inboundSession = [];
+    renderInboundSession();
+  });
 
   setupTransactionTab('in');
   setupTransactionTab('out');
@@ -4469,6 +4538,9 @@ window.addEventListener('storageReady', function(){
   }
 
   let historyFilter = 'all';
+  let historyDateFilter = 'all';
+  let historySearchText = '';
+
   document.querySelectorAll('.chip[data-htype]').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       document.querySelectorAll('.chip[data-htype]').forEach(c=>c.classList.remove('active'));
@@ -4477,27 +4549,92 @@ window.addEventListener('storageReady', function(){
       renderHistory();
     });
   });
+  document.querySelectorAll('.chip[data-hdate]').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip[data-hdate]').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      historyDateFilter = chip.dataset.hdate;
+      renderHistory();
+    });
+  });
+  document.getElementById('historySearch').addEventListener('input', e=>{
+    historySearchText = e.target.value.trim();
+    renderHistory();
+  });
 
   function renderHistory(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
-    list = list.slice().sort((a,b) => {
+
+    // 日付フィルター
+    if(historyDateFilter !== 'all'){
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const weekStart = todayStart - (now.getDay() === 0 ? 6 : now.getDay()-1) * 86400000;
+      list = list.filter(t=>{
+        const ts = new Date(t.date).getTime();
+        if(historyDateFilter === 'today') return ts >= todayStart;
+        if(historyDateFilter === 'week')  return ts >= weekStart;
+        return true;
+      });
+    }
+
+    // テキスト検索
+    if(historySearchText){
+      const q = historySearchText.toLowerCase();
+      list = list.filter(t=> (t.name||'').toLowerCase().includes(q) || (t.barcode||'').includes(q));
+    }
+
+    list = list.slice().sort((a,b)=>{
       const da = a.date ? new Date(a.date).getTime() : 0;
       const db = b.date ? new Date(b.date).getTime() : 0;
       return db - da;
     });
+
     if(list.length === 0){
-      el.innerHTML = '<div class="empty-state">まだ入出庫履歴がありません。</div>';
+      el.innerHTML = '<div class="empty-state">履歴がありません。</div>';
       return;
     }
-    el.innerHTML = list.slice(0, 200).map(t=>{
+
+    // 日付ごとにグループ化
+    const groups = {};
+    list.slice(0, 500).forEach(t=>{
       const d = new Date(t.date);
-      const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-      const resTag = t.itemType === 'reserved' ? '<span class="res-tag">予約品</span>' : '';
-      const resLine = (t.itemType === 'reserved' && t.reservation)
-        ? '<div class="hist-sub">取付予定: '+escapeHtml(t.reservation.installDate)+' ・ お客様: '+escapeHtml(t.reservation.customer)+' ・ 車種: '+escapeHtml(t.reservation.car)+' ・ 予約担当: '+escapeHtml(t.reservation.staff)+'</div>'
-        : '';
-      return '<div class="hist-row"><span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span><div class="hist-info"><div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div><div class="hist-sub">'+escapeHtml(t.barcode)+' ・ '+dateStr+(t.user ? ' ・ 担当: '+escapeHtml(t.user) : '')+'</div>'+resLine+'</div><div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div></div>';
+      const key = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
+      if(!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+
+    el.innerHTML = Object.entries(groups).map(([date, items])=>{
+      const inQty  = items.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
+      const outQty = items.filter(t=>t.type==='out').reduce((s,t)=>s+t.qty,0);
+      const summary = (inQty ? '<span style="color:var(--teal);">入庫 +'+inQty+'</span>' : '')
+                    + (inQty && outQty ? ' / ' : '')
+                    + (outQty ? '<span style="color:var(--red);">出庫 -'+outQty+'</span>' : '');
+      const rows = items.map(t=>{
+        const d2 = new Date(t.date);
+        const timeStr = String(d2.getHours()).padStart(2,'0')+':'+String(d2.getMinutes()).padStart(2,'0');
+        const resTag = t.itemType === 'reserved' ? '<span class="res-tag">客注</span>' : '';
+        const resLine = (t.itemType === 'reserved' && t.reservation)
+          ? '<div class="hist-sub">取付予定: '+escapeHtml(t.reservation.installDate)+' ・ お客様: '+escapeHtml(t.reservation.customer)+' ・ 車種: '+escapeHtml(t.reservation.car)+'</div>'
+          : '';
+        return '<div class="hist-row">'
+          + '<span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span>'
+          + '<div class="hist-info">'
+          + '<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div>'
+          + '<div class="hist-sub">'+timeStr+(t.user ? ' ・ 担当: '+escapeHtml(t.user) : '')+'</div>'
+          + resLine
+          + '</div>'
+          + '<div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div>'
+          + '</div>';
+      }).join('');
+      return '<div style="margin-bottom:18px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:2px solid var(--line);margin-bottom:6px;">'
+        + '<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+date+'</span>'
+        + '<span style="font-size:12px;">'+summary+'</span>'
+        + '</div>'
+        + rows
+        + '</div>';
     }).join('');
   }
 
