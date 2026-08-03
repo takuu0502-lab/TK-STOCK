@@ -2225,18 +2225,18 @@ window.addEventListener('storageReady', function(){
       [categories[idx], categories[idx+1]] = [categories[idx+1], categories[idx]];
       await saveCategories(); renderCatTree();
     } else if(action === 'rename-major'){
-      const cat = majorById(majorId);
+      const cat = majorById(id);
       const name = prompt('大分類の名称を変更', cat.name);
       if(name && name.trim()){ cat.name = name.trim(); await saveCategories(); renderCatTree(); renderProductTable(); }
     } else if(action === 'delete-major'){
-      const cat = majorById(majorId);
-      if(countForMajor(majorId) > 0){
+      const cat = majorById(id);
+      if(countForMajor(id) > 0){
         alert('この大分類には商品が登録されているため削除できません。先に商品の分類を変更してください。');
         return;
       }
       if(!confirm('大分類「'+cat.name+'」を削除しますか？')) return;
-      categories = categories.filter(c=>c.id!==majorId);
-      if(selectedMajor===majorId){ selectedMajor=null; selectedSub=null; }
+      categories = categories.filter(c=>c.id!==id);
+      if(selectedMajor===id){ selectedMajor=null; selectedSub=null; }
       await saveCategories(); renderCatTree(); renderProductTable();
     } else if(action === 'rename-sub'){
       const sub = subById(majorId, id);
