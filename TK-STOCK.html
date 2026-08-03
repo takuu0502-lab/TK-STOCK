@@ -2526,7 +2526,7 @@ window.addEventListener('storageReady', function(){
       return true;
     });
     renderInventoryFilter(list.length > 0);
-    let filteredList = stockOnlyFilter ? list.filter(p=> p.stock > 0) : list;
+    let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> p.stock > 0) : list;
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => p.customerOrders && p.customerOrders.length > 0);
     if(recentFilter){
