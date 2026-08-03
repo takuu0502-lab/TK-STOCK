@@ -4057,158 +4057,43 @@ window.addEventListener('storageReady', function(){
       + '<textarea id="detailMemo" rows="3" placeholder="メモを入力…" style="width:100%;resize:vertical;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13.5px;padding:7px 10px;box-sizing:border-box;"'+(writable?'':' readonly')+'>'+escapeHtml(p.memo||'')+'</textarea>'
       + (writable ? '<div style="text-align:right;margin-top:6px;"><button class="btn btn-amber btn-sm" id="detailMemoSave">メモを保存</button></div>' : '')
       + '</div>'
-      + '<div class="detail-hist-title" style="display:flex;align-items:center;justify-content:space-between;">'
-      + '<span>客注リスト</span>'
-      + (writable ? '<button class="btn btn-amber btn-sm" id="addCustomerOrderBtn" style="font-size:12px;padding:4px 10px;">＋追加</button>' : '')
-      + '</div>'
-      + '<div id="customerOrderList" style="margin-bottom:12px;"></div>'
-      + (writable ? '<div id="customerOrderForm" style="display:none;background:var(--bg-2);border-radius:8px;padding:10px 12px;margin-bottom:12px;">'
-        + '<div id="coFormTitle" style="font-size:11px;color:var(--text-3);margin-bottom:8px;">客注を追加</div>'
-        + '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px;">'
-        + '<input id="coName" placeholder="お客様名" style="background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">'
-        + '<input id="coQty" type="number" min="1" value="1" placeholder="数量" style="width:60px;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 8px;">'
-        + '</div>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-        + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">取付予定日</div><input id="coInstallDate" type="date" style="width:100%;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 8px;"></div>'
-        + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">車種</div><input id="coCar" placeholder="例）プリウス" style="width:100%;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 8px;"></div>'
-        + '</div>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-        + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">担当者</div><select id="coStaff" style="width:100%;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 8px;"><option value="">— 選択 —</option>'+accounts.filter(a=>a.role!=='external').map(a=>'<option value="'+escapeHtml(a.displayName)+'">'+escapeHtml(a.displayName)+'</option>').join('')+'</select></div>'
-        + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">備考</div><input id="coNote" placeholder="任意" style="width:100%;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 8px;"></div>'
-        + '</div>'
-        + '<div style="display:flex;gap:8px;">'
-        + '<button class="btn btn-amber btn-sm" id="coSaveBtn">保存</button>'
-        + '<button class="btn btn-ghost btn-sm" id="coCancelBtn">キャンセル</button>'
-        + '</div>'
-        + '</div>' : '')
+      + '<div class="detail-hist-title">🔖 仮出庫リスト</div>'
+      + '<div id="detailProvList" style="margin-bottom:12px;"></div>'
       + '<div class="detail-hist-title">入出庫履歴</div>'
       + '<div class="detail-hist-list">'+histHtml+'</div>';
 
-    // 客注リスト描画
-    let editingCoIdx = -1;
-    function openCoForm(idx){
-      // idx >= 0 = 編集モード、-1 = 新規追加モード
-      editingCoIdx = idx;
-      const form = document.getElementById('customerOrderForm');
-      const title = document.getElementById('coFormTitle');
-      const saveBtn = document.getElementById('coSaveBtn');
-      if(idx >= 0){
-        const p2 = products.find(x=>x.id===id);
-        const o = (p2.customerOrders||[])[idx];
-        if(!o) return;
-        document.getElementById('coName').value = o.name;
-        document.getElementById('coQty').value = o.qty;
-        document.getElementById('coInstallDate').value = o.installDate || '';
-        document.getElementById('coCar').value = o.car || '';
-        document.getElementById('coStaff').value = o.staff || '';
-        document.getElementById('coNote').value = o.note || '';
-        if(title) title.textContent = '客注を編集';
-        if(saveBtn) saveBtn.textContent = '更新';
-      } else {
-        document.getElementById('coName').value = '';
-        document.getElementById('coQty').value = '1';
-        document.getElementById('coInstallDate').value = '';
-        document.getElementById('coCar').value = '';
-        document.getElementById('coStaff').value = '';
-        document.getElementById('coNote').value = '';
-        if(title) title.textContent = '客注を追加';
-        if(saveBtn) saveBtn.textContent = '保存';
-      }
-      form.style.display = 'block';
-      document.getElementById('coName').focus();
-    }
-    function renderCustomerOrderList(){
-      const p2 = products.find(x=>x.id===id);
-      if(!p2) return;
-      const orders = p2.customerOrders || [];
-      const el = document.getElementById('customerOrderList');
+    // 仮出庫リスト描画（この商品に紐づくもの）
+    function renderDetailProvList(){
+      const el = document.getElementById('detailProvList');
       if(!el) return;
-      if(orders.length === 0){
-        el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">客注なし</div>';
-      } else {
-        const inputStyle = 'background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:12px;padding:4px 8px;width:100%;box-sizing:border-box;';
-        el.innerHTML = orders.map((o,i)=>{
-          const d = new Date(o.date);
-          const ds = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
-          return '<div style="padding:10px 12px;background:var(--bg-2);border-radius:8px;border-left:3px solid var(--amber);margin-bottom:8px;">'
-            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
-            + '<div style="font-size:10px;color:var(--text-3);">登録日: '+ds+'</div>'
-            + (writable ? '<button class="btn btn-red btn-sm" data-co-del="'+i+'" style="font-size:11px;padding:3px 8px;">削除</button>' : '')
-            + '</div>'
-            + '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px;">'
-            + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">👤 お客様名</div>'
-            + (writable
-                ? '<input type="text" data-co-name="'+i+'" value="'+escapeHtml(o.name||'')+'" placeholder="お客様名" style="'+inputStyle+'">'
-                : '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(o.name)+'</div>')
-            + '</div>'
-            + '<div style="width:60px;"><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">数量</div>'
-            + (writable
-                ? '<input type="number" min="1" data-co-qty="'+i+'" value="'+o.qty+'" style="'+inputStyle+'text-align:center;">'
-                : '<div style="font-size:13px;font-weight:600;color:var(--amber);">×'+o.qty+'</div>')
-            + '</div>'
-            + '</div>'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-            + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">📅 取付予定日</div>'
-            + (writable
-                ? '<input type="date" data-co-installdate="'+i+'" value="'+escapeHtml(o.installDate||'')+'" style="'+inputStyle+'">'
-                : '<div style="font-size:12px;color:var(--text-2);">'+(o.installDate||'—')+'</div>')
-            + '</div>'
-            + '<div><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">👤 担当者</div>'
-            + (writable
-                ? '<select data-co-staff="'+i+'" style="'+inputStyle+'">'
-                  + '<option value="">— 選択 —</option>'
-                  + accounts.filter(a=>a.role!=='external').map(a=>'<option value="'+escapeHtml(a.displayName)+'"'+(o.staff===a.displayName?' selected':'')+'>'+escapeHtml(a.displayName)+'</option>').join('')
-                  + '</select>'
-                : '<div style="font-size:12px;color:var(--text-2);">'+(o.staff||'—')+'</div>')
-            + '</div>'
-            + '</div>'
-            + '<div style="margin-bottom:6px;"><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">🚗 車種</div>'
-            + (writable
-                ? '<input type="text" data-co-car="'+i+'" value="'+escapeHtml(o.car||'')+'" placeholder="例）プリウス" style="'+inputStyle+'">'
-                : '<div style="font-size:12px;color:var(--text-2);">'+(o.car||'—')+'</div>')
-            + '</div>'
-            + (writable ? '<div style="text-align:right;"><button class="btn btn-ghost btn-sm" data-co-inline-save="'+i+'" style="font-size:11px;padding:3px 10px;">保存</button></div>' : '')
-            + '</div>';
-        }).join('');
-        if(writable){
-          el.querySelectorAll('[data-co-inline-save]').forEach(btn=>{
-            btn.addEventListener('click', async ()=>{
-              const p3 = products.find(x=>x.id===id);
-              if(!p3) return;
-              const idx = parseInt(btn.dataset.coInlineSave, 10);
-              const o = p3.customerOrders[idx];
-              if(!o) return;
-              const nameEl = el.querySelector('[data-co-name="'+idx+'"]');
-              const qtyEl = el.querySelector('[data-co-qty="'+idx+'"]');
-              const dateEl = el.querySelector('[data-co-installdate="'+idx+'"]');
-              const carEl = el.querySelector('[data-co-car="'+idx+'"]');
-              const staffEl = el.querySelector('[data-co-staff="'+idx+'"]');
-              if(nameEl && nameEl.value.trim()) o.name = nameEl.value.trim();
-              if(qtyEl) o.qty = parseInt(qtyEl.value||'1', 10) || 1;
-              if(dateEl) o.installDate = dateEl.value;
-              if(carEl) o.car = carEl.value.trim();
-              if(staffEl) o.staff = staffEl.value.trim();
-              await saveProducts();
-              btn.textContent = '保存済';
-              setTimeout(()=>{ btn.textContent = '保存'; }, 1500);
-              renderProductTable();
-            });
-          });
-          el.querySelectorAll('[data-co-del]').forEach(btn=>{
-            btn.addEventListener('click', async ()=>{
-              const p3 = products.find(x=>x.id===id);
-              if(!p3) return;
-              const idx = parseInt(btn.dataset.coDel, 10);
-              p3.customerOrders = (p3.customerOrders||[]).filter((_,i)=>i!==idx);
-              await saveProducts();
-              renderCustomerOrderList();
-              renderProductTable();
-            });
-          });
-        }
+      const entries = provisionalOutbounds.filter(po=>po.items.some(i=>i.productId===id));
+      if(entries.length === 0){
+        el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">仮出庫なし</div>';
+        return;
       }
+      const statusMap = { pending:['🔖 未確定','var(--amber)'], confirmed:['✅ 確定済','var(--teal)'], cancelled:['❌ キャンセル','var(--text-3)'] };
+      el.innerHTML = entries.map(po=>{
+        const d = new Date(po.date);
+        const ds = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+        const myItems = po.items.filter(i=>i.productId===id);
+        const qty = myItems.reduce((s,i)=>s+i.qty,0);
+        const [statusLabel, statusColor] = statusMap[po.status]||statusMap.pending;
+        return '<div style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+          +'<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
+          +'<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">'
+          +'<div><div style="color:var(--text-3);font-size:10px;">👤 お客様</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'</div></div>'
+          +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+escapeHtml(po.scheduledDate)+'</div></div>'
+          +'</div>'
+          +'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">本数：</span><span style="font-weight:700;color:var(--amber);">'+qty+'本</span>'
+          +(po.staff?'　<span style="color:var(--text-3);">担当：</span><span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')
+          +'</div>'
+          +'</div>';
+      }).join('');
     }
-    renderCustomerOrderList();
+    renderDetailProvList();
 
     if(writable){
       document.getElementById('detailQty').value = 1;
@@ -4245,6 +4130,7 @@ window.addEventListener('storageReady', function(){
         renderProductTable();
         renderHistory();
         renderProvisionalList();
+        renderDetailProvList();
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">🔖 仮出庫として登録しました。</div>';
           setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
       });
@@ -4257,44 +4143,6 @@ window.addEventListener('storageReady', function(){
         await saveProducts();
         const btn = document.getElementById('detailMemoSave');
         if(btn){ btn.textContent = '保存しました'; setTimeout(()=>{ if(btn) btn.textContent = 'メモを保存'; }, 1500); }
-      });
-      document.getElementById('addCustomerOrderBtn').addEventListener('click', ()=>{
-        const form = document.getElementById('customerOrderForm');
-        if(form.style.display === 'none') openCoForm(-1);
-        else { form.style.display = 'none'; editingCoIdx = -1; }
-      });
-      document.getElementById('coCancelBtn').addEventListener('click', ()=>{
-        document.getElementById('customerOrderForm').style.display = 'none';
-        editingCoIdx = -1;
-      });
-      document.getElementById('coSaveBtn').addEventListener('click', async ()=>{
-        const name = document.getElementById('coName').value.trim();
-        const qty = parseInt(document.getElementById('coQty').value||'1', 10);
-        const installDate = document.getElementById('coInstallDate').value;
-        const car = document.getElementById('coCar').value.trim();
-        const staff = document.getElementById('coStaff').value.trim();
-        const note = document.getElementById('coNote').value.trim();
-        if(!name){ alert('お客様名を入力してください'); return; }
-        const p2 = products.find(x=>x.id===id);
-        if(!p2) return;
-        if(!p2.customerOrders) p2.customerOrders = [];
-        if(editingCoIdx >= 0 && p2.customerOrders[editingCoIdx]){
-          // 編集モード：既存エントリを更新
-          p2.customerOrders[editingCoIdx].name = name;
-          p2.customerOrders[editingCoIdx].qty = qty||1;
-          p2.customerOrders[editingCoIdx].installDate = installDate;
-          p2.customerOrders[editingCoIdx].car = car;
-          p2.customerOrders[editingCoIdx].staff = staff;
-          p2.customerOrders[editingCoIdx].note = note;
-        } else {
-          // 新規追加
-          p2.customerOrders.push({id: Date.now().toString(36), name, qty: qty||1, installDate, car, staff, note, date: new Date().toISOString()});
-        }
-        await saveProducts();
-        document.getElementById('customerOrderForm').style.display = 'none';
-        editingCoIdx = -1;
-        renderCustomerOrderList();
-        renderProductTable();
       });
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
