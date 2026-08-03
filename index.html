@@ -634,6 +634,14 @@
     </div>
     <div id="outReaderWrap"></div>
     <div id="outResult"></div>
+    <div id="outCartWrap"></div>
+    <div id="outSessionWrap" style="margin-top:24px;display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700;color:var(--text-1);">完了リスト（今回）</div>
+        <button class="btn btn-ghost btn-sm" id="outSessionClearBtn" style="font-size:12px;">リストをクリア</button>
+      </div>
+      <div id="outSessionList"></div>
+    </div>
   </div>
 
   <div class="panel" id="tab-history" style="display:none;">
@@ -1091,6 +1099,8 @@ window.addEventListener('storageReady', function(){
   let transactions = [];
   let inboundSession = []; // 今回の作業中スキャンリスト（セッション限り）
   let inboundCart = [];   // スキャン済み・未確定リスト（一括入庫用）
+  let outboundCart = [];  // スキャン済み・未確定リスト（一括出庫用）
+  let outboundSession = []; // 今回の出庫完了リスト
   let categories = [];
   let editingId = null;
   let janDict = {};
@@ -4296,6 +4306,15 @@ window.addEventListener('storageReady', function(){
         barcodeInput.focus();
         return;
       }
+      if(kind === 'out'){
+        if(p.stock <= 0){ resultEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫がありません（在庫数: 0）。</div>'; return; }
+        addToOutboundCart(p);
+        resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
+        barcodeInput.value = '';
+        setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
+        barcodeInput.focus();
+        return;
+      }
       renderLookupCard(kind, p);
     }
     lookupBtn.addEventListener('click', ()=>{
@@ -4485,6 +4504,147 @@ window.addEventListener('storageReady', function(){
     });
   }
 
+  // 一括出庫カート
+  function addToOutboundCart(p){
+    const existing = outboundCart.find(item=>item.productId===p.id);
+    if(existing){
+      if(existing.qty < p.stock) existing.qty++;
+    } else {
+      outboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, spec: p.spec||'', qty: 1, maxStock: p.stock });
+    }
+    renderOutboundCart();
+  }
+
+  function renderOutboundCart(){
+    const wrap = document.getElementById('outCartWrap');
+    if(!wrap) return;
+    if(outboundCart.length === 0){ wrap.innerHTML = ''; return; }
+    const totalQty = outboundCart.reduce((s,x)=>s+x.qty, 0);
+    let html = '<div style="margin-top:20px;border:2px solid var(--red);border-radius:10px;padding:16px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--red);">出庫リスト（未確定）</div>'
+      + '<button class="btn btn-ghost btn-sm" id="outCartClear" style="font-size:12px;">クリア</button>'
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--line);">'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">商品名</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);">サイズ</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);">数量</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);">在庫</th>'
+      + '<th style="padding:4px;"></th>'
+      + '</tr></thead><tbody>';
+    outboundCart.forEach((item, idx)=>{
+      const over = item.qty > item.maxStock;
+      html += '<tr style="border-bottom:1px solid var(--line-soft);">'
+        + '<td style="padding:8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
+        + '<td style="padding:8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
+        + '<td style="padding:8px;">'
+        + '<div class="qty-stepper" style="justify-content:center;">'
+        + '<button type="button" data-out-idx="'+idx+'" data-step="-1">−</button>'
+        + '<input type="number" class="out-qty-input" data-out-idx="'+idx+'" value="'+item.qty+'" min="1" max="'+item.maxStock+'" style="width:52px;'+(over?'border-color:var(--red);':'')+'">'
+        + '<button type="button" data-out-idx="'+idx+'" data-step="1">＋</button>'
+        + '</div></td>'
+        + '<td style="padding:8px;text-align:center;color:var(--text-3);">'+item.maxStock+'</td>'
+        + '<td style="padding:4px 6px;text-align:center;">'
+        + '<button class="btn btn-ghost btn-sm out-remove-btn" data-out-idx="'+idx+'" style="color:var(--red);font-size:18px;padding:2px 8px;line-height:1;">×</button>'
+        + '</td></tr>';
+    });
+    const hasError = outboundCart.some(x=>x.qty>x.maxStock);
+    html += '</tbody></table>'
+      + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">'+outboundCart.length+' 商品 / 合計 '+totalQty+' 本</div>'
+      + (hasError ? '<div class="msg msg-error" style="margin-top:8px;">在庫数を超える数量があります。確認してください。</div>' : '')
+      + '<button class="btn btn-red" id="outBatchConfirmBtn" style="width:100%;margin-top:14px;padding:14px 0;font-size:16px;font-weight:700;border-radius:10px;letter-spacing:0.5px;"'+(hasError?' disabled':'')+'>一括出庫確定（'+outboundCart.length+' 商品）</button>'
+      + '<div id="outBatchMsg" style="margin-top:8px;"></div>'
+      + '</div>';
+    wrap.innerHTML = html;
+
+    document.getElementById('outCartClear').addEventListener('click', ()=>{
+      if(!confirm('出庫リストをクリアしますか？')) return;
+      outboundCart = []; renderOutboundCart();
+    });
+    wrap.querySelectorAll('[data-step]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx=parseInt(btn.dataset.outIdx,10);
+        const p=products.find(x=>x.id===outboundCart[idx].productId);
+        const maxSt = p?p.stock:outboundCart[idx].maxStock;
+        outboundCart[idx].qty = Math.min(maxSt, Math.max(1, outboundCart[idx].qty + parseInt(btn.dataset.step,10)));
+        renderOutboundCart();
+      });
+    });
+    wrap.querySelectorAll('.out-qty-input').forEach(input=>{
+      input.addEventListener('change', ()=>{
+        const idx=parseInt(input.dataset.outIdx,10);
+        const v=parseInt(input.value,10);
+        if(v>=1) outboundCart[idx].qty=v;
+        renderOutboundCart();
+      });
+    });
+    wrap.querySelectorAll('.out-remove-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        outboundCart.splice(parseInt(btn.dataset.outIdx,10),1);
+        renderOutboundCart();
+      });
+    });
+    const confirmBtn = document.getElementById('outBatchConfirmBtn');
+    if(confirmBtn && !confirmBtn.disabled){
+      confirmBtn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        if(outboundCart.length===0) return;
+        const msgEl = document.getElementById('outBatchMsg');
+        if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
+        for(const item of outboundCart){
+          const p=products.find(x=>x.id===item.productId);
+          if(!p) continue;
+          if(item.qty>p.stock){ if(msgEl) msgEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫数を超えています。</div>'; return; }
+          p.stock -= item.qty;
+          transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
+            type:'out', qty:item.qty, date:new Date().toISOString(),
+            user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
+          outboundSession.push({ name:p.name, spec:p.spec||'', qty:item.qty,
+            user:currentUser?currentUser.displayName:'', date:new Date().toISOString() });
+        }
+        await saveProducts();
+        await saveTransactions();
+        renderCatTree(); renderProductTable(); renderHistory(); renderOutboundSession();
+        const count=outboundCart.length;
+        outboundCart=[];
+        renderOutboundCart();
+        const msg2=document.getElementById('outBatchMsg');
+        if(msg2){ msg2.innerHTML='<div class="msg msg-ok">'+count+' 商品の出庫処理が完了しました。</div>';
+          setTimeout(()=>{ const e=document.getElementById('outBatchMsg'); if(e) e.innerHTML=''; },3000); }
+      });
+    }
+  }
+
+  function renderOutboundSession(){
+    const wrap=document.getElementById('outSessionWrap');
+    const list=document.getElementById('outSessionList');
+    if(!wrap||!list) return;
+    if(outboundSession.length===0){ wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--line);">'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">No.</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">商品名</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">サイズ・規格</th>'
+      + '<th style="text-align:center;padding:6px 8px;color:var(--text-3);font-weight:600;">数量</th>'
+      + '<th style="text-align:left;padding:6px 8px;color:var(--text-3);font-weight:600;">時刻</th>'
+      + '</tr></thead><tbody>'
+      + outboundSession.map((item,i)=>{
+          const d=new Date(item.date);
+          const t=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+          return '<tr style="border-bottom:1px solid var(--line-soft);">'
+            +'<td style="padding:7px 8px;color:var(--text-3);">'+(i+1)+'</td>'
+            +'<td style="padding:7px 8px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</td>'
+            +'<td style="padding:7px 8px;color:var(--text-2);">'+escapeHtml(item.spec||'—')+'</td>'
+            +'<td style="padding:7px 8px;text-align:center;color:var(--red);font-weight:700;">−'+item.qty+'</td>'
+            +'<td style="padding:7px 8px;color:var(--text-3);font-family:var(--font-mono);font-size:12px;">'+t+'</td>'
+            +'</tr>';
+        }).join('')
+      + '</tbody></table>'
+      + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">合計 '+outboundSession.length+' 件 / '+outboundSession.reduce((s,x)=>s+x.qty,0)+' 本</div>';
+  }
+
   // 一括入庫カート
   function addToInboundCart(p){
     const existing = inboundCart.find(item=>item.productId===p.id);
@@ -4623,6 +4783,12 @@ window.addEventListener('storageReady', function(){
     if(!confirm('作業リストをクリアしますか？')) return;
     inboundSession = [];
     renderInboundSession();
+  });
+
+  document.getElementById('outSessionClearBtn').addEventListener('click', ()=>{
+    if(!confirm('作業リストをクリアしますか？')) return;
+    outboundSession = [];
+    renderOutboundSession();
   });
 
   setupTransactionTab('in');
