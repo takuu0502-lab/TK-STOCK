@@ -1921,6 +1921,7 @@ window.addEventListener('storageReady', function(){
             + '<span class="cat-label">'+escapeHtml(cat.name)+'</span>'
             + '<span class="cat-count">'+countForMajor(cat.id)+'</span>'
             + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
+            + '</div>';
       if(isOpen){
         cat.subs.forEach(sub=>{
           const isSubSel = selectedMajor === cat.id && selectedSub === sub.id;
