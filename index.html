@@ -950,6 +950,10 @@
         <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
         <input type="date" id="prov_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
       </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">車種名</label>
+        <input type="text" id="prov_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
       <div style="font-size:12px;color:var(--text-3);padding:8px 10px;background:var(--bg-2);border-radius:8px;">
         ※在庫数は変わりません。確定時に出庫処理されます。
       </div>
@@ -1889,9 +1893,11 @@ window.addEventListener('storageReady', function(){
       const overlay = document.getElementById('provisionalFormModal');
       const customerInput = document.getElementById('prov_customer');
       const dateInput = document.getElementById('prov_date');
+      const carInput = document.getElementById('prov_car');
       const errorEl = document.getElementById('provFormError');
       customerInput.value = '';
       dateInput.value = '';
+      carInput.value = '';
       errorEl.style.display = 'none';
       errorEl.textContent = '';
       overlay.classList.add('show');
@@ -1907,10 +1913,11 @@ window.addEventListener('storageReady', function(){
       function onOk(){
         const name = customerInput.value.trim();
         const date = dateInput.value;
+        const car = carInput.value.trim();
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
         if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
-        cleanup({ customerName: name, scheduledDate: date });
+        cleanup({ customerName: name, scheduledDate: date, carName: car });
       }
       function onCancel(){ cleanup(null); }
       okBtn.addEventListener('click', onOk);
@@ -4095,6 +4102,7 @@ window.addEventListener('storageReady', function(){
           +'<div><div style="color:var(--text-3);font-size:10px;">👤 お客様</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'様</div></div>'
           +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+escapeHtml(po.scheduledDate)+'</div></div>'
           +'</div>'
+          +(po.carName?'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">🚗 車種：</span><span style="color:var(--text-2);">'+escapeHtml(po.carName)+'</span></div>':'')
           +'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">本数：</span><span style="font-weight:700;color:var(--amber);">'+qty+'本</span>'
           +(po.staff?'　<span style="color:var(--text-3);">担当：</span><span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')
           +'</div>'
@@ -4143,12 +4151,13 @@ window.addEventListener('storageReady', function(){
         if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
         const formResult = await showProvisionalForm();
         if(!formResult) return;
-        const { customerName, scheduledDate } = formResult;
+        const { customerName, scheduledDate, carName } = formResult;
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
           customerName,
           scheduledDate,
+          carName: carName||'',
           staff: currentUser ? currentUser.displayName : '',
           items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty }],
           status: 'pending'
@@ -4655,12 +4664,13 @@ window.addEventListener('storageReady', function(){
         // お客様名・予定日入力フォームをモーダルで表示
         const formResult = await showProvisionalForm();
         if(!formResult) return;
-        const { customerName, scheduledDate } = formResult;
+        const { customerName, scheduledDate, carName } = formResult;
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
           customerName,
           scheduledDate,
+          carName: carName||'',
           staff: currentUser ? currentUser.displayName : '',
           items: outboundCart.map(item=>({ productId:item.productId, name:item.name, brand:item.brand||'', spec:item.spec||'', partno:item.partno||'', qty:item.qty })),
           status: 'pending'
@@ -4693,7 +4703,7 @@ window.addEventListener('storageReady', function(){
         + '<summary style="list-style:none;background:var(--amber-dim);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-size:13px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName)+'様</div>'
-        + '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">引き渡し予定: '+escapeHtml(entry.scheduledDate)+' ・ 登録: '+dateStr+(entry.staff?' ・ '+escapeHtml(entry.staff):'')+'</div>'
+        + '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">引き渡し予定: '+escapeHtml(entry.scheduledDate)+(entry.carName?' ・ 🚗'+escapeHtml(entry.carName):'')+' ・ 登録: '+dateStr+(entry.staff?' ・ '+escapeHtml(entry.staff):'')+'</div>'
         + '</div>'
         + '<span style="font-size:12px;color:var(--amber);font-weight:600;flex-shrink:0;">'+entry.items.length+'商品 / '+totalQty+'本 ▼</span>'
         + '</summary>'
@@ -4705,9 +4715,10 @@ window.addEventListener('storageReady', function(){
           + '<div style="font-weight:700;color:var(--amber);">×'+item.qty+'</div>'
           + '</div>';
       });
-      html += '<div style="display:flex;gap:8px;margin-top:10px;">'
-        + '<button class="btn btn-red btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;">出庫確定</button>'
-        + '<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="flex:1;color:var(--text-3);">キャンセル</button>'
+      html += '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'
+        + '<button class="btn btn-red btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:100px;">出庫確定</button>'
+        + '<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:100px;color:var(--red);border-color:var(--red);">仮出庫取り消し</button>'
+        + '<button class="btn btn-ghost btn-sm prov-back-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:80px;">戻る</button>'
         + '</div>'
         + '</div></details>';
     });
@@ -4720,7 +4731,7 @@ window.addEventListener('storageReady', function(){
         const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
         if(!entry) return;
         const lines = entry.items.map(x=>' ・ '+cleanName(x.name)+' × '+x.qty+'本').join('\n');
-        const ok = await showConfirm('以下を出庫確定します。\n\nお客様: '+entry.customerName+'様\n\n'+lines);
+        const ok = await showConfirm('以下を出庫確定します。\n\nお客様: '+entry.customerName+'様'+(entry.carName?'\n車種: '+entry.carName:'')+'\n\n'+lines);
         if(!ok) return;
         const batchDate = new Date().toISOString();
         for(const item of entry.items){
@@ -4740,13 +4751,21 @@ window.addEventListener('storageReady', function(){
 
     wrap.querySelectorAll('.prov-cancel-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        const ok = await showConfirm('この仮出庫をキャンセルしますか？');
+        const ok = await showConfirm('この仮出庫を取り消しますか？');
         if(!ok) return;
         const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
         if(entry) entry.status = 'cancelled';
         await saveProvisionalOutbounds();
         renderProductTable();
+        renderHistory();
         renderProvisionalList();
+      });
+    });
+
+    wrap.querySelectorAll('.prov-back-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const details = document.getElementById('prov-entry-'+btn.dataset.provId);
+        if(details) details.open = false;
       });
     });
   }
@@ -5130,7 +5149,7 @@ window.addEventListener('storageReady', function(){
             +'</summary>'
             +'<div style="padding:0 4px;">'
             +'<div style="padding:8px 10px;font-size:12px;color:var(--text-2);background:rgba(232,160,32,0.05);border-bottom:1px solid var(--line);">'
-            +'お客様: <strong>'+escapeHtml(po.customerName)+'様</strong>　引き渡し予定: <strong>'+escapeHtml(po.scheduledDate)+'</strong>'
+            +'お客様: <strong>'+escapeHtml(po.customerName)+'様</strong>　引き渡し予定: <strong>'+escapeHtml(po.scheduledDate)+'</strong>'+(po.carName?'　🚗 <strong>'+escapeHtml(po.carName)+'</strong>':'')
             +'</div>'
             +rows
             +'</div>'
