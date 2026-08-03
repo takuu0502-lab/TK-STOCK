@@ -2751,7 +2751,7 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
-        + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); return provQty>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#e8a020;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+provQty+'本</div>':''; })()+'</td>'
+        + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>p.stock; return provQty>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()+'</td>'
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
         + '</tr>';
     }).join('');
@@ -4127,7 +4127,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="detail-stats">'
       + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
       + '<div class="detail-stat-value">'+p.stock+'</div>'
-      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+provQty+'本</div>':''; })()
+      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>p.stock; return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()
       + '</div></div>'
       + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
@@ -4811,9 +4811,19 @@ window.addEventListener('storageReady', function(){
       const d = new Date(entry.date);
       const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const totalQty = entry.items.reduce((s,x)=>s+x.qty,0);
-      html += '<details id="prov-entry-'+entry.id+'" style="margin-bottom:8px;border:2px solid var(--amber);border-radius:8px;overflow:hidden;">'
-        + '<summary style="list-style:none;background:var(--amber-dim);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
+      // 在庫超過チェック
+      const hasOver = entry.items.some(item=>{
+        const p2 = products.find(x=>x.id===item.productId);
+        if(!p2) return false;
+        const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+        return allProvQty > p2.stock;
+      });
+      const borderColor = hasOver ? 'var(--red)' : 'var(--amber)';
+      const bgColor = hasOver ? 'rgba(220,50,50,0.07)' : 'var(--amber-dim)';
+      html += '<details id="prov-entry-'+entry.id+'" style="margin-bottom:8px;border:2px solid '+borderColor+';border-radius:8px;overflow:hidden;">'
+        + '<summary style="list-style:none;background:'+bgColor+';padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
         + '<div style="flex:1;min-width:0;">'
+        + (hasOver ? '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px;">⚠️ 在庫超過あり</div>' : '')
         + '<div style="font-size:16px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName)+'様</div>'
         + '<div style="font-size:13px;color:var(--text-2);margin-top:4px;line-height:1.6;">'
         + '📅 引き渡し予定: <strong>'+escapeHtml(entry.scheduledDate)+'</strong>'
@@ -4821,14 +4831,19 @@ window.addEventListener('storageReady', function(){
         + '</div>'
         + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+dateStr+(entry.staff?' ・ '+escapeHtml(entry.staff):'')+'</div>'
         + '</div>'
-        + '<span style="font-size:13px;color:var(--amber);font-weight:700;flex-shrink:0;">'+entry.items.length+'商品<br>'+totalQty+'本 ▼</span>'
+        + '<span style="font-size:13px;color:'+(hasOver?'var(--red)':'var(--amber)')+';font-weight:700;flex-shrink:0;">'+entry.items.length+'商品<br>'+totalQty+'本 ▼</span>'
         + '</summary>'
         + '<div style="padding:10px 14px;">';
       entry.items.forEach(item=>{
+        const p2 = products.find(x=>x.id===item.productId);
+        const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
+        const itemOver = p2 && allProvQty > p2.stock;
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line-soft);">'
           + '<div><div style="font-size:14px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
-          + '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div></div>'
-          + '<div style="font-size:15px;font-weight:700;color:var(--amber);">×'+item.qty+'本</div>'
+          + '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div>'
+          + (itemOver ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠️ 在庫'+p2.stock+'本に対し仮出庫合計'+allProvQty+'本</div>' : '')
+          + '</div>'
+          + '<div style="font-size:15px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'本</div>'
           + '</div>';
       });
       html += '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'
