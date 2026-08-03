@@ -168,6 +168,7 @@
   .icon-btn{background:transparent;border:none;color:var(--text-3);font-size:12px;padding:2px 4px;line-height:1;}
   .icon-btn:hover{color:var(--text-1);}
   .cat-row.add-row{color:var(--text-3);font-style:normal;}
+  .cat-row.drag-over{background:var(--amber-dim);border:1px dashed var(--amber);}
   .cat-row.add-row:hover{color:var(--amber);}
   .tree-divider{height:1px;background:var(--line);margin:6px 4px;}
 
@@ -1913,13 +1914,13 @@ window.addEventListener('storageReady', function(){
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
       const color = colorForMajor(cat.id);
-      html += '<div class="cat-row'+(isSel?' selected':'')+'" data-major="'+cat.id+'">'
+      html += '<div class="cat-row'+(isSel?' selected':'')+'" data-major="'+cat.id+'"'+(writable?' draggable="true" data-draggable-major="'+cat.id+'"":'')+' style="'+(writable?'cursor:grab;':'')+'">'
+            + (writable ? '<span class="cat-drag-handle" style="color:var(--text-3);font-size:14px;margin-right:2px;cursor:grab;" title="ドラッグして並び替え">&#8801;</span>' : '')
             + '<span class="chevron">'+(cat.subs.length ? (isOpen?'\u25BE':'\u25B8') : '')+'</span>'
             + '<span class="cat-dot" style="background:'+color.text+';"></span>'
             + '<span class="cat-label">'+escapeHtml(cat.name)+'</span>'
             + '<span class="cat-count">'+countForMajor(cat.id)+'</span>'
-            + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="move-major-up" data-id="'+cat.id+'" title="上へ">&#9650;</button><button class="icon-btn" data-action="move-major-down" data-id="'+cat.id+'" title="下へ">&#9660;</button><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
-            + '</div>';
+            + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
       if(isOpen){
         cat.subs.forEach(sub=>{
           const isSubSel = selectedMajor === cat.id && selectedSub === sub.id;
@@ -1939,6 +1940,41 @@ window.addEventListener('storageReady', function(){
       html += '<div class="cat-row add-row" data-add-major="1"><span class="cat-label">＋ 大分類を追加</span></div>';
     }
     wrap.innerHTML = html;
+
+    // ドラッグ&ドロップで大分類並び替え
+    if(writable){
+      let dragSrcId = null;
+      wrap.querySelectorAll('[data-draggable-major]').forEach(row=>{
+        row.addEventListener('dragstart', e=>{
+          dragSrcId = row.dataset.draggableMajor;
+          e.dataTransfer.effectAllowed = 'move';
+          row.style.opacity = '0.4';
+        });
+        row.addEventListener('dragend', e=>{
+          row.style.opacity = '';
+          wrap.querySelectorAll('[data-draggable-major]').forEach(r=>r.classList.remove('drag-over'));
+        });
+        row.addEventListener('dragover', e=>{
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          wrap.querySelectorAll('[data-draggable-major]').forEach(r=>r.classList.remove('drag-over'));
+          row.classList.add('drag-over');
+        });
+        row.addEventListener('drop', async e=>{
+          e.preventDefault();
+          e.stopPropagation();
+          const targetId = row.dataset.draggableMajor;
+          if(!dragSrcId || dragSrcId === targetId) return;
+          const srcIdx = categories.findIndex(c=>c.id===dragSrcId);
+          const tgtIdx = categories.findIndex(c=>c.id===targetId);
+          if(srcIdx < 0 || tgtIdx < 0) return;
+          const [moved] = categories.splice(srcIdx, 1);
+          categories.splice(tgtIdx, 0, moved);
+          await saveCategories();
+          renderCatTree();
+        });
+      });
+    }
 
     wrap.querySelectorAll('button[data-action]').forEach(b=>{
       b.addEventListener('click', (e)=>{
