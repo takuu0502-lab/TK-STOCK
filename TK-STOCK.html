@@ -2153,7 +2153,8 @@ window.addEventListener('storageReady', function(){
       minStock: 0,
       costPrice: cost !== null ? cost : r.w,
       sellPrice: sell !== null ? sell : 0,
-      _fromCatalog: true
+      _fromCatalog: true,
+      createdAt: new Date().toISOString()
     };
     products.push(product);
     await saveProducts();
