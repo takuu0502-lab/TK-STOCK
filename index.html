@@ -3525,10 +3525,7 @@ window.addEventListener('storageReady', function(){
       });
       if(overItems.length > 0){
         const names = overItems.map(p=>cleanName(p.name)).join('、');
-        const ok = await showConfirm('以下の商品は在庫数を超えた仮出庫になります：
-'+names+'
-
-それでも登録しますか？');
+        const ok = await showConfirm('以下の商品は在庫数を超えた仮出庫になります：' + names + '\nそれでも登録しますか？');
         if(!ok) return;
       }
       const entry = {
