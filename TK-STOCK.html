@@ -2553,8 +2553,10 @@ window.addEventListener('storageReady', function(){
       const _pMajor = majorById(p.majorId);
       const _isTire = _pMajor && _pMajor.name === 'タイヤ';
       const low = (p.minStock > 0 && p.stock <= p.minStock);
+      // タイヤでも p.brand が直接設定されていれば表示
+      const showBrand = !_isTire || p.brand;
       return '<tr class="clickable-row" data-detail="'+p.id+'">'
-        + (!_isTire ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
+        + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
