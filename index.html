@@ -3395,7 +3395,14 @@ window.addEventListener('storageReady', function(){
             }
           }, result => {
             if(result && result.codeResult && result.codeResult.code){
-              resolve(result.codeResult.code);
+              // 写真スキャンでも信頼度チェック
+              const dcodes = (result.codeResult.decodedCodes||[]).filter(c=>c.error!==undefined);
+              const avgErr = dcodes.length ? dcodes.reduce((s,c)=>s+c.error,0)/dcodes.length : 1;
+              if(avgErr < 0.20){
+                resolve(result.codeResult.code);
+              } else {
+                reject(new Error('low confidence'));
+              }
             } else {
               reject(new Error('not detected'));
             }
@@ -3532,6 +3539,8 @@ window.addEventListener('storageReady', function(){
 
           let quaggaBusy = false;
           let detecting = false;
+          let quaggaLastCode = null;
+          let quaggaConfirmCount = 0;
           async function tick(){
             if(detected) return;
             if(!detecting && video.readyState === video.HAVE_ENOUGH_DATA){
@@ -3585,10 +3594,29 @@ window.addEventListener('storageReady', function(){
                 }, result => {
                   quaggaBusy = false;
                   if(!detected && result && result.codeResult && result.codeResult.code){
-                    detected = true;
-                    try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                    detecting = false;
-                    onDecoded(result.codeResult.code);
+                    const code = result.codeResult.code;
+                    // 信頼度チェック：デコード誤差の平均が閾値以下のみ採用
+                    const dcodes = (result.codeResult.decodedCodes||[]).filter(c=>c.error!==undefined);
+                    const avgErr = dcodes.length ? dcodes.reduce((s,c)=>s+c.error,0)/dcodes.length : 1;
+                    if(avgErr < 0.15){
+                      // 2回連続で同じコードが出た場合のみ確定
+                      if(code === quaggaLastCode){
+                        quaggaConfirmCount++;
+                        if(quaggaConfirmCount >= 2 && !detected){
+                          detected = true;
+                          try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+                          detecting = false;
+                          onDecoded(code);
+                        }
+                      } else {
+                        quaggaLastCode = code;
+                        quaggaConfirmCount = 1;
+                      }
+                    } else {
+                      // 信頼度が低い場合はカウントをリセット
+                      quaggaLastCode = null;
+                      quaggaConfirmCount = 0;
+                    }
                   }
                 });
               }
@@ -4590,6 +4618,10 @@ window.addEventListener('storageReady', function(){
       confirmBtn.addEventListener('click', async ()=>{
         if(!canWriteData()) return;
         if(outboundCart.length===0) return;
+        const totalQty = outboundCart.reduce((s,x)=>s+x.qty,0);
+        const lines = outboundCart.map(x=>` ・ ${cleanName(x.name)}${x.spec?' ('+x.spec+')':''} × ${x.qty}本`).join('\n');
+        const ok = await showConfirm(`以下の商品を出庫します。よろしいですか？\n\n${lines}\n\n合計 ${outboundCart.length} 商品 / ${totalQty} 本`);
+        if(!ok) return;
         const msgEl = document.getElementById('outBatchMsg');
         if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
         for(const item of outboundCart){
