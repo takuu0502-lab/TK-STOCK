@@ -179,13 +179,16 @@
   .spec-step-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:7px;}
   .spec-step-tabs{display:flex;gap:6px;flex-wrap:wrap;}
   #specSelect{min-width:200px;}
-  .tire-size-row{display:inline-flex;align-items:flex-end;gap:0;flex-wrap:nowrap;}
-  .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:none;}
-  .tire-size-col select{width:90px;font-size:14px;padding:0 4px;border-radius:0;text-align:center;height:38px;box-sizing:border-box;}
-  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;width:100px;}
-  .tire-size-col:last-of-type select{border-radius:0 6px 6px 0;width:80px;}
-  .tire-size-col label{font-size:11px;color:var(--text-3);font-weight:600;letter-spacing:0.3px;display:block;text-align:center;width:100%;}
-  .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-2);font-size:16px;background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:0 3px;height:38px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;}
+  /* タイヤサイズセレクター */
+  .tss-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .tss-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--bg-2);border:1.5px solid var(--line);border-radius:12px;padding:10px 8px 8px;flex:1;min-width:80px;max-width:110px;transition:border-color 0.15s;}
+  .tss-card:has(select:focus){border-color:var(--amber);box-shadow:0 0 0 2px rgba(180,120,30,0.15);}
+  .tss-card label{font-size:10px;font-weight:700;color:var(--text-3);letter-spacing:0.5px;text-transform:uppercase;}
+  .tss-card select{width:100%;border:none;background:transparent;color:var(--text-1);font-size:18px;font-weight:700;text-align:center;cursor:pointer;outline:none;padding:0;-webkit-appearance:none;appearance:none;}
+  .tss-card select option{font-size:14px;}
+  .tss-sep{font-size:22px;font-weight:700;color:var(--text-3);flex-shrink:0;padding-bottom:4px;}
+  .tss-preview{margin-top:10px;padding:8px 16px;background:var(--bg-1);border:1px solid var(--line);border-radius:8px;text-align:center;font-size:20px;font-weight:700;color:var(--amber);font-family:var(--font-mono);letter-spacing:1px;}
+  .tss-preview-label{font-size:10px;color:var(--text-3);text-align:center;margin-top:4px;letter-spacing:0.5px;}
   .spec-search-actions{display:flex;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
   .detail-header{margin-bottom:16px;}
   .detail-name{font-size:22px;font-weight:700;color:var(--text-1);font-family:var(--font-display);}
@@ -465,9 +468,8 @@
     .field{margin-bottom:10px;}
 
     /* ── タイヤサイズ選択 ── */
-    .tire-size-row{flex-wrap:wrap;gap:4px 0;}
-    .tire-size-col select{width:80px;font-size:13px;}
-    .tire-size-col:first-of-type select{width:88px;}
+    .tss-card select{font-size:16px;}
+    .tss-preview{font-size:17px;}
     .tire-size-col:last-of-type select{width:70px;}
 
     /* ── 価格設定：ブランドルール行を縦並びに ── */
@@ -2943,28 +2945,82 @@ window.addEventListener('storageReady', function(){
   let estDualMode = false;
 
   function buildSizeSelectors(prefix, w, a, i){
-    const s = 'width:78px;';
-    let h = '<div class="tire-size-row">';
-    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-    h += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">タイヤ幅</label>';
-    h += '<select id="'+prefix+'Width" style="'+s+'"><option value="">-</option>';
-    for(let ww=135;ww<=355;ww+=10){ h += '<option value="'+ww+'"'+(w===String(ww)?' selected':'')+'>'+ww+'</option>'; }
-    h += '</select></div>';
-    h += '<span class="tire-size-sep" style="margin-top:16px;">/</span>';
-    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-    h += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">扁平率</label>';
-    h += '<select id="'+prefix+'Aspect" style="'+s+'"><option value="">-</option>';
-    h += '<option value="NOASPECT"'+(a==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
-    for(let aa=25;aa<=80;aa+=5){ const v='/'+aa; h += '<option value="'+v+'"'+(a===v?' selected':'')+'>'+aa+'</option>'; }
-    h += '</select></div>';
-    h += '<span class="tire-size-sep" style="margin-top:16px;">R</span>';
-    h += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-    h += '<label style="font-size:10px;color:var(--text-3);font-weight:600;">インチ</label>';
-    h += '<select id="'+prefix+'Inch" style="'+s+'"><option value="">-</option>';
-    for(let ii=12;ii<=24;ii++){ const v='R'+ii; h += '<option value="'+v+'"'+(i===v?' selected':'')+'>'+ii+'</option>'; }
-    h += '</select></div>';
+    const wVal = w || '';
+    const aVal = a || '';
+    const iVal = i || '';
+
+    function previewStr(wv, av, iv){
+      const wPart = wv || '—';
+      const aPart = av === 'NOASPECT' ? 'LT' : (av ? av : '/—');
+      const iPart = iv || 'R—';
+      return wPart + aPart + iPart;
+    }
+
+    let h = '<div>';
+    h += '<div class="tss-wrap">';
+
+    // タイヤ幅
+    h += '<div class="tss-card">';
+    h += '<label>タイヤ幅</label>';
+    h += '<select id="'+prefix+'Width">';
+    h += '<option value="">—</option>';
+    for(let ww=135;ww<=355;ww+=10){
+      h += '<option value="'+ww+'"'+(wVal===String(ww)?' selected':'')+'>'+ww+'</option>';
+    }
+    h += '</select>';
+    h += '<div style="font-size:9px;color:var(--text-3);">mm</div>';
     h += '</div>';
+
+    // セパレータ /
+    h += '<span class="tss-sep">/</span>';
+
+    // 扁平率
+    h += '<div class="tss-card">';
+    h += '<label>扁平率</label>';
+    h += '<select id="'+prefix+'Aspect">';
+    h += '<option value="">—</option>';
+    h += '<option value="NOASPECT"'+(aVal==='NOASPECT'?' selected':'')+'>LT</option>';
+    for(let aa=25;aa<=80;aa+=5){
+      const v='/'+aa;
+      h += '<option value="'+v+'"'+(aVal===v?' selected':'')+'>'+aa+'</option>';
+    }
+    h += '</select>';
+    h += '<div style="font-size:9px;color:var(--text-3);">%</div>';
+    h += '</div>';
+
+    // セパレータ R
+    h += '<span class="tss-sep">R</span>';
+
+    // インチ
+    h += '<div class="tss-card">';
+    h += '<label>インチ</label>';
+    h += '<select id="'+prefix+'Inch">';
+    h += '<option value="">—</option>';
+    for(let ii=12;ii<=24;ii++){
+      const v='R'+ii;
+      h += '<option value="'+v+'"'+(iVal===v?' selected':'')+'>'+ii+'</option>';
+    }
+    h += '</select>';
+    h += '<div style="font-size:9px;color:var(--text-3);">inch</div>';
+    h += '</div>';
+
+    h += '</div>'; // .tss-wrap
+
+    // プレビュー表示
+    h += '<div class="tss-preview" id="'+prefix+'Preview">'+previewStr(wVal, aVal, iVal)+'</div>';
+    h += '<div class="tss-preview-label">選択中のタイヤサイズ</div>';
+    h += '</div>';
+
     return h;
+  }
+
+  function updateSizePreview(prefix, wv, av, iv){
+    const el = document.getElementById(prefix+'Preview');
+    if(!el) return;
+    const wPart = wv || '—';
+    const aPart = av === 'NOASPECT' ? 'LT' : (av ? av : '/—');
+    const iPart = iv || 'R—';
+    el.textContent = wPart + aPart + iPart;
   }
 
   function renderEstimateTab(){
@@ -3034,16 +3090,16 @@ window.addEventListener('storageReady', function(){
     });
 
     if(estDualMode){
-      document.getElementById('estFrontWidth').addEventListener('change', e=>{ estFrontWidth = e.target.value||null; });
-      document.getElementById('estFrontAspect').addEventListener('change', e=>{ estFrontAspect = e.target.value||null; });
-      document.getElementById('estFrontInch').addEventListener('change', e=>{ estFrontInch = e.target.value||null; });
-      document.getElementById('estRearWidth').addEventListener('change', e=>{ estRearWidth = e.target.value||null; });
-      document.getElementById('estRearAspect').addEventListener('change', e=>{ estRearAspect = e.target.value||null; });
-      document.getElementById('estRearInch').addEventListener('change', e=>{ estRearInch = e.target.value||null; });
+      document.getElementById('estFrontWidth').addEventListener('change', e=>{ estFrontWidth = e.target.value||null; updateSizePreview('estFront', estFrontWidth, estFrontAspect, estFrontInch); });
+      document.getElementById('estFrontAspect').addEventListener('change', e=>{ estFrontAspect = e.target.value||null; updateSizePreview('estFront', estFrontWidth, estFrontAspect, estFrontInch); });
+      document.getElementById('estFrontInch').addEventListener('change', e=>{ estFrontInch = e.target.value||null; updateSizePreview('estFront', estFrontWidth, estFrontAspect, estFrontInch); });
+      document.getElementById('estRearWidth').addEventListener('change', e=>{ estRearWidth = e.target.value||null; updateSizePreview('estRear', estRearWidth, estRearAspect, estRearInch); });
+      document.getElementById('estRearAspect').addEventListener('change', e=>{ estRearAspect = e.target.value||null; updateSizePreview('estRear', estRearWidth, estRearAspect, estRearInch); });
+      document.getElementById('estRearInch').addEventListener('change', e=>{ estRearInch = e.target.value||null; updateSizePreview('estRear', estRearWidth, estRearAspect, estRearInch); });
     } else {
-      document.getElementById('estWidth').addEventListener('change', e=>{ estWidth = e.target.value||null; });
-      document.getElementById('estAspect').addEventListener('change', e=>{ estAspect = e.target.value||null; });
-      document.getElementById('estInch').addEventListener('change', e=>{ estInch = e.target.value||null; });
+      document.getElementById('estWidth').addEventListener('change', e=>{ estWidth = e.target.value||null; updateSizePreview('est', estWidth, estAspect, estInch); });
+      document.getElementById('estAspect').addEventListener('change', e=>{ estAspect = e.target.value||null; updateSizePreview('est', estWidth, estAspect, estInch); });
+      document.getElementById('estInch').addEventListener('change', e=>{ estInch = e.target.value||null; updateSizePreview('est', estWidth, estAspect, estInch); });
     }
 
     document.getElementById('estSearchGo').addEventListener('click', ()=>{
