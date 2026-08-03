@@ -638,6 +638,7 @@
     <div id="outReaderWrap"></div>
     <div id="outResult"></div>
     <div id="outCartWrap"></div>
+    <div id="provisionalListWrap" style="margin-top:24px;"></div>
     <div id="outSessionWrap" style="margin-top:24px;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:14px;font-weight:700;color:var(--text-1);">完了リスト（今回）</div>
@@ -1104,6 +1105,7 @@ window.addEventListener('storageReady', function(){
   let inboundCart = [];   // スキャン済み・未確定リスト（一括入庫用）
   let outboundCart = [];  // スキャン済み・未確定リスト（一括出庫用）
   let outboundSession = []; // 今回の出庫完了リスト
+  let provisionalOutbounds = []; // 仮出庫リスト
   let categories = [];
   let editingId = null;
   let janDict = {};
@@ -1763,7 +1765,9 @@ window.addEventListener('storageReady', function(){
     try{
       const t = await window.storage.get('transactions', SHARED);
       transactions = t ? JSON.parse(t.value) : [];
-    }catch(e){ transactions = []; }
+      const pob = await window.storage.get('provisionalOutbounds', SHARED);
+      provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
+    }catch(e){ transactions = []; provisionalOutbounds = []; }
 
     renderCatTree();
     renderProductTable();
@@ -1777,6 +1781,10 @@ window.addEventListener('storageReady', function(){
   async function saveTransactions(){
     try{ await window.storage.set('transactions', JSON.stringify(transactions), SHARED); }
     catch(e){ console.error('save transactions failed', e); }
+  }
+  async function saveProvisionalOutbounds(){
+    try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
+    catch(e){ console.error('save provisionalOutbounds failed', e); }
   }
   async function saveCategories(){
     try{ await window.storage.set('categories', JSON.stringify(categories), SHARED); }
@@ -1840,6 +1848,7 @@ window.addEventListener('storageReady', function(){
       stopAllScanners();
       if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
+      if(tab === 'out'){ renderProvisionalList(); }
     });
   });
 
@@ -2588,7 +2597,7 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
-        + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+'</td>'
+        + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); return provQty>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#e8a020;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+provQty+'本</div>':''; })()+'</td>'
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
         + '</tr>';
     }).join('');
@@ -4585,7 +4594,10 @@ window.addEventListener('storageReady', function(){
     html += '</div>'
       + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">'+outboundCart.length+' 商品 / 合計 '+totalQty+' 本</div>'
       + (hasError ? '<div class="msg msg-error" style="margin-top:8px;">在庫数を超える数量があります。確認してください。</div>' : '')
-      + '<button class="btn btn-red" id="outBatchConfirmBtn" style="width:100%;margin-top:14px;padding:14px 0;font-size:16px;font-weight:700;border-radius:10px;letter-spacing:0.5px;"'+(hasError?' disabled':'')+'>一括出庫確定（'+outboundCart.length+' 商品）</button>'
+      + '<div style="display:flex;gap:8px;margin-top:14px;">'
+      + '<button class="btn btn-ghost" id="outProvisionalBtn" style="flex:1;padding:14px 0;font-size:14px;font-weight:700;border-radius:10px;border:2px solid var(--amber);color:var(--amber);"'+(hasError?' disabled':'')+'>仮出庫として登録</button>'
+      + '<button class="btn btn-red" id="outBatchConfirmBtn" style="flex:1;padding:14px 0;font-size:14px;font-weight:700;border-radius:10px;"'+(hasError?' disabled':'')+'>一括出庫確定</button>'
+      + '</div>'
       + '<div id="outBatchMsg" style="margin-top:8px;"></div>'
       + '</div>';
     wrap.innerHTML = html;
@@ -4652,6 +4664,120 @@ window.addEventListener('storageReady', function(){
           setTimeout(()=>{ const e=document.getElementById('outBatchMsg'); if(e) e.innerHTML=''; },3000); }
       });
     }
+
+    // 仮出庫ボタン
+    const provBtn = document.getElementById('outProvisionalBtn');
+    if(provBtn && !provBtn.disabled){
+      provBtn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        if(outboundCart.length===0) return;
+        // お客様名・予定日入力フォームをモーダルで表示
+        const formHtml = '<div style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">'
+          + '<div class="field"><label>お客様名 <span style="color:var(--red);">*</span></label>'
+          + '<input type="text" id="prov_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;"></div>'
+          + '<div class="field"><label>引き渡し予定日 <span style="color:var(--red);">*</span></label>'
+          + '<input type="date" id="prov_date" style="width:100%;box-sizing:border-box;"></div>'
+          + '<div style="font-size:12px;color:var(--text-3);">※在庫数は変わりません。確定時に出庫処理されます。</div>'
+          + '</div>';
+        const ok = await showConfirm('仮出庫の登録', formHtml);
+        if(!ok) return;
+        const customerName = (document.getElementById('prov_customer')||{}).value?.trim();
+        const scheduledDate = (document.getElementById('prov_date')||{}).value;
+        if(!customerName){ alert('お客様名を入力してください。'); return; }
+        if(!scheduledDate){ alert('引き渡し予定日を入力してください。'); return; }
+        const entry = {
+          id: uid('pob'),
+          date: new Date().toISOString(),
+          customerName,
+          scheduledDate,
+          staff: currentUser ? currentUser.displayName : '',
+          items: outboundCart.map(item=>({ productId:item.productId, name:item.name, brand:item.brand||'', spec:item.spec||'', partno:item.partno||'', qty:item.qty })),
+          status: 'pending'
+        };
+        provisionalOutbounds.unshift(entry);
+        await saveProvisionalOutbounds();
+        renderProductTable();
+        renderProvisionalList();
+        outboundCart = [];
+        renderOutboundCart();
+        const msgEl = document.getElementById('outBatchMsg');
+        if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">仮出庫として登録しました。</div>';
+          setTimeout(()=>{ const e=document.getElementById('outBatchMsg'); if(e) e.innerHTML=''; },3000); }
+      });
+    }
+  }
+
+  function renderProvisionalList(){
+    const wrap = document.getElementById('provisionalListWrap');
+    if(!wrap) return;
+    const pending = provisionalOutbounds.filter(p=>p.status==='pending');
+    if(pending.length===0){ wrap.innerHTML=''; return; }
+    let html = '<div style="margin-top:4px;">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:10px;">仮出庫リスト（'+pending.length+'件）</div>';
+    pending.forEach(entry=>{
+      const d = new Date(entry.date);
+      const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      const totalQty = entry.items.reduce((s,x)=>s+x.qty,0);
+      html += '<details style="margin-bottom:8px;border:2px solid var(--amber);border-radius:8px;overflow:hidden;">'
+        + '<summary style="list-style:none;background:var(--amber-dim);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName)+'</div>'
+        + '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">引き渡し予定: '+escapeHtml(entry.scheduledDate)+' ・ 登録: '+dateStr+(entry.staff?' ・ '+escapeHtml(entry.staff):'')+'</div>'
+        + '</div>'
+        + '<span style="font-size:12px;color:var(--amber);font-weight:600;flex-shrink:0;">'+entry.items.length+'商品 / '+totalQty+'本 ▼</span>'
+        + '</summary>'
+        + '<div style="padding:8px 12px;">';
+      entry.items.forEach(item=>{
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);">'
+          + '<div><div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
+          + '<div style="font-size:11px;color:var(--text-2);">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div></div>'
+          + '<div style="font-weight:700;color:var(--amber);">×'+item.qty+'</div>'
+          + '</div>';
+      });
+      html += '<div style="display:flex;gap:8px;margin-top:10px;">'
+        + '<button class="btn btn-red btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;">出庫確定</button>'
+        + '<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="flex:1;color:var(--text-3);">キャンセル</button>'
+        + '</div>'
+        + '</div></details>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('.prov-confirm-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
+        if(!entry) return;
+        const lines = entry.items.map(x=>' ・ '+cleanName(x.name)+' × '+x.qty+'本').join('\n');
+        const ok = await showConfirm('以下を出庫確定します。\n\nお客様: '+entry.customerName+'\n\n'+lines);
+        if(!ok) return;
+        const batchDate = new Date().toISOString();
+        for(const item of entry.items){
+          const p = products.find(x=>x.id===item.productId);
+          if(!p) continue;
+          if(item.qty > p.stock){ alert(cleanName(p.name)+' の在庫が不足しています（在庫: '+p.stock+'）'); return; }
+          p.stock -= item.qty;
+          transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
+            type:'out', qty:item.qty, date:batchDate,
+            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null });
+        }
+        entry.status = 'confirmed';
+        await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
+        renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
+      });
+    });
+
+    wrap.querySelectorAll('.prov-cancel-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const ok = await showConfirm('この仮出庫をキャンセルしますか？');
+        if(!ok) return;
+        const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
+        if(entry) entry.status = 'cancelled';
+        await saveProvisionalOutbounds();
+        renderProductTable();
+        renderProvisionalList();
+      });
+    });
   }
 
   function renderOutboundSession(){
