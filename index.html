@@ -1914,7 +1914,7 @@ window.addEventListener('storageReady', function(){
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
       const color = colorForMajor(cat.id);
-      html += '<div class="cat-row'+(isSel?' selected':'')+'" data-major="'+cat.id+'"'+(writable?' draggable="true" data-draggable-major="'+cat.id+'"":'')+' style="'+(writable?'cursor:grab;':'')+'">'
+      html += '<div class="cat-row'+(isSel?' selected':'')+'" data-major="'+cat.id+'"'+(writable?' draggable="true" data-draggable-major="'+cat.id+'"':'')+' style="'+(writable?'cursor:grab;':'')+'">'
             + (writable ? '<span class="cat-drag-handle" style="color:var(--text-3);font-size:14px;margin-right:2px;cursor:grab;" title="ドラッグして並び替え">&#8801;</span>' : '')
             + '<span class="chevron">'+(cat.subs.length ? (isOpen?'\u25BE':'\u25B8') : '')+'</span>'
             + '<span class="cat-dot" style="background:'+color.text+';"></span>'
