@@ -4331,7 +4331,7 @@ window.addEventListener('storageReady', function(){
         resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
         barcodeInput.value = '';
         setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
-        barcodeInput.focus();
+        if(fromScan){ setTimeout(()=>{ startScanner('in'); }, 900); } else { barcodeInput.focus(); }
         return;
       }
       if(kind === 'out'){
@@ -4340,7 +4340,7 @@ window.addEventListener('storageReady', function(){
         resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
         barcodeInput.value = '';
         setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
-        barcodeInput.focus();
+        if(fromScan){ setTimeout(()=>{ startScanner('out'); }, 900); } else { barcodeInput.focus(); }
         return;
       }
       renderLookupCard(kind, p);
