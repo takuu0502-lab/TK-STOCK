@@ -2503,6 +2503,7 @@ window.addEventListener('storageReady', function(){
   let catalogQuoteSelection = new Map(); // key:"brand||model||size" → entry object（複数サイズ対応）
   let showCostInList = true;     // 在庫一覧の価格表で仕入れ価格を表示するか
   let showCostInEstimate = true; // タイヤ見積タブで仕入れ価格を表示するか
+  let estimateSortOrder = 'price_asc'; // 見積タブのソート順
 
   // 選択済みタイヤの常時表示バー（前後異サイズ対応）
   function renderEstSelectionBar(){
@@ -2620,7 +2621,28 @@ window.addEventListener('storageReady', function(){
         + '<div style="font-size:12.5px;color:var(--text-3);">「'+escapeHtml(queryLabel)+'」に該当する銘柄は価格表に見つかりませんでした。</div></div>';
       return;
     }
-    matches.sort((a,b)=> (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja'));
+    if(forceTire){
+      // 見積タブ: estimateSortOrder に従う
+      matches.sort((a,b)=>{
+        const sa = getEffectiveSellPrice(a.b, a.m, a.w, a.t);
+        const sb = getEffectiveSellPrice(b.b, b.m, b.w, b.t);
+        if(estimateSortOrder === 'price_asc'){
+          if(sa===null && sb===null) return 0;
+          if(sa===null) return 1;
+          if(sb===null) return -1;
+          return sa - sb || (a.b+a.m).localeCompare(b.b+b.m,'ja');
+        } else if(estimateSortOrder === 'price_desc'){
+          if(sa===null && sb===null) return 0;
+          if(sa===null) return 1;
+          if(sb===null) return -1;
+          return sb - sa || (a.b+a.m).localeCompare(b.b+b.m,'ja');
+        } else {
+          return (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja');
+        }
+      });
+    } else {
+      matches.sort((a,b)=> (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja'));
+    }
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     const rows = matches.map((r,i)=>{
@@ -2646,8 +2668,19 @@ window.addEventListener('storageReady', function(){
       ? '<div class="catalog-quote-bar">'+catalogQuoteSelection.size+'件選択中 <button class="btn btn-amber btn-sm" id="catalogQuoteBtn">見積もりを作成</button><button class="btn btn-ghost btn-sm" id="catalogClearBtn">選択クリア</button></div>'
       : '';
     const sectionLabel = (opts && opts.label) ? '<div style="font-size:14px;font-weight:700;margin-bottom:6px;">'+escapeHtml(opts.label)+'</div>' : '';
+    const sortBarHtml = forceTire
+      ? '<div class="no-print" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'
+        + '<span style="font-size:12px;color:var(--text-3);">並び順：</span>'
+        + '<select id="estimateSortSelect" style="font-size:12.5px;padding:4px 8px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);">'
+        + '<option value="price_asc"'+(estimateSortOrder==='price_asc'?' selected':'')+'>販売価格が安い順</option>'
+        + '<option value="price_desc"'+(estimateSortOrder==='price_desc'?' selected':'')+'>販売価格が高い順</option>'
+        + '<option value="brand"'+(estimateSortOrder==='brand'?' selected':'')+'>ブランド順</option>'
+        + '</select>'
+        + '</div>'
+      : '';
     wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
+      + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
       + '<table><thead><tr>'+(forceTire ? '<th class="no-print">選択</th>' : '')+'<th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 
@@ -2663,6 +2696,13 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-catalog-click]').forEach(td=>{
       td.addEventListener('click', ()=> handleCatalogRowClick(matches[Number(td.dataset.catalogClick)]));
     });
+    const sortSel = document.getElementById('estimateSortSelect');
+    if(sortSel){
+      sortSel.addEventListener('change', ()=>{
+        estimateSortOrder = sortSel.value;
+        renderPriceCatalog(opts);
+      });
+    }
     const cqBtn = document.getElementById('catalogQuoteBtn');
     if(cqBtn){
       cqBtn.addEventListener('click', async ()=>{
