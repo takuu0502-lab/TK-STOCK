@@ -180,13 +180,13 @@
   .cat-row.add-row:hover{color:var(--amber);}
   .tree-divider{height:1px;background:var(--line);margin:8px 4px;}
   /* 一括操作バー */
-  #bulkActionBar{position:fixed;bottom:0;left:0;right:0;background:var(--text-1);color:#fff;padding:12px 20px;display:none;align-items:center;gap:10px;z-index:800;box-shadow:0 -2px 12px rgba(0,0,0,.25);flex-wrap:wrap;}
+  #bulkActionBar{position:fixed;bottom:0;left:0;right:0;background:var(--text-1);color:#fff;padding:12px 20px;display:none;align-items:center;justify-content:center;gap:10px;z-index:800;box-shadow:0 -2px 12px rgba(0,0,0,.25);flex-wrap:wrap;}
   #bulkActionBar.show{display:flex;}
   #bulkActionBar .bulk-count{font-size:13px;font-weight:700;margin-right:6px;white-space:nowrap;}
   #bulkActionBar .btn-bulk{font-size:12px;padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-weight:600;white-space:nowrap;}
   .btn-bulk-teal{background:var(--teal);color:#fff;}
   .btn-bulk-teal:hover{opacity:.85;}
-  .btn-bulk-out{background:var(--amber);color:#fff;}
+  .btn-bulk-out{background:var(--red);color:#fff;}
   .btn-bulk-out:hover{opacity:.85;}
   .btn-bulk-prov{background:#e8a020;color:#fff;}
   .btn-bulk-prov:hover{opacity:.85;}
@@ -707,7 +707,6 @@
       </div>
     </div>
   </div>
-</div>
 
 <!-- 一括操作バー -->
 <div id="bulkActionBar">
