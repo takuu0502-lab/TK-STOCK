@@ -790,6 +790,26 @@
       <input type="text" id="historySearch" placeholder="商品名・ブランド・サイズで検索" style="flex:1;min-width:180px;max-width:300px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
     </div>
     <div id="historyList" style="margin-top:14px;"></div>
+
+    <!-- 長期在庫レポート -->
+    <div style="margin-top:24px;border-top:1px solid var(--line);padding-top:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-1);">📦 長期在庫レポート</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px;">入庫から1年以上経過している在庫を表示します（FIFO計算）</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:12.5px;color:var(--text-2);">基準日数：</label>
+          <select id="longTermDays" style="font-size:13px;padding:5px 8px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);">
+            <option value="180">180日以上</option>
+            <option value="365" selected>1年以上</option>
+            <option value="730">2年以上</option>
+          </select>
+          <button class="btn btn-amber btn-sm" id="longTermReportBtn">集計する</button>
+        </div>
+      </div>
+      <div id="longTermReportWrap" style="margin-top:14px;"></div>
+    </div>
   </div>
 
   <div class="panel" id="tab-pricing" style="display:none;">
@@ -5573,6 +5593,92 @@ window.addEventListener('storageReady', function(){
     activeScannerKind = null;
   }
 
+  // ── 長期在庫レポート ────────────────────────────────
+  function calcLongTermStock(thresholdDays){
+    const now = new Date();
+    const results = [];
+    products.forEach(p=>{
+      if(p.stock <= 0) return;
+      // 入庫: 古い順
+      const inbounds = transactions
+        .filter(t=>t.productId===p.id && t.type==='in')
+        .sort((a,b)=>new Date(a.date)-new Date(b.date))
+        .map(t=>({ date: new Date(t.date), remaining: t.qty }));
+      // 出庫合計をFIFOで消化
+      let outPool = transactions
+        .filter(t=>t.productId===p.id && t.type==='out')
+        .reduce((s,t)=>s+t.qty, 0);
+      for(let i=0; i<inbounds.length && outPool>0; i++){
+        const consume = Math.min(inbounds[i].remaining, outPool);
+        inbounds[i].remaining -= consume;
+        outPool -= consume;
+      }
+      // 閾値以上経過しているロットを集計
+      const longTermQty = inbounds
+        .filter(lot=>lot.remaining>0 && (now-lot.date)/(86400000) >= thresholdDays)
+        .reduce((s,lot)=>s+lot.remaining, 0);
+      if(longTermQty <= 0) return;
+      const oldestLot = inbounds.find(lot=>lot.remaining>0 && (now-lot.date)/(86400000) >= thresholdDays);
+      results.push({
+        product: p,
+        longTermQty,
+        oldestDate: oldestLot ? oldestLot.date : null,
+        daysSince: oldestLot ? Math.floor((now-oldestLot.date)/86400000) : 0
+      });
+    });
+    results.sort((a,b)=>a.daysSince-b.daysSince);
+    return results;
+  }
+
+  function renderLongTermReport(){
+    const days = Number(document.getElementById('longTermDays').value);
+    const wrap = document.getElementById('longTermReportWrap');
+    const results = calcLongTermStock(days);
+    if(results.length===0){
+      wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">'+days+'日以上滞留している在庫はありません ✓</div>';
+      return;
+    }
+    const totalItems = results.length;
+    const totalQty = results.reduce((s,r)=>s+r.longTermQty, 0);
+    let html = '<div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;">'
+      +'<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:8px;padding:10px 18px;text-align:center;">'
+      +'<div style="font-size:20px;font-weight:700;color:var(--red);">'+totalItems+'</div>'
+      +'<div style="font-size:11px;color:var(--text-3);">対象商品数</div></div>'
+      +'<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:8px;padding:10px 18px;text-align:center;">'
+      +'<div style="font-size:20px;font-weight:700;color:var(--red);">'+totalQty+'</div>'
+      +'<div style="font-size:11px;color:var(--text-3);">滞留本数合計</div></div>'
+      +'</div>';
+    html += '<div style="overflow-x:auto;">'
+      +'<table class="stock-table" style="min-width:500px;">'
+      +'<thead><tr>'
+      +'<th>商品名</th><th>規格・サイズ</th><th>品番</th>'
+      +'<th style="text-align:center;">滞留本数</th>'
+      +'<th style="text-align:center;">現在在庫</th>'
+      +'<th style="text-align:center;">最古入庫日</th>'
+      +'<th style="text-align:center;">経過日数</th>'
+      +'</tr></thead><tbody>';
+    results.forEach(r=>{
+      const p = r.product;
+      const dateStr = r.oldestDate ? r.oldestDate.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}) : '不明';
+      const urgency = r.daysSince >= 730 ? 'var(--red)' : r.daysSince >= 365 ? '#d47000' : 'var(--text-2)';
+      html += '<tr class="clickable-row" data-detail="'+p.id+'">'
+        +'<td>'+escapeHtml(cleanName(p.name))+'</td>'
+        +'<td style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'—')+'</td>'
+        +'<td style="color:var(--text-3);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+urgency+';">'+r.longTermQty+'本</td>'
+        +'<td style="text-align:center;">'+p.stock+'本</td>'
+        +'<td style="text-align:center;font-size:12.5px;">'+escapeHtml(dateStr)+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+urgency+';">'+r.daysSince+'日</td>'
+        +'</tr>';
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+    // 行クリックで商品詳細を開く
+    wrap.querySelectorAll('[data-detail]').forEach(tr=>{
+      tr.addEventListener('click', ()=>openProductDetail(tr.dataset.detail));
+    });
+  }
+
   let historyFilter = 'all';
   let historyDateFilter = 'all';
   let historySearchText = '';
@@ -5596,6 +5702,9 @@ window.addEventListener('storageReady', function(){
   document.getElementById('historySearch').addEventListener('input', e=>{
     historySearchText = e.target.value.trim();
     renderHistory();
+  });
+  document.getElementById('longTermReportBtn').addEventListener('click', ()=>{
+    renderLongTermReport();
   });
 
   function renderHistory(){
