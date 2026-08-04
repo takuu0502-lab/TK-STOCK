@@ -192,6 +192,8 @@
   .btn-bulk-prov:hover{opacity:.85;}
   .btn-bulk-qr{background:#555;color:#fff;}
   .btn-bulk-qr:hover{opacity:.85;}
+  .btn-bulk-order{background:#4a6fa5;color:#fff;}
+  .btn-bulk-order:hover{opacity:.85;}
   .btn-bulk-clear{background:transparent;color:#ccc;border:1px solid #666 !important;}
   .btn-bulk-clear:hover{color:#fff;border-color:#aaa !important;}
   /* チェックボックス列 */
@@ -368,6 +370,22 @@
     body[data-printing="qr"] .qr-label-name{font-size:14px;font-weight:700;margin-bottom:2px;}
     body[data-printing="qr"] .qr-label-spec{font-size:11px;color:#666;margin-bottom:8px;}
     body[data-printing="qr"] .qr-label-code{font-size:10px;color:#888;margin-top:6px;font-family:monospace;}
+    /* 発注書印刷 */
+    body[data-printing="order"] > *{display:none !important;}
+    body[data-printing="order"] #orderPrintArea{display:block !important;}
+    #orderPrintArea{display:none;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Neue',sans-serif;font-size:10pt;color:#111;padding:20mm 18mm;line-height:1.5;}
+    #orderPrintArea .op-title{font-size:22pt;font-weight:700;letter-spacing:4pt;text-align:center;margin-bottom:6mm;border-bottom:2pt solid #111;padding-bottom:4mm;}
+    #orderPrintArea .op-meta{display:flex;justify-content:space-between;margin-bottom:6mm;font-size:9pt;}
+    #orderPrintArea .op-supplier{font-size:12pt;font-weight:700;border-bottom:1.5pt solid #333;padding-bottom:2pt;min-width:80mm;display:inline-block;}
+    #orderPrintArea .op-supplier-label{font-size:8pt;color:#666;margin-bottom:2pt;}
+    #orderPrintArea table{width:100%;border-collapse:collapse;margin-bottom:8mm;}
+    #orderPrintArea th{background:#222;color:#fff;font-size:9pt;padding:4pt 6pt;text-align:center;}
+    #orderPrintArea td{border:0.5pt solid #bbb;padding:4pt 6pt;font-size:9.5pt;vertical-align:middle;}
+    #orderPrintArea .op-num{text-align:center;}
+    #orderPrintArea .op-qty{text-align:center;font-weight:700;}
+    #orderPrintArea .op-note{border:0.5pt solid #bbb;min-height:20mm;padding:4pt 6pt;font-size:9pt;margin-top:2mm;}
+    #orderPrintArea .op-note-label{font-size:8pt;color:#666;margin-bottom:1mm;}
+    #orderPrintArea .op-footer{text-align:right;font-size:8.5pt;color:#555;margin-top:6mm;}
   }
   .price-catalog-title{font-size:12.5px;font-weight:600;color:var(--text-1);margin-bottom:2px;}
   .price-catalog-sub{font-size:11px;color:var(--text-3);margin-bottom:10px;}
@@ -636,6 +654,52 @@
   </div>
 </div>
 
+<div id="orderPrintArea"></div>
+
+<!-- 発注書作成モーダル -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal" style="max-width:540px;width:95%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">📋 発注書の作成</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:140px;">
+          <label>発注日 <span style="color:var(--red);">*</span></label>
+          <input type="date" id="order_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        </div>
+        <div class="field" style="flex:2;min-width:180px;">
+          <label>仕入先・メーカー名 <span style="color:var(--red);">*</span></label>
+          <input type="text" id="order_supplier" placeholder="例) ブリヂストン" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        </div>
+      </div>
+      <div class="field">
+        <label style="font-size:12.5px;font-weight:700;color:var(--text-1);">発注品目</label>
+        <div id="orderItemsWrap" style="margin-top:8px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:var(--bg-3);">
+                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">商品名</th>
+                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">規格・品番</th>
+                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">現在在庫</th>
+                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">発注数量</th>
+              </tr>
+            </thead>
+            <tbody id="orderItemsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="field">
+        <label>備考</label>
+        <textarea id="order_note" rows="3" placeholder="特記事項があれば入力してください" style="width:100%;box-sizing:border-box;margin-top:4px;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:8px 10px;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div id="orderModalError" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="orderCancelBtn">キャンセル</button>
+      <button class="btn btn-amber" id="orderPrintBtn">🖨 印刷する</button>
+    </div>
+  </div>
+</div>
+
 <div class="auth-screen" id="authScreen" style="display:none;">
   <div class="auth-card">
     <div class="auth-toggle" id="authToggle">
@@ -715,6 +779,7 @@
   <button class="btn-bulk btn-bulk-out" id="bulkOutBtn">📤 出庫登録</button>
   <button class="btn-bulk btn-bulk-prov" id="bulkProvBtn">🔖 仮出庫登録</button>
   <button class="btn-bulk btn-bulk-qr" id="bulkQrBtn">🖨 QR印刷</button>
+  <button class="btn-bulk btn-bulk-order" id="bulkOrderBtn">📋 発注書作成</button>
   <button class="btn-bulk btn-bulk-clear" id="bulkClearBtn">選択解除</button>
 </div>
 
@@ -3680,7 +3745,94 @@ window.addEventListener('storageReady', function(){
     document.getElementById('bulkClearBtn').addEventListener('click', ()=>{
       selectedProducts.clear(); updateBulkBar(); renderProductTable();
     });
+    // 発注書作成
+    document.getElementById('bulkOrderBtn').addEventListener('click', ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length===0) return;
+      openOrderModal(ps);
+    });
   });
+
+  // ── 発注書モーダル ────────────────────────────────────
+  function openOrderModal(ps){
+    const modal = document.getElementById('orderModal');
+    const dateEl = document.getElementById('order_date');
+    const supplierEl = document.getElementById('order_supplier');
+    const noteEl = document.getElementById('order_note');
+    const errorEl = document.getElementById('orderModalError');
+    const tbody = document.getElementById('orderItemsTbody');
+
+    // 初期値
+    dateEl.value = new Date().toISOString().slice(0,10);
+    supplierEl.value = '';
+    noteEl.value = '';
+    errorEl.style.display = 'none';
+
+    // 商品行を生成
+    tbody.innerHTML = ps.map((p,i)=>
+      '<tr style="border-top:1px solid var(--line-soft);">'
+      +'<td style="padding:8px 10px;font-size:13px;">'+escapeHtml(cleanName(p.name))+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;color:var(--text-2);">'+escapeHtml((p.spec||'')+(p.partno?' / '+p.partno:''))+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-size:13px;color:var(--text-2);">'+p.stock+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;">'
+      +'<input type="number" class="order-qty-input" data-order-idx="'+i+'" value="1" min="1" style="width:60px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:14px;font-weight:700;padding:4px 6px;">'
+      +'</td>'
+      +'</tr>'
+    ).join('');
+
+    modal.classList.add('show');
+    setTimeout(()=>supplierEl.focus(), 100);
+
+    document.getElementById('orderCancelBtn').onclick = ()=>{ modal.classList.remove('show'); };
+
+    document.getElementById('orderPrintBtn').onclick = ()=>{
+      const supplier = supplierEl.value.trim();
+      const date = dateEl.value;
+      const note = noteEl.value.trim();
+      errorEl.style.display = 'none';
+      if(!supplier){ errorEl.textContent='仕入先名を入力してください。'; errorEl.style.display='block'; supplierEl.focus(); return; }
+      if(!date){ errorEl.textContent='発注日を入力してください。'; errorEl.style.display='block'; dateEl.focus(); return; }
+
+      const qtys = [...modal.querySelectorAll('.order-qty-input')].map(el=>Number(el.value)||1);
+      modal.classList.remove('show');
+      printOrderDoc({ ps, qtys, supplier, date, note });
+    };
+  }
+
+  function printOrderDoc({ ps, qtys, supplier, date, note }){
+    const dateStr = new Date(date).toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+    const printedStr = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+    const shopName = currentUser ? (currentUser.displayName || '') : '';
+
+    let rows = ps.map((p,i)=>
+      '<tr>'
+      +'<td class="op-num">'+(i+1)+'</td>'
+      +'<td>'+escapeHtml(cleanName(p.name))+'</td>'
+      +'<td style="font-size:9pt;">'+escapeHtml(p.spec||'—')+'</td>'
+      +'<td style="font-size:9pt;font-family:monospace;">'+escapeHtml(p.partno||'—')+'</td>'
+      +'<td class="op-qty">'+qtys[i]+'</td>'
+      +'</tr>'
+    ).join('');
+
+    document.getElementById('orderPrintArea').innerHTML =
+      '<div class="op-title">発 注 書</div>'
+      +'<div class="op-meta">'
+        +'<div><div class="op-supplier-label">仕入先</div><div class="op-supplier">'+escapeHtml(supplier)+'　御中</div></div>'
+        +'<div style="text-align:right;font-size:9pt;color:#555;">'
+          +'<div>発注日：'+escapeHtml(dateStr)+'</div>'
+          +(shopName ? '<div>担当：'+escapeHtml(shopName)+'</div>' : '')
+        +'</div>'
+      +'</div>'
+      +'<table>'
+        +'<thead><tr><th style="width:30pt;">No.</th><th style="text-align:left;">商品名</th><th style="text-align:left;width:60pt;">規格・サイズ</th><th style="text-align:left;width:70pt;">品番</th><th style="width:40pt;">数量</th></tr></thead>'
+        +'<tbody>'+rows+'</tbody>'
+      +'</table>'
+      +(note ? '<div class="op-note-label">備考</div><div class="op-note">'+escapeHtml(note)+'</div>' : '')
+      +'<div class="op-footer">印刷日：'+escapeHtml(printedStr)+'</div>';
+
+    document.body.dataset.printing = 'order';
+    window.print();
+  }
 
   // ── QR印刷設定モーダル ─────────────────────────────
   let qrSettings = {
@@ -3809,6 +3961,7 @@ window.addEventListener('storageReady', function(){
   window.addEventListener('afterprint', ()=>{
     delete document.body.dataset.printing;
     document.getElementById('qrPrintArea').style.display = 'none';
+    document.getElementById('orderPrintArea').innerHTML = '';
   });
 
   function cleanName(name){
