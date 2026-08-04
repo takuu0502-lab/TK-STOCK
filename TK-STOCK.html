@@ -668,7 +668,10 @@
         </div>
         <div class="field" style="flex:2;min-width:180px;">
           <label>仕入先・メーカー名 <span style="color:var(--red);">*</span></label>
-          <input type="text" id="order_supplier" placeholder="例) ブリヂストン" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+            <select id="order_supplier_sel" style="flex:1;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:7px 10px;"></select>
+            <button type="button" class="btn btn-ghost btn-sm" id="orderSupplierAddBtn" style="white-space:nowrap;">＋ 追加</button>
+          </div>
         </div>
       </div>
       <div class="field">
@@ -3755,16 +3758,37 @@ window.addEventListener('storageReady', function(){
   function openOrderModal(ps){
     const modal = document.getElementById('orderModal');
     const dateEl = document.getElementById('order_date');
-    const supplierEl = document.getElementById('order_supplier');
+    const selEl = document.getElementById('order_supplier_sel');
     const noteEl = document.getElementById('order_note');
     const errorEl = document.getElementById('orderModalError');
     const tbody = document.getElementById('orderItemsTbody');
 
+    // 仕入先プルダウンを更新
+    function refreshOrderSupplierSel(selectedName){
+      const prev = selectedName !== undefined ? selectedName : (selEl.options[selEl.selectedIndex]?.text || '');
+      selEl.innerHTML = '<option value="">（仕入先を選択）</option>'
+        + suppliers.map(s=>`<option value="${escapeHtml(s.name)}"${s.name===prev?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
+    }
+    refreshOrderSupplierSel('');
+
     // 初期値
     dateEl.value = new Date().toISOString().slice(0,10);
-    supplierEl.value = '';
     noteEl.value = '';
     errorEl.style.display = 'none';
+
+    // 「＋ 追加」ボタン
+    const addBtn = document.getElementById('orderSupplierAddBtn');
+    addBtn.onclick = ()=>{
+      const name = prompt('追加する仕入先名を入力してください');
+      if(!name || !name.trim()) return;
+      const trimmed = name.trim();
+      if(!suppliers.find(s=>s.name===trimmed)){
+        suppliers.push({ id: uid('sup'), name: trimmed });
+        saveSuppliers();
+        populateSupplierSelect('');
+      }
+      refreshOrderSupplierSel(trimmed);
+    };
 
     // 商品行を生成
     tbody.innerHTML = ps.map((p,i)=>
@@ -3779,16 +3803,16 @@ window.addEventListener('storageReady', function(){
     ).join('');
 
     modal.classList.add('show');
-    setTimeout(()=>supplierEl.focus(), 100);
+    setTimeout(()=>selEl.focus(), 100);
 
     document.getElementById('orderCancelBtn').onclick = ()=>{ modal.classList.remove('show'); };
 
     document.getElementById('orderPrintBtn').onclick = ()=>{
-      const supplier = supplierEl.value.trim();
+      const supplier = selEl.value.trim();
       const date = dateEl.value;
       const note = noteEl.value.trim();
       errorEl.style.display = 'none';
-      if(!supplier){ errorEl.textContent='仕入先名を入力してください。'; errorEl.style.display='block'; supplierEl.focus(); return; }
+      if(!supplier){ errorEl.textContent='仕入先を選択または追加してください。'; errorEl.style.display='block'; selEl.focus(); return; }
       if(!date){ errorEl.textContent='発注日を入力してください。'; errorEl.style.display='block'; dateEl.focus(); return; }
 
       const qtys = [...modal.querySelectorAll('.order-qty-input')].map(el=>Number(el.value)||1);
