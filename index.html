@@ -1034,6 +1034,7 @@
             <th style="padding:7px 8px;text-align:left;white-space:nowrap;">照合モデル</th>
             <th style="padding:7px 8px;text-align:left;white-space:nowrap;">JANコード</th>
             <th style="padding:7px 8px;text-align:center;white-space:nowrap;">候補選択</th>
+            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">信頼度</th>
           </tr>
         </thead>
         <tbody id="janMatchTbody"></tbody>
@@ -1417,6 +1418,15 @@ window.addEventListener('storageReady', function(){
     return m ? m[1] : '';
   }
 
+  // ブリヂストンの既知モデルキーワード（JAN_LOOKUPのモデル名から自動生成）
+  const BS_MODEL_KEYWORDS = (() => {
+    const kw = new Set();
+    for(const e of BS_JAN_LOOKUP){
+      e.m.toUpperCase().replace(/[^A-Z0-9]/g,' ').split(/\s+/).filter(w=>w.length>=3).forEach(w=>kw.add(w));
+    }
+    return kw;
+  })();
+
   function scoreJanModel(productName, modelStr){
     if(!productName || !modelStr) return 0;
     const pn = productName.toUpperCase().replace(/[^A-Z0-9]/g,' ').trim();
@@ -1431,21 +1441,31 @@ window.addEventListener('storageReady', function(){
     return score / Math.max(pWords.length, mWords.length);
   }
 
+  function isBridgestoneProduct(name){
+    if(!name) return false;
+    const upper = name.toUpperCase().replace(/[^A-Z0-9]/g,' ');
+    const words = upper.split(/\s+/).filter(w=>w.length>=3);
+    return words.some(w=>BS_MODEL_KEYWORDS.has(w));
+  }
+
   function runJanAutoMatch(){
     const candidates = [];
     for(const p of products){
       // バーコードがすでに13桁JANなら除外
       if(p.barcode && /^\d{13}$/.test(p.barcode.trim())) continue;
+      // ブリヂストン商品でないなら除外
+      if(!isBridgestoneProduct(p.name || '')) continue;
       const pSize = normSpecSize(p.spec || '');
       if(!pSize) continue;
       // 同サイズの候補を全件取得
       const sizeMatches = BS_JAN_LOOKUP.filter(e=>e.s === pSize);
       if(!sizeMatches.length) continue;
-      // スコアリング
+      // スコアリング（最低スコア0.4未満は除外）
       const scored = sizeMatches.map(e=>{
         const score = scoreJanModel(p.name || '', e.m);
         return {...e, score};
-      }).sort((a,b)=>b.score-a.score);
+      }).filter(e=>e.score >= 0.4).sort((a,b)=>b.score-a.score);
+      if(!scored.length) continue;  // 十分なスコアの候補なし→除外
       candidates.push({product: p, matches: scored, selected: scored[0]});
     }
     return candidates;
@@ -3857,16 +3877,21 @@ window.addEventListener('storageReady', function(){
     const summaryEl = document.getElementById('janMatchSummary');
 
     tbody.innerHTML = candidates.map((c,i)=>{
-      const optionsHtml = c.matches.slice(0,5).map((m,mi)=>
+      const best = c.matches[0];
+      const score = best.score;
+      // 信頼度カラー: 0.8以上=緑, 0.5以上=橙, それ以下=赤
+      const scoreColor = score>=0.8 ? '#1a9f5a' : score>=0.5 ? '#e8a020' : '#c0392b';
+      const scoreLabel = score>=0.8 ? '高' : score>=0.5 ? '中' : '低';
+      const optionsHtml = c.matches.slice(0,8).map((m,mi)=>
         '<option value="'+mi+'"'+(mi===0?' selected':'')+'>'+escapeHtml(m.m)+' / JAN:'+escapeHtml(m.j)+'</option>'
       ).join('');
-      const best = c.matches[0];
       return '<tr style="border-top:1px solid var(--line-soft);" id="jmr'+i+'">'
-        +'<td style="text-align:center;padding:8px 6px;"><input type="checkbox" class="jan-match-chk row-chk" data-idx="'+i+'" checked></td>'
+        +'<td style="text-align:center;padding:8px 6px;"><input type="checkbox" class="jan-match-chk row-chk" data-idx="'+i+'" '+(score>=0.5?'checked':'')+' ></td>'
         +'<td style="padding:8px 8px;font-size:12.5px;">'+escapeHtml(cleanName(c.product.name))+'</td>'
         +'<td style="padding:8px 8px;font-size:12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(c.product.spec||'')+'</td>'
         +'<td style="padding:8px 8px;font-size:12px;"><select class="jan-match-sel" data-idx="'+i+'" style="font-size:11.5px;background:var(--bg-1);border:1px solid var(--line);border-radius:4px;color:var(--text-1);padding:3px 6px;max-width:220px;">'+optionsHtml+'</select></td>'
         +'<td style="padding:8px 8px;font-size:12px;font-family:var(--font-mono);white-space:nowrap;" id="jmjan'+i+'">'+escapeHtml(best.j)+'</td>'
+        +'<td style="padding:8px 8px;text-align:center;"><span style="font-size:11px;font-weight:700;color:'+scoreColor+';">'+scoreLabel+'</span></td>'
         +'</tr>';
     }).join('');
 
