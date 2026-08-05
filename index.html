@@ -4811,6 +4811,17 @@ window.addEventListener('storageReady', function(){
       msgEl.innerHTML = '<div class="msg msg-ok">📖 辞書から自動入力しました：<b>'+escapeHtml(dictEntry.name)+'</b></div>';
       return;
     }
+    // ブリヂストン価格表（BS_JAN_LOOKUP）から検索
+    const bsEntry = BS_JAN_LOOKUP.find(e=>e.j===code);
+    if(bsEntry){
+      if(!document.getElementById('f_name').value) document.getElementById('f_name').value = bsEntry.m;
+      if(!document.getElementById('f_brand').value) document.getElementById('f_brand').value = 'ブリヂストン';
+      if(!document.getElementById('f_partno').value) document.getElementById('f_partno').value = bsEntry.p;
+      prefillSpecTireSelects(bsEntry.s);
+      updateSpecFromTireSelects();
+      msgEl.innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表から自動入力：<b>'+escapeHtml(bsEntry.m)+'　'+escapeHtml(bsEntry.s)+'</b></div>';
+      return;
+    }
     msgEl.innerHTML = '<div style="margin-top:6px;font-size:12.5px;color:var(--text-3);">新しい商品です。商品名を入力して保存すると次回から自動入力されます。</div>';
     return;
     msgEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">検索中...</div>';
