@@ -1031,10 +1031,8 @@
             <th style="padding:7px 8px;text-align:center;width:32px;"><input type="checkbox" id="janMatchAllChk"></th>
             <th style="padding:7px 8px;text-align:left;">商品名</th>
             <th style="padding:7px 8px;text-align:left;white-space:nowrap;">規格</th>
-            <th style="padding:7px 8px;text-align:left;white-space:nowrap;">照合モデル</th>
+            <th style="padding:7px 8px;text-align:left;white-space:nowrap;">モデル選択</th>
             <th style="padding:7px 8px;text-align:left;white-space:nowrap;">JANコード</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">候補選択</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">信頼度</th>
           </tr>
         </thead>
         <tbody id="janMatchTbody"></tbody>
@@ -1427,48 +1425,18 @@ window.addEventListener('storageReady', function(){
     return kw;
   })();
 
-  function scoreJanModel(productName, modelStr){
-    if(!productName || !modelStr) return 0;
-    const pn = productName.toUpperCase().replace(/[^A-Z0-9]/g,' ').trim();
-    const mn = modelStr.toUpperCase().replace(/[^A-Z0-9]/g,' ').trim();
-    const pWords = pn.split(/\s+/).filter(w=>w.length>=2);
-    const mWords = mn.split(/\s+/).filter(w=>w.length>=2);
-    if(!pWords.length || !mWords.length) return 0;
-    let score = 0;
-    for(const pw of pWords){
-      if(mWords.some(mw=>mw===pw || mw.startsWith(pw) || pw.startsWith(mw))) score++;
-    }
-    return score / Math.max(pWords.length, mWords.length);
-  }
-
-  function isBridgestoneProduct(name){
-    if(!name) return false;
-    const upper = name.toUpperCase().replace(/[^A-Z0-9]/g,' ');
-    const words = upper.split(/\s+/).filter(w=>w.length>=3);
-    return words.some(w=>BS_MODEL_KEYWORDS.has(w));
-  }
-
   function runJanAutoMatch(){
-    const candidates = [];
+    // バーコード未登録の全商品を対象に、サイズ一致する候補を列挙
+    const rows = [];
     for(const p of products){
-      // バーコードがすでに13桁JANなら除外
       if(p.barcode && /^\d{13}$/.test(p.barcode.trim())) continue;
-      // ブリヂストン商品でないなら除外
-      if(!isBridgestoneProduct(p.name || '')) continue;
       const pSize = normSpecSize(p.spec || '');
-      if(!pSize) continue;
-      // 同サイズの候補を全件取得
-      const sizeMatches = BS_JAN_LOOKUP.filter(e=>e.s === pSize);
-      if(!sizeMatches.length) continue;
-      // スコアリング（最低スコア0.4未満は除外）
-      const scored = sizeMatches.map(e=>{
-        const score = scoreJanModel(p.name || '', e.m);
-        return {...e, score};
-      }).filter(e=>e.score >= 0.4).sort((a,b)=>b.score-a.score);
-      if(!scored.length) continue;  // 十分なスコアの候補なし→除外
-      candidates.push({product: p, matches: scored, selected: scored[0]});
+      const sizeMatches = pSize
+        ? BS_JAN_LOOKUP.filter(e=>e.s===pSize).sort((a,b)=>a.m.localeCompare(b.m,'ja'))
+        : [];
+      rows.push({product: p, matches: sizeMatches, selectedIdx: -1});
     }
-    return candidates;
+    return rows;
   }
 
   let products = [];
@@ -3870,54 +3838,77 @@ window.addEventListener('storageReady', function(){
     });
   });
 
-  function openJanMatchModal(candidates){
+  function openJanMatchModal(rows){
     const modal = document.getElementById('janMatchModal');
     const tbody = document.getElementById('janMatchTbody');
     const emptyEl = document.getElementById('janMatchEmpty');
     const summaryEl = document.getElementById('janMatchSummary');
 
-    tbody.innerHTML = candidates.map((c,i)=>{
-      const best = c.matches[0];
-      const score = best.score;
-      // 信頼度カラー: 0.8以上=緑, 0.5以上=橙, それ以下=赤
-      const scoreColor = score>=0.8 ? '#1a9f5a' : score>=0.5 ? '#e8a020' : '#c0392b';
-      const scoreLabel = score>=0.8 ? '高' : score>=0.5 ? '中' : '低';
-      const optionsHtml = c.matches.slice(0,8).map((m,mi)=>
-        '<option value="'+mi+'"'+(mi===0?' selected':'')+'>'+escapeHtml(m.m)+' / JAN:'+escapeHtml(m.j)+'</option>'
-      ).join('');
-      return '<tr style="border-top:1px solid var(--line-soft);" id="jmr'+i+'">'
-        +'<td style="text-align:center;padding:8px 6px;"><input type="checkbox" class="jan-match-chk row-chk" data-idx="'+i+'" '+(score>=0.5?'checked':'')+' ></td>'
-        +'<td style="padding:8px 8px;font-size:12.5px;">'+escapeHtml(cleanName(c.product.name))+'</td>'
-        +'<td style="padding:8px 8px;font-size:12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(c.product.spec||'')+'</td>'
-        +'<td style="padding:8px 8px;font-size:12px;"><select class="jan-match-sel" data-idx="'+i+'" style="font-size:11.5px;background:var(--bg-1);border:1px solid var(--line);border-radius:4px;color:var(--text-1);padding:3px 6px;max-width:220px;">'+optionsHtml+'</select></td>'
-        +'<td style="padding:8px 8px;font-size:12px;font-family:var(--font-mono);white-space:nowrap;" id="jmjan'+i+'">'+escapeHtml(best.j)+'</td>'
-        +'<td style="padding:8px 8px;text-align:center;"><span style="font-size:11px;font-weight:700;color:'+scoreColor+';">'+scoreLabel+'</span></td>'
-        +'</tr>';
-    }).join('');
+    const withCandidates = rows.filter(r=>r.matches.length>0);
+    const noCandidates   = rows.filter(r=>r.matches.length===0);
 
-    if(!candidates.length){ emptyEl.style.display='block'; tbody.style.display='none'; }
+    function buildRows(){
+      let html = '';
+      // 候補あり商品
+      withCandidates.forEach((r,i)=>{
+        const optHtml = '<option value="-1">-- 選択してください --</option>'
+          + r.matches.map((m,mi)=>
+              '<option value="'+mi+'">'+escapeHtml(m.m)+'</option>'
+            ).join('');
+        html += '<tr style="border-top:1px solid var(--line-soft);">'
+          +'<td style="text-align:center;padding:8px 6px;"><input type="checkbox" class="jan-match-chk row-chk" data-ridx="'+i+'" disabled></td>'
+          +'<td style="padding:8px 8px;font-size:12.5px;">'+escapeHtml(cleanName(r.product.name))+'</td>'
+          +'<td style="padding:8px 8px;font-size:12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(r.product.spec||'')+'</td>'
+          +'<td style="padding:8px 8px;"><select class="jan-match-sel" data-ridx="'+i+'" style="font-size:11.5px;background:var(--bg-1);border:1px solid var(--line);border-radius:4px;color:var(--text-1);padding:3px 6px;max-width:240px;">'+optHtml+'</select></td>'
+          +'<td style="padding:8px 8px;font-size:11.5px;font-family:var(--font-mono);color:var(--text-3);" id="jmjan_'+i+'">—</td>'
+          +'</tr>';
+      });
+      // 候補なし商品（グレーアウト）
+      noCandidates.forEach(r=>{
+        html += '<tr style="border-top:1px solid var(--line-soft);opacity:0.45;">'
+          +'<td style="text-align:center;padding:8px 6px;"></td>'
+          +'<td style="padding:8px 8px;font-size:12.5px;">'+escapeHtml(cleanName(r.product.name))+'</td>'
+          +'<td style="padding:8px 8px;font-size:12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(r.product.spec||'')+'</td>'
+          +'<td style="padding:8px 8px;font-size:12px;color:var(--text-3);" colspan="2">このサイズの候補がありません</td>'
+          +'</tr>';
+      });
+      return html;
+    }
+
+    tbody.innerHTML = buildRows();
+
+    if(!rows.length){ emptyEl.style.display='block'; tbody.style.display='none'; }
     else { emptyEl.style.display='none'; tbody.style.display=''; }
 
-    summaryEl.textContent = candidates.length + '件が照合できました';
+    const totalNoJan = rows.length;
+    summaryEl.textContent = 'バーコード未登録 '+totalNoJan+'件 / うちサイズ候補あり '+withCandidates.length+'件';
 
-    // セレクト変更でJAN更新
+    // セレクト変更でチェックボックス・JAN更新
     modal.querySelectorAll('.jan-match-sel').forEach(sel=>{
       sel.addEventListener('change', ()=>{
-        const i = parseInt(sel.dataset.idx);
+        const i = parseInt(sel.dataset.ridx);
         const mi = parseInt(sel.value);
-        const jan = candidates[i].matches[mi].j;
-        document.getElementById('jmjan'+i).textContent = jan;
-        candidates[i].selected = candidates[i].matches[mi];
+        const chk = modal.querySelector('.jan-match-chk[data-ridx="'+i+'"]');
+        const janEl = document.getElementById('jmjan_'+i);
+        if(mi < 0){
+          chk.checked = false; chk.disabled = true;
+          janEl.textContent = '—';
+          withCandidates[i].selectedIdx = -1;
+        } else {
+          chk.disabled = false; chk.checked = true;
+          janEl.textContent = withCandidates[i].matches[mi].j;
+          withCandidates[i].selectedIdx = mi;
+        }
       });
     });
 
-    // 全選択/解除
-    document.getElementById('janMatchAllChk').checked = true;
+    // 全選択/解除（選択済みのもののみ対象）
+    document.getElementById('janMatchAllChk').checked = false;
     document.getElementById('janMatchAllChk').onchange = (e)=>{
-      modal.querySelectorAll('.jan-match-chk').forEach(c=>c.checked=e.target.checked);
+      modal.querySelectorAll('.jan-match-chk:not([disabled])').forEach(c=>c.checked=e.target.checked);
     };
     document.getElementById('janMatchSelectAll').onclick = ()=>{
-      modal.querySelectorAll('.jan-match-chk').forEach(c=>c.checked=true);
+      modal.querySelectorAll('.jan-match-chk:not([disabled])').forEach(c=>c.checked=true);
       document.getElementById('janMatchAllChk').checked=true;
     };
     document.getElementById('janMatchDeselectAll').onclick = ()=>{
@@ -3928,20 +3919,19 @@ window.addEventListener('storageReady', function(){
     document.getElementById('janMatchCancelBtn').onclick = ()=>modal.classList.remove('show');
 
     document.getElementById('janMatchApplyBtn').onclick = async ()=>{
-      const checked = [...modal.querySelectorAll('.jan-match-chk')].filter(c=>c.checked);
       let applied = 0;
-      for(const chk of checked){
-        const i = parseInt(chk.dataset.idx);
-        const c = candidates[i];
-        const jan = c.selected.j;
-        const partno = c.selected.p;
-        const p = products.find(pr=>pr.id===c.product.id);
+      withCandidates.forEach(r=>{
+        if(r.selectedIdx < 0) return;
+        const chk = modal.querySelector('.jan-match-chk[data-ridx="'+withCandidates.indexOf(r)+'"]');
+        if(!chk || !chk.checked) return;
+        const m = r.matches[r.selectedIdx];
+        const p = products.find(pr=>pr.id===r.product.id);
         if(p){
-          p.barcode = jan;
-          if(!p.partno) p.partno = partno;
+          p.barcode = m.j;
+          if(!p.partno) p.partno = m.p;
           applied++;
         }
-      }
+      });
       await saveProducts();
       modal.classList.remove('show');
       renderProductList();
