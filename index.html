@@ -1438,10 +1438,9 @@ window.addEventListener('storageReady', function(){
   }
 
   function runJanAutoMatch(){
-    // バーコード未登録の全商品を対象に、サイズ一致する候補をスコア順で列挙
+    // 全商品を対象に、サイズ一致する候補をスコア順で列挙
     const rows = [];
     for(const p of products){
-      if(p.barcode && /^\d{13}$/.test(p.barcode.trim())) continue;
       const pSize = normSpecSize(p.spec || '');
       const sizeMatches = pSize ? BS_JAN_LOOKUP.filter(e=>e.s===pSize) : [];
       // スコア計算してソート（高スコア順 → 同スコアはモデル名アルファベット順）
@@ -3868,18 +3867,19 @@ window.addEventListener('storageReady', function(){
       withCandidates.forEach((r,i)=>{
         const autoIdx = r.selectedIdx;
         const isAuto = autoIdx >= 0;
+        const existingJan = r.product.barcode && /^\d{13}$/.test(r.product.barcode.trim()) ? r.product.barcode.trim() : '';
         const optHtml = '<option value="-1"'+(isAuto?'':' selected')+'>-- 選択してください --</option>'
           + r.matches.map((m,mi)=>
               '<option value="'+mi+'"'+(mi===autoIdx?' selected':'')+'>'+escapeHtml(m.m)+'</option>'
             ).join('');
-        const janText = isAuto ? r.matches[autoIdx].j : '—';
-        const janColor = isAuto ? 'var(--text-1)' : 'var(--text-3)';
-        const rowBg = isAuto ? 'background:var(--amber-dim);' : '';
+        const janText = isAuto ? r.matches[autoIdx].j : (existingJan || '—');
+        const janColor = isAuto ? 'var(--text-1)' : existingJan ? '#1a9f5a' : 'var(--text-3)';
+        const rowBg = existingJan ? 'background:#f0faf4;' : isAuto ? 'background:var(--amber-dim);' : '';
         html += '<tr style="border-top:1px solid var(--line-soft);'+rowBg+'">'
-          +'<td style="text-align:center;padding:8px 6px;"><input type="checkbox" class="jan-match-chk row-chk" data-ridx="'+i+'" '+(isAuto?'checked':'disabled')+'></td>'
+          +'<td style="text-align:center;padding:8px 6px;"><input type="checkbox" class="jan-match-chk row-chk" data-ridx="'+i+'" '+(isAuto && !existingJan ?'checked':'disabled')+'></td>'
           +'<td style="padding:8px 8px;font-size:12.5px;">'+escapeHtml(cleanName(r.product.name))+'</td>'
           +'<td style="padding:8px 8px;font-size:12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(r.product.spec||'')+'</td>'
-          +'<td style="padding:8px 8px;"><select class="jan-match-sel" data-ridx="'+i+'" style="font-size:11.5px;background:var(--bg-1);border:1px solid var(--line);border-radius:4px;color:var(--text-1);padding:3px 6px;max-width:240px;">'+optHtml+'</select></td>'
+          +'<td style="padding:8px 8px;">'+(r.matches.length ? '<select class="jan-match-sel" data-ridx="'+i+'" style="font-size:11.5px;background:var(--bg-1);border:1px solid var(--line);border-radius:4px;color:var(--text-1);padding:3px 6px;max-width:240px;">'+optHtml+'</select>' : '<span style="font-size:12px;color:var(--text-3);">候補なし</span>')+'</td>'
           +'<td style="padding:8px 8px;font-size:11.5px;font-family:var(--font-mono);color:'+janColor+';" id="jmjan_'+i+'">'+escapeHtml(janText)+'</td>'
           +'</tr>';
       });
@@ -3900,8 +3900,8 @@ window.addEventListener('storageReady', function(){
     if(!rows.length){ emptyEl.style.display='block'; tbody.style.display='none'; }
     else { emptyEl.style.display='none'; tbody.style.display=''; }
 
-    const totalNoJan = rows.length;
-    summaryEl.textContent = 'バーコード未登録 '+totalNoJan+'件 / うちサイズ候補あり '+withCandidates.length+'件';
+    const alreadyHasJan = rows.filter(r=>r.product.barcode && /^\d{13}$/.test(r.product.barcode.trim())).length;
+    summaryEl.textContent = '全商品 '+rows.length+'件 / サイズ候補あり '+withCandidates.length+'件 / うちJAN登録済み '+alreadyHasJan+'件';
 
     // セレクト変更でチェックボックス・JAN更新
     modal.querySelectorAll('.jan-match-sel').forEach(sel=>{
