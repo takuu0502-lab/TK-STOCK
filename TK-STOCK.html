@@ -3841,11 +3841,11 @@ window.addEventListener('storageReady', function(){
       +'<div class="op-meta">'
         +'<div><div class="op-supplier-label">仕入先</div><div class="op-supplier">'+escapeHtml(supplier)+'　御中</div></div>'
         +'<div style="text-align:right;font-size:9pt;color:#555;line-height:1.8;">'
-          +'<div style="font-size:11pt;font-weight:700;color:#111;">タイヤ館つくば谷田部</div>'
+          +'<div>発注日：'+escapeHtml(dateStr)+'</div>'
+          +(shopName ? '<div>担当：'+escapeHtml(shopName)+'</div>' : '')
+          +'<div style="margin-top:4pt;font-size:11pt;font-weight:700;color:#111;">タイヤ館つくば谷田部</div>'
           +'<div>〒305-0868　茨城県つくば市台町1-9-20</div>'
           +'<div>TEL: 029-838-2750　FAX: 029-838-2751</div>'
-          +'<div style="margin-top:4pt;">発注日：'+escapeHtml(dateStr)+'</div>'
-          +(shopName ? '<div>担当：'+escapeHtml(shopName)+'</div>' : '')
         +'</div>'
       +'</div>'
       +'<table>'
