@@ -4938,8 +4938,23 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('f_memo').value = p.memo || '';
     document.getElementById('modalMsg').innerHTML = '';
+    document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
     modal.classList.add('show');
+    // バーコード未設定の場合、BS_JAN_LOOKUPから自動補完
+    if(!p.barcode && p.spec){
+      const pSize = normSpecSize(p.spec);
+      if(pSize){
+        const sizeMatches = BS_JAN_LOOKUP.filter(e=>e.s===pSize);
+        const scored = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
+          .sort((a,b)=>b.score-a.score);
+        if(scored.length>0 && scored[0].score>=0.5){
+          document.getElementById('f_barcode').value = scored[0].j;
+          if(!p.partno) document.getElementById('f_partno').value = scored[0].p;
+          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表からJANコードを自動補完：<b>'+escapeHtml(scored[0].m)+'</b></div>';
+        }
+      }
+    }
   }
   function closeModal(){ modal.classList.remove('show'); }
 
