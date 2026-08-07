@@ -3186,7 +3186,8 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('productTableWrap');
     // 他支店閲覧中はタイヤ・ホイールのみ表示（社員のみ適用）
     const isViewingOtherBranch = currentUser && currentUser.role !== 'admin'
-      && selectedBranchFilter && selectedBranchFilter !== (currentUser.branchId || 'taniyabe');
+      && selectedBranchFilter !== null
+      && selectedBranchFilter !== currentUser.branchId;
     const crossBranchCatIds = isViewingOtherBranch
       ? categories.filter(c => c.name === 'タイヤ' || c.name === 'ホイール').map(c => c.id)
       : null;
@@ -6715,8 +6716,8 @@ window.addEventListener('storageReady', function(){
     if(acc.role === 'admin'){
       selectedBranchFilter = null; // 管理者は全支店合計表示
     } else {
-      // 社員は自支店を初期表示（複数閲覧可の場合も自支店から開始）
-      selectedBranchFilter = acc.branchId || 'taniyabe';
+      // 社員は自支店を初期表示（branchIdが未設定の場合はnullのまま = 全支店合計）
+      selectedBranchFilter = acc.branchId || null;
     }
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
