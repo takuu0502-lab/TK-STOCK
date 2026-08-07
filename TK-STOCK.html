@@ -3115,6 +3115,17 @@ window.addEventListener('storageReady', function(){
   function renderBranchFilter(){
     const wrap = document.getElementById('branchFilterWrap');
     if(!wrap) return;
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    if(!isAdmin){
+      // 社員・外部: 自支店バッジのみ表示、切り替え不可
+      const myBranch = (currentUser && currentUser.branchId) || 'taniyabe';
+      wrap.innerHTML = '<div style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-2);padding:5px 12px;border-radius:8px;font-size:12px;">'
+        + '<span style="color:var(--text-3);">表示支店：</span>'
+        + '<span style="font-weight:700;color:var(--amber);">'+escapeHtml(branchName(myBranch))+'</span>'
+        + '</div>';
+      return;
+    }
+    // 管理者: 全支店タブ表示
     const tabs = [{id: null, name: '全支店（合計）'}, ...BRANCHES];
     const activeLabel = selectedBranchFilter ? branchName(selectedBranchFilter)+'の在庫を表示中' : '全支店の合計在庫を表示中';
     wrap.innerHTML = '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
@@ -5349,7 +5360,7 @@ window.addEventListener('storageReady', function(){
     transactions.unshift({
       id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
       date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
-      itemType: 'stock', reservation: null
+      itemType: 'stock', reservation: null, branchId: getOperationBranch()
     });
     await saveProducts();
     await saveTransactions();
@@ -5686,7 +5697,7 @@ window.addEventListener('storageReady', function(){
       transactions.unshift({
         id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
         date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
-        itemType: itemType, reservation: reservation
+        itemType: itemType, reservation: reservation, branchId: getOperationBranch()
       });
       // 予約品（客注品）入庫時は客注リストにも自動追加
       if(kind === 'in' && itemType === 'reserved' && reservation){
@@ -5830,7 +5841,7 @@ window.addEventListener('storageReady', function(){
           p.branchStock[opBranch1] = curStk1 - item.qty; p.stock = p.branchStock[opBranch1];
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
             type:'out', qty:item.qty, date:batchDate,
-            user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
+            user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch1 });
           batchItems.push({ name:p.name, spec:p.spec||'', qty:item.qty });
         }
         if(batchItems.length>0) outboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:batchItems });
@@ -5970,7 +5981,7 @@ window.addEventListener('storageReady', function(){
           p.branchStock[opBranch2] = curStk2 - item.qty; p.stock = p.branchStock[opBranch2];
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
-            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null });
+            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:opBranch2 });
         }
         entry.status = 'confirmed';
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
@@ -6137,7 +6148,7 @@ window.addEventListener('storageReady', function(){
         const opBranch3=getOperationBranch(); if(!p.branchStock) p.branchStock={}; p.branchStock[opBranch3]=(p.branchStock[opBranch3]||0)+item.qty; p.stock=p.branchStock[opBranch3];
         transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
           type:'in', qty:item.qty, date:batchDate,
-          user: currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
+          user: currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch3 });
         batchItems.push({ name:p.name, spec:p.spec||'', qty:item.qty, itemType:'stock' });
       }
       if(batchItems.length>0) inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:batchItems });
@@ -6363,6 +6374,11 @@ window.addEventListener('storageReady', function(){
   function renderHistory(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
+    // 社員は自支店の取引履歴のみ表示
+    if(currentUser && currentUser.role !== 'admin'){
+      const myBranch = currentUser.branchId || 'taniyabe';
+      list = list.filter(t => !t.branchId || t.branchId === myBranch);
+    }
 
     // 日付フィルター（共通処理）
     function applyDateFilter(items, dateField){
@@ -6654,6 +6670,12 @@ window.addEventListener('storageReady', function(){
   function loginSuccess(acc){
     currentUser = acc;
     sessionStorage.setItem('tkstock_session', acc.id);
+    // 社員は自支店に固定（管理者のみ全支店閲覧可）
+    if(acc.role !== 'admin'){
+      selectedBranchFilter = acc.branchId || 'taniyabe';
+    } else {
+      selectedBranchFilter = null; // 管理者は全支店表示
+    }
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
     renderUserBadge();
