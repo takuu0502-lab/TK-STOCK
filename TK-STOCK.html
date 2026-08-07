@@ -2506,7 +2506,7 @@ window.addEventListener('storageReady', function(){
   function renderCatTree(){
     const wrap = document.getElementById('catTree');
     const writable = canWriteData();
-    // 他支店閲覧中はタイヤ・ホイールカテゴリのみ表示
+    // 他支店閲覧中（社員）はタイヤ・ホイールカテゴリのみ表示
     const isOtherBranch = currentUser && currentUser.role !== 'admin'
       && selectedBranchFilter !== null
       && selectedBranchFilter !== currentUser.branchId;
@@ -2518,23 +2518,38 @@ window.addEventListener('storageReady', function(){
     const allowedWheelSubIds = _obWheelCat
       ? _obWheelCat.subs.filter(s => s.name === 'アルミホイール' || s.name === 'スチールホイール').map(s => s.id)
       : null;
+    // 支店タブ選択時: タイヤ・ホイール OR その支店所有の商品のみカウント
+    const _ctTireId = (categories.find(c => c.name === 'タイヤ') || {}).id;
+    const _ctWheelId = (categories.find(c => c.name === 'ホイール') || {}).id;
+    function branchFilteredProducts(){
+      if(selectedBranchFilter === null) return products;
+      return products.filter(p => {
+        const isShared = p.majorId === _ctTireId || p.majorId === _ctWheelId;
+        const isOwned = (p.branchId || 'taniyabe') === selectedBranchFilter;
+        return isShared || isOwned;
+      });
+    }
+    const visibleProducts = branchFilteredProducts();
     const displayTotal = allowedCatIds
-      ? products.filter(p => {
+      ? visibleProducts.filter(p => {
           if(!allowedCatIds.includes(p.majorId)) return false;
           if(_obWheelCat && p.majorId === _obWheelCat.id && allowedWheelSubIds){
             return allowedWheelSubIds.includes(p.subId);
           }
           return true;
         }).length
-      : products.length;
+      : visibleProducts.length;
     let html = '';
     html += '<div class="cat-row'+(selectedMajor===null?' selected':'')+'" data-root="1">'
           + '<span class="cat-label" style="font-size:13.5px;font-weight:600;color:inherit;">すべて</span>'
           + '<span class="cat-count-badge">'+displayTotal+'</span>'
           + '</div>';
     categories.forEach(cat=>{
-      // 他支店閲覧時: タイヤ・ホイール以外のカテゴリは非表示
+      // 他支店閲覧時（社員）: タイヤ・ホイール以外のカテゴリは非表示
       if(allowedCatIds && !allowedCatIds.includes(cat.id)) return;
+      // 支店タブ選択時: その支店に商品が存在しないカテゴリは非表示
+      const catCount = visibleProducts.filter(p => p.majorId === cat.id).length;
+      if(selectedBranchFilter !== null && !allowedCatIds && catCount === 0) return;
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
       const color = colorForMajor(cat.id);
@@ -2543,7 +2558,7 @@ window.addEventListener('storageReady', function(){
             + '<span class="chevron" style="font-size:9px;">'+(cat.subs.length ? '\u25B8' : '')+'</span>'
             + '<span class="cat-dot" style="background:'+color.text+';"></span>'
             + '<span class="cat-label">'+escapeHtml(cat.name)+'</span>'
-            + '<span class="cat-count-badge">'+countForMajor(cat.id)+'</span>'
+            + '<span class="cat-count-badge">'+catCount+'</span>'
             + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-major" data-id="'+cat.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-major" data-id="'+cat.id+'" title="削除">&times;</button></span>' : '')
             + '</div>';
       if(isOpen){
@@ -3225,10 +3240,20 @@ window.addEventListener('storageReady', function(){
       ? _wheelCat.subs.filter(s => s.name === 'アルミホイール' || s.name === 'スチールホイール').map(s => s.id)
       : null;
 
+    // 支店タブ選択時に使う共通カテゴリID（タイヤ・ホイール）
+    const _tireCatId = (categories.find(c => c.name === 'タイヤ') || {}).id;
+    const _wheelCatId = (categories.find(c => c.name === 'ホイール') || {}).id;
+
     let list = products.filter(p=>{
-      // 他支店閲覧時: タイヤ・ホイールカテゴリ以外を除外
+      // 支店タブ選択時: その支店が持つ商品 OR タイヤ・ホイール（全支店共通）のみ表示
+      if(selectedBranchFilter !== null){
+        const isSharedCat = (p.majorId === _tireCatId) || (p.majorId === _wheelCatId);
+        const isOwnedByBranch = (p.branchId || 'taniyabe') === selectedBranchFilter;
+        if(!isSharedCat && !isOwnedByBranch) return false;
+      }
+      // 他支店閲覧時（社員）: タイヤ・ホイールカテゴリ以外を除外
       if(crossBranchCatIds && !crossBranchCatIds.includes(p.majorId)) return false;
-      // 他支店閲覧時: ホイールはアルミ・スチール以外のサブを除外
+      // 他支店閲覧時（社員）: ホイールはアルミ・スチール以外のサブを除外
       if(crossBranchWheelSubIds && _wheelCat && p.majorId === _wheelCat.id){
         if(!crossBranchWheelSubIds.includes(p.subId)) return false;
       }
