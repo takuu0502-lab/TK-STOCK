@@ -5396,7 +5396,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="detail-stats">'
       + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
       + '<div class="detail-stat-value">'+getStock(p)+'</div>'
-      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>getStock(p); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()
+      + (()=>{ const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe'; const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>getStock(p); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()
       + '</div></div>'
       + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
@@ -5434,7 +5434,8 @@ window.addEventListener('storageReady', function(){
     function renderDetailProvList(){
       const el = document.getElementById('detailProvList');
       if(!el) return;
-      const entries = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===id));
+      const _detListOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const entries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&po.items.some(i=>i.productId===id));
       if(entries.length === 0){
         el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">仮出庫なし</div>';
         return;
