@@ -3401,15 +3401,18 @@ window.addEventListener('storageReady', function(){
               const bPct = Math.min(100, Math.round((bStk / bMax) * 100));
               const bLow = isOwn && (p.minStock > 0 && bStk <= p.minStock);
               let badges = '';
-              if(isOwn){
-                if(p.customerOrders && p.customerOrders.length > 0){
-                  badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
-                }
-                const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_ownBranchId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-                if(provQty > 0){
-                  const provOver = provQty > bStk;
+              // 仮出庫：全支店の列にそれぞれ表示
+              const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              if(provQty > 0){
+                const provOver = provQty > bStk;
+                if(isOwn){
                   badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>';
+                } else {
+                  badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap;">🔖 '+provQty+'本'+(provOver?' ⚠️':'')+' </div>';
                 }
+              }
+              if(isOwn && p.customerOrders && p.customerOrders.length > 0){
+                badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
               cell += '<div style="min-width:80px;padding:6px 10px;border-right:1px solid var(--bg-3);">'
                 + '<div style="font-size:10px;font-weight:700;color:var(--text-2);margin-bottom:3px;white-space:nowrap;">'+(isOwn?'自店舗':escapeHtml(branchName(brId)))+'</div>'
