@@ -6136,7 +6136,8 @@ window.addEventListener('storageReady', function(){
   function renderProvisionalList(){
     const wrap = document.getElementById('provisionalListWrap');
     if(!wrap) return;
-    const pending = provisionalOutbounds.filter(p=>p.status==='pending');
+    const _plOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const pending = provisionalOutbounds.filter(p=>p.status==='pending'&&(p.branchId||'taniyabe')===_plOwnBranch);
     if(pending.length===0){ wrap.innerHTML=''; return; }
     let html = '<div style="margin-top:4px;">'
       + '<div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:10px;">仮出庫リスト（'+pending.length+'件）</div>';
@@ -6144,12 +6145,12 @@ window.addEventListener('storageReady', function(){
       const d = new Date(entry.date);
       const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const totalQty = entry.items.reduce((s,x)=>s+x.qty,0);
-      // 在庫超過チェック
+      // 在庫超過チェック（自店舗の仮出庫のみ集計）
       const hasOver = entry.items.some(item=>{
         const p2 = products.find(x=>x.id===item.productId);
         if(!p2) return false;
-        const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
-        return allProvQty > p2.stock;
+        const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+        return allProvQty > getStock(p2);
       });
       const borderColor = hasOver ? 'var(--red)' : 'var(--amber)';
       const bgColor = hasOver ? 'rgba(220,50,50,0.07)' : 'var(--amber-dim)';
@@ -6169,12 +6170,13 @@ window.addEventListener('storageReady', function(){
         + '<div style="padding:10px 14px;">';
       entry.items.forEach(item=>{
         const p2 = products.find(x=>x.id===item.productId);
-        const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
-        const itemOver = p2 && allProvQty > p2.stock;
+        const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
+        const _p2Stk = p2 ? getStock(p2) : 0;
+        const itemOver = p2 && allProvQty > _p2Stk;
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line-soft);">'
           + '<div><div style="font-size:14px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
           + '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div>'
-          + (itemOver ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠️ 在庫'+p2.stock+'本に対し仮出庫合計'+allProvQty+'本</div>' : '')
+          + (itemOver ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠️ 在庫'+_p2Stk+'本に対し仮出庫合計'+allProvQty+'本</div>' : '')
           + '</div>'
           + '<div style="font-size:15px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'本</div>'
           + '</div>';
