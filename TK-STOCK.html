@@ -2988,7 +2988,6 @@ window.addEventListener('storageReady', function(){
             const bStk = stockForCatalogEntryByBranch(r, brId);
             const isOwn = brId === _catOwnBranchId;
             return '<td class="price-num" style="padding:4px 6px;">'
-              + '<div style="font-size:9px;font-weight:700;color:var(--text-3);margin-bottom:1px;white-space:nowrap;">'+(isOwn?'自店舗':escapeHtml(branchName(brId)))+'</div>'
               + '<span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'
               + '</td>';
           }).join('')
@@ -3415,7 +3414,6 @@ window.addEventListener('storageReady', function(){
                 badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
               cell += '<div style="min-width:80px;padding:6px 10px;border-right:1px solid var(--bg-3);">'
-                + '<div style="font-size:10px;font-weight:700;color:var(--text-2);margin-bottom:3px;white-space:nowrap;">'+(isOwn?'自店舗':escapeHtml(branchName(brId)))+'</div>'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
                 + '<div class="gauge-bar"><div class="gauge-fill" style="width:'+bPct+'%;background:'+bColor+';"></div></div>'
                 + (bLow ? '<span class="low-flag">在庫少</span>' : '')
