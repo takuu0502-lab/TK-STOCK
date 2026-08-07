@@ -6491,10 +6491,11 @@ window.addEventListener('storageReady', function(){
   function renderHistory(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
-    // 社員は閲覧可能支店の取引履歴のみ表示
-    if(currentUser && currentUser.role !== 'admin'){
-      const visible = getVisibleBranches();
-      list = list.filter(t => !t.branchId || visible.includes(t.branchId));
+    // 全ユーザー: 自支店の取引履歴のみ表示（管理者も含む）
+    // branchIdなしの旧データは谷田部店扱い
+    if(currentUser){
+      const ownBranch = currentUser.branchId || 'taniyabe';
+      list = list.filter(t => (t.branchId || 'taniyabe') === ownBranch);
     }
 
     // 日付フィルター（共通処理）
