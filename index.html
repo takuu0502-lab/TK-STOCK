@@ -1492,7 +1492,25 @@ window.addEventListener('storageReady', function(){
     {id:'iwama',    name:'岩間店'},
     {id:'katsuta',  name:'勝田店'}
   ];
+
+  // ★ 支店別 閲覧可能範囲マトリクス（社員用）
+  // 変更したい場合はここだけ編集すればOK
+  const BRANCH_VISIBILITY = {
+    taniyabe: ['taniyabe'],                        // 谷田部店社員 → 自支店のみ
+    iwama:    ['taniyabe', 'iwama', 'katsuta'],    // 岩間店社員   → 全支店閲覧可
+    katsuta:  ['taniyabe', 'iwama', 'katsuta'],    // 勝田店社員   → 全支店閲覧可
+  };
+
   function branchName(id){ const b=BRANCHES.find(x=>x.id===id); return b?b.name:''; }
+  // 現在のユーザーが閲覧できる支店IDリスト（管理者は全支店）
+  function getVisibleBranches(){
+    if(!currentUser) return BRANCHES.map(b=>b.id);
+    if(currentUser.role==='admin') return BRANCHES.map(b=>b.id);
+    return BRANCH_VISIBILITY[currentUser.branchId||'taniyabe'] || [currentUser.branchId||'taniyabe'];
+  }
+  function canViewBranch(branchId){
+    return getVisibleBranches().includes(branchId);
+  }
   function canEditProduct(p){
     if(!currentUser) return false;
     if(currentUser.role==='admin') return true;
@@ -1503,7 +1521,11 @@ window.addEventListener('storageReady', function(){
   // 支店別在庫ヘルパー
   function getStock(p){
     if(p.branchStock){
-      if(!selectedBranchFilter) return BRANCHES.reduce((s,b)=>s+(p.branchStock[b.id]||0),0);
+      if(!selectedBranchFilter){
+        // 管理者: 全支店合計 / 社員: 閲覧可能支店の合計
+        const vis = getVisibleBranches();
+        return vis.reduce((s,id)=>s+(p.branchStock[id]||0), 0);
+      }
       return p.branchStock[selectedBranchFilter] || 0;
     }
     return p.stock || 0;
@@ -3116,8 +3138,11 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('branchFilterWrap');
     if(!wrap) return;
     const isAdmin = currentUser && currentUser.role === 'admin';
-    if(!isAdmin){
-      // 社員・外部: 自支店バッジのみ表示、切り替え不可
+    const visibleIds = getVisibleBranches();
+    const canSwitch = isAdmin || visibleIds.length > 1;
+
+    if(!canSwitch){
+      // 閲覧可能支店が1つだけ（自支店固定）→ バッジのみ
       const myBranch = (currentUser && currentUser.branchId) || 'taniyabe';
       wrap.innerHTML = '<div style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-2);padding:5px 12px;border-radius:8px;font-size:12px;">'
         + '<span style="color:var(--text-3);">表示支店：</span>'
@@ -3125,8 +3150,12 @@ window.addEventListener('storageReady', function(){
         + '</div>';
       return;
     }
-    // 管理者: 全支店タブ表示
-    const tabs = [{id: null, name: '全支店（合計）'}, ...BRANCHES];
+
+    // 管理者または複数支店閲覧可: タブ表示
+    // 管理者のみ「全支店（合計）」タブを表示
+    const tabs = isAdmin
+      ? [{id: null, name: '全支店（合計）'}, ...BRANCHES]
+      : BRANCHES.filter(b => visibleIds.includes(b.id));
     const activeLabel = selectedBranchFilter ? branchName(selectedBranchFilter)+'の在庫を表示中' : '全支店の合計在庫を表示中';
     wrap.innerHTML = '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
       + tabs.map(b=>{
@@ -3139,7 +3168,10 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-branch-tab]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const val = btn.dataset.branchTab;
-        selectedBranchFilter = val === '' ? null : val;
+        const newFilter = val === '' ? null : val;
+        // 閲覧権限チェック
+        if(newFilter && !canViewBranch(newFilter)) return;
+        selectedBranchFilter = newFilter;
         renderProductTable();
         updateTransactionBranchBanner('in');
         updateTransactionBranchBanner('out');
@@ -6374,10 +6406,10 @@ window.addEventListener('storageReady', function(){
   function renderHistory(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
-    // 社員は自支店の取引履歴のみ表示
+    // 社員は閲覧可能支店の取引履歴のみ表示
     if(currentUser && currentUser.role !== 'admin'){
-      const myBranch = currentUser.branchId || 'taniyabe';
-      list = list.filter(t => !t.branchId || t.branchId === myBranch);
+      const visible = getVisibleBranches();
+      list = list.filter(t => !t.branchId || visible.includes(t.branchId));
     }
 
     // 日付フィルター（共通処理）
@@ -6670,11 +6702,12 @@ window.addEventListener('storageReady', function(){
   function loginSuccess(acc){
     currentUser = acc;
     sessionStorage.setItem('tkstock_session', acc.id);
-    // 社員は自支店に固定（管理者のみ全支店閲覧可）
-    if(acc.role !== 'admin'){
-      selectedBranchFilter = acc.branchId || 'taniyabe';
+    // ログイン時の支店フィルター初期値
+    if(acc.role === 'admin'){
+      selectedBranchFilter = null; // 管理者は全支店合計表示
     } else {
-      selectedBranchFilter = null; // 管理者は全支店表示
+      // 社員は自支店を初期表示（複数閲覧可の場合も自支店から開始）
+      selectedBranchFilter = acc.branchId || 'taniyabe';
     }
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
