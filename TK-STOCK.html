@@ -5363,7 +5363,8 @@ window.addEventListener('storageReady', function(){
     }
     const sell = p.sellPrice || 0;
     const margin = (cost && sell) ? (sell - cost) : null;
-    const hist = transactions.filter(t=>t.productId===id).slice(0, 100);
+    const _detHistOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const hist = transactions.filter(t=>t.productId===id&&(t.branchId||'taniyabe')===_detHistOwnBranch).slice(0, 100);
     const showCost = !isExternalUser();
     const writable = canWriteData();
 
