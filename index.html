@@ -5300,7 +5300,27 @@ window.addEventListener('storageReady', function(){
       const code = barcodeInput.value.trim();
       resultEl.innerHTML = '';
       if(!code) return;
-      const p = findByBarcode(code);
+      let p = findByBarcode(code);
+      // バーコード未登録でもBS_JAN_LOOKUPで照合して登録済み商品を探す
+      if(!p && /^\d{13}$/.test(code)){
+        const bsEntry = BS_JAN_LOOKUP.find(e=>e.j===code);
+        if(bsEntry){
+          const pSize = bsEntry.s;
+          const scored = products
+            .filter(pr=> normSpecSize(pr.spec||'')===pSize)
+            .map(pr=>({pr, score: scoreModelMatch(pr.name||'', bsEntry.m)}))
+            .sort((a,b)=>b.score-a.score);
+          if(scored.length>0 && scored[0].score>=0.5){
+            p = scored[0].pr;
+            // 次回スキャンのためにJANコードを自動保存
+            if(!p.barcode){
+              p.barcode = code;
+              saveProducts();
+            }
+            resultEl.innerHTML = '<div class="msg msg-ok" style="padding:6px 12px;margin-bottom:6px;">📗 ブリヂストン価格表より照合：<b>'+escapeHtml(bsEntry.m)+'</b></div>';
+          }
+        }
+      }
       if(!p){
         if(kind === 'in'){
           if(fromScan){
