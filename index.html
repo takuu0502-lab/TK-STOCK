@@ -2209,6 +2209,16 @@ window.addEventListener('storageReady', function(){
       transactions = t ? JSON.parse(t.value) : [];
       const pob = await window.storage.get('provisionalOutbounds', SHARED);
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
+      // branchId未設定の仮出庫レコードにstaff名からbranchIdを補完するマイグレーション
+      let pobMigrated = false;
+      provisionalOutbounds.forEach(po=>{
+        if(!po.branchId){
+          pobMigrated = true;
+          const staffUser = accounts.find(u=>u.displayName === po.staff);
+          po.branchId = (staffUser && staffUser.branchId) ? staffUser.branchId : 'taniyabe';
+        }
+      });
+      if(pobMigrated) await saveProvisionalOutbounds();
     }catch(e){ transactions = []; provisionalOutbounds = []; }
 
     renderCatTree();
