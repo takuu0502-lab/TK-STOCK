@@ -1005,6 +1005,11 @@
     <button class="btn btn-amber" id="openImportCatalogBtn">価格表を取込む（Excel）</button>
 
     <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">保管場所マスタ</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">商品の保管場所を登録します。商品登録・編集画面でプルダウン選択できます。</p>
+    <div id="locationMasterList" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+    <button class="btn btn-ghost btn-sm" id="addLocationMasterBtn">＋ 保管場所を追加</button>
+    <div style="height:32px;"></div>
     <div class="pricing-section-title">JANコード自動付与（ブリヂストン）</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
       登録済み商品のサイズ・商品名をもとにJANコードを自動照合します。バーコードが未登録の商品が対象です。照合結果を確認してから適用できます。
@@ -3126,6 +3131,7 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
+        + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(p.locationId && locations.find(l=>l.id===p.locationId) ? escapeHtml(locations.find(l=>l.id===p.locationId).name) : '—')+'</td>'
         + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>p.stock; return provQty>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()+'</td>'
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
         + '</tr>';
@@ -3134,8 +3140,8 @@ window.addEventListener('storageReady', function(){
     const someChecked = filteredList.some(p=>selectedProducts.has(p.id));
     const headerChk = '<th class="chk-col"><input type="checkbox" class="row-chk" id="bulkSelectAll"'+(allChecked?' checked':( someChecked?' style="accent-color:var(--amber);"':''))+' title="全選択/解除"></th>';
     const thead = recentFilter
-      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th><th>登録日時</th></tr></thead>'
-      : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>在庫数</th></tr></thead>';
+      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>保管場所</th><th>在庫数</th><th>登録日時</th></tr></thead>'
+      : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>保管場所</th><th>在庫数</th></tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     updateBulkBar();
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
@@ -3864,6 +3870,39 @@ window.addEventListener('storageReady', function(){
       if(ps.length===0) return;
       openOrderModal(ps);
     });
+    // 保管場所マスタ管理
+    function renderLocationMaster(){
+      const wrap = document.getElementById('locationMasterList');
+      if(!wrap) return;
+      if(locations.length === 0){
+        wrap.innerHTML = '<span style="font-size:12.5px;color:var(--text-3);">保管場所が登録されていません</span>';
+        return;
+      }
+      wrap.innerHTML = locations.map((l,i)=>
+        '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;">'
+        + escapeHtml(l.name)
+        + '<button data-loc-del="'+i+'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:0 2px;line-height:1;" title="削除">×</button>'
+        + '</div>'
+      ).join('');
+      wrap.querySelectorAll('[data-loc-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const idx = parseInt(btn.dataset.locDel, 10);
+          if(!confirm('「'+locations[idx].name+'」を削除しますか？')) return;
+          locations.splice(idx, 1);
+          await saveLocations();
+          renderLocationMaster();
+        });
+      });
+    }
+    renderLocationMaster();
+    document.getElementById('addLocationMasterBtn').addEventListener('click', async ()=>{
+      const name = prompt('保管場所を入力してください（例：倉庫A、店頭左棚）');
+      if(!name || !name.trim()) return;
+      locations.push({ id: uid('loc'), name: name.trim() });
+      await saveLocations();
+      renderLocationMaster();
+    });
+
     // JANコード自動照合
     document.getElementById('openJanMatchBtn').addEventListener('click', ()=>{
       const msgEl = document.getElementById('janMatchMsg');
@@ -4806,6 +4845,7 @@ window.addEventListener('storageReady', function(){
   }
   loadJanDict();
   loadSuppliers();
+  loadLocations();
 
   // ---------- JANコードルックアップ ----------
   async function lookupJan(code){
@@ -4899,6 +4939,15 @@ window.addEventListener('storageReady', function(){
     populateSupplierSelect(newS.id);
   });
 
+  document.getElementById('addLocationBtn').addEventListener('click', async ()=>{
+    const name = prompt('保管場所を入力してください（例：倉庫A、店頭左棚）');
+    if(!name || !name.trim()) return;
+    const newL = { id: uid('loc'), name: name.trim() };
+    locations.push(newL);
+    await saveLocations();
+    populateLocationSelect(newL.id);
+  });
+
   document.getElementById('janLookupBtn').addEventListener('click', ()=>{
     const code = document.getElementById('f_barcode').value.trim();
     lookupJan(code);
@@ -4919,6 +4968,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_brand').value = '';
     document.getElementById('f_partno').value = '';
     populateSupplierSelect('');
+    populateLocationSelect('');
     document.getElementById('f_name').value = '';
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
@@ -4948,6 +4998,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_brand').value = p.brand || '';
     document.getElementById('f_partno').value = p.partno || '';
     populateSupplierSelect(p.supplierId || '');
+    populateLocationSelect(p.locationId || '');
     document.getElementById('f_name').value = p.name;
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
@@ -5256,6 +5307,7 @@ window.addEventListener('storageReady', function(){
     const brand = document.getElementById('f_brand').value.trim();
     const partno = document.getElementById('f_partno').value.trim();
     const supplierId = document.getElementById('f_supplier').value || '';
+    const locationId = document.getElementById('f_location').value || '';
     const tireModelVal = document.getElementById('f_tiremodel').value;
     let name = document.getElementById('f_name').value.trim();
     if(!name && tireModelVal){
@@ -5290,9 +5342,9 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
+      Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, createdAt: new Date().toISOString()});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
