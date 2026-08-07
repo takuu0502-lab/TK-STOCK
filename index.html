@@ -1120,7 +1120,7 @@
     <div class="field">
       <label>保管場所</label>
       <div style="display:flex;gap:6px;align-items:center;">
-        <select id="f_location" style="flex:1;"></select>
+        <select id="f_location" style="flex:1;"><option value="">（未設定）</option></select>
         <button type="button" id="addLocationBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap;flex-shrink:0;">＋追加</button>
       </div>
     </div>
@@ -4986,6 +4986,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'none';
+    populateLocationSelect('');
     modal.classList.add('show');
     if(prefillBarcode && /^\d{8,}$/.test(prefillBarcode)) lookupJan(prefillBarcode);
   }
@@ -5016,6 +5017,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
+    populateLocationSelect(p.locationId || '');
     modal.classList.add('show');
     // バーコード未設定の場合、BS_JAN_LOOKUPから自動補完
     if(!p.barcode && p.spec){
