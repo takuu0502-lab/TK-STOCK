@@ -2163,6 +2163,23 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('suppliers', JSON.stringify(suppliers), SHARED); }
     catch(e){ console.error('save suppliers failed', e); }
   }
+  async function loadLocations(){
+    try{
+      const r = await window.storage.get('locations', SHARED);
+      locations = r ? JSON.parse(r.value) : [];
+    }catch(_){ locations = []; }
+    if(!Array.isArray(locations)) locations = [];
+  }
+  async function saveLocations(){
+    try{ await window.storage.set('locations', JSON.stringify(locations), SHARED); }
+    catch(e){ console.error('save locations failed', e); }
+  }
+  function populateLocationSelect(selectedId){
+    const sel = document.getElementById('f_location');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">（未設定）</option>'
+      + locations.map(l=>`<option value="${l.id}"${l.id===selectedId?' selected':''}>${escapeHtml(l.name)}</option>`).join('');
+  }
   function populateSupplierSelect(selectedId){
     const sel = document.getElementById('f_supplier');
     if(!sel) return;
