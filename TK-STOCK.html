@@ -769,6 +769,7 @@
       <div class="table-area">
         <div class="breadcrumb" id="breadcrumb"></div>
         <div id="priceCatalogWrap"></div>
+        <div id="branchFilterWrap" style="margin-bottom:8px;"></div>
         <div id="inventoryFilter" style="display:none;margin-bottom:10px;"></div>
         <div id="productTableWrap"></div>
       </div>
@@ -1396,6 +1397,14 @@
           </select>
         </div>
       </div>
+      <div class="field">
+        <label>所属支店</label>
+        <select id="acc_branch">
+          <option value="taniyabe">谷田部店</option>
+          <option value="iwama">岩間店</option>
+          <option value="katsuta">勝田店</option>
+        </select>
+      </div>
       <div id="accountsMsg"></div>
       <button class="btn btn-amber" id="accountsAdd" style="width:100%;margin-top:6px;">アカウントを追加</button>
     </div>
@@ -1475,6 +1484,20 @@ window.addEventListener('storageReady', function(){
   let categories = [];
   let editingId = null;
   let janDict = {};
+  // ── 支店マスタ ──────────────────────────────────────────
+  const BRANCHES = [
+    {id:'taniyabe', name:'谷田部店'},
+    {id:'iwama',    name:'岩間店'},
+    {id:'katsuta',  name:'勝田店'}
+  ];
+  function branchName(id){ const b=BRANCHES.find(x=>x.id===id); return b?b.name:''; }
+  function canEditProduct(p){
+    if(!currentUser) return false;
+    if(currentUser.role==='admin') return true;
+    return !p.branchId || p.branchId===(currentUser.branchId||'taniyabe');
+  }
+  let selectedBranchFilter = null; // null=全支店, 'taniyabe'等=絞込
+
   let suppliers = [];
   let locations = [];
   let accounts = [];
@@ -2125,6 +2148,11 @@ window.addEventListener('storageReady', function(){
         migrated = true;
         delete p._costManual;
         delete p._sellManual;
+      }
+      // branchId未設定の既存商品→谷田部店に移行
+      if(!p.branchId){
+        migrated = true;
+        p.branchId = 'taniyabe';
       }
     });
     if(migrated) await saveProducts();
@@ -3059,9 +3087,30 @@ window.addEventListener('storageReady', function(){
     if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
   }
 
+  function renderBranchFilter(){
+    const wrap = document.getElementById('branchFilterWrap');
+    if(!wrap) return;
+    const tabs = [{id: null, name: '全支店'}, ...BRANCHES];
+    wrap.innerHTML = '<div style="display:flex;gap:4px;flex-wrap:wrap;">'
+      + tabs.map(b=>{
+          const active = selectedBranchFilter === b.id;
+          return '<button class="btn btn-sm '+(active?'btn-amber':'btn-ghost')+'" data-branch-tab="'+(b.id||'')+'" style="font-size:12px;">'
+            + escapeHtml(b.name) + '</button>';
+        }).join('')
+      + '</div>';
+    wrap.querySelectorAll('[data-branch-tab]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const val = btn.dataset.branchTab;
+        selectedBranchFilter = val === '' ? null : val;
+        renderProductTable();
+      });
+    });
+  }
+
   function renderProductTable(){
     renderBreadcrumb();
     renderPriceCatalog();
+    renderBranchFilter();
     const wrap = document.getElementById('productTableWrap');
     let list = products.filter(p=>{
       if(selectedMajor !== null && p.majorId !== selectedMajor) return false;
@@ -3075,6 +3124,7 @@ window.addEventListener('storageReady', function(){
           : p.spec.indexOf(selectedTireAspect) !== -1
       ))) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
+      if(selectedBranchFilter !== null && (p.branchId||'taniyabe') !== selectedBranchFilter) return false;
       return true;
     });
     renderInventoryFilter(list.length > 0);
@@ -3125,9 +3175,11 @@ window.addEventListener('storageReady', function(){
       const showBrand = !_isTire || (p.brand && p.brand !== (_catE ? _catE.b : ''));
       const createdStr = p.createdAt ? (()=>{ const d=new Date(p.createdAt); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })() : '';
       const isChecked = selectedProducts.has(p.id);
+      const pBranch = p.branchId || 'taniyabe';
+      const showBranchBadge = selectedBranchFilter === null; // 全支店表示時のみバッジ表示
       return '<tr class="clickable-row'+(isChecked?' row-selected':'')+'" data-detail="'+p.id+'">'
         + '<td class="chk-col"><input type="checkbox" class="row-chk" data-chk-id="'+p.id+'"'+(isChecked?' checked':'')+' onclick="event.stopPropagation();"></td>'
-        + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+'</td>' : '<td></td>')
+        + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+(showBranchBadge?'<br><span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>' : '<td>'+(showBranchBadge?'<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
@@ -4993,6 +5045,10 @@ window.addEventListener('storageReady', function(){
   function openEditModal(id){
     const p = products.find(x=>x.id===id);
     if(!p) return;
+    if(!canEditProduct(p)){
+      alert('他支店（'+branchName(p.branchId||'taniyabe')+'）の商品は編集できません。');
+      return;
+    }
     editingId = id;
     document.getElementById('modalTitle').textContent = '商品情報を編集';
     document.getElementById('f_barcode').value = p.barcode;
@@ -5346,7 +5402,8 @@ window.addEventListener('storageReady', function(){
       const p = products.find(x=>x.id===editingId);
       Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, createdAt: new Date().toISOString()});
+      const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, branchId: newBranchId, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
@@ -5411,6 +5468,11 @@ window.addEventListener('storageReady', function(){
         } else {
           resultEl.innerHTML = '<div class="msg msg-error">未登録のバーコードです。出庫するには先に商品登録が必要です。</div>';
         }
+        return;
+      }
+      // 他支店商品への入出庫チェック
+      if(!canEditProduct(p)){
+        resultEl.innerHTML = '<div class="msg msg-error">他支店（'+escapeHtml(branchName(p.branchId||'taniyabe'))+'）の商品への入出庫はできません。</div>';
         return;
       }
       if(kind === 'in'){
@@ -6571,7 +6633,10 @@ window.addEventListener('storageReady', function(){
 
   function renderUserBadge(){
     const el = document.getElementById('userBadge');
-    el.innerHTML = 'ログイン者情報：' + escapeHtml(currentUser.displayName) + ' <span class="'+roleBadgeClass(currentUser.role)+'">'+roleLabel(currentUser.role)+'</span>';
+    const userBranchLabel = branchName(currentUser.branchId || 'taniyabe');
+    el.innerHTML = 'ログイン者情報：' + escapeHtml(currentUser.displayName)
+      + ' <span class="'+roleBadgeClass(currentUser.role)+'">'+roleLabel(currentUser.role)+'</span>'
+      + ' <span style="font-size:11px;background:var(--bg-3);color:var(--text-2);padding:2px 8px;border-radius:8px;margin-left:4px;">'+escapeHtml(userBranchLabel)+'</span>';
     document.getElementById('openAccounts').style.display = isAdminUser() ? 'inline-block' : 'none';
     document.getElementById('switchAccountBtn').style.display = 'inline-block';
     applyRolePermissionsToUI();
@@ -6924,9 +6989,11 @@ window.addEventListener('storageReady', function(){
     const isAdmin = currentUser && currentUser.role === 'admin';
     wrap.innerHTML = accounts.map(a=>
       '<div class="account-row"><div>'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
-      + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span></div>'
+      + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
+      + '<span style="font-size:11px;background:var(--bg-3);color:var(--text-2);padding:1px 7px;border-radius:8px;margin-left:5px;">'+escapeHtml(branchName(a.branchId||'taniyabe'))+'</span>'
+      + '</div>'
       + (a.id !== currentUser.id
-          ? '<div style="display:flex;align-items:center;gap:6px;">'
+          ? '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
             + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-edit-name="'+a.id+'" title="名前を編集">✏️</button>' : '')
             + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-change-pw="'+a.id+'" title="パスワード変更">🔑</button>' : '')
             + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
@@ -6934,6 +7001,9 @@ window.addEventListener('storageReady', function(){
             + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
             + '<option value="external"'+(a.role==='external'?' selected':'')+'>外部</option>'
             + '</select>'
+            + (isAdmin ? '<select data-change-branch="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
+              + BRANCHES.map(b=>'<option value="'+b.id+'"'+(( a.branchId||'taniyabe')===b.id?' selected':'')+'>'+escapeHtml(b.name)+'</option>').join('')
+              + '</select>' : '')
             + '<button class="btn btn-sm btn-ghost" data-del-acc="'+a.id+'">削除</button>'
             + '</div>'
           : '<span style="font-size:11px;color:var(--text-3);">(自分)</span>')
@@ -7002,6 +7072,15 @@ window.addEventListener('storageReady', function(){
         renderAccountsList();
       });
     });
+    wrap.querySelectorAll('[data-change-branch]').forEach(sel=>{
+      sel.addEventListener('change', async ()=>{
+        const target = accounts.find(x=>x.id === sel.dataset.changeBranch);
+        if(!target) return;
+        target.branchId = sel.value;
+        await saveAccounts();
+        renderAccountsList();
+      });
+    });
     wrap.querySelectorAll('[data-del-acc]').forEach(b=>{
       b.addEventListener('click', async ()=>{
         const target = accounts.find(x=>x.id === b.dataset.delAcc);
@@ -7022,13 +7101,14 @@ window.addEventListener('storageReady', function(){
     const password = document.getElementById('acc_password').value;
     const displayName = document.getElementById('acc_displayname').value.trim();
     const role = document.getElementById('acc_role').value;
+    const branchId = document.getElementById('acc_branch').value || 'taniyabe';
     const msgEl = document.getElementById('accountsMsg');
     if(!username || !password || !displayName){ msgEl.innerHTML = '<div class="msg msg-error">すべての項目を入力してください。</div>'; return; }
     if(accounts.find(a=>a.username === username)){ msgEl.innerHTML = '<div class="msg msg-error">このログインIDは既に使われています。</div>'; return; }
     if(password.length < 4){ msgEl.innerHTML = '<div class="msg msg-error">パスワードは4文字以上にしてください。</div>'; return; }
     const salt = randomHex(16);
     const hash = await sha256Hex(salt + password);
-    accounts.push({id: uid('u'), username, salt, hash, displayName, role});
+    accounts.push({id: uid('u'), username, salt, hash, displayName, role, branchId});
     await saveAccounts();
     document.getElementById('acc_username').value = '';
     document.getElementById('acc_password').value = '';
