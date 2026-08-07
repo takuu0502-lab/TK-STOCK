@@ -3319,8 +3319,14 @@ window.addEventListener('storageReady', function(){
       });
     }
     // 複数支店閲覧可能な場合は支店別在庫列を表示
-    const _visibleBranches = getVisibleBranches();
+    // 列の並び順: 自店舗 → 勝田 → 谷田部 → 岩間
+    const _colOrder = ['katsuta', 'taniyabe', 'iwama'];
     const _ownBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _visibleBranches = getVisibleBranches().slice().sort((a, b) => {
+      if(a === _ownBranchId) return -1;
+      if(b === _ownBranchId) return 1;
+      return _colOrder.indexOf(a) - _colOrder.indexOf(b);
+    });
     const _showMultiCols = _visibleBranches.length > 1
       && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null);
 
