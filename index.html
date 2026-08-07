@@ -2506,12 +2506,24 @@ window.addEventListener('storageReady', function(){
   function renderCatTree(){
     const wrap = document.getElementById('catTree');
     const writable = canWriteData();
+    // 他支店閲覧中はタイヤ・ホイールカテゴリのみ表示
+    const isOtherBranch = currentUser && currentUser.role !== 'admin'
+      && selectedBranchFilter !== null
+      && selectedBranchFilter !== currentUser.branchId;
+    const allowedCatIds = isOtherBranch
+      ? categories.filter(c => c.name === 'タイヤ' || c.name === 'ホイール').map(c => c.id)
+      : null;
+    const displayTotal = allowedCatIds
+      ? products.filter(p => allowedCatIds.includes(p.majorId)).length
+      : products.length;
     let html = '';
     html += '<div class="cat-row'+(selectedMajor===null?' selected':'')+'" data-root="1">'
           + '<span class="cat-label" style="font-size:13.5px;font-weight:600;color:inherit;">すべて</span>'
-          + '<span class="cat-count-badge">'+products.length+'</span>'
+          + '<span class="cat-count-badge">'+displayTotal+'</span>'
           + '</div>';
     categories.forEach(cat=>{
+      // 他支店閲覧時: タイヤ・ホイール以外のカテゴリは非表示
+      if(allowedCatIds && !allowedCatIds.includes(cat.id)) return;
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
       const color = colorForMajor(cat.id);
