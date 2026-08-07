@@ -1496,7 +1496,7 @@ window.addEventListener('storageReady', function(){
   // ★ 支店別 閲覧可能範囲マトリクス（社員用）
   // 変更したい場合はここだけ編集すればOK
   const BRANCH_VISIBILITY = {
-    taniyabe: ['taniyabe'],                        // 谷田部店社員 → 自支店のみ
+    taniyabe: ['taniyabe', 'iwama', 'katsuta'],    // 谷田部店社員 → 全支店閲覧可
     iwama:    ['taniyabe', 'iwama', 'katsuta'],    // 岩間店社員   → 全支店閲覧可
     katsuta:  ['taniyabe', 'iwama', 'katsuta'],    // 勝田店社員   → 全支店閲覧可
   };
