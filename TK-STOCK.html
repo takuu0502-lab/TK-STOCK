@@ -2507,7 +2507,9 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('catTree');
     const writable = canWriteData();
     // 他支店閲覧中（社員）はタイヤ・ホイールカテゴリのみ表示
+    // branchId未設定のアカウントは制限なし（旧アカウント互換）
     const isOtherBranch = currentUser && currentUser.role !== 'admin'
+      && !!currentUser.branchId
       && selectedBranchFilter !== null
       && selectedBranchFilter !== currentUser.branchId;
     const allowedCatIds = isOtherBranch
@@ -2554,7 +2556,7 @@ window.addEventListener('storageReady', function(){
       if(allowedCatIds && !allowedCatIds.includes(cat.id)) return;
       // 他支店タブ閲覧時のみ: 商品が存在しないカテゴリを非表示（自店舗タブは全カテゴリ表示）
       const catCount = visibleProducts.filter(p => p.majorId === cat.id).length;
-      const _isOwnBranch = !currentUser || currentUser.role === 'admin' || selectedBranchFilter === currentUser.branchId;
+      const _isOwnBranch = !currentUser || currentUser.role === 'admin' || !currentUser.branchId || selectedBranchFilter === currentUser.branchId;
       if(selectedBranchFilter !== null && !allowedCatIds && !_isOwnBranch && catCount === 0) return;
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
@@ -3234,7 +3236,9 @@ window.addEventListener('storageReady', function(){
     renderBranchFilter();
     const wrap = document.getElementById('productTableWrap');
     // 他支店閲覧中はタイヤ・ホイール（アルミ/スチールのみ）表示（社員のみ適用）
+    // branchId未設定のアカウントは制限なし（旧アカウント互換）
     const isViewingOtherBranch = currentUser && currentUser.role !== 'admin'
+      && !!currentUser.branchId
       && selectedBranchFilter !== null
       && selectedBranchFilter !== currentUser.branchId;
     const crossBranchCatIds = isViewingOtherBranch
