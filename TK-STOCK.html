@@ -2756,6 +2756,17 @@ window.addEventListener('storageReady', function(){
     });
     return total;
   }
+  function stockForCatalogEntryByBranch(r, branchId){
+    let total = 0;
+    products.forEach(p=>{
+      if(!p.spec || !p.name) return;
+      if(r.s.indexOf(p.spec) === -1) return;
+      if(p.name.indexOf(r.b) === -1 || p.name.indexOf(r.m) === -1) return;
+      const bStk = p.branchStock ? (p.branchStock[branchId] || 0) : (branchId === 'taniyabe' ? (p.stock || 0) : 0);
+      total += bStk;
+    });
+    return total;
+  }
   function findProductForCatalogEntry(r){
     return products.find(p => p.spec && p.name && r.s.indexOf(p.spec) !== -1 && p.name.indexOf(r.b) !== -1 && p.name.indexOf(r.m) !== -1) || null;
   }
@@ -2953,14 +2964,35 @@ window.addEventListener('storageReady', function(){
     }
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
+    // 支店別在庫列フラグ（商品一覧と同じロジック）
+    const _catColOrder = ['katsuta', 'taniyabe', 'iwama'];
+    const _catOwnBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _catVisibleBranches = getVisibleBranches().slice().sort((a, b) => {
+      if(a === _catOwnBranchId) return -1;
+      if(b === _catOwnBranchId) return 1;
+      return _catColOrder.indexOf(a) - _catColOrder.indexOf(b);
+    });
+    const _catShowMultiCols = _catVisibleBranches.length > 1
+      && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null);
+
     const rows = matches.map((r,i)=>{
       // カタログ表示は常に価格調整ルールで計算（商品登録の個別価格は使用しない）
       const _prod = findProductForCatalogEntry(r);
       const cost = computeCostPrice(r.b, r.m, r.w, r.t);
       const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-      const stock = stockForCatalogEntry(r);
       const cKey = r.b+'||'+r.m+'||'+r.s;
       const checked = catalogQuoteSelection.has(cKey);
+      // 在庫セル
+      const stockCell = _catShowMultiCols
+        ? _catVisibleBranches.map(brId => {
+            const bStk = stockForCatalogEntryByBranch(r, brId);
+            const isOwn = brId === _catOwnBranchId;
+            return '<td class="price-num" style="padding:4px 6px;">'
+              + '<div style="font-size:9px;font-weight:700;color:var(--text-3);margin-bottom:1px;white-space:nowrap;">'+(isOwn?'自店舗':escapeHtml(branchName(brId)))+'</div>'
+              + '<span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'
+              + '</td>';
+          }).join('')
+        : '<td class="price-num" style="color:'+(stockForCatalogEntry(r)>0?'var(--teal)':'var(--text-3)')+';">'+stockForCatalogEntry(r)+'</td>';
       return '<tr data-catalog-idx="'+i+'">'
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
         + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
@@ -2969,7 +3001,7 @@ window.addEventListener('storageReady', function(){
         + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost!==null ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</td>' : '')
         + '<td class="price-num" style="color:var(--amber);">'+(sell!==null ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</td>'
-        + '<td class="price-num" style="color:'+(stock>0?'var(--teal)':'var(--text-3)')+';">'+stock+'</td>'
+        + stockCell
         + '</tr>';
     }).join('');
     const quoteBarHtml = catalogQuoteSelection.size > 0
@@ -2990,7 +3022,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
-      + '<table><thead><tr>'+(forceTire ? '<th class="no-print">選択</th>' : '')+'<th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th><th>在庫数</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      + '<table><thead><tr>'+(forceTire ? '<th class="no-print">選択</th>' : '')+'<th>銘柄</th><th>サイズ</th>'+(showCost?'<th>A表価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>希望小売<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(showCost?'<th>仕入れ価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>':'')+'<th>販売価格<br><span style="font-weight:400;font-size:9.5px;letter-spacing:0;">(税抜)</span></th>'+(_catShowMultiCols ? _catVisibleBranches.map(brId=>'<th style="font-size:10px;white-space:nowrap;">'+(brId===_catOwnBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('') : '<th>在庫数</th>')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 
     wrap.querySelectorAll('[data-catalog-chk]').forEach(cb=>{
       cb.addEventListener('change', ()=>{
