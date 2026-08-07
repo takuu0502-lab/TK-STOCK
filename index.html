@@ -2552,9 +2552,10 @@ window.addEventListener('storageReady', function(){
     categories.forEach(cat=>{
       // 他支店閲覧時（社員）: タイヤ・ホイール以外のカテゴリは非表示
       if(allowedCatIds && !allowedCatIds.includes(cat.id)) return;
-      // 支店タブ選択時: その支店に商品が存在しないカテゴリは非表示
+      // 他支店タブ閲覧時のみ: 商品が存在しないカテゴリを非表示（自店舗タブは全カテゴリ表示）
       const catCount = visibleProducts.filter(p => p.majorId === cat.id).length;
-      if(selectedBranchFilter !== null && !allowedCatIds && catCount === 0) return;
+      const _isOwnBranch = !currentUser || currentUser.role === 'admin' || selectedBranchFilter === currentUser.branchId;
+      if(selectedBranchFilter !== null && !allowedCatIds && !_isOwnBranch && catCount === 0) return;
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
       const color = colorForMajor(cat.id);
