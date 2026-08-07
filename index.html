@@ -1112,6 +1112,13 @@
         <button type="button" id="addSupplierBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap;flex-shrink:0;">＋追加</button>
       </div>
     </div>
+    <div class="field">
+      <label>保管場所</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select id="f_location" style="flex:1;"></select>
+        <button type="button" id="addLocationBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap;flex-shrink:0;">＋追加</button>
+      </div>
+    </div>
     <div class="row">
       <div class="field" style="flex:1;">
         <label>現在庫数</label>
@@ -1464,6 +1471,7 @@ window.addEventListener('storageReady', function(){
   let editingId = null;
   let janDict = {};
   let suppliers = [];
+  let locations = [];
   let accounts = [];
   let currentUser = null;
 
