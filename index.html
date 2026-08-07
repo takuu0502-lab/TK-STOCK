@@ -3184,7 +3184,16 @@ window.addEventListener('storageReady', function(){
     renderPriceCatalog();
     renderBranchFilter();
     const wrap = document.getElementById('productTableWrap');
+    // 他支店閲覧中はタイヤ・ホイールのみ表示（社員のみ適用）
+    const isViewingOtherBranch = currentUser && currentUser.role !== 'admin'
+      && selectedBranchFilter && selectedBranchFilter !== (currentUser.branchId || 'taniyabe');
+    const crossBranchCatIds = isViewingOtherBranch
+      ? categories.filter(c => c.name === 'タイヤ' || c.name === 'ホイール').map(c => c.id)
+      : null;
+
     let list = products.filter(p=>{
+      // 他支店閲覧時: タイヤ・ホイールカテゴリ以外を除外
+      if(crossBranchCatIds && !crossBranchCatIds.includes(p.majorId)) return false;
       if(selectedMajor !== null && p.majorId !== selectedMajor) return false;
       if(selectedSub !== null && p.subId !== selectedSub) return false;
       if(selectedSpec !== null && !(p.spec && p.spec.indexOf(selectedSpec) !== -1)) return false;
