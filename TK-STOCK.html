@@ -798,6 +798,7 @@
 
   <div class="panel" id="tab-in" style="display:none;">
     <h2 class="section-title">入庫処理</h2>
+    <div id="inBranchBanner" style="margin-bottom:10px;"></div>
     <div class="row">
       <div>
         <label>バーコードを入力またはスキャン</label>
@@ -820,6 +821,7 @@
 
   <div class="panel" id="tab-out" style="display:none;">
     <h2 class="section-title">出庫処理</h2>
+    <div id="outBranchBanner" style="margin-bottom:10px;"></div>
     <div class="row">
       <div>
         <label>バーコードを入力またはスキャン</label>
@@ -1498,6 +1500,24 @@ window.addEventListener('storageReady', function(){
   }
   let selectedBranchFilter = null; // null=全支店, 'taniyabe'等=絞込
 
+  // 支店別在庫ヘルパー
+  function getStock(p){
+    if(p.branchStock){
+      if(!selectedBranchFilter) return BRANCHES.reduce((s,b)=>s+(p.branchStock[b.id]||0),0);
+      return p.branchStock[selectedBranchFilter] || 0;
+    }
+    return p.stock || 0;
+  }
+  function getOperationBranch(){
+    return selectedBranchFilter || (currentUser && currentUser.branchId) || 'taniyabe';
+  }
+  function canOperateBranch(){
+    if(!currentUser) return false;
+    if(currentUser.role==='admin') return true;
+    const opBranch = getOperationBranch();
+    return (currentUser.branchId||'taniyabe') === opBranch;
+  }
+
   let suppliers = [];
   let locations = [];
   let accounts = [];
@@ -2149,10 +2169,15 @@ window.addEventListener('storageReady', function(){
         delete p._costManual;
         delete p._sellManual;
       }
-      // branchId未設定の既存商品→谷田部店に移行
+      // branchId未設定の既存商品→谷田部店に移行（削除可だが互換のため保持）
       if(!p.branchId){
-        migrated = true;
         p.branchId = 'taniyabe';
+      }
+      // 支店別在庫に移行（branchStockがなければ既存stockをtaniyabeに割り当て）
+      if(!p.branchStock){
+        migrated = true;
+        p.branchStock = {};
+        BRANCHES.forEach(b=>{ p.branchStock[b.id] = b.id==='taniyabe' ? (p.stock||0) : 0; });
       }
     });
     if(migrated) await saveProducts();
@@ -2655,7 +2680,7 @@ window.addEventListener('storageReady', function(){
       if(!p.spec || !p.name) return;
       if(r.s.indexOf(p.spec) === -1) return;
       if(p.name.indexOf(r.b) === -1 || p.name.indexOf(r.m) === -1) return;
-      total += p.stock;
+      total += getStock(p);
     });
     return total;
   }
@@ -3013,7 +3038,7 @@ window.addEventListener('storageReady', function(){
         + '<td class="price-num" style="color:var(--text-2);">—</td>'
         + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost?'¥'+cost.toLocaleString('ja-JP'):'—')+'</td>' : '')
         + '<td class="price-num" style="color:var(--amber);">'+(sell?'¥'+sell.toLocaleString('ja-JP'):'—')+'</td>'
-        + '<td class="price-num" style="color:'+(p.stock>0?'var(--teal)':'var(--text-3)')+';">'+p.stock+'</td>'
+        + '<td class="price-num" style="color:'+((getStock(p))>0?'var(--teal)':'var(--text-3)')+';">'+getStock(p)+'</td>'
         + '</tr>';
     }).join('');
 
@@ -3090,19 +3115,23 @@ window.addEventListener('storageReady', function(){
   function renderBranchFilter(){
     const wrap = document.getElementById('branchFilterWrap');
     if(!wrap) return;
-    const tabs = [{id: null, name: '全支店'}, ...BRANCHES];
-    wrap.innerHTML = '<div style="display:flex;gap:4px;flex-wrap:wrap;">'
+    const tabs = [{id: null, name: '全支店（合計）'}, ...BRANCHES];
+    const activeLabel = selectedBranchFilter ? branchName(selectedBranchFilter)+'の在庫を表示中' : '全支店の合計在庫を表示中';
+    wrap.innerHTML = '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
       + tabs.map(b=>{
           const active = selectedBranchFilter === b.id;
           return '<button class="btn btn-sm '+(active?'btn-amber':'btn-ghost')+'" data-branch-tab="'+(b.id||'')+'" style="font-size:12px;">'
             + escapeHtml(b.name) + '</button>';
         }).join('')
+      + '<span style="font-size:11px;color:var(--text-3);margin-left:6px;">📦 '+escapeHtml(activeLabel)+'</span>'
       + '</div>';
     wrap.querySelectorAll('[data-branch-tab]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const val = btn.dataset.branchTab;
         selectedBranchFilter = val === '' ? null : val;
         renderProductTable();
+        updateTransactionBranchBanner('in');
+        updateTransactionBranchBanner('out');
       });
     });
   }
@@ -3124,11 +3153,10 @@ window.addEventListener('storageReady', function(){
           : p.spec.indexOf(selectedTireAspect) !== -1
       ))) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
-      if(selectedBranchFilter !== null && (p.branchId||'taniyabe') !== selectedBranchFilter) return false;
       return true;
     });
     renderInventoryFilter(list.length > 0);
-    let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> p.stock > 0) : list;
+    let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getStock(p) > 0) : list;
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && po.items.some(i => i.productId === p.id)));
     if(recentFilter){
@@ -3163,14 +3191,15 @@ window.addEventListener('storageReady', function(){
       });
     }
     let rows = filteredList.map(p=>{
-      const max = Math.max(p.stock, p.minStock*2, 5, 1);
-      const pct = Math.min(100, Math.round((p.stock / max) * 100));
-      const color = gaugeColor(p.stock, p.minStock);
+      const stk = getStock(p);
+      const max = Math.max(stk, p.minStock*2, 5, 1);
+      const pct = Math.min(100, Math.round((stk / max) * 100));
+      const color = gaugeColor(stk, p.minStock);
       const _catE = findCatalogEntryForProduct(p);
       const brandName = p.brand || (_catE ? _catE.b : '');
       const _pMajor = majorById(p.majorId);
       const _isTire = _pMajor && _pMajor.name === 'タイヤ';
-      const low = (p.minStock > 0 && p.stock <= p.minStock);
+      const low = (p.minStock > 0 && stk <= p.minStock);
       // タイヤはカタログの銘柄名（モデル名）と一致する場合は非表示、ユーザーが独自設定した場合のみ表示
       const showBrand = !_isTire || (p.brand && p.brand !== (_catE ? _catE.b : ''));
       const createdStr = p.createdAt ? (()=>{ const d=new Date(p.createdAt); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); })() : '';
@@ -3184,7 +3213,7 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(p.locationId && locations.find(l=>l.id===p.locationId) ? escapeHtml(locations.find(l=>l.id===p.locationId).name) : '—')+'</td>'
-        + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+p.stock+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>p.stock; return provQty>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()+'</td>'
+        + '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>stk; return provQty>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()+'</td>'
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
         + '</tr>';
     }).join('');
@@ -3202,7 +3231,7 @@ window.addEventListener('storageReady', function(){
         if(document.getElementById('tab-out').style.display !== 'none'){
           const p = products.find(x=>x.id===tr.dataset.detail);
           if(p){
-            if(p.stock <= 0){
+            if(getStock(p) <= 0){
               const r = document.getElementById('outResult');
               if(r){ r.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫がありません（在庫数: 0）。</div>'; setTimeout(()=>{ r.innerHTML=''; },2500); }
               return;
@@ -3868,7 +3897,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('bulkOutBtn').addEventListener('click', ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
       if(ps.length===0) return;
-      ps.forEach(p=>{ if(p.stock>0) addToOutboundCart(p); });
+      ps.forEach(p=>{ if(getStock(p)>0) addToOutboundCart(p); });
       selectedProducts.clear(); updateBulkBar();
       switchTab('out');
     });
@@ -3883,7 +3912,7 @@ window.addEventListener('storageReady', function(){
       const overItems = ps.filter(p=>{
         const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id))
           .reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-        return (provQty + 1) > p.stock;
+        return (provQty + 1) > getStock(p);
       });
       if(overItems.length > 0){
         const names = overItems.map(p=>cleanName(p.name)).join('、');
@@ -4118,7 +4147,7 @@ window.addEventListener('storageReady', function(){
       '<tr style="border-top:1px solid var(--line-soft);">'
       +'<td style="padding:8px 10px;font-size:13px;">'+escapeHtml(cleanName(p.name))+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;color:var(--text-2);">'+escapeHtml((p.spec||'')+(p.partno?' / '+p.partno:''))+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;font-size:13px;color:var(--text-2);">'+p.stock+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-size:13px;color:var(--text-2);">'+getStock(p)+'</td>'
       +'<td style="padding:8px 10px;text-align:center;">'
       +'<input type="number" class="order-qty-input" data-order-idx="'+i+'" value="1" min="1" style="width:60px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:14px;font-weight:700;padding:4px 6px;">'
       +'</td>'
@@ -5045,10 +5074,7 @@ window.addEventListener('storageReady', function(){
   function openEditModal(id){
     const p = products.find(x=>x.id===id);
     if(!p) return;
-    if(!canEditProduct(p)){
-      alert('他支店（'+branchName(p.branchId||'taniyabe')+'）の商品は編集できません。');
-      return;
-    }
+    // 商品情報は全支店から閲覧・編集可（在庫数はブランチ固有）
     editingId = id;
     document.getElementById('modalTitle').textContent = '商品情報を編集';
     document.getElementById('f_barcode').value = p.barcode;
@@ -5063,7 +5089,7 @@ window.addEventListener('storageReady', function(){
     toggleTireNameField();
     document.getElementById('f_spec').value = p.spec || '';
     prefillSpecTireSelects(p.spec || '');
-    document.getElementById('f_stock').value = p.stock;
+    document.getElementById('f_stock').value = getStock(p);
     document.getElementById('f_minstock').value = p.minStock;
     document.getElementById('f_cost').value = p.costPrice || '';
     document.getElementById('f_price').value = p.sellPrice || '';
@@ -5151,14 +5177,14 @@ window.addEventListener('storageReady', function(){
       + '</div>'
       + '<div class="detail-stats">'
       + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-      + '<div class="detail-stat-value">'+p.stock+'</div>'
-      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>p.stock; return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()
+      + '<div class="detail-stat-value">'+getStock(p)+'</div>'
+      + (()=>{ const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>getStock(p); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()
       + '</div></div>'
       + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
       + '<div class="detail-stat"><div class="detail-stat-label">販売価格（1点）</div><div class="detail-stat-value">'+(sell ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</div></div>'
       + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">粗利（1点）</div><div class="detail-stat-value">'+(margin !== null ? '\u00a5'+margin.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
-      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*p.stock).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
+      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*getStock(p)).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
       + '</div>'
       + (writable ? (''
         + '<div class="detail-quick-actions">'
@@ -5315,11 +5341,11 @@ window.addEventListener('storageReady', function(){
     const qty = parseInt(document.getElementById('detailQty').value || '0', 10);
     const msgEl = document.getElementById('detailActionMsg');
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
-    if(kind === 'out' && qty > p.stock){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+p.stock+')を超える出庫はできません。</div>'; return; }
+    if(kind === 'out' && qty > getStock(p)){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return; }
     const label = kind === 'in' ? '入庫' : '出庫';
     const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' 点 '+label+' します。よろしいですか？');
     if(!confirmed) return;
-    p.stock = kind === 'in' ? p.stock + qty : p.stock - qty;
+    const opBranch = getOperationBranch(); if(!p.branchStock) p.branchStock={}; p.branchStock[opBranch] = (p.branchStock[opBranch]||0) + (kind==='in' ? qty : -qty); p.stock = p.branchStock[opBranch];
     transactions.unshift({
       id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
       date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
@@ -5332,7 +5358,7 @@ window.addEventListener('storageReady', function(){
     renderHistory();
     openProductDetail(id);
     const refreshedMsg = document.getElementById('detailActionMsg');
-    if(refreshedMsg){ refreshedMsg.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+p.stock+'）。</div>'; }
+    if(refreshedMsg){ refreshedMsg.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+getStock(p)+'）。</div>'; }
   }
 
   document.getElementById('detailClose').addEventListener('click', ()=>{
@@ -5400,10 +5426,13 @@ window.addEventListener('storageReady', function(){
     }
     if(editingId){
       const p = products.find(x=>x.id===editingId);
+      if(!p.branchStock) p.branchStock={};
+      p.branchStock[getOperationBranch()] = stock;
       Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, branchId: newBranchId, createdAt: new Date().toISOString()});
+      const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, branchId: newBranchId, branchStock: initBranchStock, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
@@ -5427,10 +5456,24 @@ window.addEventListener('storageReady', function(){
     closeModal();
   });
 
+  function updateTransactionBranchBanner(kind){
+    const banner = document.getElementById(kind+'BranchBanner');
+    if(!banner) return;
+    const opBranch = getOperationBranch();
+    const canOp = canOperateBranch();
+    const color = canOp ? 'var(--teal)' : 'var(--amber)';
+    const icon = canOp ? '✅' : '⚠️';
+    const msg = canOp
+      ? icon+' <b>'+escapeHtml(branchName(opBranch))+'</b> の在庫を操作します'
+      : icon+' <b>'+escapeHtml(branchName(opBranch))+'</b> は他支店のため操作できません（商品一覧タブで支店を切り替えてください）';
+    banner.innerHTML = '<div style="font-size:12px;padding:6px 12px;background:var(--bg-2);border-left:3px solid '+color+';border-radius:4px;color:var(--text-2);">'+msg+'</div>';
+  }
+
   function setupTransactionTab(kind){
     const barcodeInput = document.getElementById(kind+'Barcode');
     const lookupBtn = document.getElementById(kind+'LookupBtn');
     const resultEl = document.getElementById(kind+'Result');
+    updateTransactionBranchBanner(kind);
 
     function doLookup(fromScan){
       const code = barcodeInput.value.trim();
@@ -5470,9 +5513,9 @@ window.addEventListener('storageReady', function(){
         }
         return;
       }
-      // 他支店商品への入出庫チェック
-      if(!canEditProduct(p)){
-        resultEl.innerHTML = '<div class="msg msg-error">他支店（'+escapeHtml(branchName(p.branchId||'taniyabe'))+'）の商品への入出庫はできません。</div>';
+      // 操作支店チェック（他支店の在庫は操作不可）
+      if(!canOperateBranch()){
+        resultEl.innerHTML = '<div class="msg msg-error">'+escapeHtml(branchName(getOperationBranch()))+'の在庫は操作できません。自分の所属支店タブに切り替えてください。</div>';
         return;
       }
       if(kind === 'in'){
@@ -5484,7 +5527,7 @@ window.addEventListener('storageReady', function(){
         return;
       }
       if(kind === 'out'){
-        if(p.stock <= 0){ resultEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫がありません（在庫数: 0）。</div>'; return; }
+        if(getStock(p) <= 0){ resultEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫がありません（'+branchName(getOperationBranch())+'在庫数: 0）。</div>'; return; }
         addToOutboundCart(p);
         resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
         barcodeInput.value = '';
@@ -5531,7 +5574,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="lookup-card">'
       + '<div class="p-name">'+escapeHtml(cleanName(p.name))+'</div>'
       + '<div class="p-meta">'+escapeHtml(p.barcode)+' ・ '+escapeHtml(m?m.name:'未分類')+(s?(' / '+escapeHtml(s.name)):'')+(p.spec ? ' ・ '+escapeHtml(p.spec) : '')+'</div>'
-      + '<div class="p-meta">現在庫: <strong style="color:var(--text-1);">'+p.stock+'</strong></div>'
+      + '<div class="p-meta">現在庫: <strong style="color:var(--text-1);">'+getStock(p)+'</strong></div>'
       + typeSelectorHtml
       + '<div class="qty-stepper">'
       + '<button type="button" data-step="-1">\u2212</button>'
@@ -5619,7 +5662,7 @@ window.addEventListener('storageReady', function(){
       const qty = parseInt(qtyInput.value || '0', 10);
       const msgEl = document.getElementById(kind+'ActionMsg');
       if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
-      if(kind === 'out' && qty > p.stock){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+p.stock+')を超える出庫はできません。</div>'; return; }
+      if(kind === 'out' && qty > getStock(p)){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return; }
 
       let itemType = 'stock';
       let reservation = null;
@@ -5676,7 +5719,7 @@ window.addEventListener('storageReady', function(){
         });
         renderInboundSession();
       }
-      msgEl.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+p.stock+'）。</div>';
+      msgEl.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+getStock(p)+'）。</div>';
       document.getElementById(kind+'Barcode').value = '';
     });
   }
@@ -5685,9 +5728,9 @@ window.addEventListener('storageReady', function(){
   function addToOutboundCart(p){
     const existing = outboundCart.find(item=>item.productId===p.id);
     if(existing){
-      if(existing.qty < p.stock) existing.qty++;
+      if(existing.qty < getStock(p)) existing.qty++;
     } else {
-      outboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, brand: p.brand||'', partno: p.partno||'', spec: p.spec||'', qty: 1, maxStock: p.stock });
+      outboundCart.push({ productId: p.id, barcode: p.barcode||'', name: p.name, brand: p.brand||'', partno: p.partno||'', spec: p.spec||'', qty: 1, maxStock: getStock(p) });
     }
     renderOutboundCart();
   }
@@ -5747,7 +5790,7 @@ window.addEventListener('storageReady', function(){
       btn.addEventListener('click', ()=>{
         const idx=parseInt(btn.dataset.outIdx,10);
         const p=products.find(x=>x.id===outboundCart[idx].productId);
-        const maxSt = p?p.stock:outboundCart[idx].maxStock;
+        const maxSt = p?getStock(p):outboundCart[idx].maxStock;
         outboundCart[idx].qty = Math.min(maxSt, Math.max(1, outboundCart[idx].qty + parseInt(btn.dataset.step,10)));
         renderOutboundCart();
       });
@@ -5782,8 +5825,9 @@ window.addEventListener('storageReady', function(){
         for(const item of outboundCart){
           const p=products.find(x=>x.id===item.productId);
           if(!p) continue;
-          if(item.qty>p.stock){ if(msgEl) msgEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫数を超えています。</div>'; return; }
-          p.stock -= item.qty;
+          const opBranch1=getOperationBranch(); if(!p.branchStock) p.branchStock={}; const curStk1=p.branchStock[opBranch1]||0;
+          if(item.qty>curStk1){ if(msgEl) msgEl.innerHTML='<div class="msg msg-error">'+escapeHtml(cleanName(p.name))+' の在庫数を超えています（'+branchName(opBranch1)+'在庫: '+curStk1+'）。</div>'; return; }
+          p.branchStock[opBranch1] = curStk1 - item.qty; p.stock = p.branchStock[opBranch1];
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
             type:'out', qty:item.qty, date:batchDate,
             user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
@@ -5921,8 +5965,9 @@ window.addEventListener('storageReady', function(){
         for(const item of entry.items){
           const p = products.find(x=>x.id===item.productId);
           if(!p) continue;
-          if(item.qty > p.stock){ alert(cleanName(p.name)+' の在庫が不足しています（在庫: '+p.stock+'）'); return; }
-          p.stock -= item.qty;
+          const opBranch2=getOperationBranch(); if(!p.branchStock) p.branchStock={}; const curStk2=p.branchStock[opBranch2]||0;
+          if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(opBranch2)+'在庫: '+curStk2+'）'); return; }
+          p.branchStock[opBranch2] = curStk2 - item.qty; p.stock = p.branchStock[opBranch2];
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
             user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null });
@@ -6089,7 +6134,7 @@ window.addEventListener('storageReady', function(){
       for(const item of inboundCart){
         const p = products.find(x=>x.id===item.productId);
         if(!p) continue;
-        p.stock += item.qty;
+        const opBranch3=getOperationBranch(); if(!p.branchStock) p.branchStock={}; p.branchStock[opBranch3]=(p.branchStock[opBranch3]||0)+item.qty; p.stock=p.branchStock[opBranch3];
         transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
           type:'in', qty:item.qty, date:batchDate,
           user: currentUser?currentUser.displayName:'', itemType:'stock', reservation:null });
@@ -6206,7 +6251,7 @@ window.addEventListener('storageReady', function(){
     const now = new Date();
     const results = [];
     products.forEach(p=>{
-      if(p.stock <= 0) return;
+      if(getStock(p) <= 0) return;
       // 入庫: 古い順
       const inbounds = transactions
         .filter(t=>t.productId===p.id && t.type==='in')
@@ -6274,7 +6319,7 @@ window.addEventListener('storageReady', function(){
         +'<td style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'—')+'</td>'
         +'<td style="color:var(--text-3);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         +'<td style="text-align:center;font-weight:700;color:'+urgency+';">'+r.longTermQty+'本</td>'
-        +'<td style="text-align:center;">'+p.stock+'本</td>'
+        +'<td style="text-align:center;">'+getStock(p)+'本</td>'
         +'<td style="text-align:center;font-size:12.5px;">'+escapeHtml(dateStr)+'</td>'
         +'<td style="text-align:center;font-weight:700;color:'+urgency+';">'+r.daysSince+'日</td>'
         +'</tr>';
