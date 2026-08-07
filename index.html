@@ -5511,11 +5511,13 @@ window.addEventListener('storageReady', function(){
         const qty = parseInt(document.getElementById('detailQty').value || '1', 10);
         const msgEl = document.getElementById('detailActionMsg');
         if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
-        // 既存の仮出庫（未確定）分を含めた在庫チェック
-        const existingProvQty = provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===p2.id).reduce((ss,i)=>ss+i.qty,0),0);
-        if(existingProvQty + qty > p2.stock){
-          const over = existingProvQty + qty - p2.stock;
-          const ok = await showConfirm('⚠️ 在庫数を超えています。\n\n現在庫: '+p2.stock+'本　仮出庫済: '+existingProvQty+'本　今回: '+qty+'本\n'+over+'本不足します。\n\nそれでも登録しますか？');
+        // 既存の仮出庫（未確定）分を含めた在庫チェック（自支店のみ）
+        const _detPobOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        const curStk2 = getStock(p2);
+        const existingProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detPobOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===p2.id).reduce((ss,i)=>ss+i.qty,0),0);
+        if(existingProvQty + qty > curStk2){
+          const over = existingProvQty + qty - curStk2;
+          const ok = await showConfirm('⚠️ 在庫数を超えています。\n\n現在庫: '+curStk2+'本　仮出庫済: '+existingProvQty+'本　今回: '+qty+'本\n'+over+'本不足します。\n\nそれでも登録しますか？');
           if(!ok) return;
         }
         const formResult = await showProvisionalForm();
@@ -5524,6 +5526,7 @@ window.addEventListener('storageReady', function(){
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
+          branchId: _detPobOwnBranch,
           customerName,
           scheduledDate,
           carName: carName||'',
@@ -6075,19 +6078,21 @@ window.addEventListener('storageReady', function(){
       provBtn.addEventListener('click', async ()=>{
         if(!canWriteData()) return;
         if(outboundCart.length===0) return;
-        // 在庫超過チェック（商品ごとに既存仮出庫＋今回登録分を確認）
+        // 在庫超過チェック（商品ごとに既存仮出庫＋今回登録分を確認、自支店のみ）
+        const _batchPobOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         const overItems = outboundCart.filter(item=>{
           const p3 = products.find(x=>x.id===item.productId);
           if(!p3) return false;
-          const existProv = provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
-          return existProv + item.qty > p3.stock;
+          const existProv = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_batchPobOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+          return existProv + item.qty > getStock(p3);
         });
         if(overItems.length > 0){
           const lines = overItems.map(item=>{
             const p3 = products.find(x=>x.id===item.productId);
-            const existProv = provisionalOutbounds.filter(po=>po.status==='pending').reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
-            const over = existProv + item.qty - p3.stock;
-            return ' ・ '+cleanName(item.name)+'（在庫'+p3.stock+'本 / 仮出庫済'+existProv+'本 / 今回'+item.qty+'本 → '+over+'本不足）';
+            const existProv = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_batchPobOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+            const curStk3 = getStock(p3);
+            const over = existProv + item.qty - curStk3;
+            return ' ・ '+cleanName(item.name)+'（在庫'+curStk3+'本 / 仮出庫済'+existProv+'本 / 今回'+item.qty+'本 → '+over+'本不足）';
           }).join('\n');
           const ok = await showConfirm('⚠️ 在庫数を超えている商品があります。\n\n'+lines+'\n\nそれでも登録しますか？');
           if(!ok) return;
@@ -6099,6 +6104,7 @@ window.addEventListener('storageReady', function(){
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
+          branchId: _batchPobOwnBranch,
           customerName,
           scheduledDate,
           carName: carName||'',
