@@ -6901,8 +6901,8 @@ window.addEventListener('storageReady', function(){
     if(acc.role === 'admin'){
       selectedBranchFilter = null; // 管理者は全支店合計表示
     } else {
-      // 社員は自支店を初期表示（branchIdが未設定の場合はnullのまま = 全支店合計）
-      selectedBranchFilter = acc.branchId || null;
+      // 社員は自支店を初期表示（branchIdが未設定の場合は谷田部店をデフォルト）
+      selectedBranchFilter = acc.branchId || 'taniyabe';
     }
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
