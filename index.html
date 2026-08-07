@@ -3184,6 +3184,7 @@ window.addEventListener('storageReady', function(){
         // 閲覧権限チェック
         if(newFilter && !canViewBranch(newFilter)) return;
         selectedBranchFilter = newFilter;
+        renderCatTree();
         renderProductTable();
         updateTransactionBranchBanner('in');
         updateTransactionBranchBanner('out');
