@@ -2466,7 +2466,7 @@ window.addEventListener('storageReady', function(){
   let selectedTireAspect = null;
   let selectedTireInch = null;
   let selectedCatalogModelKey = null;
-  let stockOnlyFilter = true;
+  let stockOnlyFilter = false;
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let recentFilter = false;
@@ -3399,9 +3399,9 @@ window.addEventListener('storageReady', function(){
     const allChecked = filteredList.length > 0 && filteredList.every(p=>selectedProducts.has(p.id));
     const someChecked = filteredList.some(p=>selectedProducts.has(p.id));
     const headerChk = '<th class="chk-col"><input type="checkbox" class="row-chk" id="bulkSelectAll"'+(allChecked?' checked':( someChecked?' style="accent-color:var(--amber);"':''))+' title="全選択/解除"></th>';
-    const _multiStkHeaders = _showMultiCols
-      ? _visibleBranches.map(brId => '<th style="min-width:72px;font-size:11px;">'+escapeHtml(branchName(brId))+(brId===_ownBranchId?'<br><span style="font-weight:400;color:var(--text-3);">自店舗</span>':'')+'</th>').join('')
-      : '<th>在庫数</th>';
+    // ヘッダー: 保管場所 | 在庫（支店数分のcolspan）
+    const _stkColspan = _showMultiCols ? ' colspan="'+_visibleBranches.length+'"' : '';
+    const _multiStkHeaders = '<th'+_stkColspan+'>在庫</th>';
     const thead = recentFilter
       ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>保管場所</th>'+_multiStkHeaders+'<th>登録日時</th></tr></thead>'
       : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>保管場所</th>'+_multiStkHeaders+'</tr></thead>';
