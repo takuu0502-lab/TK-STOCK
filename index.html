@@ -1230,6 +1230,9 @@
       <label id="prcol_cost_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_cost" checked style="width:16px;height:16px;accent-color:var(--teal);"> 仕入れ価格
       </label>
+      <label id="prcol_totalval_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_totalval" style="width:16px;height:16px;accent-color:var(--teal);"> 在庫合計金額（仕入れ価格 × 在庫数）
+      </label>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="inventoryPrintSettingsCancel">キャンセル</button>
@@ -4959,8 +4962,9 @@ window.addEventListener('storageReady', function(){
   // 印刷設定モーダル
   const _printSettingsModal = document.getElementById('inventoryPrintSettingsModal');
   document.getElementById('inventoryPrintSettingsCancel').addEventListener('click', ()=>{ _printSettingsModal.classList.remove('show'); });
-  // 仕入れ価格チェックボックスは管理者のみ表示
+  // 仕入れ価格・在庫合計金額は管理者のみ表示
   document.getElementById('prcol_cost_row').style.display = isAdminUser() ? 'flex' : 'none';
+  document.getElementById('prcol_totalval_row').style.display = isAdminUser() ? 'flex' : 'none';
 
   document.getElementById('inventoryPrintBtn').addEventListener('click', ()=>{
     _printSettingsModal.classList.add('show');
@@ -4977,6 +4981,7 @@ window.addEventListener('storageReady', function(){
     const colStock    = document.getElementById('prcol_stock').checked;
     const colPType    = document.getElementById('prcol_producttype').checked;
     const colCost     = isAdminUser() && document.getElementById('prcol_cost').checked;
+    const colTotalVal = isAdminUser() && document.getElementById('prcol_totalval').checked;
 
     // 現在の表示フィルターで商品リストを取得
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -5025,6 +5030,7 @@ window.addEventListener('storageReady', function(){
     if(colStock)    thCols += sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
     if(colPType)    thCols += '<th>商品区分</th>';
     if(colCost)     thCols += '<th style="text-align:right;">仕入れ価格</th>';
+    if(colTotalVal) thCols += '<th style="text-align:right;">在庫合計金額</th>';
 
     const rows = list.sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(p=>{
       const brand = p.brand || '';
@@ -5046,6 +5052,7 @@ window.addEventListener('storageReady', function(){
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     tdCols += '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>';
+      if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _tv = (p.costPrice||0)*_ownStk; tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
 
       return '<tr>'+tdCols+'</tr>';
     }).join('');
@@ -5060,10 +5067,12 @@ window.addEventListener('storageReady', function(){
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
+    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); return s+(p.costPrice||0)*stk; },0) : 0;
+    const totalValFooter = colTotalVal ? `<tfoot><tr><td colspan="100%" style="text-align:right;font-weight:700;padding:5pt;border-top:1pt solid #333;">合計金額：&yen;${totalValSum.toLocaleString('ja-JP')}</td></tr></tfoot>` : '';
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
       <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
       <div class="meta">印刷日：${printDate} ／ 件数：${list.length}件${stockOnlyFilter?' ／ 在庫あり商品のみ':''}</div>
-      <table><thead><tr>${thCols}</tr></thead><tbody>${rows}</tbody></table>
+      <table><thead><tr>${thCols}</tr></thead><tbody>${rows}</tbody>${totalValFooter}</table>
     </body></html>`;
     const w = window.open('','_blank','width=1000,height=700');
     if(!w){ alert('ポップアップがブロックされています。'); return; }
