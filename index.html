@@ -6184,19 +6184,20 @@ window.addEventListener('storageReady', function(){
     const actionClass = kind === 'in' ? 'btn-teal' : 'btn-red';
     const m = majorById(p.majorId);
     const s = p.subId ? subById(p.majorId, p.subId) : null;
+    const _isOrderProduct = kind === 'in' && p.productType === 'order';
     const typeSelectorHtml = kind === 'in' ? (
       '<div class="row" style="margin-top:14px;gap:8px;">'
-      + '<span class="chip active" data-instock-type="stock">在庫品</span>'
-      + '<span class="chip" data-instock-type="reserved">予約品（客注品）</span>'
+      + '<span class="chip'+(_isOrderProduct?'':' active')+'" data-instock-type="stock">在庫品</span>'
+      + '<span class="chip'+(_isOrderProduct?' active':'')+'" data-instock-type="reserved">客注品</span>'
       + '</div>'
-      + '<div id="reservedFields" style="display:none;margin-top:12px;">'
+      + '<div id="reservedFields" style="'+ (_isOrderProduct?'':'display:none;') +'margin-top:12px;background:var(--bg-2);border:1.5px solid var(--amber);border-radius:8px;padding:12px;">'
       + '<div class="row">'
-      + '<div class="field" style="flex:1;min-width:140px;"><label>予定取付日</label><input type="date" id="res_installdate"></div>'
-      + '<div class="field" style="flex:1;min-width:140px;"><label>お客様名</label><input type="text" id="res_customer" placeholder="例) 山田様"></div>'
+      + '<div class="field" style="flex:1;min-width:140px;"><label>引き渡し日</label><input type="date" id="res_installdate" value="'+(_isOrderProduct&&p.orderDueDate?p.orderDueDate:'')+'"></div>'
+      + '<div class="field" style="flex:1;min-width:140px;"><label>お客様名</label><input type="text" id="res_customer" placeholder="例) 山田様" value="'+(_isOrderProduct?escapeHtml(p.orderCustomer||''):'')+'"></div>'
       + '</div>'
       + '<div class="row">'
-      + '<div class="field" style="flex:1;min-width:140px;"><label>車種</label><input type="text" id="res_car" placeholder="例) プリウス"></div>'
-      + '<div class="field" style="flex:1;min-width:140px;"><label>担当者</label><input type="text" id="res_staff" placeholder="例) 田中"></div>'
+      + '<div class="field" style="flex:1;min-width:140px;"><label>車種</label><input type="text" id="res_car" placeholder="例) プリウス" value="'+(_isOrderProduct?escapeHtml(p.orderCar||''):'')+'"></div>'
+      + '<div class="field" style="flex:1;min-width:140px;"><label>担当者</label><input type="text" id="res_staff" placeholder="例) 田中" value="'+(currentUser?escapeHtml(currentUser.displayName||''):'')+'"></div>'
       + '</div>'
       + '</div>'
     ) : '';
