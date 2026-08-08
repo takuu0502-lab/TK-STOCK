@@ -4962,11 +4962,11 @@ window.addEventListener('storageReady', function(){
   // 印刷設定モーダル
   const _printSettingsModal = document.getElementById('inventoryPrintSettingsModal');
   document.getElementById('inventoryPrintSettingsCancel').addEventListener('click', ()=>{ _printSettingsModal.classList.remove('show'); });
-  // 仕入れ価格・在庫合計金額は管理者のみ表示
-  document.getElementById('prcol_cost_row').style.display = isAdminUser() ? 'flex' : 'none';
-  document.getElementById('prcol_totalval_row').style.display = isAdminUser() ? 'flex' : 'none';
-
   document.getElementById('inventoryPrintBtn').addEventListener('click', ()=>{
+    // 仕入れ価格・在庫合計金額は管理者のみ表示（ログイン後に評価）
+    const _adminVisible = isAdminUser() ? 'flex' : 'none';
+    document.getElementById('prcol_cost_row').style.display = _adminVisible;
+    document.getElementById('prcol_totalval_row').style.display = _adminVisible;
     _printSettingsModal.classList.add('show');
   });
 
