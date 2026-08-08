@@ -2021,7 +2021,15 @@ window.addEventListener('storageReady', function(){
   function renderPricingBranchTabs(){
     const wrap = document.getElementById('pricingBranchTabs');
     if(!wrap) return;
-    wrap.innerHTML = BRANCHES.map(b=>{
+    // 総管理者は全支店、それ以外は自店舗のみ
+    const _pricingBranches = isSuperAdminUser()
+      ? BRANCHES
+      : BRANCHES.filter(b => b.id === (currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe'));
+    // アクティブ支店が許可外なら自店舗に戻す
+    if(!_pricingBranches.find(b => b.id === pricingActiveBranch)){
+      pricingActiveBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    }
+    wrap.innerHTML = _pricingBranches.map(b=>{
       const active = pricingActiveBranch === b.id;
       return '<button class="btn '+(active?'btn-amber':'btn-ghost')+'" style="'+(active?'':'color:var(--text-2);')+'" data-pricing-branch="'+b.id+'">'+escapeHtml(b.name)+'</button>';
     }).join('');
