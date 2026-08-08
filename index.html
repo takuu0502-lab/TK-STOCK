@@ -2486,9 +2486,14 @@ window.addEventListener('storageReady', function(){
       const rNew = await window.storage.get('branchLocations', SHARED);
       branchLocations = rNew ? JSON.parse(rNew.value) : {};
       if(!branchLocations || typeof branchLocations !== 'object') branchLocations = {};
-      // 旧データ移行：全支店に同じ保管場所を引き継ぐ
-      if(Array.isArray(oldLocs) && oldLocs.length > 0 && Object.keys(branchLocations).length === 0){
-        BRANCHES.forEach(b=>{ branchLocations[b.id] = JSON.parse(JSON.stringify(oldLocs)); });
+      // v2移行：谷田部のみ旧データを引き継ぎ、他支店は空に統一
+      if(!branchLocations._migratedV2){
+        BRANCHES.forEach(b=>{
+          branchLocations[b.id] = b.id === 'taniyabe'
+            ? (Array.isArray(oldLocs) ? JSON.parse(JSON.stringify(oldLocs)) : [])
+            : [];
+        });
+        branchLocations._migratedV2 = true;
         await saveBranchLocations();
       }
       BRANCHES.forEach(b=>{ if(!Array.isArray(branchLocations[b.id])) branchLocations[b.id] = []; });
