@@ -5858,14 +5858,17 @@ window.addEventListener('storageReady', function(){
       const code = barcodeInput.value.trim();
       resultEl.innerHTML = '';
       if(!code) return;
+      const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       let p = findByBarcode(code);
+      // 他店の商品は「自店未登録」として扱う（他店在庫を汚染しないため）
+      if(p && (p.branchId || 'taniyabe') !== _scanBranch) p = null;
       // バーコード未登録でもBS_JAN_LOOKUPで照合して登録済み商品を探す
       if(!p && /^\d{13}$/.test(code)){
         const bsEntry = BS_JAN_LOOKUP.find(e=>e.j===code);
         if(bsEntry){
           const pSize = bsEntry.s;
           const scored = products
-            .filter(pr=> normSpecSize(pr.spec||'')===pSize)
+            .filter(pr=> normSpecSize(pr.spec||'')===pSize && (pr.branchId||'taniyabe')===_scanBranch)
             .map(pr=>({pr, score: scoreModelMatch(pr.name||'', bsEntry.m)}))
             .sort((a,b)=>b.score-a.score);
           if(scored.length>0 && scored[0].score>=0.5){
