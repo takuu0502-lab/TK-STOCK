@@ -5138,21 +5138,22 @@ window.addEventListener('storageReady', function(){
       html += '<div style="font-size:11px;color:var(--text-2);margin-bottom:6px;">現在庫：'+stk+' 本'+(isOver?'　<span class="pt-over">（'+(totalProv-stk)+'本 超過）</span>':'')+'</div>';
       relPOs.forEach(po=>{
         const qty = po.items.filter(i=>i.productId===productId).reduce((s,i)=>s+i.qty,0);
-        const d = po.createdAt ? new Date(po.createdAt) : null;
+        const d = po.date ? new Date(po.date) : null;
         const dateStr = d ? (d.getMonth()+1)+'/'+d.getDate() : '—';
         html += '<div class="pt-row">'
           +'<span style="font-weight:700;">'+qty+' 本</span>'
-          +(po.customer?'　<span style="color:var(--text-1);">'+escapeHtml(po.customer)+' 様</span>':'')
-          +(po.car?'　<span style="color:var(--text-2);font-size:11px;">'+escapeHtml(po.car)+'</span>':'')
-          +'<span style="float:right;color:var(--text-3);font-size:11px;">'+dateStr+'</span>'
+          +(po.customerName?'　<span style="color:var(--text-1);">'+escapeHtml(po.customerName)+' 様</span>':'')
+          +(po.carName?'　<span style="color:var(--text-2);font-size:11px;">'+escapeHtml(po.carName)+'</span>':'')
+          +(po.scheduledDate?'　<span style="color:var(--text-3);font-size:11px;">引渡: '+escapeHtml(po.scheduledDate)+'</span>':'')
+          +'<span style="float:right;color:var(--text-3);font-size:11px;">登録: '+dateStr+'</span>'
           +'</div>';
       });
       tip.innerHTML = html;
       const rect = badge.getBoundingClientRect();
       tip.style.display = 'block';
       const tw = tip.offsetWidth;
-      let left = rect.left + window.scrollX;
-      let top  = rect.bottom + window.scrollY + 6;
+      let left = rect.left;
+      let top  = rect.bottom + 6;
       if(left + tw > window.innerWidth - 10) left = window.innerWidth - tw - 10;
       tip.style.left = left+'px';
       tip.style.top  = top+'px';
