@@ -1090,6 +1090,23 @@
         </label>
       </div>
     </div>
+    <div id="f_order_fields" style="display:none;background:var(--bg-2);border:1.5px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:4px;">
+      <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:10px;">📋 客注品情報</div>
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label>お客様名</label>
+          <input type="text" id="f_order_customer" placeholder="例) 山田 太郎">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>車種</label>
+          <input type="text" id="f_order_car" placeholder="例) プリウス">
+        </div>
+      </div>
+      <div class="field">
+        <label>引き渡し日</label>
+        <input type="date" id="f_order_duedate">
+      </div>
+    </div>
     <div class="row">
       <div class="field" style="flex:1;">
         <label>大分類</label>
@@ -3603,7 +3620,7 @@ window.addEventListener('storageReady', function(){
       return '<tr class="clickable-row'+(isChecked?' row-selected':'')+'" data-detail="'+p.id+'">'
         + '<td class="chk-col"><input type="checkbox" class="row-chk" data-chk-id="'+p.id+'"'+(isChecked?' checked':'')+' onclick="event.stopPropagation();"></td>'
         + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+(showBranchBadge?'<br><span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>' : '<td>'+(showBranchBadge?'<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>')
-        + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+(p.productType==='order'?'<span style="margin-left:6px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--amber-dim);color:var(--amber);white-space:nowrap;">客注品</span>':'')+'</td>'
+        + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+(p.productType==='order'?'<span style="margin-left:6px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--amber-dim);color:var(--amber);white-space:nowrap;">客注品'+(p.orderCustomer?' / '+escapeHtml(p.orderCustomer):'')+(p.orderDueDate?' / '+(()=>{const d=new Date(p.orderDueDate);return (d.getMonth()+1)+'/'+d.getDate();})():'')+'</span>':'')+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(p.locationId && locations.find(l=>l.id===p.locationId) ? escapeHtml(locations.find(l=>l.id===p.locationId).name) : '—')+'</td>'
@@ -5616,6 +5633,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_type_stock_label').style.background = isOrder ? 'var(--bg-2)' : 'rgba(26,122,94,.08)';
     document.getElementById('f_type_order_label').style.borderColor = isOrder ? 'var(--amber)' : 'var(--border)';
     document.getElementById('f_type_order_label').style.background = isOrder ? 'rgba(230,160,32,.10)' : 'var(--bg-2)';
+    document.getElementById('f_order_fields').style.display = isOrder ? 'block' : 'none';
   }
   document.querySelectorAll('input[name="f_productType"]').forEach(r=>r.addEventListener('change', updateProductTypeLabels));
 
@@ -5642,6 +5660,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_sell_fixed').checked = false;
     document.getElementById('f_memo').value = '';
     document.getElementById('f_type_stock').checked = true;
+    document.getElementById('f_order_customer').value = '';
+    document.getElementById('f_order_car').value = '';
+    document.getElementById('f_order_duedate').value = '';
     updateProductTypeLabels();
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
@@ -5677,6 +5698,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_memo').value = p.memo || '';
     const _pType = p.productType || 'stock';
     document.getElementById(_pType === 'order' ? 'f_type_order' : 'f_type_stock').checked = true;
+    document.getElementById('f_order_customer').value = p.orderCustomer || '';
+    document.getElementById('f_order_car').value = p.orderCar || '';
+    document.getElementById('f_order_duedate').value = p.orderDueDate || '';
     updateProductTypeLabels();
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
@@ -5999,6 +6023,9 @@ window.addEventListener('storageReady', function(){
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const memo = document.getElementById('f_memo').value.trim();
     const productType = document.querySelector('input[name="f_productType"]:checked')?.value || 'stock';
+    const orderCustomer = productType === 'order' ? document.getElementById('f_order_customer').value.trim() : '';
+    const orderCar      = productType === 'order' ? document.getElementById('f_order_car').value.trim() : '';
+    const orderDueDate  = productType === 'order' ? document.getElementById('f_order_duedate').value : '';
     const msgEl = document.getElementById('modalMsg');
 
     if(!name){
@@ -6022,11 +6049,11 @@ window.addEventListener('storageReady', function(){
       if(!p.branchStock) p.branchStock={};
       const _editBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       p.branchStock[_editBranch] = stock;
-      Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType});
+      Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, branchId: newBranchId, branchStock: initBranchStock, createdAt: new Date().toISOString()});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, branchId: newBranchId, branchStock: initBranchStock, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
