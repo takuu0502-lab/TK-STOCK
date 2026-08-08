@@ -1510,7 +1510,7 @@ window.addEventListener('storageReady', function(){
   // 現在のユーザーが閲覧できる支店IDリスト（管理者は全支店）
   function getVisibleBranches(){
     if(!currentUser) return BRANCHES.map(b=>b.id);
-    if(isAdminUser()) return BRANCHES.map(b=>b.id);
+    if(isSuperAdminUser()) return BRANCHES.map(b=>b.id);
     return BRANCH_VISIBILITY[currentUser.branchId||'taniyabe'] || [currentUser.branchId||'taniyabe'];
   }
   function canViewBranch(branchId){
@@ -1518,7 +1518,7 @@ window.addEventListener('storageReady', function(){
   }
   function canEditProduct(p){
     if(!currentUser) return false;
-    if(isAdminUser()) return true;
+    if(isSuperAdminUser()) return true;
     return !p.branchId || p.branchId===(currentUser.branchId||'taniyabe');
   }
   let selectedBranchFilter = null; // null=全支店, 'taniyabe'等=絞込
@@ -1540,7 +1540,7 @@ window.addEventListener('storageReady', function(){
   }
   function canOperateBranch(){
     if(!currentUser) return false;
-    if(isAdminUser()) return true;
+    if(isSuperAdminUser()) return true;
     const opBranch = getOperationBranch();
     return (currentUser.branchId||'taniyabe') === opBranch;
   }
@@ -2600,7 +2600,7 @@ window.addEventListener('storageReady', function(){
     const writable = canWriteData();
     // 他支店閲覧中（社員）はタイヤ・ホイールカテゴリのみ表示
     // branchId未設定のアカウントは制限なし（旧アカウント互換）
-    const isOtherBranch = currentUser && !isAdminUser()
+    const isOtherBranch = currentUser && !isSuperAdminUser()
       && !!currentUser.branchId
       && selectedBranchFilter !== null
       && selectedBranchFilter !== currentUser.branchId;
@@ -2648,7 +2648,7 @@ window.addEventListener('storageReady', function(){
       if(allowedCatIds && !allowedCatIds.includes(cat.id)) return;
       // 他支店タブ閲覧時のみ: 商品が存在しないカテゴリを非表示（自店舗タブは全カテゴリ表示）
       const catCount = visibleProducts.filter(p => p.majorId === cat.id).length;
-      const _isOwnBranch = !currentUser || isAdminUser() || !currentUser.branchId || selectedBranchFilter === currentUser.branchId;
+      const _isOwnBranch = !currentUser || isSuperAdminUser() || !currentUser.branchId || selectedBranchFilter === currentUser.branchId;
       if(selectedBranchFilter !== null && !allowedCatIds && !_isOwnBranch && catCount === 0) return;
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
@@ -3065,7 +3065,7 @@ window.addEventListener('storageReady', function(){
       return _catColOrder.indexOf(a) - _catColOrder.indexOf(b);
     });
     const _catShowMultiCols = _catVisibleBranches.length > 1
-      && !(currentUser && isAdminUser() && selectedBranchFilter === null);
+      && !(currentUser && isSuperAdminUser() && selectedBranchFilter === null);
 
     const rows = matches.map((r,i)=>{
       // カタログ表示は常に価格調整ルールで計算（商品登録の個別価格は使用しない）
@@ -3310,7 +3310,7 @@ window.addEventListener('storageReady', function(){
   function renderBranchFilter(){
     const wrap = document.getElementById('branchFilterWrap');
     if(!wrap) return;
-    const isAdmin = currentUser && isAdminUser();
+    const isAdmin = currentUser && isSuperAdminUser();
     const visibleIds = getVisibleBranches();
     const canSwitch = isAdmin || visibleIds.length > 1;
 
@@ -3360,7 +3360,7 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('productTableWrap');
     // 他支店閲覧中はタイヤ・ホイール（アルミ/スチールのみ）表示（社員のみ適用）
     // branchId未設定のアカウントは制限なし（旧アカウント互換）
-    const isViewingOtherBranch = currentUser && currentUser.role !== 'admin'
+    const isViewingOtherBranch = currentUser && !isSuperAdminUser()
       && !!currentUser.branchId
       && selectedBranchFilter !== null
       && selectedBranchFilter !== currentUser.branchId;
@@ -6982,10 +6982,10 @@ window.addEventListener('storageReady', function(){
     currentUser = acc;
     sessionStorage.setItem('tkstock_session', acc.id);
     // ログイン時の支店フィルター初期値
-    if(acc.role === 'admin' || acc.role === 'superadmin'){
-      selectedBranchFilter = null; // 管理者・総管理者は全支店合計表示
+    if(acc.role === 'superadmin'){
+      selectedBranchFilter = null; // 総管理者は全支店合計表示
     } else {
-      // 社員は自支店を初期表示（branchIdが未設定の場合は谷田部店をデフォルト）
+      // 管理者・社員は自支店を初期表示（branchIdが未設定の場合は谷田部店をデフォルト）
       selectedBranchFilter = acc.branchId || 'taniyabe';
     }
     // ログイン支店の価格ルールをアクティブに
@@ -7012,6 +7012,7 @@ window.addEventListener('storageReady', function(){
     return 'role-badge';
   }
   function isAdminUser(){ return !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin'); }
+  function isSuperAdminUser(){ return !!currentUser && currentUser.role === 'superadmin'; }
   function isExternalUser(){ return !!currentUser && currentUser.role === 'external'; }
   function canWriteData(){ return !!currentUser && currentUser.role !== 'external'; }
   function canManagePricing(){ return isAdminUser(); }
@@ -7022,7 +7023,7 @@ window.addEventListener('storageReady', function(){
     el.innerHTML = 'ログイン者情報：' + escapeHtml(currentUser.displayName)
       + ' <span class="'+roleBadgeClass(currentUser.role)+'">'+roleLabel(currentUser.role)+'</span>'
       + ' <span style="font-size:11px;background:var(--bg-3);color:var(--text-2);padding:2px 8px;border-radius:8px;margin-left:4px;">'+escapeHtml(userBranchLabel)+'</span>';
-    document.getElementById('openAccounts').style.display = isAdminUser() ? 'inline-block' : 'none';
+    document.getElementById('openAccounts').style.display = isSuperAdminUser() ? 'inline-block' : 'none';
     document.getElementById('switchAccountBtn').style.display = 'inline-block';
     applyRolePermissionsToUI();
   }
@@ -7371,7 +7372,7 @@ window.addEventListener('storageReady', function(){
 
   function renderAccountsList(){
     const wrap = document.getElementById('accountsList');
-    const isAdmin = currentUser && isAdminUser();
+    const isAdmin = currentUser && isSuperAdminUser();
     wrap.innerHTML = accounts.map(a=>
       '<div class="account-row"><div>'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
       + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
