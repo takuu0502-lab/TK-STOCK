@@ -7413,50 +7413,55 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('accountsList');
     const isAdmin = currentUser && isSuperAdminUser();
 
-    // 支店ごとにグループ化（BRANCHESの順 + 未所属）
-    const groups = BRANCHES.map(b=>({ branchId: b.id, name: b.name, members: accounts.filter(a=>(a.branchId||'taniyabe')===b.id) }));
-    const ungrouped = accounts.filter(a=>!BRANCHES.find(b=>b.id===(a.branchId||'taniyabe')));
+    // 外部は支店グループと分離
+    const _isExternal = a => a.role === 'external';
+    const groups = BRANCHES.map(b=>({ branchId: b.id, name: b.name, members: accounts.filter(a=>!_isExternal(a)&&(a.branchId||'taniyabe')===b.id) }));
+    const externalAccounts = accounts.filter(_isExternal);
+
+    const _renderRow = (a, idx, groupMembers) => {
+      const globalIdx = accounts.indexOf(a);
+      const prevA = groupMembers[idx-1];
+      const nextA = groupMembers[idx+1];
+      const prevGlobal = prevA ? accounts.indexOf(prevA) : -1;
+      const nextGlobal = nextA ? accounts.indexOf(nextA) : -1;
+      const isExt = _isExternal(a);
+      return '<div class="account-row"><div style="flex:1;min-width:0;">'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
+        + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
+        + '</div>'
+        + (a.id !== currentUser.id
+          ? '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">'
+            + (isAdmin ? '<button class="btn btn-sm btn-ghost acc-up" data-idx="'+globalIdx+'" data-prev="'+prevGlobal+'" title="上へ" '+(idx===0?'disabled':'')+'>▲</button>' : '')
+            + (isAdmin ? '<button class="btn btn-sm btn-ghost acc-down" data-idx="'+globalIdx+'" data-next="'+nextGlobal+'" title="下へ" '+(idx===groupMembers.length-1?'disabled':'')+'>▼</button>' : '')
+            + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-edit-name="'+a.id+'" title="名前を編集">✏️</button>' : '')
+            + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-change-pw="'+a.id+'" title="パスワード変更">🔑</button>' : '')
+            + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
+            + '<option value="staff"'+(a.role==='staff'?' selected':'')+'>社員</option>'
+            + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
+            + '<option value="superadmin"'+(a.role==='superadmin'?' selected':'')+'>総管理者</option>'
+            + '<option value="external"'+(a.role==='external'?' selected':'')+'>外部</option>'
+            + '</select>'
+            + (!isExt && isAdmin ? '<select data-change-branch="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
+              + BRANCHES.map(b=>'<option value="'+b.id+'"'+((a.branchId||'taniyabe')===b.id?' selected':'')+'>'+escapeHtml(b.name)+'</option>').join('')
+              + '</select>' : '')
+            + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-del-acc="'+a.id+'">削除</button>' : '')
+            + '</div>'
+          : '<span style="font-size:11px;color:var(--text-3);">(自分)</span>')
+        + '</div>';
+    };
 
     let html = '';
     groups.forEach(g=>{
       if(g.members.length === 0) return;
       html += '<div style="margin-bottom:16px;">'
         + '<div style="font-size:12px;font-weight:600;color:var(--text-2);background:var(--bg-3);padding:4px 10px;border-radius:6px;margin-bottom:6px;">📍 '+escapeHtml(g.name)+'</div>';
-      g.members.forEach((a, idx)=>{
-        const globalIdx = accounts.indexOf(a);
-        const prevA = g.members[idx-1];
-        const nextA = g.members[idx+1];
-        const prevGlobal = prevA ? accounts.indexOf(prevA) : -1;
-        const nextGlobal = nextA ? accounts.indexOf(nextA) : -1;
-        html += '<div class="account-row"><div style="flex:1;min-width:0;">'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
-          + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
-          + '</div>'
-          + (a.id !== currentUser.id
-            ? '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">'
-              + (isAdmin ? '<button class="btn btn-sm btn-ghost acc-up" data-idx="'+globalIdx+'" data-prev="'+prevGlobal+'" title="上へ" '+(idx===0?'disabled':'')+'>▲</button>' : '')
-              + (isAdmin ? '<button class="btn btn-sm btn-ghost acc-down" data-idx="'+globalIdx+'" data-next="'+nextGlobal+'" title="下へ" '+(idx===g.members.length-1?'disabled':'')+'>▼</button>' : '')
-              + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-edit-name="'+a.id+'" title="名前を編集">✏️</button>' : '')
-              + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-change-pw="'+a.id+'" title="パスワード変更">🔑</button>' : '')
-              + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
-              + '<option value="staff"'+(a.role==='staff'?' selected':'')+'>社員</option>'
-              + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
-              + '<option value="superadmin"'+(a.role==='superadmin'?' selected':'')+'>総管理者</option>'
-              + '<option value="external"'+(a.role==='external'?' selected':'')+'>外部</option>'
-              + '</select>'
-              + (isAdmin ? '<select data-change-branch="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
-                + BRANCHES.map(b=>'<option value="'+b.id+'"'+((a.branchId||'taniyabe')===b.id?' selected':'')+'>'+escapeHtml(b.name)+'</option>').join('')
-                + '</select>' : '')
-              + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-del-acc="'+a.id+'">削除</button>' : '')
-              + '</div>'
-            : '<span style="font-size:11px;color:var(--text-3);">(自分)</span>')
-          + '</div>';
-      });
+      g.members.forEach((a, idx) => { html += _renderRow(a, idx, g.members); });
       html += '</div>';
     });
-    if(ungrouped.length > 0){
-      html += '<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-2);background:var(--bg-3);padding:4px 10px;border-radius:6px;margin-bottom:6px;">その他</div>'
-        + ungrouped.map(a=>'<div class="account-row"><div>'+escapeHtml(a.displayName)+'</div></div>').join('')
-        + '</div>';
+    if(externalAccounts.length > 0){
+      html += '<div style="margin-bottom:16px;">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--text-2);background:var(--bg-3);padding:4px 10px;border-radius:6px;margin-bottom:6px;">🔗 外部</div>';
+      externalAccounts.forEach((a, idx) => { html += _renderRow(a, idx, externalAccounts); });
+      html += '</div>';
     }
     wrap.innerHTML = html;
     // ▲▼ 並び替えボタン
