@@ -6325,15 +6325,16 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('以下を出庫確定します。\n\nお客様: '+entry.customerName+'様'+(entry.carName?'\n車種: '+entry.carName:'')+'\n\n'+lines);
         if(!ok) return;
         const batchDate = new Date().toISOString();
+        const entryBranch = entry.branchId || 'taniyabe'; // 仮出庫登録時の支店を使用
         for(const item of entry.items){
           const p = products.find(x=>x.id===item.productId);
           if(!p) continue;
-          const opBranch2=getOperationBranch(); if(!p.branchStock) p.branchStock={}; const curStk2=p.branchStock[opBranch2]||0;
-          if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(opBranch2)+'在庫: '+curStk2+'）'); return; }
-          p.branchStock[opBranch2] = curStk2 - item.qty; p.stock = p.branchStock[opBranch2];
+          if(!p.branchStock) p.branchStock={}; const curStk2=p.branchStock[entryBranch]||0;
+          if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(entryBranch)+'在庫: '+curStk2+'）'); return; }
+          p.branchStock[entryBranch] = curStk2 - item.qty; p.stock = p.branchStock[entryBranch];
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
-            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:opBranch2 });
+            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch });
         }
         entry.status = 'confirmed';
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
