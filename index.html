@@ -3543,9 +3543,18 @@ window.addEventListener('storageReady', function(){
           if(_showMultiCols){
             // 支店別在庫列（ヘッダーと列数を合わせるため別々の<td>）
             let cell = '';
+            // タイヤ・ホイールカテゴリ判定
+            const _tireCat = categories.find(c=>c.name==='タイヤ');
+            const _wheelCat2 = categories.find(c=>c.name==='ホイール');
+            const _isTireOrWheel = (_tireCat && p.majorId===_tireCat.id) || (_wheelCat2 && p.majorId===_wheelCat2.id);
             _visibleBranches.forEach(brId => {
               const bStk = p.branchStock ? (p.branchStock[brId] || 0) : (brId === 'taniyabe' ? (p.stock || 0) : 0);
               const isOwn = brId === _ownBranchId;
+              // 他店列はタイヤ・ホイールのみ表示
+              if(!isOwn && !_isTireOrWheel){
+                cell += '<td style="padding:6px 10px;vertical-align:top;color:var(--text-3);text-align:center;">—</td>';
+                return;
+              }
               const bColor = gaugeColor(bStk, p.minStock);
               const bMax = Math.max(bStk, (p.minStock||0)*2, 5, 1);
               const bPct = Math.min(100, Math.round((bStk / bMax) * 100));
