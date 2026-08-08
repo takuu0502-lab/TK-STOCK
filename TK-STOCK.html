@@ -2411,7 +2411,12 @@ window.addEventListener('storageReady', function(){
 
   function findByBarcode(code){
     const c = code.trim();
-    return products.find(p => p.barcode === c) || products.find(p => p.id === c);
+    const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    // 自店舗の商品を優先して返す
+    return products.find(p => p.barcode === c && (p.branchId || 'taniyabe') === ownBranch)
+      || products.find(p => p.id === c && (p.branchId || 'taniyabe') === ownBranch)
+      || products.find(p => p.barcode === c)
+      || products.find(p => p.id === c);
   }
   function majorById(id){ return categories.find(c=>c.id===id); }
   function subById(majorId, subId){
@@ -5791,7 +5796,8 @@ window.addEventListener('storageReady', function(){
       return;
     }
     if(barcode){
-      const dup = products.find(p => p.barcode === barcode && p.id !== editingId);
+      const _myBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+      const dup = products.find(p => p.barcode === barcode && p.id !== editingId && (p.branchId || 'taniyabe') === _myBranch);
       if(dup){
         msgEl.innerHTML = '<div class="msg msg-error">この商品コードは既に「'+escapeHtml(dup.name)+'」に登録されています。</div>';
         return;
