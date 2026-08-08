@@ -1635,6 +1635,25 @@ window.addEventListener('storageReady', function(){
       }
     }catch(e){ allPriceRules = {}; }
     _ensureAllPriceRules();
+    // 谷田部設定を他店舗にワンタイムコピー（未設定支店のみ）
+    try{
+      const _syncDone = await window.storage.get('priceRulesSyncedFromTaniyabe', SHARED);
+      if(!_syncDone){
+        const _src = allPriceRules['taniyabe'];
+        let _changed = false;
+        BRANCHES.forEach(b=>{
+          if(b.id === 'taniyabe') return;
+          const _dst = allPriceRules[b.id];
+          const _isEmpty = !_dst || (Object.keys(_dst.byBrand||{}).length === 0 && Object.keys(_dst.byModel||{}).length === 0 && (_dst.default||{}).percent == 0);
+          if(_isEmpty && _src){
+            allPriceRules[b.id] = JSON.parse(JSON.stringify(_src));
+            _changed = true;
+          }
+        });
+        if(_changed) await savePriceRules();
+        await window.storage.set('priceRulesSyncedFromTaniyabe', '1', SHARED);
+      }
+    }catch(e){}
     updateCurrentPriceRules();
   }
   async function savePriceRules(){
@@ -1842,6 +1861,25 @@ window.addEventListener('storageReady', function(){
       }
     }catch(e){ allCostRules = {}; }
     _ensureAllCostRules();
+    // 谷田部設定を他店舗にワンタイムコピー（未設定支店のみ）
+    try{
+      const _syncDone = await window.storage.get('costRulesSyncedFromTaniyabe', SHARED);
+      if(!_syncDone){
+        const _src = allCostRules['taniyabe'];
+        let _changed = false;
+        BRANCHES.forEach(b=>{
+          if(b.id === 'taniyabe') return;
+          const _dst = allCostRules[b.id];
+          const _isEmpty = !_dst || (Object.keys(_dst.byBrand||{}).length === 0 && Object.keys(_dst.byModel||{}).length === 0 && (_dst.default||{}).percent == 0);
+          if(_isEmpty && _src){
+            allCostRules[b.id] = JSON.parse(JSON.stringify(_src));
+            _changed = true;
+          }
+        });
+        if(_changed) await saveCostRules();
+        await window.storage.set('costRulesSyncedFromTaniyabe', '1', SHARED);
+      }
+    }catch(e){}
     updateCurrentCostRules();
   }
   async function saveCostRules(){
@@ -7388,29 +7426,74 @@ window.addEventListener('storageReady', function(){
   function renderAccountsList(){
     const wrap = document.getElementById('accountsList');
     const isAdmin = currentUser && isSuperAdminUser();
-    wrap.innerHTML = accounts.map(a=>
-      '<div class="account-row"><div>'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
-      + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
-      + '<span style="font-size:11px;background:var(--bg-3);color:var(--text-2);padding:1px 7px;border-radius:8px;margin-left:5px;">'+escapeHtml(branchName(a.branchId||'taniyabe'))+'</span>'
-      + '</div>'
-      + (a.id !== currentUser.id
-          ? '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-            + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-edit-name="'+a.id+'" title="名前を編集">✏️</button>' : '')
-            + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-change-pw="'+a.id+'" title="パスワード変更">🔑</button>' : '')
-            + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
-            + '<option value="staff"'+(a.role==='staff'?' selected':'')+'>社員</option>'
-            + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
-            + '<option value="superadmin"'+(a.role==='superadmin'?' selected':'')+'>総管理者</option>'
-            + '<option value="external"'+(a.role==='external'?' selected':'')+'>外部</option>'
-            + '</select>'
-            + (isAdmin ? '<select data-change-branch="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
-              + BRANCHES.map(b=>'<option value="'+b.id+'"'+(( a.branchId||'taniyabe')===b.id?' selected':'')+'>'+escapeHtml(b.name)+'</option>').join('')
-              + '</select>' : '')
-            + '<button class="btn btn-sm btn-ghost" data-del-acc="'+a.id+'">削除</button>'
-            + '</div>'
-          : '<span style="font-size:11px;color:var(--text-3);">(自分)</span>')
-      + '</div>'
-    ).join('');
+
+    // 支店ごとにグループ化（BRANCHESの順 + 未所属）
+    const groups = BRANCHES.map(b=>({ branchId: b.id, name: b.name, members: accounts.filter(a=>(a.branchId||'taniyabe')===b.id) }));
+    const ungrouped = accounts.filter(a=>!BRANCHES.find(b=>b.id===(a.branchId||'taniyabe')));
+
+    let html = '';
+    groups.forEach(g=>{
+      if(g.members.length === 0) return;
+      html += '<div style="margin-bottom:16px;">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--text-2);background:var(--bg-3);padding:4px 10px;border-radius:6px;margin-bottom:6px;">📍 '+escapeHtml(g.name)+'</div>';
+      g.members.forEach((a, idx)=>{
+        const globalIdx = accounts.indexOf(a);
+        const prevA = g.members[idx-1];
+        const nextA = g.members[idx+1];
+        const prevGlobal = prevA ? accounts.indexOf(prevA) : -1;
+        const nextGlobal = nextA ? accounts.indexOf(nextA) : -1;
+        html += '<div class="account-row"><div style="flex:1;min-width:0;">'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
+          + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
+          + '</div>'
+          + (a.id !== currentUser.id
+            ? '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">'
+              + (isAdmin ? '<button class="btn btn-sm btn-ghost acc-up" data-idx="'+globalIdx+'" data-prev="'+prevGlobal+'" title="上へ" '+(idx===0?'disabled':'')+'>▲</button>' : '')
+              + (isAdmin ? '<button class="btn btn-sm btn-ghost acc-down" data-idx="'+globalIdx+'" data-next="'+nextGlobal+'" title="下へ" '+(idx===g.members.length-1?'disabled':'')+'>▼</button>' : '')
+              + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-edit-name="'+a.id+'" title="名前を編集">✏️</button>' : '')
+              + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-change-pw="'+a.id+'" title="パスワード変更">🔑</button>' : '')
+              + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
+              + '<option value="staff"'+(a.role==='staff'?' selected':'')+'>社員</option>'
+              + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
+              + '<option value="superadmin"'+(a.role==='superadmin'?' selected':'')+'>総管理者</option>'
+              + '<option value="external"'+(a.role==='external'?' selected':'')+'>外部</option>'
+              + '</select>'
+              + (isAdmin ? '<select data-change-branch="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
+                + BRANCHES.map(b=>'<option value="'+b.id+'"'+((a.branchId||'taniyabe')===b.id?' selected':'')+'>'+escapeHtml(b.name)+'</option>').join('')
+                + '</select>' : '')
+              + (isAdmin ? '<button class="btn btn-sm btn-ghost" data-del-acc="'+a.id+'">削除</button>' : '')
+              + '</div>'
+            : '<span style="font-size:11px;color:var(--text-3);">(自分)</span>')
+          + '</div>';
+      });
+      html += '</div>';
+    });
+    if(ungrouped.length > 0){
+      html += '<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;color:var(--text-2);background:var(--bg-3);padding:4px 10px;border-radius:6px;margin-bottom:6px;">その他</div>'
+        + ungrouped.map(a=>'<div class="account-row"><div>'+escapeHtml(a.displayName)+'</div></div>').join('')
+        + '</div>';
+    }
+    wrap.innerHTML = html;
+    // ▲▼ 並び替えボタン
+    wrap.querySelectorAll('.acc-up').forEach(b=>{
+      b.addEventListener('click', async ()=>{
+        const idx = parseInt(b.dataset.idx);
+        const prev = parseInt(b.dataset.prev);
+        if(prev < 0 || isNaN(prev)) return;
+        [accounts[prev], accounts[idx]] = [accounts[idx], accounts[prev]];
+        await saveAccounts();
+        renderAccountsList();
+      });
+    });
+    wrap.querySelectorAll('.acc-down').forEach(b=>{
+      b.addEventListener('click', async ()=>{
+        const idx = parseInt(b.dataset.idx);
+        const next = parseInt(b.dataset.next);
+        if(next < 0 || isNaN(next)) return;
+        [accounts[idx], accounts[next]] = [accounts[next], accounts[idx]];
+        await saveAccounts();
+        renderAccountsList();
+      });
+    });
     wrap.querySelectorAll('[data-edit-name]').forEach(b=>{
       b.addEventListener('click', ()=>{
         const target = accounts.find(x=>x.id === b.dataset.editName);
