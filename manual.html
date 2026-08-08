@@ -298,8 +298,8 @@
         <h3 style="font-size:14px; margin-bottom:10px;">権限の種類</h3>
         <table class="def-table">
           <tr><th>権限</th><th>できること</th></tr>
-          <tr><td><span class="badge badge-gray">社員</span></td><td>商品一覧の閲覧、入庫・出庫の登録、見積作成、履歴確認</td></tr>
-          <tr><td><span class="badge badge-amber">管理者</span></td><td>社員の操作＋新規商品登録・削除、印刷、価格調整、アカウント管理</td></tr>
+          <tr><td><span class="badge badge-gray">社員</span></td><td>商品一覧の閲覧、入庫・出庫の登録、新規商品登録、見積作成、履歴確認</td></tr>
+          <tr><td><span class="badge badge-amber">管理者</span></td><td>社員の操作＋商品削除、印刷、価格調整、アカウント管理</td></tr>
           <tr><td><span class="badge badge-teal">総管理者</span></td><td>全支店の全機能</td></tr>
         </table>
 
@@ -644,13 +644,13 @@
         <div class="section-icon icon-amber">➕</div>
         <div>
           <h2>新規商品登録</h2>
-          <div class="section-desc">在庫にない商品を新たに登録する（管理者のみ）</div>
+          <div class="section-desc">在庫にない商品を新たに登録する</div>
         </div>
       </div>
       <div class="section-body">
-        <div class="callout callout-amber" style="margin-top:0; margin-bottom: 16px;">
-          <span class="callout-icon">🔒</span>
-          <p>新規商品登録は <span class="badge badge-amber">管理者</span> <span class="badge badge-teal">総管理者</span> のみ操作できます。</p>
+        <div class="callout callout-teal" style="margin-top:0; margin-bottom: 16px;">
+          <span class="callout-icon">ℹ️</span>
+          <p>新規商品登録は <span class="badge badge-gray">社員</span> <span class="badge badge-amber">管理者</span> <span class="badge badge-teal">総管理者</span> が操作できます。</p>
         </div>
 
         <div class="steps">
@@ -745,7 +745,7 @@
           </tr>
           <tr>
             <td>スキャンしても商品が見つからない</td>
-            <td>自店舗に未登録の可能性があります。管理者に新規商品登録を依頼してください。</td>
+            <td>自店舗に未登録の可能性があります。「＋ 新規商品登録」ボタンから登録してください。</td>
           </tr>
           <tr>
             <td>在庫数がおかしい</td>
