@@ -3513,8 +3513,13 @@ window.addEventListener('storageReady', function(){
       if(b === _ownBranchId) return 1;
       return _colOrder.indexOf(a) - _colOrder.indexOf(b);
     });
+    // タイヤ・ホイール以外のカテゴリ選択時は他店列を非表示
+    const _tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
+    const _wheelCatId = (categories.find(c=>c.name==='ホイール')||{}).id;
+    const _isTireWheelCat = selectedMajor === null || selectedMajor === _tireCatId || selectedMajor === _wheelCatId;
     const _showMultiCols = _visibleBranches.length > 1
-      && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null);
+      && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null)
+      && _isTireWheelCat;
 
     let rows = filteredList.map(p=>{
       const stk = getStock(p);
