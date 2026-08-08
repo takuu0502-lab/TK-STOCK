@@ -886,6 +886,9 @@
   <div class="panel" id="tab-pricing" style="display:none;">
     <h2 class="section-title">価格調整（ブリヂストン価格表）</h2>
 
+    <!-- 支店切替タブ -->
+    <div id="pricingBranchTabs" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;"></div>
+
     <div class="pricing-section-title">販売価格の設定</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
       価格表の「希望小売価格」または「A表価格」を基準に、割引率（OFF%）を指定すると、それに応じた販売価格を自動計算して在庫検索の価格表に表示します。ブランドごと、さらに銘柄ごとに個別の基準・割引率を設定することもできます（「銘柄を表示」から銘柄別の設定を開けます。未設定の銘柄はブランドの設定、未設定のブランドは基本設定が使われます）。
@@ -1593,19 +1596,48 @@ window.addEventListener('storageReady', function(){
     if(mode === 'ceil')  return Math.ceil(price / unit) * unit;
     return Math.round(price / unit) * unit;
   }
-  let priceRules = defaultPriceRules();
+  // 支店別ルール（全支店分を保持）
+  let allPriceRules = {};
+  let priceRules = defaultPriceRules(); // 現在の支店のルール（計算用）
+  let pricingActiveBranch = 'taniyabe'; // 設定UIで選択中の支店
+
+  function _ensureAllPriceRules(){
+    BRANCHES.forEach(b=>{
+      if(!allPriceRules[b.id]){
+        allPriceRules[b.id] = defaultPriceRules();
+      }
+      if(!allPriceRules[b.id].byModel) allPriceRules[b.id].byModel = {};
+      if(!allPriceRules[b.id].byBrand) allPriceRules[b.id].byBrand = {};
+    });
+  }
+  function updateCurrentPriceRules(){
+    const branchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    priceRules = allPriceRules[branchId] || defaultPriceRules();
+  }
 
   async function loadPriceRules(){
     try{
-      const r = await window.storage.get('priceRules', SHARED);
-      priceRules = r ? JSON.parse(r.value) : defaultPriceRules();
-    }catch(e){ priceRules = defaultPriceRules(); }
-    if(!priceRules.byModel) priceRules.byModel = {};
-    if(!priceRules.byBrand) priceRules.byBrand = {};
+      const r = await window.storage.get('allPriceRules', SHARED);
+      if(r){
+        allPriceRules = JSON.parse(r.value);
+      } else {
+        // 旧データからマイグレーション
+        const old = await window.storage.get('priceRules', SHARED);
+        const oldRules = old ? JSON.parse(old.value) : defaultPriceRules();
+        if(!oldRules.byModel) oldRules.byModel = {};
+        if(!oldRules.byBrand) oldRules.byBrand = {};
+        allPriceRules = {};
+        BRANCHES.forEach(b=>{ allPriceRules[b.id] = defaultPriceRules(); });
+        allPriceRules['taniyabe'] = oldRules;
+        await savePriceRules();
+      }
+    }catch(e){ allPriceRules = {}; }
+    _ensureAllPriceRules();
+    updateCurrentPriceRules();
   }
   async function savePriceRules(){
-    try{ await window.storage.set('priceRules', JSON.stringify(priceRules), SHARED); }
-    catch(e){ console.error('save priceRules failed', e); }
+    try{ await window.storage.set('allPriceRules', JSON.stringify(allPriceRules), SHARED); }
+    catch(e){ console.error('save allPriceRules failed', e); }
   }
   function ruleFor(brand, model){
     const modelKey = brand+'||'+model;
@@ -1634,13 +1666,14 @@ window.addEventListener('storageReady', function(){
 
   function renderBrandRules(){
     const wrap = document.getElementById('brandRulesList');
-    document.getElementById('pr_default_basis').value = priceRules.default.basis || 'retail';
-    document.getElementById('pr_default_percent').value = priceRules.default.percent || 0;
-    const prLabel = document.getElementById('pr_default_label'); if(prLabel) prLabel.textContent = (priceRules.default.basis==='cost') ? '% 乗せ' : '% OFF';
-    const ruEl = document.getElementById('pr_round_unit'); if(ruEl) ruEl.value = String(priceRules.roundUnit || 1);
-    const rmEl = document.getElementById('pr_round_mode'); if(rmEl) rmEl.value = priceRules.roundMode || 'round';
+    const _pr = allPriceRules[pricingActiveBranch] || defaultPriceRules();
+    document.getElementById('pr_default_basis').value = _pr.default.basis || 'retail';
+    document.getElementById('pr_default_percent').value = _pr.default.percent || 0;
+    const prLabel = document.getElementById('pr_default_label'); if(prLabel) prLabel.textContent = (_pr.default.basis==='cost') ? '% 乗せ' : '% OFF';
+    const ruEl = document.getElementById('pr_round_unit'); if(ruEl) ruEl.value = String(_pr.roundUnit || 1);
+    const rmEl = document.getElementById('pr_round_mode'); if(rmEl) rmEl.value = _pr.roundMode || 'round';
     wrap.innerHTML = getBrands().map(brand=>{
-      const rule = priceRules.byBrand[brand];
+      const rule = _pr.byBrand[brand];
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
@@ -1663,7 +1696,7 @@ window.addEventListener('storageReady', function(){
         html += '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">銘柄ごとに個別の基準・割引率を設定できます（未設定の銘柄はこのブランドの設定が使われます）。</div>';
         models.forEach(model=>{
           const key = brand+'||'+model;
-          const mrule = priceRules.byModel[key];
+          const mrule = _pr.byModel[key];
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-model-rule-basis="'+escapeHtml(key)+'">'
@@ -1730,12 +1763,13 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('savePricingRules').addEventListener('click', async ()=>{
-    priceRules.default = {
+    if(!allPriceRules[pricingActiveBranch]) allPriceRules[pricingActiveBranch] = defaultPriceRules();
+    allPriceRules[pricingActiveBranch].default = {
       basis: document.getElementById('pr_default_basis').value,
       percent: Number(document.getElementById('pr_default_percent').value) || 0
     };
-    priceRules.roundUnit = Number(document.getElementById('pr_round_unit').value) || 1;
-    priceRules.roundMode = document.getElementById('pr_round_mode').value || 'round';
+    allPriceRules[pricingActiveBranch].roundUnit = Number(document.getElementById('pr_round_unit').value) || 1;
+    allPriceRules[pricingActiveBranch].roundMode = document.getElementById('pr_round_mode').value || 'round';
     const byBrand = {};
     getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-rule-basis="'+brand+'"]');
@@ -1745,7 +1779,7 @@ window.addEventListener('storageReady', function(){
         byBrand[brand] = {basis: basis, percent: Number(percentEl.value) || 0};
       }
     });
-    const byModel = Object.assign({}, priceRules.byModel || {});
+    const byModel = Object.assign({}, allPriceRules[pricingActiveBranch].byModel || {});
     expandedBrandModels.forEach(brand=>{
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
@@ -1762,10 +1796,11 @@ window.addEventListener('storageReady', function(){
         }
       });
     });
-    priceRules.byBrand = byBrand;
-    priceRules.byModel = byModel;
+    allPriceRules[pricingActiveBranch].byBrand = byBrand;
+    allPriceRules[pricingActiveBranch].byModel = byModel;
     await savePriceRules();
-    showToast('販売価格の設定を保存しました。');
+    updateCurrentPriceRules();
+    showToast('【'+branchName(pricingActiveBranch)+'】販売価格の設定を保存しました。');
     renderPriceCatalog();
   });
 
@@ -1773,19 +1808,43 @@ window.addEventListener('storageReady', function(){
   function defaultCostRules(){
     return {default:{basis:'wholesale',percent:0}, byBrand:{}, byModel:{}};
   }
-  let costRules = defaultCostRules();
+  let allCostRules = {};
+  let costRules = defaultCostRules(); // 現在の支店のルール（計算用）
+
+  function _ensureAllCostRules(){
+    BRANCHES.forEach(b=>{
+      if(!allCostRules[b.id]) allCostRules[b.id] = defaultCostRules();
+      if(!allCostRules[b.id].byModel) allCostRules[b.id].byModel = {};
+      if(!allCostRules[b.id].byBrand) allCostRules[b.id].byBrand = {};
+    });
+  }
+  function updateCurrentCostRules(){
+    const branchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    costRules = allCostRules[branchId] || defaultCostRules();
+  }
 
   async function loadCostRules(){
     try{
-      const r = await window.storage.get('costRules', SHARED);
-      costRules = r ? JSON.parse(r.value) : defaultCostRules();
-    }catch(e){ costRules = defaultCostRules(); }
-    if(!costRules.byModel) costRules.byModel = {};
-    if(!costRules.byBrand) costRules.byBrand = {};
+      const r = await window.storage.get('allCostRules', SHARED);
+      if(r){
+        allCostRules = JSON.parse(r.value);
+      } else {
+        const old = await window.storage.get('costRules', SHARED);
+        const oldRules = old ? JSON.parse(old.value) : defaultCostRules();
+        if(!oldRules.byModel) oldRules.byModel = {};
+        if(!oldRules.byBrand) oldRules.byBrand = {};
+        allCostRules = {};
+        BRANCHES.forEach(b=>{ allCostRules[b.id] = defaultCostRules(); });
+        allCostRules['taniyabe'] = oldRules;
+        await saveCostRules();
+      }
+    }catch(e){ allCostRules = {}; }
+    _ensureAllCostRules();
+    updateCurrentCostRules();
   }
   async function saveCostRules(){
-    try{ await window.storage.set('costRules', JSON.stringify(costRules), SHARED); }
-    catch(e){ console.error('save costRules failed', e); }
+    try{ await window.storage.set('allCostRules', JSON.stringify(allCostRules), SHARED); }
+    catch(e){ console.error('save allCostRules failed', e); }
   }
   function costRuleFor(brand, model){
     const modelKey = brand+'||'+model;
@@ -1813,11 +1872,12 @@ window.addEventListener('storageReady', function(){
 
   function renderCostBrandRules(){
     const wrap = document.getElementById('costBrandRulesList');
-    document.getElementById('cr_default_basis').value = costRules.default.basis || 'wholesale';
-    document.getElementById('cr_default_percent').value = costRules.default.percent || 0;
+    const _cr = allCostRules[pricingActiveBranch] || defaultCostRules();
+    document.getElementById('cr_default_basis').value = _cr.default.basis || 'wholesale';
+    document.getElementById('cr_default_percent').value = _cr.default.percent || 0;
     updateCostRuleDebug();
     wrap.innerHTML = getBrands().map(brand=>{
-      const rule = costRules.byBrand[brand];
+      const rule = _cr.byBrand[brand];
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedCostBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
@@ -1837,7 +1897,7 @@ window.addEventListener('storageReady', function(){
         html += '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">銘柄ごとに個別の基準・割引率を設定できます（未設定の銘柄はこのブランドの設定が使われます）。</div>';
         models.forEach(model=>{
           const key = brand+'||'+model;
-          const mrule = costRules.byModel[key];
+          const mrule = _cr.byModel[key];
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-cost-model-rule-basis="'+escapeHtml(key)+'">'
@@ -1874,7 +1934,8 @@ window.addEventListener('storageReady', function(){
   }
 
   document.getElementById('saveCostPricingRules').addEventListener('click', async ()=>{
-    costRules.default = {
+    if(!allCostRules[pricingActiveBranch]) allCostRules[pricingActiveBranch] = defaultCostRules();
+    allCostRules[pricingActiveBranch].default = {
       basis: document.getElementById('cr_default_basis').value,
       percent: Number(document.getElementById('cr_default_percent').value) || 0
     };
@@ -1887,7 +1948,7 @@ window.addEventListener('storageReady', function(){
         byBrand[brand] = {basis: basis, percent: Number(percentEl.value) || 0};
       }
     });
-    const byModel = Object.assign({}, costRules.byModel || {});
+    const byModel = Object.assign({}, allCostRules[pricingActiveBranch].byModel || {});
     expandedCostBrandModels.forEach(brand=>{
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
@@ -1897,7 +1958,6 @@ window.addEventListener('storageReady', function(){
         if(!basisEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
-        // basis未設定 or percent=0（かつcostベースでない）は「親設定を使う」とみなしてルール削除
         if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
           byModel[key] = {basis: basis, percent: pct};
         } else {
@@ -1905,11 +1965,11 @@ window.addEventListener('storageReady', function(){
         }
       });
     });
-    costRules.byBrand = byBrand;
-    costRules.byModel = byModel;
+    allCostRules[pricingActiveBranch].byBrand = byBrand;
+    allCostRules[pricingActiveBranch].byModel = byModel;
     await saveCostRules();
-    showToast('仕入れ価格の設定を保存しました。');
-    // デバッグ表示更新
+    updateCurrentCostRules();
+    showToast('【'+branchName(pricingActiveBranch)+'】仕入れ価格の設定を保存しました。');
     updateCostRuleDebug();
     renderPriceCatalog();
   });
@@ -1953,6 +2013,26 @@ window.addEventListener('storageReady', function(){
   function getEffectiveSellPrice(brand, model, wholesale, retail){
     if(isExternalUser()) return computeExternalSellPrice(brand, model, wholesale, retail);
     return computeSellPrice(brand, model, wholesale, retail);
+  }
+
+  // 価格調整タブの支店切替タブをレンダリング
+  function renderPricingBranchTabs(){
+    const wrap = document.getElementById('pricingBranchTabs');
+    if(!wrap) return;
+    wrap.innerHTML = BRANCHES.map(b=>{
+      const active = pricingActiveBranch === b.id;
+      return '<button class="btn '+(active?'btn-amber':'btn-ghost')+'" style="'+(active?'':'color:var(--text-2);')+'" data-pricing-branch="'+b.id+'">'+escapeHtml(b.name)+'</button>';
+    }).join('');
+    wrap.querySelectorAll('[data-pricing-branch]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        pricingActiveBranch = btn.dataset.pricingBranch;
+        expandedBrandModels.clear();
+        expandedCostBrandModels.clear();
+        renderPricingBranchTabs();
+        renderBrandRules();
+        renderCostBrandRules();
+      });
+    });
   }
 
   let expandedExternalBrandModels = new Set();
@@ -2316,7 +2396,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
     });
@@ -6906,6 +6986,10 @@ window.addEventListener('storageReady', function(){
       // 社員は自支店を初期表示（branchIdが未設定の場合は谷田部店をデフォルト）
       selectedBranchFilter = acc.branchId || 'taniyabe';
     }
+    // ログイン支店の価格ルールをアクティブに
+    pricingActiveBranch = acc.branchId || 'taniyabe';
+    updateCurrentPriceRules();
+    updateCurrentCostRules();
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
     renderUserBadge();
