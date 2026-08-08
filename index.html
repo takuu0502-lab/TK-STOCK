@@ -888,7 +888,12 @@
     <h2 class="section-title">価格調整（ブリヂストン価格表）</h2>
 
     <!-- 支店切替タブ -->
-    <div id="pricingBranchTabs" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+      <div id="pricingBranchTabs" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      <div id="pricingCopyWrap" style="display:none;">
+        <button class="btn btn-ghost" id="pricingCopyFromTaniyabe" style="font-size:12px;color:var(--text-2);">📋 谷田部の設定をこの支店にコピー</button>
+      </div>
+    </div>
 
     <div class="pricing-section-title">販売価格の設定</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
@@ -1635,25 +1640,6 @@ window.addEventListener('storageReady', function(){
       }
     }catch(e){ allPriceRules = {}; }
     _ensureAllPriceRules();
-    // 谷田部設定を他店舗にワンタイムコピー（未設定支店のみ）
-    try{
-      const _syncDone = await window.storage.get('priceRulesSyncedFromTaniyabe', SHARED);
-      if(!_syncDone){
-        const _src = allPriceRules['taniyabe'];
-        let _changed = false;
-        BRANCHES.forEach(b=>{
-          if(b.id === 'taniyabe') return;
-          const _dst = allPriceRules[b.id];
-          const _isEmpty = !_dst || (Object.keys(_dst.byBrand||{}).length === 0 && Object.keys(_dst.byModel||{}).length === 0 && (_dst.default||{}).percent == 0);
-          if(_isEmpty && _src){
-            allPriceRules[b.id] = JSON.parse(JSON.stringify(_src));
-            _changed = true;
-          }
-        });
-        if(_changed) await savePriceRules();
-        await window.storage.set('priceRulesSyncedFromTaniyabe', '1', SHARED);
-      }
-    }catch(e){}
     updateCurrentPriceRules();
   }
   async function savePriceRules(){
@@ -1861,25 +1847,6 @@ window.addEventListener('storageReady', function(){
       }
     }catch(e){ allCostRules = {}; }
     _ensureAllCostRules();
-    // 谷田部設定を他店舗にワンタイムコピー（未設定支店のみ）
-    try{
-      const _syncDone = await window.storage.get('costRulesSyncedFromTaniyabe', SHARED);
-      if(!_syncDone){
-        const _src = allCostRules['taniyabe'];
-        let _changed = false;
-        BRANCHES.forEach(b=>{
-          if(b.id === 'taniyabe') return;
-          const _dst = allCostRules[b.id];
-          const _isEmpty = !_dst || (Object.keys(_dst.byBrand||{}).length === 0 && Object.keys(_dst.byModel||{}).length === 0 && (_dst.default||{}).percent == 0);
-          if(_isEmpty && _src){
-            allCostRules[b.id] = JSON.parse(JSON.stringify(_src));
-            _changed = true;
-          }
-        });
-        if(_changed) await saveCostRules();
-        await window.storage.set('costRulesSyncedFromTaniyabe', '1', SHARED);
-      }
-    }catch(e){}
     updateCurrentCostRules();
   }
   async function saveCostRules(){
@@ -2081,6 +2048,25 @@ window.addEventListener('storageReady', function(){
         renderCostBrandRules();
       });
     });
+    // 谷田部以外の支店を選択中の総管理者にコピーボタンを表示
+    const _copyWrap = document.getElementById('pricingCopyWrap');
+    const _copyBtn = document.getElementById('pricingCopyFromTaniyabe');
+    if(_copyWrap){
+      _copyWrap.style.display = (isSuperAdminUser() && pricingActiveBranch !== 'taniyabe') ? 'block' : 'none';
+    }
+    if(_copyBtn){
+      _copyBtn.onclick = async () => {
+        const ok = await showConfirm('谷田部店の価格設定を「'+branchName(pricingActiveBranch)+'」にコピーしますか？\n現在の設定は上書きされます。');
+        if(!ok) return;
+        allPriceRules[pricingActiveBranch] = JSON.parse(JSON.stringify(allPriceRules['taniyabe'] || defaultPriceRules()));
+        allCostRules[pricingActiveBranch] = JSON.parse(JSON.stringify(allCostRules['taniyabe'] || defaultCostRules()));
+        await savePriceRules();
+        await saveCostRules();
+        showToast('【'+branchName(pricingActiveBranch)+'】に谷田部の設定をコピーしました。');
+        renderBrandRules();
+        renderCostBrandRules();
+      };
+    }
   }
 
   let expandedExternalBrandModels = new Set();
