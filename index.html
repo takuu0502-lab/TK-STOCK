@@ -3012,7 +3012,7 @@ window.addEventListener('storageReady', function(){
             : (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
               ? _rProd2.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
+          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
         }
         quoteGroups = groups;
         sharedLaborLines = [];
@@ -3189,7 +3189,7 @@ window.addEventListener('storageReady', function(){
               ? _rProd.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           if(opts && opts.targetId){
-            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w });
+            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
           } else {
             const product = await ensureProductForCatalogEntry(r);
             groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:4, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
@@ -4146,6 +4146,7 @@ window.addEventListener('storageReady', function(){
         +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(g.name)+'</span>'+(g.spec?'<span style="display:inline-flex;flex-direction:column;line-height:1.2;"><span style="font-size:9px;color:#888;font-weight:400;font-family:sans-serif;letter-spacing:0.5px;">サイズ</span><span class="qpb-spec">'+escapeHtml(g.spec)+'</span></span>':'')+'</div>'
         +'<table class="qpb-table">'
         +'<tr><td class="label">タイヤ価格</td><td class="num">'+g.qty+' 本</td><td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td><td class="num">&yen;'+tireSub.toLocaleString('ja-JP')+'</td></tr>'
+        +(g.retailPrice ? '<tr><td class="label" style="color:#888;font-size:11px;">参考：希望小売価格（税抜）</td><td class="num" style="color:#888;font-size:11px;">'+g.qty+' 本</td><td class="num" style="color:#888;font-size:11px;">&yen;'+Number(g.retailPrice).toLocaleString('ja-JP')+'</td><td class="num" style="color:#888;font-size:11px;">&yen;'+(g.qty*Number(g.retailPrice)).toLocaleString('ja-JP')+'</td></tr>' : '')
         +laborRowsHtml
         +'</table>'
         +'<div class="qpb-sep"></div>'
