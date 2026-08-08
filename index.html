@@ -4113,6 +4113,7 @@ window.addEventListener('storageReady', function(){
       savedAt: new Date().toISOString(),
       createdById: currentUser ? currentUser.id : null,
       createdByName: currentUser ? currentUser.displayName : '',
+      branchId: currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe',
       customer: document.getElementById('quoteCustomer').value.trim(),
       car: document.getElementById('quoteCar').value.trim(),
       staff: document.getElementById('quoteStaff').value.trim(),
@@ -4142,10 +4143,13 @@ window.addEventListener('storageReady', function(){
       wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">保存済みの見積はありません。</div>';
       return;
     }
-    // 外部ユーザーは自分が作成した見積のみ表示
-    const visibleQuotes = isExternalUser()
-      ? savedQuotes.filter(q => q.createdById === (currentUser ? currentUser.id : null))
-      : savedQuotes;
+    // 自店舗の見積のみ表示（総管理者は全支店表示）
+    const _ownBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const visibleQuotes = isSuperAdminUser()
+      ? savedQuotes
+      : isExternalUser()
+        ? savedQuotes.filter(q => q.createdById === (currentUser ? currentUser.id : null))
+        : savedQuotes.filter(q => (q.branchId || 'taniyabe') === _ownBranchId);
     if(!visibleQuotes.length){
       wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">あなたが作成した見積はありません。</div>';
       return;
