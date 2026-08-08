@@ -1567,6 +1567,15 @@ window.addEventListener('storageReady', function(){
   };
 
   function branchName(id){ const b=BRANCHES.find(x=>x.id===id); return b?b.name:''; }
+  const SHOP_INFO = {
+    taniyabe: { name:'タイヤ館つくば谷田部',    tel:'029-838-2750', fax:'029-838-2751', address:'〒305-0868　茨城県つくば市台町1-9-20' },
+    katsuta:  { name:'ミスタータイヤマンひたちなか', tel:'029-285-8668', fax:'',           address:'' },
+    iwama:    { name:'ミスタータイヤマンしばやま',   tel:'0299-45-3180', fax:'',           address:'' },
+  };
+  function getShopInfo(){
+    const br = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    return SHOP_INFO[br] || SHOP_INFO['taniyabe'];
+  }
   // 現在のユーザーが閲覧できる支店IDリスト（管理者は全支店）
   function getVisibleBranches(){
     if(!currentUser) return BRANCHES.map(b=>b.id);
@@ -4249,7 +4258,7 @@ window.addEventListener('storageReady', function(){
     div.innerHTML =
       '<div class="qp-top">'
       +'<div class="qp-title-block"><div class="qp-title">御見積書</div><div class="qp-subtitle">お見積り内容についてご不明な点やご要望がございましたら、お気軽にご相談ください。<br>お客様に最適なプランをご提案いたします。ご検討のほど、よろしくお願いいたします。</div></div>'
-      +'<div class="qp-shop-block"><div style="text-align:right;margin-bottom:4px;">発行日：'+escapeHtml(dateText)+'</div><div class="qp-shop-name">タイヤ館つくば谷田部</div><div>TEL：029-838-2750</div><div>担当者：'+escapeHtml(staff)+'</div></div>'
+      +'<div class="qp-shop-block"><div style="text-align:right;margin-bottom:4px;">発行日：'+escapeHtml(dateText)+'</div><div class="qp-shop-name">'+escapeHtml(getShopInfo().name)+'</div><div>TEL：'+escapeHtml(getShopInfo().tel)+'</div><div>担当者：'+escapeHtml(staff)+'</div></div>'
       +'</div>'
       +'<div class="qp-customer-section">'
       +'<div class="qp-customer-left" style="display:flex;gap:24px;align-items:flex-end;">'
@@ -4635,9 +4644,9 @@ window.addEventListener('storageReady', function(){
         +'<div><div class="op-supplier-label">仕入先</div><div class="op-supplier">'+escapeHtml(supplier)+'　御中</div></div>'
         +'<div style="text-align:right;font-size:9pt;color:#555;line-height:1.8;">'
           +'<div>発注日：'+escapeHtml(dateStr)+'</div>'
-          +'<div style="margin-top:4pt;font-size:11pt;font-weight:700;color:#111;">タイヤ館つくば谷田部</div>'
-          +'<div>〒305-0868　茨城県つくば市台町1-9-20</div>'
-          +'<div>TEL: 029-838-2750　FAX: 029-838-2751</div>'
+          +'<div style="margin-top:4pt;font-size:11pt;font-weight:700;color:#111;">'+escapeHtml(getShopInfo().name)+'</div>'
+          +(getShopInfo().address?'<div>'+escapeHtml(getShopInfo().address)+'</div>':'')
+          +'<div>TEL: '+escapeHtml(getShopInfo().tel)+(getShopInfo().fax?'　FAX: '+escapeHtml(getShopInfo().fax):'')+'</div>'
           +(shopName ? '<div>担当：'+escapeHtml(shopName)+'</div>' : '')
         +'</div>'
       +'</div>'
@@ -5005,14 +5014,8 @@ window.addEventListener('storageReady', function(){
     });
     if(stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
 
-    // 支店列の決定（タイヤ・ホイールのみ他店表示）
-    const isTireWheelView = selectedMajor === null || selectedMajor === tireCatId || selectedMajor === wheelCatId;
-    const visibleBranches = isTireWheelView ? getVisibleBranches() : [ownBranch];
-    const colOrder = ['katsuta','taniyabe','iwama'];
-    const sortedBranches = visibleBranches.slice().sort((a,b)=>{
-      if(a===ownBranch) return -1; if(b===ownBranch) return 1;
-      return colOrder.indexOf(a)-colOrder.indexOf(b);
-    });
+    // 印刷は自店舗のみ
+    const sortedBranches = [ownBranch];
 
     // カテゴリ名取得
     const catLabel = selectedMajor ? (majorById(selectedMajor)||{}).name||'' : 'すべて';
