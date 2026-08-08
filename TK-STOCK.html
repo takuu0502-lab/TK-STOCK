@@ -3630,7 +3630,7 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+(p.productType==='order'?'<span style="margin-left:6px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--amber-dim);color:var(--amber);white-space:nowrap;">客注品'+(p.orderCustomer?' / '+escapeHtml(p.orderCustomer):'')+(p.orderDueDate?' / '+(()=>{const d=new Date(p.orderDueDate);return (d.getMonth()+1)+'/'+d.getDate();})():'')+'</span>':'')+'</td>'
         + '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
         + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>'
-        + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(p.locationId && locations.find(l=>l.id===p.locationId) ? escapeHtml(locations.find(l=>l.id===p.locationId).name) : '—')+'</td>'
+        + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&p.branchLocation[_locBr])||p.locationId||''; return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
           if(_showMultiCols){
             // 支店別在庫列（ヘッダーと列数を合わせるため別々の<td>）
@@ -5067,7 +5067,8 @@ window.addEventListener('storageReady', function(){
       const brand = p.brand || '';
       const isTW = p.majorId===tireCatId || p.majorId===wheelCatId;
       const catName = (majorById(p.majorId)||{}).name||'';
-      const locName = p.locationId && locations.find(l=>l.id===p.locationId) ? locations.find(l=>l.id===p.locationId).name : '—';
+      const _locId2 = (p.branchLocation&&p.branchLocation[ownBranch])||p.locationId||'';
+      const locName = _locId2 && locations.find(l=>l.id===_locId2) ? locations.find(l=>l.id===_locId2).name : '—';
 
       let tdCols = '<td>'+escapeHtml(p.name)+'</td>';
       if(colBrand)    tdCols = '<td>'+escapeHtml(brand)+'</td>' + tdCols;
@@ -5743,7 +5744,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_brand').value = p.brand || '';
     document.getElementById('f_partno').value = p.partno || '';
     populateSupplierSelect(p.supplierId || '');
-    populateLocationSelect(p.locationId || '');
+    const _editLocBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _editLocId = (p.branchLocation && p.branchLocation[_editLocBranch]) || p.locationId || '';
+    populateLocationSelect(_editLocId);
     document.getElementById('f_name').value = p.name;
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
@@ -5767,7 +5770,6 @@ window.addEventListener('storageReady', function(){
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
-    populateLocationSelect(p.locationId || '');
     modal.classList.add('show');
     // バーコード未設定の場合、BS_JAN_LOOKUPから自動補完
     if(!p.barcode && p.spec){
@@ -6111,11 +6113,15 @@ window.addEventListener('storageReady', function(){
       if(!p.branchStock) p.branchStock={};
       const _editBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       p.branchStock[_editBranch] = stock;
-      Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate});
+      const _saveBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+      if(!p.branchLocation) p.branchLocation = {};
+      p.branchLocation[_saveBranch] = locationId;
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, branchId: newBranchId, branchStock: initBranchStock, createdAt: new Date().toISOString()});
+      const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
