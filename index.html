@@ -4993,10 +4993,10 @@ window.addEventListener('storageReady', function(){
   const _printSettingsModal = document.getElementById('inventoryPrintSettingsModal');
   document.getElementById('inventoryPrintSettingsCancel').addEventListener('click', ()=>{ _printSettingsModal.classList.remove('show'); });
   document.getElementById('inventoryPrintBtn').addEventListener('click', ()=>{
-    // 仕入れ価格・在庫合計金額は管理者のみ表示（ログイン後に評価）
-    const _adminVisible = isAdminUser() ? 'flex' : 'none';
-    document.getElementById('prcol_cost_row').style.display = _adminVisible;
-    document.getElementById('prcol_totalval_row').style.display = _adminVisible;
+    // 仕入れ価格・在庫合計金額は管理者のみ表示
+    const _costVisible = isAdminUser() ? 'flex' : 'none';
+    document.getElementById('prcol_cost_row').style.display = _costVisible;
+    document.getElementById('prcol_totalval_row').style.display = _costVisible;
     _printSettingsModal.classList.add('show');
   });
 
@@ -7364,6 +7364,7 @@ window.addEventListener('storageReady', function(){
     document.querySelector('.tab-btn[data-tab="history"]').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('quickScanBtn').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('openAddProduct').style.display = writable ? 'inline-block' : 'none';
+    document.getElementById('inventoryPrintBtn').style.display = admin ? 'inline-block' : 'none';
   }
 
   // ---------- 非活動タイムアウト ----------
