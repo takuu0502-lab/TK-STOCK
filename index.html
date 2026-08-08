@@ -4947,6 +4947,7 @@ window.addEventListener('storageReady', function(){
     const branchLabel = selectedBranchFilter ? branchName(selectedBranchFilter) : '自店舗';
     const printDate = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
 
+    const showCostCol = isAdminUser();
     const thBranches = sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
     const rows = list.sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(p=>{
       const brand = p.brand || '';
@@ -4958,7 +4959,8 @@ window.addEventListener('storageReady', function(){
         return '<td style="text-align:center;font-weight:700;color:'+col+';">'+stk+'</td>';
       }).join('');
       const catName = (majorById(p.majorId)||{}).name||'';
-      return '<tr><td>'+escapeHtml(brand)+'</td><td>'+escapeHtml(p.name)+'</td><td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td><td style="color:#666;">'+escapeHtml(p.spec||'—')+'</td><td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>'+tdBranches+'</tr>';
+      const costCell = showCostCol ? '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>' : '';
+      return '<tr><td>'+escapeHtml(brand)+'</td><td>'+escapeHtml(p.name)+'</td><td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td><td style="color:#666;">'+escapeHtml(p.spec||'—')+'</td><td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>'+tdBranches+costCell+'</tr>';
     }).join('');
 
     const css = `
@@ -4971,10 +4973,11 @@ window.addEventListener('storageReady', function(){
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
+    const costTh = showCostCol ? '<th style="text-align:right;">仕入れ価格</th>' : '';
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
       <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
       <div class="meta">印刷日：${printDate} ／ 件数：${list.length}件${stockOnlyFilter?' ／ 在庫あり商品のみ':''}</div>
-      <table><thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>分類</th>${thBranches}</tr></thead><tbody>${rows}</tbody></table>
+      <table><thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>分類</th>${thBranches}${costTh}</tr></thead><tbody>${rows}</tbody></table>
     </body></html>`;
     const w = window.open('','_blank','width=1000,height=700');
     if(!w){ alert('ポップアップがブロックされています。'); return; }
