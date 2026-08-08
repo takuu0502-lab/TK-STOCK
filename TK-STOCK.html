@@ -6776,6 +6776,11 @@ window.addEventListener('storageReady', function(){
 
     // 仮出庫リスト（フィルター適用）
     let provList = (historyFilter === 'all' || historyFilter === 'out') ? provisionalOutbounds.slice() : [];
+    // 自支店の仮出庫のみ表示
+    if(currentUser){
+      const ownBranch = currentUser.branchId || 'taniyabe';
+      provList = provList.filter(po => (po.branchId || 'taniyabe') === ownBranch);
+    }
     provList = applyDateFilter(provList, 'date');
     if(historySearchText){
       const q = historySearchText.toLowerCase();
