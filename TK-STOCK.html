@@ -1202,6 +1202,42 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="inventoryPrintSettingsModal">
+  <div class="modal" style="max-width:400px;">
+    <h3>印刷する項目を選択</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:16px 0;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_brand" checked style="width:16px;height:16px;accent-color:var(--teal);"> ブランド
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_partno" checked style="width:16px;height:16px;accent-color:var(--teal);"> 品番
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_spec" checked style="width:16px;height:16px;accent-color:var(--teal);"> 規格・サイズ
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_category" checked style="width:16px;height:16px;accent-color:var(--teal);"> 分類
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_location" style="width:16px;height:16px;accent-color:var(--teal);"> 保管場所
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_stock" checked style="width:16px;height:16px;accent-color:var(--teal);"> 在庫数
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_producttype" style="width:16px;height:16px;accent-color:var(--teal);"> 商品区分（在庫品 / 客注品）
+      </label>
+      <label id="prcol_cost_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_cost" checked style="width:16px;height:16px;accent-color:var(--teal);"> 仕入れ価格
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="inventoryPrintSettingsCancel">キャンセル</button>
+      <button class="btn btn-amber" id="inventoryPrintSettingsExec">🖨 印刷する</button>
+    </div>
+  </div>
+</div>
+
 <div id="printPreviewOverlay" style="display:none;">
   <div id="printPreviewInner">
     <div id="printPreviewToolbar">
@@ -4920,7 +4956,28 @@ window.addEventListener('storageReady', function(){
   document.getElementById('openAddProduct').addEventListener('click', ()=>{ if(canWriteData()) openAddModal(); });
   document.getElementById('modalCancel').addEventListener('click', closeModal);
 
+  // 印刷設定モーダル
+  const _printSettingsModal = document.getElementById('inventoryPrintSettingsModal');
+  document.getElementById('inventoryPrintSettingsCancel').addEventListener('click', ()=>{ _printSettingsModal.classList.remove('show'); });
+  // 仕入れ価格チェックボックスは管理者のみ表示
+  document.getElementById('prcol_cost_row').style.display = isAdminUser() ? 'flex' : 'none';
+
   document.getElementById('inventoryPrintBtn').addEventListener('click', ()=>{
+    _printSettingsModal.classList.add('show');
+  });
+
+  function runInventoryPrint(){
+    _printSettingsModal.classList.remove('show');
+
+    const colBrand    = document.getElementById('prcol_brand').checked;
+    const colPartno   = document.getElementById('prcol_partno').checked;
+    const colSpec     = document.getElementById('prcol_spec').checked;
+    const colCategory = document.getElementById('prcol_category').checked;
+    const colLocation = document.getElementById('prcol_location').checked;
+    const colStock    = document.getElementById('prcol_stock').checked;
+    const colPType    = document.getElementById('prcol_producttype').checked;
+    const colCost     = isAdminUser() && document.getElementById('prcol_cost').checked;
+
     // 現在の表示フィルターで商品リストを取得
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     const tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
@@ -4958,20 +5015,39 @@ window.addEventListener('storageReady', function(){
     const branchLabel = selectedBranchFilter ? branchName(selectedBranchFilter) : '自店舗';
     const printDate = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
 
-    const showCostCol = isAdminUser();
-    const thBranches = sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
+    // ヘッダー行
+    let thCols = '<th>商品名</th>';
+    if(colBrand)    thCols = '<th>ブランド</th>' + thCols;
+    if(colPartno)   thCols += '<th>品番</th>';
+    if(colSpec)     thCols += '<th>規格・サイズ</th>';
+    if(colCategory) thCols += '<th>分類</th>';
+    if(colLocation) thCols += '<th>保管場所</th>';
+    if(colStock)    thCols += sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
+    if(colPType)    thCols += '<th>商品区分</th>';
+    if(colCost)     thCols += '<th style="text-align:right;">仕入れ価格</th>';
+
     const rows = list.sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(p=>{
       const brand = p.brand || '';
       const isTW = p.majorId===tireCatId || p.majorId===wheelCatId;
-      const tdBranches = sortedBranches.map(b=>{
+      const catName = (majorById(p.majorId)||{}).name||'';
+      const locName = p.locationId && locations.find(l=>l.id===p.locationId) ? locations.find(l=>l.id===p.locationId).name : '—';
+
+      let tdCols = '<td>'+escapeHtml(p.name)+'</td>';
+      if(colBrand)    tdCols = '<td>'+escapeHtml(brand)+'</td>' + tdCols;
+      if(colPartno)   tdCols += '<td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td>';
+      if(colSpec)     tdCols += '<td style="color:#666;">'+escapeHtml(p.spec||'—')+'</td>';
+      if(colCategory) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>';
+      if(colLocation) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(locName)+'</td>';
+      if(colStock)    tdCols += sortedBranches.map(b=>{
         if(b!==ownBranch && !isTW) return '<td style="color:#aaa;text-align:center;">—</td>';
         const stk = p.branchStock ? (p.branchStock[b]||0) : (b==='taniyabe'?(p.stock||0):0);
         const col = stk > 0 ? '#1a7a5e' : '#c0392b';
         return '<td style="text-align:center;font-weight:700;color:'+col+';">'+stk+'</td>';
       }).join('');
-      const catName = (majorById(p.majorId)||{}).name||'';
-      const costCell = showCostCol ? '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>' : '';
-      return '<tr><td>'+escapeHtml(brand)+'</td><td>'+escapeHtml(p.name)+'</td><td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td><td style="color:#666;">'+escapeHtml(p.spec||'—')+'</td><td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>'+tdBranches+costCell+'</tr>';
+      if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
+      if(colCost)     tdCols += '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>';
+
+      return '<tr>'+tdCols+'</tr>';
     }).join('');
 
     const css = `
@@ -4984,18 +5060,19 @@ window.addEventListener('storageReady', function(){
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
-    const costTh = showCostCol ? '<th style="text-align:right;">仕入れ価格</th>' : '';
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
       <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
       <div class="meta">印刷日：${printDate} ／ 件数：${list.length}件${stockOnlyFilter?' ／ 在庫あり商品のみ':''}</div>
-      <table><thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>分類</th>${thBranches}${costTh}</tr></thead><tbody>${rows}</tbody></table>
+      <table><thead><tr>${thCols}</tr></thead><tbody>${rows}</tbody></table>
     </body></html>`;
     const w = window.open('','_blank','width=1000,height=700');
     if(!w){ alert('ポップアップがブロックされています。'); return; }
     w.document.write(html);
     w.document.close();
     setTimeout(()=>{ w.focus(); w.print(); }, 600);
-  });
+  }
+
+  document.getElementById('inventoryPrintSettingsExec').addEventListener('click', runInventoryPrint);
 
   // ---------- カメラ起動の共通処理（エラー診断つき） ----------
   function inIframe(){
