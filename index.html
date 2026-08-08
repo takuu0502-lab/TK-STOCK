@@ -2931,6 +2931,8 @@ window.addEventListener('storageReady', function(){
     const majorId = tireCat ? tireCat.id : (categories[0] && categories[0].id);
     const sell = computeSellPrice(r.b, r.m, r.w, r.t);
     const cost = computeCostPrice(r.b, r.m, r.w, r.t);
+    const _newBrId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _newBrStock = {}; BRANCHES.forEach(b=>{ _newBrStock[b.id] = 0; });
     product = {
       id: uid('p'),
       barcode: '',
@@ -2943,6 +2945,8 @@ window.addEventListener('storageReady', function(){
       costPrice: cost !== null ? cost : r.w,
       sellPrice: sell !== null ? sell : 0,
       _fromCatalog: true,
+      branchId: _newBrId,
+      branchStock: _newBrStock,
       createdAt: new Date().toISOString()
     };
     products.push(product);
@@ -5796,7 +5800,8 @@ window.addEventListener('storageReady', function(){
     if(editingId){
       const p = products.find(x=>x.id===editingId);
       if(!p.branchStock) p.branchStock={};
-      p.branchStock[getOperationBranch()] = stock;
+      const _editBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+      p.branchStock[_editBranch] = stock;
       Object.assign(p, {barcode, brand, partno, supplierId, locationId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
