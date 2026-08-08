@@ -4143,10 +4143,9 @@ window.addEventListener('storageReady', function(){
       const tax = Math.floor(base*0.1);
       const total = base + tax;
       return '<div class="qpb">'
-        +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(g.name)+'</span>'+(g.spec?'<span style="display:inline-flex;flex-direction:column;line-height:1.2;"><span style="font-size:9px;color:#888;font-weight:400;font-family:sans-serif;letter-spacing:0.5px;">サイズ</span><span class="qpb-spec">'+escapeHtml(g.spec)+'</span></span>':'')+'</div>'
+        +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(g.name)+'</span>'+(g.spec?'<span style="display:inline-flex;flex-direction:column;line-height:1.2;"><span style="font-size:9px;color:#888;font-weight:400;font-family:sans-serif;letter-spacing:0.5px;">サイズ</span><span class="qpb-spec">'+escapeHtml(g.spec)+'</span></span>':'')+(g.retailPrice?'<span style="margin-left:auto;display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.3;"><span style="font-size:9px;color:#999;font-weight:400;">メーカー希望小売価格（税抜）</span><span style="font-size:12px;color:#888;font-family:monospace;">&yen;'+Number(g.retailPrice).toLocaleString('ja-JP')+' / 本</span></span>':'')+'</div>'
         +'<table class="qpb-table">'
         +'<tr><td class="label">タイヤ価格</td><td class="num">'+g.qty+' 本</td><td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td><td class="num">&yen;'+tireSub.toLocaleString('ja-JP')+'</td></tr>'
-        +(g.retailPrice ? '<tr><td class="label" style="color:#888;font-size:11px;">参考：希望小売価格（税抜）</td><td class="num" style="color:#888;font-size:11px;">'+g.qty+' 本</td><td class="num" style="color:#888;font-size:11px;">&yen;'+Number(g.retailPrice).toLocaleString('ja-JP')+'</td><td class="num" style="color:#888;font-size:11px;">&yen;'+(g.qty*Number(g.retailPrice)).toLocaleString('ja-JP')+'</td></tr>' : '')
         +laborRowsHtml
         +'</table>'
         +'<div class="qpb-sep"></div>'
@@ -4206,6 +4205,9 @@ window.addEventListener('storageReady', function(){
       .qpb-header{display:flex;align-items:flex-end;gap:8pt;margin-bottom:4pt;border-bottom:0.5pt solid #bbb;padding-bottom:3pt;}
       .qpb-name{font-size:10pt;font-weight:700;line-height:1.2;}
       .qpb-spec{font-size:10pt;font-weight:700;color:#222;font-family:monospace;line-height:1.2;}
+      .qpb-retail{margin-left:auto;display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.3;}
+      .qpb-retail-label{font-size:6.5pt;color:#999;}
+      .qpb-retail-val{font-size:8.5pt;color:#888;font-family:monospace;}
       .qpb-table{width:100%;border-collapse:collapse;}
       .qpb-table tr td{padding:2pt 4pt;font-size:8.5pt;border-bottom:0.5pt solid #eee;}
       .qpb-table tr:last-child td{border-bottom:none;}
