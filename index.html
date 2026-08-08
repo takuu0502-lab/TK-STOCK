@@ -5832,9 +5832,8 @@ window.addEventListener('storageReady', function(){
     const canOp = canOperateBranch();
     const color = canOp ? 'var(--teal)' : 'var(--amber)';
     const icon = canOp ? '✅' : '⚠️';
-    const msg = canOp
-      ? icon+' <b>'+escapeHtml(branchName(opBranch))+'</b> の在庫を操作します'
-      : icon+' <b>'+escapeHtml(branchName(opBranch))+'</b> は他支店のため操作できません（商品一覧タブで支店を切り替えてください）';
+    if(!canOp){ banner.innerHTML = ''; return; }
+    const msg = icon+' <b>'+escapeHtml(branchName(opBranch))+'</b> の在庫を操作します';
     banner.innerHTML = '<div style="font-size:12px;padding:6px 12px;background:var(--bg-2);border-left:3px solid '+color+';border-radius:4px;color:var(--text-2);">'+msg+'</div>';
   }
 
