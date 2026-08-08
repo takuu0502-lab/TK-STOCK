@@ -106,6 +106,7 @@
   .auth-toggle-btn:disabled{opacity:0.35;cursor:not-allowed;}
   .user-badge{font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px;}
   .role-badge{font-size:10.5px;padding:2px 7px;border-radius:4px;background:var(--bg-3);color:var(--text-2);}
+  .role-badge.superadmin{background:#e8d5f5;color:#7c3aed;}
   .role-badge.admin{background:var(--amber-dim);color:var(--amber);}
   .role-badge.external{background:var(--red-dim);color:var(--red);}
   .account-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13px;}
@@ -1398,6 +1399,7 @@
           <select id="acc_role">
             <option value="staff">社員</option>
             <option value="admin">管理者</option>
+            <option value="superadmin">総管理者</option>
             <option value="external">外部</option>
           </select>
         </div>
@@ -1508,7 +1510,7 @@ window.addEventListener('storageReady', function(){
   // 現在のユーザーが閲覧できる支店IDリスト（管理者は全支店）
   function getVisibleBranches(){
     if(!currentUser) return BRANCHES.map(b=>b.id);
-    if(currentUser.role==='admin') return BRANCHES.map(b=>b.id);
+    if(isAdminUser()) return BRANCHES.map(b=>b.id);
     return BRANCH_VISIBILITY[currentUser.branchId||'taniyabe'] || [currentUser.branchId||'taniyabe'];
   }
   function canViewBranch(branchId){
@@ -1516,7 +1518,7 @@ window.addEventListener('storageReady', function(){
   }
   function canEditProduct(p){
     if(!currentUser) return false;
-    if(currentUser.role==='admin') return true;
+    if(isAdminUser()) return true;
     return !p.branchId || p.branchId===(currentUser.branchId||'taniyabe');
   }
   let selectedBranchFilter = null; // null=全支店, 'taniyabe'等=絞込
@@ -1538,7 +1540,7 @@ window.addEventListener('storageReady', function(){
   }
   function canOperateBranch(){
     if(!currentUser) return false;
-    if(currentUser.role==='admin') return true;
+    if(isAdminUser()) return true;
     const opBranch = getOperationBranch();
     return (currentUser.branchId||'taniyabe') === opBranch;
   }
@@ -2598,7 +2600,7 @@ window.addEventListener('storageReady', function(){
     const writable = canWriteData();
     // 他支店閲覧中（社員）はタイヤ・ホイールカテゴリのみ表示
     // branchId未設定のアカウントは制限なし（旧アカウント互換）
-    const isOtherBranch = currentUser && currentUser.role !== 'admin'
+    const isOtherBranch = currentUser && !isAdminUser()
       && !!currentUser.branchId
       && selectedBranchFilter !== null
       && selectedBranchFilter !== currentUser.branchId;
@@ -2646,7 +2648,7 @@ window.addEventListener('storageReady', function(){
       if(allowedCatIds && !allowedCatIds.includes(cat.id)) return;
       // 他支店タブ閲覧時のみ: 商品が存在しないカテゴリを非表示（自店舗タブは全カテゴリ表示）
       const catCount = visibleProducts.filter(p => p.majorId === cat.id).length;
-      const _isOwnBranch = !currentUser || currentUser.role === 'admin' || !currentUser.branchId || selectedBranchFilter === currentUser.branchId;
+      const _isOwnBranch = !currentUser || isAdminUser() || !currentUser.branchId || selectedBranchFilter === currentUser.branchId;
       if(selectedBranchFilter !== null && !allowedCatIds && !_isOwnBranch && catCount === 0) return;
       const isOpen = expanded.has(cat.id);
       const isSel = selectedMajor === cat.id && selectedSub === null;
@@ -3063,7 +3065,7 @@ window.addEventListener('storageReady', function(){
       return _catColOrder.indexOf(a) - _catColOrder.indexOf(b);
     });
     const _catShowMultiCols = _catVisibleBranches.length > 1
-      && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null);
+      && !(currentUser && isAdminUser() && selectedBranchFilter === null);
 
     const rows = matches.map((r,i)=>{
       // カタログ表示は常に価格調整ルールで計算（商品登録の個別価格は使用しない）
@@ -3308,7 +3310,7 @@ window.addEventListener('storageReady', function(){
   function renderBranchFilter(){
     const wrap = document.getElementById('branchFilterWrap');
     if(!wrap) return;
-    const isAdmin = currentUser && currentUser.role === 'admin';
+    const isAdmin = currentUser && isAdminUser();
     const visibleIds = getVisibleBranches();
     const canSwitch = isAdmin || visibleIds.length > 1;
 
@@ -6980,8 +6982,8 @@ window.addEventListener('storageReady', function(){
     currentUser = acc;
     sessionStorage.setItem('tkstock_session', acc.id);
     // ログイン時の支店フィルター初期値
-    if(acc.role === 'admin'){
-      selectedBranchFilter = null; // 管理者は全支店合計表示
+    if(acc.role === 'admin' || acc.role === 'superadmin'){
+      selectedBranchFilter = null; // 管理者・総管理者は全支店合計表示
     } else {
       // 社員は自支店を初期表示（branchIdが未設定の場合は谷田部店をデフォルト）
       selectedBranchFilter = acc.branchId || 'taniyabe';
@@ -6998,16 +7000,18 @@ window.addEventListener('storageReady', function(){
   }
 
   function roleLabel(role){
+    if(role === 'superadmin') return '総管理者';
     if(role === 'admin') return '管理者';
     if(role === 'external') return '外部';
     return '社員';
   }
   function roleBadgeClass(role){
+    if(role === 'superadmin') return 'role-badge superadmin';
     if(role === 'admin') return 'role-badge admin';
     if(role === 'external') return 'role-badge external';
     return 'role-badge';
   }
-  function isAdminUser(){ return !!currentUser && currentUser.role === 'admin'; }
+  function isAdminUser(){ return !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin'); }
   function isExternalUser(){ return !!currentUser && currentUser.role === 'external'; }
   function canWriteData(){ return !!currentUser && currentUser.role !== 'external'; }
   function canManagePricing(){ return isAdminUser(); }
@@ -7367,7 +7371,7 @@ window.addEventListener('storageReady', function(){
 
   function renderAccountsList(){
     const wrap = document.getElementById('accountsList');
-    const isAdmin = currentUser && currentUser.role === 'admin';
+    const isAdmin = currentUser && isAdminUser();
     wrap.innerHTML = accounts.map(a=>
       '<div class="account-row"><div>'+escapeHtml(a.displayName)+' <span style="color:var(--text-3);">('+escapeHtml(a.username)+')</span> '
       + '<span class="'+roleBadgeClass(a.role)+'">'+roleLabel(a.role)+'</span>'
@@ -7380,6 +7384,7 @@ window.addEventListener('storageReady', function(){
             + '<select data-change-role="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
             + '<option value="staff"'+(a.role==='staff'?' selected':'')+'>社員</option>'
             + '<option value="admin"'+(a.role==='admin'?' selected':'')+'>管理者</option>'
+            + '<option value="superadmin"'+(a.role==='superadmin'?' selected':'')+'>総管理者</option>'
             + '<option value="external"'+(a.role==='external'?' selected':'')+'>外部</option>'
             + '</select>'
             + (isAdmin ? '<select data-change-branch="'+a.id+'" style="font-size:12px;padding:4px 6px;">'
@@ -7442,8 +7447,8 @@ window.addEventListener('storageReady', function(){
       sel.addEventListener('change', async ()=>{
         const target = accounts.find(x=>x.id === sel.dataset.changeRole);
         if(!target) return;
-        const adminCount = accounts.filter(x=>x.role==='admin').length;
-        if(target.role === 'admin' && sel.value !== 'admin' && adminCount <= 1){
+        const adminCount = accounts.filter(x=>x.role==='admin'||x.role==='superadmin').length;
+        if((target.role === 'admin'||target.role==='superadmin') && sel.value !== 'admin' && sel.value !== 'superadmin' && adminCount <= 1){
           alert('最後の管理者アカウントの権限は変更できません。');
           sel.value = target.role;
           return;
@@ -7466,8 +7471,8 @@ window.addEventListener('storageReady', function(){
       b.addEventListener('click', async ()=>{
         const target = accounts.find(x=>x.id === b.dataset.delAcc);
         if(!target) return;
-        const adminCount = accounts.filter(x=>x.role==='admin').length;
-        if(target.role === 'admin' && adminCount <= 1){ alert('最後の管理者アカウントは削除できません。'); return; }
+        const adminCount = accounts.filter(x=>x.role==='admin'||x.role==='superadmin').length;
+        if((target.role === 'admin'||target.role==='superadmin') && adminCount <= 1){ alert('最後の管理者アカウントは削除できません。'); return; }
         const ok = await showConfirm('アカウント「'+target.displayName+'」を削除しますか？');
         if(!ok) return;
         accounts = accounts.filter(x=>x.id !== target.id);
