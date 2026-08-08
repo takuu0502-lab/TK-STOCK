@@ -1644,7 +1644,8 @@ window.addEventListener('storageReady', function(){
   }
 
   let suppliers = [];
-  let locations = [];
+  let locations = [];       // 現在ログイン支店の保管場所（branchLocationsから取得）
+  let branchLocations = {}; // {taniyabe:[...], iwama:[...], katsuta:[...]}
   let accounts = [];
   let currentUser = null;
 
@@ -2480,14 +2481,32 @@ window.addEventListener('storageReady', function(){
   }
   async function loadLocations(){
     try{
-      const r = await window.storage.get('locations', SHARED);
-      locations = r ? JSON.parse(r.value) : [];
-    }catch(_){ locations = []; }
-    if(!Array.isArray(locations)) locations = [];
+      const rOld = await window.storage.get('locations', SHARED);
+      const oldLocs = rOld ? JSON.parse(rOld.value) : [];
+      const rNew = await window.storage.get('branchLocations', SHARED);
+      branchLocations = rNew ? JSON.parse(rNew.value) : {};
+      if(!branchLocations || typeof branchLocations !== 'object') branchLocations = {};
+      // 旧データ移行：全支店に同じ保管場所を引き継ぐ
+      if(Array.isArray(oldLocs) && oldLocs.length > 0 && Object.keys(branchLocations).length === 0){
+        BRANCHES.forEach(b=>{ branchLocations[b.id] = JSON.parse(JSON.stringify(oldLocs)); });
+        await saveBranchLocations();
+      }
+      BRANCHES.forEach(b=>{ if(!Array.isArray(branchLocations[b.id])) branchLocations[b.id] = []; });
+    }catch(_){ branchLocations = {}; BRANCHES.forEach(b=>{ branchLocations[b.id]=[]; }); }
+    refreshLocations();
+  }
+  function refreshLocations(){
+    const br = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    locations = branchLocations[br] || [];
   }
   async function saveLocations(){
-    try{ await window.storage.set('locations', JSON.stringify(locations), SHARED); }
-    catch(e){ console.error('save locations failed', e); }
+    const br = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    branchLocations[br] = locations;
+    await saveBranchLocations();
+  }
+  async function saveBranchLocations(){
+    try{ await window.storage.set('branchLocations', JSON.stringify(branchLocations), SHARED); }
+    catch(e){ console.error('save branchLocations failed', e); }
   }
   function populateLocationSelect(selectedId){
     const sel = document.getElementById('f_location');
@@ -4434,20 +4453,26 @@ window.addEventListener('storageReady', function(){
       if(ps.length===0) return;
       openOrderModal(ps);
     });
-    // 保管場所マスタ管理
+    // 保管場所マスタ管理（支店別）
     function renderLocationMaster(){
       const wrap = document.getElementById('locationMasterList');
       if(!wrap) return;
+      const br = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+      const brLabel = branchName(br);
+      refreshLocations();
+      wrap.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px;font-weight:600;">📍 '+escapeHtml(brLabel)+'の保管場所</div>';
       if(locations.length === 0){
-        wrap.innerHTML = '<span style="font-size:12.5px;color:var(--text-3);">保管場所が登録されていません</span>';
-        return;
+        wrap.innerHTML += '<div style="font-size:12.5px;color:var(--text-3);margin-bottom:6px;">保管場所が登録されていません</div>';
+      } else {
+        wrap.innerHTML += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
+          + locations.map((l,i)=>
+            '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;">'
+            + escapeHtml(l.name)
+            + '<button data-loc-del="'+i+'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;padding:0 2px;line-height:1;" title="削除">×</button>'
+            + '</div>'
+          ).join('')
+          + '</div>';
       }
-      wrap.innerHTML = locations.map((l,i)=>
-        '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;">'
-        + escapeHtml(l.name)
-        + '<button data-loc-del="'+i+'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:0 2px;line-height:1;" title="削除">×</button>'
-        + '</div>'
-      ).join('');
       wrap.querySelectorAll('[data-loc-del]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           const idx = parseInt(btn.dataset.locDel, 10);
@@ -4455,6 +4480,7 @@ window.addEventListener('storageReady', function(){
           locations.splice(idx, 1);
           await saveLocations();
           renderLocationMaster();
+          populateLocationSelect('');
         });
       });
     }
@@ -4465,6 +4491,7 @@ window.addEventListener('storageReady', function(){
       locations.push({ id: uid('loc'), name: name.trim() });
       await saveLocations();
       renderLocationMaster();
+      populateLocationSelect('');
     });
 
     // JANコード自動照合
@@ -7389,6 +7416,7 @@ window.addEventListener('storageReady', function(){
     pricingActiveBranch = acc.branchId || 'taniyabe';
     updateCurrentPriceRules();
     updateCurrentCostRules();
+    refreshLocations(); // 支店別保管場所を切り替え
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
     renderUserBadge();
