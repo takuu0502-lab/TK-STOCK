@@ -2301,6 +2301,13 @@ window.addEventListener('storageReady', function(){
         }
       });
       if(pobMigrated) await saveProvisionalOutbounds();
+
+      // 永田琢也を総管理者に昇格（ワンタイムマイグレーション）
+      const _nagataTgt = accounts.find(a => a.displayName === '永田琢也');
+      if(_nagataTgt && _nagataTgt.role !== 'superadmin'){
+        _nagataTgt.role = 'superadmin';
+        await saveAccounts();
+      }
     }catch(e){ transactions = []; provisionalOutbounds = []; }
 
     renderCatTree();
