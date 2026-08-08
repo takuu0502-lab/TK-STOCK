@@ -448,6 +448,7 @@
   .hist-type{font-size:11px;font-weight:700;padding:4px 9px;border-radius:4px;min-width:44px;text-align:center;}
   .hist-in{background:var(--teal-dim);color:var(--teal);}
   .hist-out{background:var(--red-dim);color:var(--red);}
+  .hist-del{background:var(--bg-3);color:var(--text-3);}
   .hist-info{flex:1;}
   .hist-name{font-size:13.5px;font-weight:500;}
   .hist-sub{font-size:11.5px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px;}
@@ -770,7 +771,10 @@
       <div class="table-area">
         <div class="breadcrumb" id="breadcrumb"></div>
         <div id="priceCatalogWrap"></div>
-        <div id="branchFilterWrap" style="margin-bottom:8px;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+          <div id="branchFilterWrap"></div>
+          <button class="btn btn-ghost btn-sm" id="inventoryPrintBtn" style="font-size:12px;">🖨 在庫一覧を印刷</button>
+        </div>
         <div id="inventoryFilter" style="display:none;margin-bottom:10px;"></div>
         <div id="productTableWrap"></div>
       </div>
@@ -851,6 +855,7 @@
         <span class="chip active" data-htype="all">すべて</span>
         <span class="chip" data-htype="in">入庫のみ</span>
         <span class="chip" data-htype="out">出庫のみ</span>
+        <span class="chip" data-htype="delete">削除のみ</span>
       </div>
     </div>
     <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap;">
@@ -4904,6 +4909,80 @@ window.addEventListener('storageReady', function(){
   document.getElementById('openAddProduct').addEventListener('click', ()=>{ if(canWriteData()) openAddModal(); });
   document.getElementById('modalCancel').addEventListener('click', closeModal);
 
+  document.getElementById('inventoryPrintBtn').addEventListener('click', ()=>{
+    // 現在の表示フィルターで商品リストを取得
+    const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
+    const wheelCatId = (categories.find(c=>c.name==='ホイール')||{}).id;
+    const sharedWheelCat = categories.find(c=>c.name==='ホイール');
+    const sharedWheelSubIds = sharedWheelCat ? sharedWheelCat.subs.filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
+
+    let list = products.filter(p=>{
+      if(selectedBranchFilter !== null){
+        const isOwned = (p.branchId||'taniyabe') === selectedBranchFilter;
+        if(!isOwned){
+          const isTire = p.majorId === tireCatId;
+          const isWheelAS = sharedWheelCat && p.majorId === sharedWheelCat.id && sharedWheelSubIds.includes(p.subId);
+          if(!isTire && !isWheelAS) return false;
+        }
+      }
+      if(selectedMajor !== null && p.majorId !== selectedMajor) return false;
+      if(selectedSub !== null && p.subId !== selectedSub) return false;
+      return true;
+    });
+    if(stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
+
+    // 支店列の決定（タイヤ・ホイールのみ他店表示）
+    const isTireWheelView = selectedMajor === null || selectedMajor === tireCatId || selectedMajor === wheelCatId;
+    const visibleBranches = isTireWheelView ? getVisibleBranches() : [ownBranch];
+    const colOrder = ['katsuta','taniyabe','iwama'];
+    const sortedBranches = visibleBranches.slice().sort((a,b)=>{
+      if(a===ownBranch) return -1; if(b===ownBranch) return 1;
+      return colOrder.indexOf(a)-colOrder.indexOf(b);
+    });
+
+    // カテゴリ名取得
+    const catLabel = selectedMajor ? (majorById(selectedMajor)||{}).name||'' : 'すべて';
+    const subLabel = selectedSub ? (subById(selectedMajor, selectedSub)||{}).name||'' : '';
+    const branchLabel = selectedBranchFilter ? branchName(selectedBranchFilter) : '自店舗';
+    const printDate = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+
+    const thBranches = sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
+    const rows = list.sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(p=>{
+      const brand = p.brand || '';
+      const isTW = p.majorId===tireCatId || p.majorId===wheelCatId;
+      const tdBranches = sortedBranches.map(b=>{
+        if(b!==ownBranch && !isTW) return '<td style="color:#aaa;text-align:center;">—</td>';
+        const stk = p.branchStock ? (p.branchStock[b]||0) : (b==='taniyabe'?(p.stock||0):0);
+        const col = stk > 0 ? '#1a7a5e' : '#c0392b';
+        return '<td style="text-align:center;font-weight:700;color:'+col+';">'+stk+'</td>';
+      }).join('');
+      const catName = (majorById(p.majorId)||{}).name||'';
+      return '<tr><td>'+escapeHtml(brand)+'</td><td>'+escapeHtml(p.name)+'</td><td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td><td style="color:#666;">'+escapeHtml(p.spec||'—')+'</td><td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>'+tdBranches+'</tr>';
+    }).join('');
+
+    const css = `
+      @page{size:A4 landscape;margin:10mm 12mm;}
+      body{font-family:'Hiragino Sans','BIZ UDGothic',sans-serif;font-size:9pt;color:#111;margin:0;}
+      h1{font-size:14pt;font-weight:700;margin:0 0 2pt;}
+      .meta{font-size:8pt;color:#666;margin-bottom:8pt;}
+      table{width:100%;border-collapse:collapse;}
+      th{background:#333;color:#fff;padding:4pt 5pt;font-size:8pt;text-align:left;white-space:nowrap;}
+      td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
+      tr:nth-child(even) td{background:#f8f8f8;}
+    `;
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
+      <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
+      <div class="meta">印刷日：${printDate} ／ 件数：${list.length}件${stockOnlyFilter?' ／ 在庫あり商品のみ':''}</div>
+      <table><thead><tr><th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th>分類</th>${thBranches}</tr></thead><tbody>${rows}</tbody></table>
+    </body></html>`;
+    const w = window.open('','_blank','width=1000,height=700');
+    if(!w){ alert('ポップアップがブロックされています。'); return; }
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>{ w.focus(); w.print(); }, 600);
+  });
+
   // ---------- カメラ起動の共通処理（エラー診断つき） ----------
   function inIframe(){
     try{ return window.self !== window.top; }catch(e){ return true; }
@@ -5769,6 +5848,10 @@ window.addEventListener('storageReady', function(){
     if(!step1) return;
     const step2 = await showConfirm('本当に削除してよろしいですか？この操作は取り消せません。（入出庫履歴の記録は残ります）');
     if(!step2) return;
+    const _delBranch = p.branchId || 'taniyabe';
+    const _delStk = p.branchStock ? (p.branchStock[_delBranch] || 0) : (p.stock || 0);
+    transactions.unshift({ id: uid('t'), productId: p.id, barcode: p.barcode||'', name: p.name, type: 'delete', qty: _delStk, date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '', itemType: 'delete', branchId: _delBranch });
+    await saveTransactions();
     products = products.filter(x=>x.id!==detailProductId);
     await saveProducts();
     renderCatTree();
@@ -5842,6 +5925,13 @@ window.addEventListener('storageReady', function(){
     if(!editingId) return;
     const ok = await showConfirm('この商品を削除しますか？入出庫履歴は残ります。');
     if(!ok) return;
+    const _mp = products.find(p=>p.id===editingId);
+    if(_mp){
+      const _mDelBranch = _mp.branchId || 'taniyabe';
+      const _mDelStk = _mp.branchStock ? (_mp.branchStock[_mDelBranch] || 0) : (_mp.stock || 0);
+      transactions.unshift({ id: uid('t'), productId: _mp.id, barcode: _mp.barcode||'', name: _mp.name, type: 'delete', qty: _mDelStk, date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '', itemType: 'delete', branchId: _mDelBranch });
+      await saveTransactions();
+    }
     products = products.filter(p=>p.id !== editingId);
     await saveProducts();
     renderCatTree();
@@ -6843,11 +6933,13 @@ window.addEventListener('storageReady', function(){
       const { txns: dayItems, provs: dayProvs } = dayGroups[dayKey];
       const dayInQty   = dayItems.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
       const dayOutQty  = dayItems.filter(t=>t.type==='out').reduce((s,t)=>s+t.qty,0);
+      const dayDelCnt  = dayItems.filter(t=>t.type==='delete').length;
       const dayProvQty = dayProvs.reduce((s,po)=>s+po.items.reduce((ss,i)=>ss+i.qty,0),0);
       const parts = [];
       if(dayInQty)  parts.push('<span style="color:var(--teal);">入庫 +'+dayInQty+'</span>');
       if(dayOutQty) parts.push('<span style="color:var(--red);">出庫 −'+dayOutQty+'</span>');
       if(dayProvQty)parts.push('<span style="color:var(--amber);">仮出庫 '+dayProvQty+'本</span>');
+      if(dayDelCnt) parts.push('<span style="color:var(--text-3);">削除 '+dayDelCnt+'件</span>');
       const daySummary = parts.join(' / ');
 
       // 通常トランザクションのバッチグループ
@@ -6909,9 +7001,9 @@ window.addEventListener('storageReady', function(){
         // 通常トランザクション
         const isBulk = batch.items.length > 1;
         const bQty = batch.items.reduce((s,t)=>s+t.qty,0);
-        const typeColor = batch.type==='in' ? 'var(--teal)' : 'var(--red)';
-        const typeLabel = batch.type==='in' ? '入庫' : '出庫';
-        const typeSign  = batch.type==='in' ? '+' : '−';
+        const typeColor = batch.type==='in' ? 'var(--teal)' : batch.type==='delete' ? 'var(--text-3)' : 'var(--red)';
+        const typeLabel = batch.type==='in' ? '入庫' : batch.type==='delete' ? '削除' : '出庫';
+        const typeSign  = batch.type==='in' ? '+' : batch.type==='delete' ? '×' : '−';
         const headerLabel = isBulk
           ? timeStr+' の一括'+typeLabel+'（'+batch.items.length+' 商品 / '+bQty+' 本）'
           : timeStr+' の'+typeLabel;
@@ -6934,7 +7026,7 @@ window.addEventListener('storageReady', function(){
         return '<details style="margin-bottom:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">'
           +'<summary style="list-style:none;background:var(--bg-2);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
           +'<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">'
-          +'<span class="hist-type '+(batch.type==='in'?'hist-in':'hist-out')+'">'+typeLabel+'</span>'
+          +'<span class="hist-type '+(batch.type==='in'?'hist-in':batch.type==='delete'?'hist-del':'hist-out')+'">'+typeLabel+'</span>'
           +'<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
           +(batch.user?'<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>':'')
           +'</div>'
