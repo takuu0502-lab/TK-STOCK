@@ -3774,14 +3774,11 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+(p.productType==='order'?'<span style="margin-left:6px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--amber-dim);color:var(--amber);white-space:nowrap;">客注品'+(p.orderCustomer?' / '+escapeHtml(p.orderCustomer):'')+(p.orderDueDate?' / '+(()=>{const d=new Date(p.orderDueDate);return (d.getMonth()+1)+'/'+d.getDate();})():'')+'</span>':'')+'</td>'
         + (_isWheelCat ? (()=>{
             const ws = p.wheelSpec || {};
-            const parts = [
-              ws.inch   ? ws.inch+'インチ' : '',
-              ws.j      ? ws.j+'J'         : '',
-              ws.holes  ? ws.holes+'穴'    : '',
-              ws.pcd    ? 'PCD'+ws.pcd     : '',
-              ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : ''
-            ].filter(Boolean);
-            return '<td data-label="ホイールスペック" style="color:var(--text-2);font-size:12px;white-space:nowrap;">'+(parts.length ? escapeHtml(parts.join(' / ')) : '—')+'</td>';
+            const sizeStr  = (ws.inch && ws.j)    ? ws.inch+'x'+ws.j : (ws.inch ? ws.inch+'インチ' : (ws.j ? ws.j+'J' : ''));
+            const holeStr  = (ws.holes && ws.pcd)  ? ws.holes+'/'+ws.pcd : (ws.holes ? ws.holes+'穴' : (ws.pcd ? 'PCD'+ws.pcd : ''));
+            const offsStr  = ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : '';
+            const parts = [sizeStr, holeStr, offsStr].filter(Boolean);
+            return '<td data-label="ホイールスペック" style="color:var(--text-2);font-size:12px;white-space:nowrap;font-family:var(--font-mono);">'+(parts.length ? escapeHtml(parts.join('　')) : '—')+'</td>';
           })()
           : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
           + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>')
