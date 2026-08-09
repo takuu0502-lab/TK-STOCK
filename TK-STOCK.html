@@ -2735,6 +2735,7 @@ window.addEventListener('storageReady', function(){
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let recentFilter = false;
+  let keywordFilter = '';
   let selectedProducts = new Set(); // 一括操作用選択商品ID
   function resetSpecSelections(){
     selectedSpec = null;
@@ -2745,6 +2746,7 @@ window.addEventListener('storageReady', function(){
     catalogQuoteSelection = new Map();
     stockOnlyFilter = true;
     manualOnlyFilter = false;
+    keywordFilter = '';
   }
   function isManualProduct(p){
     if(p._fromCatalog) return false;
@@ -3468,7 +3470,7 @@ window.addEventListener('storageReady', function(){
     if(!filterEl) return;
     if(!hasResults){ filterEl.style.display = 'none'; filterEl.innerHTML = ''; return; }
     filterEl.style.display = 'block';
-    filterEl.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;">'
+    filterEl.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="stockOnlyChk"'+(stockOnlyFilter?' checked':'')+'> 在庫あり商品のみ'
       + '</label>'
@@ -3481,6 +3483,10 @@ window.addEventListener('storageReady', function(){
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
+      + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px;outline:none;width:180px;background:var(--surface);color:var(--text-1);">'
+      + (keywordFilter ? '<button id="keywordClearBtn" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:0 2px;" title="クリア">✕</button>' : '')
+      + '</div>'
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
@@ -3490,6 +3496,14 @@ window.addEventListener('storageReady', function(){
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
     const rchk = document.getElementById('recentChk');
     if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
+    const kwInput = document.getElementById('keywordSearchInput');
+    if(kwInput){
+      kwInput.addEventListener('input', ()=>{ keywordFilter = kwInput.value; renderProductTable(); });
+      kwInput.addEventListener('focus', ()=>{ kwInput.style.borderColor = 'var(--amber)'; });
+      kwInput.addEventListener('blur', ()=>{ kwInput.style.borderColor = 'var(--line)'; });
+    }
+    const kwClear = document.getElementById('keywordClearBtn');
+    if(kwClear){ kwClear.addEventListener('click', ()=>{ keywordFilter = ''; renderProductTable(); }); }
   }
 
   function renderBranchFilter(){
@@ -3589,6 +3603,15 @@ window.addEventListener('storageReady', function(){
     let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getStock(p) > 0) : list;
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && po.items.some(i => i.productId === p.id)));
+    if(keywordFilter){
+      const kw = keywordFilter.trim().toLowerCase();
+      if(kw) filteredList = filteredList.filter(p =>
+        (p.name   || '').toLowerCase().includes(kw) ||
+        (p.brand  || '').toLowerCase().includes(kw) ||
+        (p.partno || '').toLowerCase().includes(kw) ||
+        (p.spec   || '').toLowerCase().includes(kw)
+      );
+    }
     if(recentFilter){
       filteredList = filteredList.slice().sort((a,b)=>{
         if(!a.createdAt && !b.createdAt) return 0;
