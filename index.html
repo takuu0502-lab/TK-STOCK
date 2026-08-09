@@ -3606,7 +3606,9 @@ window.addEventListener('storageReady', function(){
       return true;
     });
     renderInventoryFilter(list.length > 0);
-    let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getStock(p) > 0) : list;
+    // 在庫あり判定は全支店合計（他店在庫も含む）
+    const getTotalStock = p => p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+    let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && po.items.some(i => i.productId === p.id)));
     if(keywordFilter){
