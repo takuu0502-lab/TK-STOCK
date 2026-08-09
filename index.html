@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <!-- Quagga removed: Html5Qrcode(ZXing) used as fallback instead -->
@@ -5426,7 +5426,6 @@ window.addEventListener('storageReady', function(){
         // ── BarcodeDetector（iOS17+/Android Chrome ネイティブAPI・canvas不要）──
         let barcodeDetector = null;
         if('BarcodeDetector' in window){
-          // フォーマットを事前フィルタリングしない（iOS SafariのgetSupportedFormats不正確問題を回避）
           try{
             barcodeDetector = new BarcodeDetector({
               formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
@@ -5434,81 +5433,81 @@ window.addEventListener('storageReady', function(){
           }catch(_){ barcodeDetector = null; }
         }
 
-        // ── ZXingフォールバック（BarcodeDetector非対応端末向け EAN-13対応）──
-        let zxingControls = null;
-        if(!barcodeDetector && typeof ZXing !== 'undefined'){
-          try{
-            const hints = new Map();
-            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-            const zxingReader = new ZXing.BrowserMultiFormatReader(hints);
-            zxingReader.decodeFromStream(stream, video, (result, error, ctrl) => {
-              if(result && !detected){
+        // スキャン用canvas（jsQR・Quagga共通）
+        const scanCanvas = document.createElement('canvas');
+        const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+        let lastScanTime = 0;
+        let quaggaActive = false;
+        let detecting = false;
+
+        const tick = async () => {
+          if(detected) return;
+          if(video.readyState < video.HAVE_ENOUGH_DATA){
+            rafId = requestAnimationFrame(tick); return;
+          }
+
+          if(barcodeDetector && !detecting){
+            // ── Path A: BarcodeDetector（ネイティブ・高速・iOS17+対応）──
+            detecting = true;
+            try{
+              const barcodes = await barcodeDetector.detect(video);
+              if(barcodes.length > 0 && !detected){
                 detected = true;
                 try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                try{ ctrl && ctrl.stop(); }catch(_){}
-                onDecoded(result.getText());
+                onDecoded(barcodes[0].rawValue);
+                return;
               }
-            }).catch(()=>{});
-            zxingControls = { stop: ()=>{ try{ zxingReader.reset(); }catch(_){} } };
-          }catch(_){}
-        }
+            }catch(_){}
+            detecting = false;
 
-        // ── BarcodeDetector rAFループ（BarcodeDetector使用時のみ）──
-        let detecting = false;
-        if(barcodeDetector){
-          async function tick(){
-            if(detected) return;
-            if(!detecting && video.readyState >= video.HAVE_ENOUGH_DATA){
-              detecting = true;
+          } else if(!barcodeDetector && !quaggaActive && Date.now() - lastScanTime > 120){
+            // ── Path B: canvas経由（jsQR + Quagga）──
+            lastScanTime = Date.now();
+            scanCanvas.width = video.videoWidth;
+            scanCanvas.height = video.videoHeight;
+            scanCtx.drawImage(video, 0, 0);
+
+            // jsQR（QRコード）
+            if(typeof jsQR !== 'undefined'){
               try{
-                const barcodes = await barcodeDetector.detect(video);
-                if(barcodes.length > 0 && !detected){
-                  detected = true;
-                  try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                  detecting = false;
-                  onDecoded(barcodes[0].rawValue);
-                  return;
-                }
-              }catch(_){}
-              detecting = false;
-            }
-            rafId = requestAnimationFrame(tick);
-          }
-          rafId = requestAnimationFrame(tick);
-        } else if(!zxingControls && typeof jsQR !== 'undefined'){
-          // 最終フォールバック: jsQR（QRコードのみ）
-          const qrCanvas = document.createElement('canvas');
-          const qrCtx = qrCanvas.getContext('2d', { willReadFrequently: true });
-          let qrScanning = false;
-          async function qrTick(){
-            if(detected) return;
-            if(!qrScanning && video.readyState >= video.HAVE_ENOUGH_DATA){
-              qrScanning = true;
-              try{
-                qrCanvas.width = video.videoWidth; qrCanvas.height = video.videoHeight;
-                qrCtx.drawImage(video, 0, 0);
-                const imageData = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
-                const qr = jsQR(imageData.data, imageData.width, imageData.height);
+                const d = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+                const qr = jsQR(d.data, d.width, d.height);
                 if(qr && qr.data && !detected){
                   detected = true;
                   try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                  qrScanning = false;
-                  onDecoded(qr.data);
-                  return;
+                  onDecoded(qr.data); return;
                 }
               }catch(_){}
-              qrScanning = false;
             }
-            rafId = requestAnimationFrame(qrTick);
+
+            // Quagga（EAN-13・EAN-8・Code128）
+            if(typeof Quagga !== 'undefined' && !detected){
+              quaggaActive = true;
+              const src = scanCanvas.toDataURL('image/jpeg', 0.85);
+              Quagga.decodeSingle({
+                src,
+                numOfWorkers: 0,
+                locate: true,
+                decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader'] }
+              }, result => {
+                quaggaActive = false;
+                if(result && result.codeResult && result.codeResult.code && !detected){
+                  detected = true;
+                  try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+                  onDecoded(result.codeResult.code);
+                }
+              });
+            }
           }
-          rafId = requestAnimationFrame(qrTick);
-        }
+
+          rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
 
         resolve({
           stop: ()=> new Promise(r=>{
             detected = true;
             if(rafId) cancelAnimationFrame(rafId);
-            if(zxingControls) try{ zxingControls.stop(); }catch(_){}
             if(stream) stream.getTracks().forEach(t=>t.stop());
             r();
           }),
