@@ -335,15 +335,16 @@
           <div class="step">
             <div class="step-num">2</div>
             <div class="step-content">
-              <strong>キーワードで検索する</strong>
-              <p>右上の <span class="ui-label">商品検索</span> に商品名・品番・サイズを入力して検索できます。</p>
+              <strong>キーワードで絞り込む</strong>
+              <p>商品一覧のフィルター行右側にある検索欄にキーワードを入力し、<span class="ui-label">Enterキー</span> または <span class="ui-label">検索</span> ボタンを押すと絞り込まれます。商品名・ブランド・品番・規格サイズが対象です。✕ ボタンで解除できます。</p>
+              <p style="margin-top:6px; font-size:12px; color:#888;">※ 右上の <span class="ui-label">商品検索</span> ボタンはカテゴリをまたいだ全商品検索に使います。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
             <div class="step-content">
               <strong>在庫あり商品だけ表示する</strong>
-              <p><span class="ui-label">在庫あり</span> フィルターをオンにすると、在庫数が1本以上の商品だけに絞れます。</p>
+              <p>商品一覧を開くと <span class="ui-label">在庫あり商品のみ</span> が初期状態でオンになっています。在庫0の商品も見たい場合はチェックを外してください。</p>
             </div>
           </div>
         </div>
@@ -702,18 +703,22 @@
         </div>
       </div>
       <div class="section-body">
-        <p>入庫・出庫処理はバーコードリーダー（USB接続）またはスマートフォンのカメラで素早く行えます。</p>
+        <p>入庫・出庫処理はバーコードスキャナー（USB・Bluetooth）またはスマートフォンのカメラで素早く行えます。</p>
 
         <hr class="divider">
         <table class="def-table">
           <tr><th>方法</th><th>手順</th></tr>
           <tr>
-            <td>バーコードリーダー</td>
-            <td>入力欄にカーソルを合わせてバーコードを読み取るだけで自動検索されます</td>
+            <td>バーコードスキャナー<br><span style="font-size:11px;color:#888;">（推奨）</span></td>
+            <td>入力欄にカーソルを合わせてスキャナーで読み取るだけで自動検索されます。USB・Bluetoothどちらも対応</td>
           </tr>
           <tr>
-            <td>カメラスキャン</td>
-            <td><span class="ui-label">カメラでスキャン</span> または <span class="ui-label">スキャン</span> ボタンを押してカメラを起動し、バーコードに向けます</td>
+            <td>スマホカメラ<br><span style="font-size:11px;color:#888;">（QRコード）</span></td>
+            <td><span class="ui-label">カメラでスキャン</span> ボタンを押してカメラを起動し、商品のQRコードを正方形の枠内に収めます。暗い場合は 🔦 ボタンでライトをオンにしてください</td>
+          </tr>
+          <tr>
+            <td>写真で読み取る<br><span style="font-size:11px;color:#888;">（iPhone）</span></td>
+            <td><span class="ui-label">📷 写真で読み取る</span> ボタンからカメラで撮影してQRコードを読み取ります。ライブスキャンで読めない場合はこちらをお試しください</td>
           </tr>
           <tr>
             <td>クイックスキャン</td>
@@ -721,9 +726,14 @@
           </tr>
         </table>
 
+        <div class="callout callout-teal">
+          <span class="callout-icon">💡</span>
+          <p>スマートフォンでのスキャンは <strong>QRコード</strong> が最も読み取りやすい形式です。商品ラベルのQRコード印刷機能（商品一覧 → チェック → QRラベル印刷）を活用してください。</p>
+        </div>
+
         <div class="callout callout-amber">
           <span class="callout-icon">⚠️</span>
-          <p>他店舗に登録されている商品のバーコードをスキャンした場合は「未登録」として扱われます。自店舗で別途登録が必要です。</p>
+          <p>他店舗に登録されている商品のコードをスキャンした場合は「未登録」として扱われます。自店舗で別途登録が必要です。</p>
         </div>
       </div>
     </section>
