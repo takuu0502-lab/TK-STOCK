@@ -787,7 +787,7 @@
           <button class="btn btn-ghost btn-sm" id="inventoryPrintBtn" style="font-size:12px;">🖨 在庫一覧を印刷</button>
         </div>
         <div id="inventoryFilter" style="display:none;margin-bottom:10px;"></div>
-        <div id="productTableWrap"></div>
+        <div id="productTableWrap" style="overflow-x:auto;"></div>
       </div>
     </div>
   </div>
@@ -3720,7 +3720,7 @@ window.addEventListener('storageReady', function(){
       ? _visibleBranches.map(brId=>'<th style="font-size:11px;white-space:nowrap;text-align:center;">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
       : '<th>在庫</th>';
     const thead = recentFilter
-      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th>登録日時</th></tr></thead>'
+      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th style="white-space:nowrap;min-width:140px;">登録日時</th></tr></thead>'
       : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th><th>品番</th><th>規格・サイズ</th><th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'</tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     updateBulkBar();
