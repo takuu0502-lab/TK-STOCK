@@ -3606,8 +3606,15 @@ window.addEventListener('storageReady', function(){
       return true;
     });
     renderInventoryFilter(list.length > 0);
-    // 在庫あり判定は全支店合計（他店在庫も含む）
-    const getTotalStock = p => p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+    // 在庫あり判定：カタログ商品は全支店合計、他店の自社登録品は自店舗在庫のみで判定
+    const _stockFilterBranch = (currentUser && currentUser.branchId) || 'taniyabe';
+    const getTotalStock = p => {
+      if(isManualProduct(p) && (p.branchId || 'taniyabe') !== _stockFilterBranch){
+        // 他店が登録した自社登録品（ホイール等）→ 自店舗在庫のみで判定
+        return p.branchStock ? (p.branchStock[_stockFilterBranch] || 0) : (p.stock || 0);
+      }
+      return p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+    };
     let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && po.items.some(i => i.productId === p.id)));
