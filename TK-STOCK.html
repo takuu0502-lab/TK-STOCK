@@ -801,35 +801,9 @@
   <button class="btn-bulk btn-bulk-prov" id="bulkProvBtn">🔖 仮出庫登録</button>
   <button class="btn-bulk btn-bulk-qr" id="bulkQrBtn">🖨 QR印刷</button>
   <button class="btn-bulk btn-bulk-order" id="bulkOrderBtn">📋 発注書作成</button>
-  <button class="btn-bulk" id="bulkCatBtn" style="background:#7c6fcd;color:#fff;">🏷 分類を一括設定</button>
   <button class="btn-bulk btn-bulk-clear" id="bulkClearBtn">選択解除</button>
 </div>
 
-<!-- 一括分類設定モーダル -->
-<div id="bulkCatModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-1);border-radius:12px;padding:24px;width:min(400px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.3);">
-    <h3 style="margin:0 0 16px;font-size:16px;">🏷 分類を一括設定</h3>
-    <p style="font-size:12px;color:var(--text-3);margin:0 0 14px;">選択中の商品すべての分類を変更します。</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px;">大分類</label>
-        <select id="bcat_major" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
-      </div>
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px;">中分類</label>
-        <select id="bcat_sub" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
-      </div>
-    </div>
-    <div id="bcat_subsub_wrap" style="margin-bottom:14px;display:none;">
-      <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px;">小分類</label>
-      <select id="bcat_subsub" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button id="bulkCatCancel" style="padding:8px 18px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--text-1);cursor:pointer;font-size:13px;">キャンセル</button>
-      <button id="bulkCatApply" style="padding:8px 18px;border-radius:7px;border:none;background:#7c6fcd;color:#fff;cursor:pointer;font-size:13px;font-weight:700;">適用</button>
-    </div>
-  </div>
-</div>
 
 
   <div class="panel" id="tab-estimate" style="display:none;">
@@ -4682,55 +4656,6 @@ window.addEventListener('storageReady', function(){
     // 選択解除
     document.getElementById('bulkClearBtn').addEventListener('click', ()=>{
       selectedProducts.clear(); updateBulkBar(); renderProductTable();
-    });
-    // 一括分類設定
-    function bcatPopulateSub(majorId){
-      const sel = document.getElementById('bcat_sub');
-      const m = majorById(majorId);
-      let opts = '<option value="">（なし）</option>';
-      if(m) opts += m.subs.map(s=>'<option value="'+s.id+'">'+escapeHtml(s.name)+'</option>').join('');
-      sel.innerHTML = opts;
-      bcatPopulateSubSub(majorId, sel.value);
-    }
-    function bcatPopulateSubSub(majorId, subId){
-      const wrap = document.getElementById('bcat_subsub_wrap');
-      const sel = document.getElementById('bcat_subsub');
-      const sub = subById(majorId, subId);
-      if(!sub || !sub.subsubs || sub.subsubs.length === 0){ wrap.style.display='none'; return; }
-      let opts = '<option value="">（なし）</option>';
-      opts += sub.subsubs.map(ss=>'<option value="'+ss.id+'">'+escapeHtml(ss.name)+'</option>').join('');
-      sel.innerHTML = opts;
-      wrap.style.display = 'block';
-    }
-    document.getElementById('bulkCatBtn').addEventListener('click', ()=>{
-      if(!canWriteData()) return;
-      const majorSel = document.getElementById('bcat_major');
-      majorSel.innerHTML = categories.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>').join('');
-      bcatPopulateSub(majorSel.value);
-      document.getElementById('bcat_major').addEventListener('change', function(){ bcatPopulateSub(this.value); });
-      document.getElementById('bcat_sub').addEventListener('change', function(){
-        bcatPopulateSubSub(document.getElementById('bcat_major').value, this.value);
-      });
-      const modal = document.getElementById('bulkCatModal');
-      modal.style.display = 'flex';
-    });
-    document.getElementById('bulkCatCancel').addEventListener('click', ()=>{
-      document.getElementById('bulkCatModal').style.display = 'none';
-    });
-    document.getElementById('bulkCatApply').addEventListener('click', async ()=>{
-      const majorId = document.getElementById('bcat_major').value;
-      const subId = document.getElementById('bcat_sub').value || null;
-      const subSubId = document.getElementById('bcat_subsub').value || null;
-      if(!majorId){ alert('大分類を選択してください'); return; }
-      const ids = [...selectedProducts];
-      ids.forEach(id=>{
-        const p = products.find(x=>x.id===id);
-        if(p){ p.majorId = majorId; p.subId = subId; p.subSubId = subSubId; }
-      });
-      await saveProducts();
-      document.getElementById('bulkCatModal').style.display = 'none';
-      selectedProducts.clear(); updateBulkBar(); renderProductTable();
-      alert(ids.length+'件の分類を更新しました。');
     });
     // 発注書作成
     document.getElementById('bulkOrderBtn').addEventListener('click', ()=>{
