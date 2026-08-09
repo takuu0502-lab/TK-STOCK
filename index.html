@@ -1635,7 +1635,9 @@ window.addEventListener('storageReady', function(){
     return p.stock || 0;
   }
   function getOperationBranch(){
-    return selectedBranchFilter || (currentUser && currentUser.branchId) || 'taniyabe';
+    // 総管理者のみ支店切替可。一般スタッフは常に自所属支店のみ操作可能。
+    if(isSuperAdminUser()) return selectedBranchFilter || (currentUser && currentUser.branchId) || 'taniyabe';
+    return (currentUser && currentUser.branchId) || 'taniyabe';
   }
   function canOperateBranch(){
     if(!currentUser) return false;
