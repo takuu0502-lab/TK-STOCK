@@ -1292,6 +1292,21 @@
     <h3 style="margin-top:0;">💬 要望・改善リクエスト</h3>
     <div id="requestFormSection">
       <p style="font-size:13px;color:var(--text-2);margin-top:0;">システムへの改善リクエストや不具合報告を入力してください。</p>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12.5px;font-weight:600;color:var(--text-1);display:block;margin-bottom:4px;">件名 <span style="color:var(--red);">*</span></label>
+        <select id="requestCategory" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);">
+          <option value="">-- 選択してください --</option>
+          <option value="商品一覧について">商品一覧について</option>
+          <option value="タイヤ見積もりについて">タイヤ見積もりについて</option>
+          <option value="入庫処理について">入庫処理について</option>
+          <option value="出庫処理について">出庫処理について</option>
+          <option value="商品検索について">商品検索について</option>
+          <option value="新商品登録について">新商品登録について</option>
+          <option value="スキャン機能について">スキャン機能について</option>
+          <option value="機能追加要望について">機能追加要望について</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
       <textarea id="requestText" rows="5" placeholder="例）商品一覧に〇〇の機能が欲しい、〇〇の動作がおかしい…" style="width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);"></textarea>
       <div id="requestFormMsg" style="margin-top:8px;"></div>
       <div style="text-align:right;margin-top:10px;">
@@ -7583,23 +7598,27 @@ window.addEventListener('storageReady', function(){
   });
   requestModal.addEventListener('click', e=>{ if(e.target === requestModal) requestModal.classList.remove('show'); });
   document.getElementById('requestSubmitBtn').addEventListener('click', async ()=>{
+    const category = document.getElementById('requestCategory').value;
     const text = document.getElementById('requestText').value.trim();
     const msgEl = document.getElementById('requestFormMsg');
+    if(!category){ msgEl.innerHTML = '<div class="msg msg-error">件名を選択してください。</div>'; return; }
     if(!text){ msgEl.innerHTML = '<div class="msg msg-error">内容を入力してください。</div>'; return; }
     const entry = {
       id: uid('req'),
       date: new Date().toISOString(),
       user: currentUser ? currentUser.displayName : '不明',
       branch: currentUser ? (currentUser.branchId || 'taniyabe') : '',
+      category,
       text,
       status: 'open'
     };
     featureRequests.unshift(entry);
     await saveFeatureRequests();
+    document.getElementById('requestCategory').value = '';
     document.getElementById('requestText').value = '';
     msgEl.innerHTML = '<div class="msg msg-ok">✓ 送信しました。ありがとうございます！</div>';
     setTimeout(()=>{ msgEl.innerHTML = ''; }, 3000);
-    if(isSuperAdminUser()) renderRequestList();
+    renderRequestList();
   });
   function renderRequestList(){
     const el = document.getElementById('requestList');
@@ -7615,8 +7634,9 @@ window.addEventListener('storageReady', function(){
       const statusLabel = r.status === 'done' ? '✅ 対応済' : '🔖 受付中';
       return '<div style="background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:12px 14px;">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
-        + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
         + '<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
+        + (r.category ? '<span style="font-size:11px;font-weight:600;background:var(--bg-2);padding:2px 8px;border-radius:10px;color:var(--text-1);">'+escapeHtml(r.category)+'</span>' : '')
         + '<span style="font-size:11px;color:var(--text-3);">'+escapeHtml(r.user)+' / '+branchName(r.branch)+'</span>'
         + '</div>'
         + '<div style="display:flex;align-items:center;gap:8px;">'
