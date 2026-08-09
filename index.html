@@ -751,6 +751,7 @@
       <div class="brand" id="brandHome" style="cursor:pointer;" title="ホームに戻る"><span class="dot"></span>TK-STOCK</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <a href="/manual.html" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">使い方</a>
+        <button class="btn btn-ghost btn-sm" id="openRequestModal">💬 要望</button>
         <div class="brand-sub" id="userBadge">ログイン者情報：</div>
         <button class="btn btn-ghost btn-sm" id="openAccounts" style="display:none;">アカウント管理</button>
         <button class="btn btn-ghost btn-sm" id="switchAccountBtn" style="display:none;">アカウント切替</button>
@@ -1285,6 +1286,27 @@
 </div>
 
 <div id="provTooltip"></div>
+
+<div class="modal-overlay" id="requestModal">
+  <div class="modal" style="max-width:520px;width:95%;">
+    <h3 style="margin-top:0;">💬 要望・改善リクエスト</h3>
+    <div id="requestFormSection">
+      <p style="font-size:13px;color:var(--text-2);margin-top:0;">システムへの改善リクエストや不具合報告を入力してください。</p>
+      <textarea id="requestText" rows="5" placeholder="例）商品一覧に〇〇の機能が欲しい、〇〇の動作がおかしい…" style="width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);"></textarea>
+      <div id="requestFormMsg" style="margin-top:8px;"></div>
+      <div style="text-align:right;margin-top:10px;">
+        <button class="btn btn-amber" id="requestSubmitBtn">送信する</button>
+      </div>
+    </div>
+    <div id="requestListSection" style="display:none;margin-top:20px;border-top:1px solid var(--line);padding-top:16px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:10px;">📋 受付済みの要望一覧</div>
+      <div id="requestList" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="requestModalClose">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:360px;">
@@ -2482,6 +2504,20 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('suppliers', JSON.stringify(suppliers), SHARED); }
     catch(e){ console.error('save suppliers failed', e); }
   }
+
+  // 要望管理
+  let featureRequests = [];
+  async function loadFeatureRequests(){
+    try{
+      const r = await window.storage.get('featureRequests', SHARED);
+      featureRequests = r ? JSON.parse(r.value) : [];
+    }catch(e){ featureRequests = []; }
+  }
+  async function saveFeatureRequests(){
+    try{ await window.storage.set('featureRequests', JSON.stringify(featureRequests), SHARED); }
+    catch(e){ console.error('save featureRequests failed', e); }
+  }
+
   async function loadLocations(){
     try{
       const rOld = await window.storage.get('locations', SHARED);
@@ -7529,6 +7565,94 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('openAccounts').addEventListener('click', openAccountsModal);
+
+  // 要望モーダル
+  const requestModal = document.getElementById('requestModal');
+  document.getElementById('openRequestModal').addEventListener('click', async ()=>{
+    await loadFeatureRequests();
+    document.getElementById('requestText').value = '';
+    document.getElementById('requestFormMsg').innerHTML = '';
+    // 総管理者は一覧も表示
+    const listSection = document.getElementById('requestListSection');
+    if(isSuperAdminUser()){
+      listSection.style.display = 'block';
+      renderRequestList();
+    } else {
+      listSection.style.display = 'none';
+    }
+    requestModal.classList.add('show');
+  });
+  document.getElementById('requestModalClose').addEventListener('click', ()=>{
+    requestModal.classList.remove('show');
+  });
+  requestModal.addEventListener('click', e=>{ if(e.target === requestModal) requestModal.classList.remove('show'); });
+  document.getElementById('requestSubmitBtn').addEventListener('click', async ()=>{
+    const text = document.getElementById('requestText').value.trim();
+    const msgEl = document.getElementById('requestFormMsg');
+    if(!text){ msgEl.innerHTML = '<div class="msg msg-error">内容を入力してください。</div>'; return; }
+    const entry = {
+      id: uid('req'),
+      date: new Date().toISOString(),
+      user: currentUser ? currentUser.displayName : '不明',
+      branch: currentUser ? (currentUser.branchId || 'taniyabe') : '',
+      text,
+      status: 'open'
+    };
+    featureRequests.unshift(entry);
+    await saveFeatureRequests();
+    document.getElementById('requestText').value = '';
+    msgEl.innerHTML = '<div class="msg msg-ok">✓ 送信しました。ありがとうございます！</div>';
+    setTimeout(()=>{ msgEl.innerHTML = ''; }, 3000);
+    if(isSuperAdminUser()) renderRequestList();
+  });
+  function renderRequestList(){
+    const el = document.getElementById('requestList');
+    if(!el) return;
+    if(featureRequests.length === 0){
+      el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 0;">要望はまだありません。</div>';
+      return;
+    }
+    el.innerHTML = featureRequests.map(r=>{
+      const d = new Date(r.date);
+      const ds = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      const statusColor = r.status === 'done' ? 'var(--teal)' : 'var(--amber)';
+      const statusLabel = r.status === 'done' ? '✅ 対応済' : '🔖 受付中';
+      return '<div style="background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:12px 14px;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);">'+escapeHtml(r.user)+' / '+branchName(r.branch)+'</span>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
+        + (r.status !== 'done'
+            ? '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-done="'+r.id+'">対応済にする</button>'
+            : '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-reopen="'+r.id+'">再開する</button>')
+        + '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:var(--red);" data-req-del="'+r.id+'">削除</button>'
+        + '</div>'
+        + '</div>'
+        + '<div style="font-size:13px;color:var(--text-1);white-space:pre-wrap;word-break:break-word;">'+escapeHtml(r.text)+'</div>'
+        + '</div>';
+    }).join('');
+    el.querySelectorAll('[data-req-done]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const req = featureRequests.find(r=>r.id===btn.dataset.reqDone);
+        if(req){ req.status='done'; await saveFeatureRequests(); renderRequestList(); }
+      });
+    });
+    el.querySelectorAll('[data-req-reopen]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const req = featureRequests.find(r=>r.id===btn.dataset.reqReopen);
+        if(req){ req.status='open'; await saveFeatureRequests(); renderRequestList(); }
+      });
+    });
+    el.querySelectorAll('[data-req-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        featureRequests = featureRequests.filter(r=>r.id!==btn.dataset.reqDel);
+        await saveFeatureRequests(); renderRequestList();
+      });
+    });
+  }
 
   // ---------- カタログ表示設定 ----------
   let catalogVisibility = { hiddenBrands: [], hiddenModels: [] };
