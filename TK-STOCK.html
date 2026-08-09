@@ -831,35 +831,6 @@
   </div>
 </div>
 
-<!-- 分類一括移行モーダル -->
-<div id="subCatMigrateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2100;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-1);border-radius:12px;padding:24px;width:min(480px,94vw);box-shadow:0 8px 40px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto;">
-    <h3 style="margin:0 0 6px;font-size:16px;">🔧 ブランド別 分類一括移行</h3>
-    <p style="font-size:12px;color:var(--text-3);margin:0 0 16px;">ブランド・商品名で自動マッチングして中分類を一括設定します。</p>
-    <div style="margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;">移行先の大分類</label>
-      <select id="mig_major" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
-    </div>
-    <div style="margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;">移行先の中分類</label>
-      <select id="mig_sub" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
-    </div>
-    <div style="margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;">小分類（任意）</label>
-      <select id="mig_subsub" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"><option value="">（なし）</option></select>
-    </div>
-    <div style="margin-bottom:16px;">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">対象ブランド（チェックをつけたものが移行されます）</label>
-      <div id="mig_brand_checks" style="display:flex;flex-direction:column;gap:6px;font-size:13px;"></div>
-    </div>
-    <div id="mig_preview" style="background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-2);margin-bottom:14px;min-height:32px;"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button id="migCancelBtn" style="padding:8px 18px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--text-1);cursor:pointer;font-size:13px;">キャンセル</button>
-      <button id="migPreviewBtn" style="padding:8px 18px;border-radius:7px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:13px;">対象を確認</button>
-      <button id="migApplyBtn" style="padding:8px 18px;border-radius:7px;border:none;background:#7c6fcd;color:#fff;cursor:pointer;font-size:13px;font-weight:700;">移行実行</button>
-    </div>
-  </div>
-</div>
 
   <div class="panel" id="tab-estimate" style="display:none;">
     <h2 class="section-title">タイヤ見積もり</h2>
@@ -7822,7 +7793,6 @@ window.addEventListener('storageReady', function(){
       + ' <span class="'+roleBadgeClass(currentUser.role)+'">'+roleLabel(currentUser.role)+'</span>'
       + ' <span style="font-size:11px;background:var(--bg-3);color:var(--text-2);padding:2px 8px;border-radius:8px;margin-left:4px;">'+escapeHtml(userBranchLabel)+'</span>';
     document.getElementById('openAccounts').style.display = isSuperAdminUser() ? 'inline-block' : 'none';
-    document.getElementById('openSubCatMigrateBtn').style.display = isSuperAdminUser() ? 'inline-block' : 'none';
     document.getElementById('switchAccountBtn').style.display = 'inline-block';
     applyRolePermissionsToUI();
   }
@@ -7966,102 +7936,6 @@ window.addEventListener('storageReady', function(){
     });
   }
 
-  // ---------- 分類一括移行ツール ----------
-  const MIG_BRANDS = [
-    { key:'bridgestone', label:'ブリヂストン（夏タイヤ）', match: p => {
-        const b = (p.brand||'').toLowerCase(); const n = (p.name||'').toLowerCase();
-        const isBs = b.includes('bridgestone') || b.includes('ブリヂストン') || n.includes('bridgestone');
-        const isWinter = n.includes('スタッドレス') || n.includes('blizzak') || n.includes('冬') || (p.spec||'').toLowerCase().includes('blizzak');
-        return isBs && !isWinter;
-      }},
-    { key:'toprun', label:'TOPRUN', match: p => {
-        const b = (p.brand||'').toLowerCase(); const n = (p.name||'').toLowerCase();
-        return b.includes('toprun') || n.includes('toprun');
-      }},
-    { key:'luftrv', label:'LUFTRVⅡ / LUFTRV', match: p => {
-        const b = (p.brand||'').toLowerCase(); const n = (p.name||'').toLowerCase();
-        return b.includes('luftr') || n.includes('luftr') || b.includes('ルフト') || n.includes('ルフト');
-      }},
-    { key:'seiberling', label:'セイバーリング (SEIBERLING)', match: p => {
-        const b = (p.brand||'').toLowerCase(); const n = (p.name||'').toLowerCase();
-        return b.includes('seiberling') || b.includes('セイバーリング') || n.includes('seiberling') || n.includes('セイバーリング');
-      }},
-  ];
-
-  function openMigModal(){
-    // 大分類セレクト
-    const majSel = document.getElementById('mig_major');
-    majSel.innerHTML = categories.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>').join('');
-    // タイヤをデフォルト選択
-    const tireCat = categories.find(c=>c.name==='タイヤ');
-    if(tireCat) majSel.value = tireCat.id;
-    migUpdateSub();
-    // ブランドチェックボックス
-    const checks = document.getElementById('mig_brand_checks');
-    checks.innerHTML = MIG_BRANDS.map(b=>
-      '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">'
-      +'<input type="checkbox" data-mig-brand="'+b.key+'" checked style="width:15px;height:15px;">'
-      +'<span>'+escapeHtml(b.label)+'</span></label>'
-    ).join('');
-    document.getElementById('mig_preview').textContent = '「対象を確認」ボタンで対象件数を表示します';
-    document.getElementById('subCatMigrateModal').style.display = 'flex';
-  }
-  function migUpdateSub(){
-    const majorId = document.getElementById('mig_major').value;
-    const subSel = document.getElementById('mig_sub');
-    const m = majorById(majorId);
-    let opts = '<option value="">（なし）</option>';
-    if(m) opts += m.subs.map(s=>'<option value="'+s.id+'">'+escapeHtml(s.name)+'</option>').join('');
-    subSel.innerHTML = opts;
-    // サマータイヤがあればデフォルト選択
-    const summerOpt = m && m.subs.find(s=>s.name==='サマータイヤ');
-    if(summerOpt) subSel.value = summerOpt.id;
-    migUpdateSubSub();
-  }
-  function migUpdateSubSub(){
-    const majorId = document.getElementById('mig_major').value;
-    const subId = document.getElementById('mig_sub').value;
-    const subsubSel = document.getElementById('mig_subsub');
-    const sub = subById(majorId, subId);
-    subsubSel.innerHTML = '<option value="">（なし）</option>';
-    if(sub && sub.subsubs && sub.subsubs.length > 0){
-      subsubSel.innerHTML += sub.subsubs.map(ss=>'<option value="'+ss.id+'">'+escapeHtml(ss.name)+'</option>').join('');
-    }
-  }
-  function getMigTargets(){
-    const checkedKeys = [...document.querySelectorAll('[data-mig-brand]:checked')].map(c=>c.dataset.migBrand);
-    const activeBrands = MIG_BRANDS.filter(b=>checkedKeys.includes(b.key));
-    return products.filter(p => activeBrands.some(b=>b.match(p)));
-  }
-  document.getElementById('openSubCatMigrateBtn').addEventListener('click', openMigModal);
-  document.getElementById('migCancelBtn').addEventListener('click', ()=>{ document.getElementById('subCatMigrateModal').style.display='none'; });
-  document.getElementById('mig_major').addEventListener('change', migUpdateSub);
-  document.getElementById('mig_sub').addEventListener('change', migUpdateSubSub);
-  document.getElementById('migPreviewBtn').addEventListener('click', ()=>{
-    const targets = getMigTargets();
-    const majorId = document.getElementById('mig_major').value;
-    const subId = document.getElementById('mig_sub').value;
-    const majorLabel = (majorById(majorId)||{}).name || '';
-    const subLabel = subId ? ((subById(majorId,subId)||{}).name||'') : '（なし）';
-    document.getElementById('mig_preview').innerHTML =
-      '対象商品：<b>'+targets.length+'件</b> → 大分類「'+escapeHtml(majorLabel)+'」中分類「'+escapeHtml(subLabel)+'」に設定します。<br>'
-      +'<span style="font-size:11px;color:var(--text-3);">例：'+targets.slice(0,5).map(p=>escapeHtml(p.name)).join('、')+(targets.length>5?'...' :'' )+'</span>';
-  });
-  document.getElementById('migApplyBtn').addEventListener('click', async ()=>{
-    const targets = getMigTargets();
-    if(targets.length === 0){ alert('対象商品が見つかりませんでした。'); return; }
-    const majorId = document.getElementById('mig_major').value;
-    const subId = document.getElementById('mig_sub').value || null;
-    const subSubId = document.getElementById('mig_subsub').value || null;
-    const majorLabel = (majorById(majorId)||{}).name || '';
-    const subLabel = subId ? ((subById(majorId,subId)||{}).name||'') : '（なし）';
-    if(!confirm(targets.length+'件を「'+majorLabel+'」>「'+subLabel+'」に移行します。よろしいですか？')) return;
-    targets.forEach(p=>{ p.majorId = majorId; p.subId = subId; p.subSubId = subSubId; });
-    await saveProducts();
-    document.getElementById('subCatMigrateModal').style.display = 'none';
-    renderProductTable(); renderCatTree();
-    alert('✓ '+targets.length+'件の分類を更新しました！');
-  });
 
   // ---------- カタログ表示設定 ----------
   let catalogVisibility = { hiddenBrands: [], hiddenModels: [] };
