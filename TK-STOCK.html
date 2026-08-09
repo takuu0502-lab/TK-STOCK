@@ -6002,6 +6002,7 @@ window.addEventListener('storageReady', function(){
       document.getElementById('detailStockOut').addEventListener('click', ()=> doDetailStockChange(id, 'out'));
       document.getElementById('detailProvisionalOut').addEventListener('click', async ()=>{
         if(!canWriteData()) return;
+        if(!canOperateBranch()){ const msgEl2 = document.getElementById('detailActionMsg'); if(msgEl2) msgEl2.innerHTML = '<div class="msg msg-error">'+escapeHtml(branchName(getOperationBranch()))+'の在庫は操作できません。自分の所属支店タブに切り替えてください。</div>'; return; }
         const p2 = products.find(x=>x.id===id);
         if(!p2) return;
         const qty = parseInt(document.getElementById('detailQty').value || '1', 10);
@@ -6062,6 +6063,7 @@ window.addEventListener('storageReady', function(){
     if(!p) return;
     const qty = parseInt(document.getElementById('detailQty').value || '0', 10);
     const msgEl = document.getElementById('detailActionMsg');
+    if(!canOperateBranch()){ msgEl.innerHTML = '<div class="msg msg-error">'+escapeHtml(branchName(getOperationBranch()))+'の在庫は操作できません。自分の所属支店タブに切り替えてください。</div>'; return; }
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
     if(kind === 'out' && qty > getStock(p)){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return; }
     const label = kind === 'in' ? '入庫' : '出庫';
