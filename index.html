@@ -1147,6 +1147,32 @@
       <label>商品名</label>
       <input type="text" id="f_name" placeholder="例) ECOPIA NH200C">
     </div>
+    <!-- ホイールスペック（ホイール分類選択時のみ表示） -->
+    <div id="f_wheel_fields" style="display:none;background:var(--bg-2);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:4px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px;">🔩 ホイールスペック</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>インチ</label>
+          <select id="f_wheel_inch"><option value="">-</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>J数</label>
+          <select id="f_wheel_j"><option value="">-</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>穴数</label>
+          <select id="f_wheel_holes"><option value="">-</option><option value="4">4穴</option><option value="5">5穴</option><option value="6">6穴</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>PCD</label>
+          <input type="text" id="f_wheel_pcd" placeholder="例) 114.3" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>オフセット</label>
+          <select id="f_wheel_offset"><option value="">-</option></select>
+        </div>
+      </div>
+    </div>
     <div class="field">
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
@@ -5601,9 +5627,11 @@ window.addEventListener('storageReady', function(){
   function toggleTireNameField(){
     const m = majorById(document.getElementById('f_major').value);
     const isTire = m && m.name === 'タイヤ';
+    const isWheel = m && m.name === 'ホイール';
     document.getElementById('f_tiremodel_field').style.display = isTire ? 'block' : 'none';
     document.getElementById('f_spec').style.display = isTire ? 'none' : 'block';
     document.getElementById('f_spec_tire_row').style.display = isTire ? 'flex' : 'none';
+    document.getElementById('f_wheel_fields').style.display = isWheel ? 'block' : 'none';
   }
   function populateSpecTireSelects(){
     const wSel = document.getElementById('f_spec_width');
@@ -5619,6 +5647,24 @@ window.addEventListener('storageReady', function(){
     for(let inch=12; inch<=24; inch++){ iOpts += '<option value="R'+inch+'">'+inch+'</option>'; }
     iSel.innerHTML = iOpts;
   }
+  function populateWheelSelects(){
+    // インチ 12〜22
+    const inchSel = document.getElementById('f_wheel_inch');
+    let iOpts = '<option value="">-</option>';
+    for(let i=12; i<=22; i++){ iOpts += '<option value="'+i+'">'+i+'インチ</option>'; }
+    inchSel.innerHTML = iOpts;
+    // J数 3.5〜12 (0.5刻み)
+    const jSel = document.getElementById('f_wheel_j');
+    let jOpts = '<option value="">-</option>';
+    for(let j=35; j<=120; j+=5){ jOpts += '<option value="'+(j/10)+'">'+(j/10)+'J</option>'; }
+    jSel.innerHTML = jOpts;
+    // オフセット 0〜60
+    const offSel = document.getElementById('f_wheel_offset');
+    let oOpts = '<option value="">-</option>';
+    for(let o=0; o<=60; o++){ oOpts += '<option value="'+o+'">+'+o+'</option>'; }
+    offSel.innerHTML = oOpts;
+  }
+  populateWheelSelects();
   populateSpecTireSelects();
   function updateSpecFromTireSelects(){
     const w = document.getElementById('f_spec_width').value;
@@ -5863,6 +5909,13 @@ window.addEventListener('storageReady', function(){
     toggleTireNameField();
     document.getElementById('f_spec').value = p.spec || '';
     prefillSpecTireSelects(p.spec || '');
+    // ホイールスペック復元
+    const ws = p.wheelSpec || {};
+    document.getElementById('f_wheel_inch').value   = ws.inch   || '';
+    document.getElementById('f_wheel_j').value      = ws.j      || '';
+    document.getElementById('f_wheel_holes').value  = ws.holes  || '';
+    document.getElementById('f_wheel_pcd').value    = ws.pcd    || '';
+    document.getElementById('f_wheel_offset').value = ws.offset || '';
     document.getElementById('f_stock').value = getStock(p);
     document.getElementById('f_minstock').value = p.minStock;
     document.getElementById('f_cost').value = p.costPrice || '';
@@ -6197,6 +6250,16 @@ window.addEventListener('storageReady', function(){
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const memo = document.getElementById('f_memo').value.trim();
+    // ホイールスペック
+    const _wheelMajor = majorById(majorId);
+    const _isWheel = _wheelMajor && _wheelMajor.name === 'ホイール';
+    const wheelSpec = _isWheel ? {
+      inch:   document.getElementById('f_wheel_inch').value,
+      j:      document.getElementById('f_wheel_j').value,
+      holes:  document.getElementById('f_wheel_holes').value,
+      pcd:    document.getElementById('f_wheel_pcd').value.trim(),
+      offset: document.getElementById('f_wheel_offset').value
+    } : null;
     const productType = document.querySelector('input[name="f_productType"]:checked')?.value || 'stock';
     const orderCustomer = productType === 'order' ? document.getElementById('f_order_customer').value.trim() : '';
     const orderCar      = productType === 'order' ? document.getElementById('f_order_car').value.trim() : '';
@@ -6227,12 +6290,12 @@ window.addEventListener('storageReady', function(){
       const _saveBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       if(!p.branchLocation) p.branchLocation = {};
       p.branchLocation[_saveBranch] = locationId;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
