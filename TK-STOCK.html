@@ -6021,6 +6021,20 @@ window.addEventListener('storageReady', function(){
       + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
       + (p.supplierId && suppliers.find(s=>s.id===p.supplierId) ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">仕入先：'+escapeHtml(suppliers.find(s=>s.id===p.supplierId).name)+'</div>' : '')
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
+      + (()=>{
+          const _dm = majorById(p.majorId);
+          const _isWheelDetail = _dm && _dm.name === 'ホイール';
+          if(!_isWheelDetail || !p.wheelSpec) return '';
+          const ws = p.wheelSpec;
+          const sizeStr = (ws.inch && ws.j) ? ws.inch+'x'+ws.j : (ws.inch ? ws.inch+'インチ' : (ws.j ? ws.j+'J' : ''));
+          const holeStr = (ws.holes && ws.pcd) ? ws.holes+'/'+ws.pcd : (ws.holes ? ws.holes+'穴' : (ws.pcd ? 'PCD'+ws.pcd : ''));
+          const offsStr = ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : '';
+          const parts = [sizeStr, holeStr, offsStr].filter(Boolean);
+          if(!parts.length) return '';
+          return '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">'
+            + parts.map(p=>'<span style="font-size:13px;font-weight:600;font-family:var(--font-mono);background:var(--bg-1);border:1px solid var(--line);border-radius:6px;padding:3px 10px;color:var(--text-1);">'+escapeHtml(p)+'</span>').join('')
+            + '</div>';
+        })()
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<button class="btn btn-ghost" id="detailQrBtn" style="margin-top:10px;font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
       + '</div>'
