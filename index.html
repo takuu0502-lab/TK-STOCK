@@ -3515,11 +3515,13 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     const isAdmin = currentUser && isSuperAdminUser();
     const visibleIds = getVisibleBranches();
-    const canSwitch = isAdmin || visibleIds.length > 1;
+    // 総管理者のみ支店切替ボタンを表示。一般スタッフは自店舗バッジのみ。
+    const canSwitch = isAdmin;
 
     if(!canSwitch){
-      // 閲覧可能支店が1つだけ（自支店固定）→ バッジのみ
+      // 一般スタッフ → 自店舗バッジのみ（テーブルに全支店列が表示されるため切替不要）
       const myBranch = (currentUser && currentUser.branchId) || 'taniyabe';
+      selectedBranchFilter = myBranch; // 常に自店舗に固定
       wrap.innerHTML = '<div style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-2);padding:5px 12px;border-radius:8px;font-size:12px;">'
         + '<span style="color:var(--text-3);">表示支店：</span>'
         + '<span style="font-weight:700;color:var(--amber);">'+escapeHtml(branchName(myBranch))+'</span>'
