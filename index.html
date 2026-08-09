@@ -7572,14 +7572,10 @@ window.addEventListener('storageReady', function(){
     await loadFeatureRequests();
     document.getElementById('requestText').value = '';
     document.getElementById('requestFormMsg').innerHTML = '';
-    // 総管理者は一覧も表示
+    // 全スタッフに一覧を表示
     const listSection = document.getElementById('requestListSection');
-    if(isSuperAdminUser()){
-      listSection.style.display = 'block';
-      renderRequestList();
-    } else {
-      listSection.style.display = 'none';
-    }
+    listSection.style.display = 'block';
+    renderRequestList();
     requestModal.classList.add('show');
   });
   document.getElementById('requestModalClose').addEventListener('click', ()=>{
@@ -7625,10 +7621,10 @@ window.addEventListener('storageReady', function(){
         + '</div>'
         + '<div style="display:flex;align-items:center;gap:8px;">'
         + '<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
-        + (r.status !== 'done'
+        + (isSuperAdminUser() ? (r.status !== 'done'
             ? '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-done="'+r.id+'">対応済にする</button>'
-            : '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-reopen="'+r.id+'">再開する</button>')
-        + '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:var(--red);" data-req-del="'+r.id+'">削除</button>'
+            : '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-reopen="'+r.id+'">再開する</button>') : '')
+        + (isSuperAdminUser() ? '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:var(--red);" data-req-del="'+r.id+'">削除</button>' : '')
         + '</div>'
         + '</div>'
         + '<div style="font-size:13px;color:var(--text-1);white-space:pre-wrap;word-break:break-word;">'+escapeHtml(r.text)+'</div>'
