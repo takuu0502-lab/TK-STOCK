@@ -3477,9 +3477,6 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="stockOnlyChk"'+(stockOnlyFilter?' checked':'')+'> 在庫あり商品のみ'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
-      + '<input type="checkbox" id="manualOnlyChk"'+(manualOnlyFilter?' checked':'')+'> 自社登録品のみ'
-      + '</label>'
-      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="customerOrderChk"'+(customerOrderFilter?' checked':'')+'> 仮出庫品のみ表示'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
@@ -3493,8 +3490,6 @@ window.addEventListener('storageReady', function(){
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
-    const mchk = document.getElementById('manualOnlyChk');
-    if(mchk){ mchk.addEventListener('change', ()=>{ manualOnlyFilter = mchk.checked; renderProductTable(); renderPriceCatalog(); }); }
     const cchk = document.getElementById('customerOrderChk');
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
     const rchk = document.getElementById('recentChk');
