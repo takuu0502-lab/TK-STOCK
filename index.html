@@ -5324,22 +5324,19 @@ window.addEventListener('storageReady', function(){
           }catch(_){}
         }
 
-        // 試行2: QuaggaJS（EAN-13/JANバーコードに強い）
-        if(!decoded){ try{ decoded = await quaggaDecode(dataUrl); }catch(_){} }
-
-        // 試行3: QuaggaJS・画像縮小版で再試行
-        if(!decoded){
+        // 試行2: jsQR（QRコード専用フォールバック）
+        if(!decoded && typeof jsQR !== 'undefined'){
           try{
-            const img = new Image();
-            img.src = dataUrl;
-            await new Promise(r => img.onload = r);
-            const canvas = document.createElement('canvas');
-            const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
-            canvas.width = Math.round(img.naturalWidth * scale);
-            canvas.height = Math.round(img.naturalHeight * scale);
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-            const small = canvas.toDataURL('image/jpeg', 0.9);
-            decoded = await quaggaDecode(small);
+            const img2 = new Image();
+            img2.src = dataUrl;
+            await new Promise(r=>{ img2.onload=r; img2.onerror=r; });
+            const cv = document.createElement('canvas');
+            cv.width = img2.naturalWidth; cv.height = img2.naturalHeight;
+            const cx2 = cv.getContext('2d');
+            cx2.drawImage(img2, 0, 0);
+            const id2 = cx2.getImageData(0, 0, cv.width, cv.height);
+            const qr2 = jsQR(id2.data, id2.width, id2.height);
+            if(qr2 && qr2.data) decoded = qr2.data;
           }catch(_){}
         }
 
@@ -5368,167 +5365,79 @@ window.addEventListener('storageReady', function(){
 
     addPhotoScanButton(wrap, onDecoded);
 
-    if(!navigator.mediaDevices) return null;
+    if(typeof Html5Qrcode === 'undefined' || !navigator.mediaDevices) return null;
 
     return new Promise(async resolve => {
       let detected = false;
+      let html5QrCode = null;
 
-      // トーチボタンを追加するヘルパー
-      function addTorchBtn(readerEl, track){
-        try{
-          const caps = track && track.getCapabilities ? track.getCapabilities() : {};
-          if(!caps.torch) return;
-          let torchOn = false;
-          const torchBtn = document.createElement('button');
-          torchBtn.textContent = '🔦';
-          torchBtn.title = 'ライトのオン/オフ';
-          torchBtn.style.cssText = 'position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:20px;cursor:pointer;z-index:20;display:flex;align-items:center;justify-content:center;';
-          torchBtn.onclick = () => {
-            torchOn = !torchOn;
-            track.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(()=>{});
-            torchBtn.style.background = torchOn ? 'rgba(230,160,32,0.85)' : 'rgba(0,0,0,0.55)';
-          };
-          readerEl.appendChild(torchBtn);
-        }catch(_){}
-      }
+      try{
+        const readerEl = document.getElementById(readerId);
+        readerEl.innerHTML = '';
+        readerEl.style.position = 'relative';
 
-      // ── パスA: BarcodeDetector（iOS17+ / Android Chrome 内蔵、最高速）──
-      let barcodeDetector = null;
-      if('BarcodeDetector' in window){
-        try{
-          const supported = await BarcodeDetector.getSupportedFormats().catch(()=>[]);
-          const want = ['ean_13','ean_8','upc_a','upc_e','code_128','qr_code'];
-          const formats = supported.length ? want.filter(f=>supported.includes(f)) : want;
-          if(formats.length) barcodeDetector = new BarcodeDetector({ formats });
-        }catch(_){}
-      }
+        html5QrCode = new Html5Qrcode(readerId, { verbose: false });
 
-      if(barcodeDetector){
-        let stream = null;
-        let rafId = null;
-        try{
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal:'environment' }, width: { ideal:1920 }, height: { ideal:1080 } }
-          });
-          const track = stream.getVideoTracks()[0];
-          if(track && track.applyConstraints){
-            track.applyConstraints({ advanced: [{ focusMode:'continuous' }] }).catch(()=>{});
-          }
+        // qrbox を関数で動的に計算（画面サイズに合わせた横長枠）
+        const qrboxFn = (vw, vh) => ({
+          width:  Math.min(Math.floor(vw * 0.82), 320),
+          height: Math.min(Math.floor(vh * 0.28), 100)
+        });
 
-          const readerEl = document.getElementById(readerId);
-          readerEl.innerHTML = '';
-          readerEl.style.position = 'relative';
-
-          const video = document.createElement('video');
-          video.srcObject = stream;
-          video.setAttribute('playsinline','');
-          video.setAttribute('muted','');
-          video.style.cssText = 'width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;display:block;';
-          readerEl.appendChild(video);
-
-          // 横長スキャン枠（1Dバーコード向け）
-          const overlay = document.createElement('div');
-          overlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:82%;height:28%;max-height:88px;border:2.5px solid var(--amber);border-radius:8px;pointer-events:none;box-sizing:border-box;';
-          const scanLine = document.createElement('div');
-          scanLine.style.cssText = 'position:absolute;top:50%;left:6%;width:88%;height:2px;background:rgba(230,160,32,0.5);transform:translateY(-50%);';
-          overlay.appendChild(scanLine);
-          readerEl.appendChild(overlay);
-
-          await video.play();
-          addTorchBtn(readerEl, track);
-
-          let detecting = false;
-          async function tick(){
-            if(detected) return;
-            if(!detecting && video.readyState === video.HAVE_ENOUGH_DATA){
-              detecting = true;
-              try{
-                const barcodes = await barcodeDetector.detect(video);
-                for(const b of barcodes){
-                  if(b.rawValue && !detected){
-                    detected = true;
-                    try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                    detecting = false;
-                    onDecoded(b.rawValue);
-                    return;
-                  }
-                }
-              }catch(_){}
-              detecting = false;
-            }
-            rafId = requestAnimationFrame(tick);
-          }
-          rafId = requestAnimationFrame(tick);
-
-          resolve({
-            stop: ()=> new Promise(r=>{
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          {
+            fps: 15,
+            qrbox: qrboxFn,
+            aspectRatio: 1.333,
+            // BarcodeDetector が使えるデバイスでは高速ネイティブAPIを使用
+            // 使えない場合は ZXing（Quaggaより高精度）へ自動フォールバック
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+          },
+          (decodedText) => {
+            if(!detected){
               detected = true;
-              if(rafId) cancelAnimationFrame(rafId);
-              if(stream) stream.getTracks().forEach(t=>t.stop());
-              r();
-            }),
-            clear: ()=>{}
-          });
-        }catch(e){
-          if(stream) stream.getTracks().forEach(t=>t.stop());
-          resolve(null);
-        }
-        return;
-      }
+              try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+              html5QrCode.stop().catch(()=>{});
+              onDecoded(decodedText);
+            }
+          }
+        );
 
-      // ── パスB: Html5Qrcode（ZXingベース）フォールバック ──
-      // BarcodeDetector非対応端末（一部iOS・旧Androidなど）向け
-      if(typeof Html5Qrcode !== 'undefined'){
-        try{
-          const readerEl = document.getElementById(readerId);
-          readerEl.innerHTML = '';
-          readerEl.style.position = 'relative';
-
-          const html5QrCode = new Html5Qrcode(readerId, { verbose: false });
-
-          await html5QrCode.start(
-            { facingMode: 'environment' },
-            {
-              fps: 15,
-              qrbox: { width: 280, height: 100 }, // 横長枠（バーコード向け）
-              aspectRatio: 1.333,
-              experimentalFeatures: { useBarCodeDetectorIfSupported: false }
-            },
-            (decodedText) => {
-              if(!detected){
-                detected = true;
-                try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                html5QrCode.stop().catch(()=>{});
-                onDecoded(decodedText);
+        // カメラ起動後にトーチボタンを追加（対応端末のみ表示）
+        setTimeout(()=>{
+          try{
+            const videoEl = readerEl.querySelector('video');
+            if(videoEl && videoEl.srcObject){
+              const track = videoEl.srcObject.getVideoTracks()[0];
+              const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+              if(caps.torch){
+                let torchOn = false;
+                const torchBtn = document.createElement('button');
+                torchBtn.textContent = '🔦';
+                torchBtn.title = 'ライトのオン/オフ';
+                torchBtn.style.cssText = 'position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:20px;cursor:pointer;z-index:99;';
+                torchBtn.onclick = () => {
+                  torchOn = !torchOn;
+                  track.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(()=>{});
+                  torchBtn.style.background = torchOn ? 'rgba(230,160,32,0.85)' : 'rgba(0,0,0,0.55)';
+                };
+                readerEl.appendChild(torchBtn);
               }
             }
-          );
+          }catch(_){}
+        }, 1200);
 
-          // カメラ起動後にトーチボタンを追加
-          setTimeout(()=>{
-            try{
-              const videoEl = readerEl.querySelector('video');
-              if(videoEl && videoEl.srcObject){
-                const track = videoEl.srcObject.getVideoTracks()[0];
-                addTorchBtn(readerEl, track);
-              }
-            }catch(_){}
-          }, 800);
-
-          resolve({
-            stop: ()=> new Promise(r=>{
-              detected = true;
-              html5QrCode.stop().catch(()=>{}).finally(()=>r());
-            }),
-            clear: ()=>{}
-          });
-        }catch(e){
-          resolve(null);
-        }
-        return;
+        resolve({
+          stop: ()=> new Promise(r=>{
+            detected = true;
+            (html5QrCode ? html5QrCode.stop().catch(()=>{}) : Promise.resolve()).finally(()=>r());
+          }),
+          clear: ()=>{}
+        });
+      }catch(e){
+        resolve(null);
       }
-
-      resolve(null);
     });
   }
 
