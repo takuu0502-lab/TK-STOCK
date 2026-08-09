@@ -3484,7 +3484,8 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
       + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
-      + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px;outline:none;width:180px;background:var(--surface);color:var(--text-1);">'
+      + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;width:160px;background:var(--surface);color:var(--text-1);">'
+      + '<button id="keywordSearchBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-left:none;border-radius:0 20px 20px 0;background:var(--amber);color:#fff;cursor:pointer;font-weight:600;">検索</button>'
       + (keywordFilter ? '<button id="keywordClearBtn" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:0 2px;" title="クリア">✕</button>' : '')
       + '</div>'
       + '</div>';
@@ -3497,11 +3498,14 @@ window.addEventListener('storageReady', function(){
     const rchk = document.getElementById('recentChk');
     if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
     const kwInput = document.getElementById('keywordSearchInput');
+    const doKeywordSearch = () => { keywordFilter = kwInput ? kwInput.value : ''; renderProductTable(); };
     if(kwInput){
-      kwInput.addEventListener('input', ()=>{ keywordFilter = kwInput.value; renderProductTable(); });
+      kwInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') doKeywordSearch(); });
       kwInput.addEventListener('focus', ()=>{ kwInput.style.borderColor = 'var(--amber)'; });
       kwInput.addEventListener('blur', ()=>{ kwInput.style.borderColor = 'var(--line)'; });
     }
+    const kwBtn = document.getElementById('keywordSearchBtn');
+    if(kwBtn){ kwBtn.addEventListener('click', doKeywordSearch); }
     const kwClear = document.getElementById('keywordClearBtn');
     if(kwClear){ kwClear.addEventListener('click', ()=>{ keywordFilter = ''; renderProductTable(); }); }
   }
