@@ -3780,7 +3780,7 @@ window.addEventListener('storageReady', function(){
             const parts = [sizeStr, holeStr, offsStr].filter(Boolean);
             return '<td data-label="ホイールスペック" style="color:var(--text-2);font-size:12px;white-space:nowrap;font-family:var(--font-mono);">'+(parts.length ? escapeHtml(parts.join('　')) : '—')+'</td>';
           })()
-          : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
+          : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
           + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>')
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&p.branchLocation[_locBr])||p.locationId||''; return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
@@ -3846,8 +3846,12 @@ window.addEventListener('storageReady', function(){
     const _midHeaders = _isWheelCat
       ? '<th>ホイールスペック</th>'
       : '<th>品番</th><th>規格・サイズ</th>';
+    // 最近の登録順では列数を抑えるため品番を省略
+    const _midHeadersRecent = _isWheelCat
+      ? '<th>ホイールスペック</th>'
+      : '<th style="white-space:nowrap;">規格・サイズ</th>';
     const thead = recentFilter
-      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th>'+_midHeaders+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th style="white-space:nowrap;min-width:140px;">登録日時</th></tr></thead>'
+      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th>'+_midHeadersRecent+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
       : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th>'+_midHeaders+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'</tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     updateBulkBar();
