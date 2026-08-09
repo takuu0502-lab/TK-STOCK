@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <!-- Quagga removed: Html5Qrcode(ZXing) used as fallback instead -->
@@ -5362,7 +5361,7 @@ window.addEventListener('storageReady', function(){
     }
 
     wrap.innerHTML = '<div id="'+readerId+'" style="width:100%;"></div>'
-      + '<div class="scan-hint">バーコードを枠内に横向きに収めてください。暗い場合は 🔦 ボタンでライトをONにしてください。</div>';
+      + '<div class="scan-hint">QRコードを枠内に収めてください。暗い場合は 🔦 ボタンでライトをONにしてください。</div>';
 
     addPhotoScanButton(wrap, onDecoded);
 
@@ -5395,12 +5394,20 @@ window.addEventListener('storageReady', function(){
         video.style.cssText = 'width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:block;';
         readerEl.appendChild(video);
 
-        // 横長スキャン枠（1Dバーコード向け）
+        // QRコード向け正方形スキャン枠（コーナーブラケット）
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:85%;height:30%;max-height:100px;border:2.5px solid var(--amber);border-radius:8px;pointer-events:none;box-sizing:border-box;';
-        const scanLine = document.createElement('div');
-        scanLine.style.cssText = 'position:absolute;top:50%;left:5%;width:90%;height:2px;background:rgba(230,160,32,0.6);transform:translateY(-50%);';
-        overlay.appendChild(scanLine);
+        overlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62%;aspect-ratio:1/1;pointer-events:none;';
+        const corners = [
+          'top:0;left:0;border-top:3px solid var(--amber);border-left:3px solid var(--amber);border-radius:6px 0 0 0;',
+          'top:0;right:0;border-top:3px solid var(--amber);border-right:3px solid var(--amber);border-radius:0 6px 0 0;',
+          'bottom:0;left:0;border-bottom:3px solid var(--amber);border-left:3px solid var(--amber);border-radius:0 0 0 6px;',
+          'bottom:0;right:0;border-bottom:3px solid var(--amber);border-right:3px solid var(--amber);border-radius:0 0 6px 0;'
+        ];
+        corners.forEach(c => {
+          const el = document.createElement('div');
+          el.style.cssText = 'position:absolute;width:22%;height:22%;'+c;
+          overlay.appendChild(el);
+        });
         readerEl.appendChild(overlay);
 
         await video.play();
@@ -5458,44 +5465,27 @@ window.addEventListener('storageReady', function(){
 
         } else {
           // ── Path B: canvas経由（jsQR + Quagga）BarcodeDetector非対応端末向け ──
+          // jsQR でQRコードをスキャン（100msごとにフレームを処理）
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          let quaggaActive = false;
           let lastScan = 0;
           const tickB = () => {
             if(detected) return;
-            if(video.readyState >= video.HAVE_ENOUGH_DATA && !quaggaActive && Date.now() - lastScan > 120){
+            if(video.readyState >= video.HAVE_ENOUGH_DATA && Date.now() - lastScan > 100){
               lastScan = Date.now();
               canvas.width = video.videoWidth;
               canvas.height = video.videoHeight;
               ctx.drawImage(video, 0, 0);
-              // jsQR（QRコード）
               if(typeof jsQR !== 'undefined'){
                 try{
                   const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                  const qr = jsQR(d.data, d.width, d.height);
+                  const qr = jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' });
                   if(qr && qr.data && !detected){
                     detected = true;
                     try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
                     onDecoded(qr.data); return;
                   }
                 }catch(_){}
-              }
-              // Quagga（EAN-13・EAN-8・Code128）
-              if(typeof Quagga !== 'undefined' && !detected){
-                quaggaActive = true;
-                Quagga.decodeSingle({
-                  src: canvas.toDataURL('image/jpeg', 0.85),
-                  numOfWorkers: 0, locate: true,
-                  decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader'] }
-                }, r => {
-                  quaggaActive = false;
-                  if(r && r.codeResult && r.codeResult.code && !detected){
-                    detected = true;
-                    try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                    onDecoded(r.codeResult.code);
-                  }
-                });
               }
             }
             rafId = requestAnimationFrame(tickB);
