@@ -2732,7 +2732,7 @@ window.addEventListener('storageReady', function(){
   let selectedTireAspect = null;
   let selectedTireInch = null;
   let selectedCatalogModelKey = null;
-  let stockOnlyFilter = false;
+  let stockOnlyFilter = true;
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let recentFilter = false;
@@ -2744,7 +2744,7 @@ window.addEventListener('storageReady', function(){
     selectedTireInch = null;
     selectedCatalogModelKey = null;
     catalogQuoteSelection = new Map();
-    stockOnlyFilter = false;
+    stockOnlyFilter = true;
     manualOnlyFilter = false;
   }
   function isManualProduct(p){
