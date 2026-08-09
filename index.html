@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <!-- Quagga removed: Html5Qrcode(ZXing) used as fallback instead -->
@@ -5422,25 +5423,44 @@ window.addEventListener('storageReady', function(){
           }
         }catch(_){}
 
-        // ── BarcodeDetector（iOS/Android ネイティブ API・canvasを使わず高速）──
+        // ── BarcodeDetector（iOS17+/Android Chrome ネイティブAPI・canvas不要）──
         let barcodeDetector = null;
         if('BarcodeDetector' in window){
+          // フォーマットを事前フィルタリングしない（iOS SafariのgetSupportedFormats不正確問題を回避）
           try{
-            const supported = await BarcodeDetector.getSupportedFormats().catch(()=>[]);
-            const want = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
-            const formats = supported.length ? want.filter(f=>supported.includes(f)) : want;
-            if(formats.length) barcodeDetector = new BarcodeDetector({ formats });
+            barcodeDetector = new BarcodeDetector({
+              formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
+            });
+          }catch(_){ barcodeDetector = null; }
+        }
+
+        // ── ZXingフォールバック（BarcodeDetector非対応端末向け EAN-13対応）──
+        let zxingControls = null;
+        if(!barcodeDetector && typeof ZXing !== 'undefined'){
+          try{
+            const hints = new Map();
+            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+            const zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+            zxingReader.decodeFromStream(stream, video, (result, error, ctrl) => {
+              if(result && !detected){
+                detected = true;
+                try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+                try{ ctrl && ctrl.stop(); }catch(_){}
+                onDecoded(result.getText());
+              }
+            }).catch(()=>{});
+            zxingControls = { stop: ()=>{ try{ zxingReader.reset(); }catch(_){} } };
           }catch(_){}
         }
 
+        // ── BarcodeDetector rAFループ（BarcodeDetector使用時のみ）──
         let detecting = false;
-        async function tick(){
-          if(detected) return;
-          if(!detecting && video.readyState >= video.HAVE_ENOUGH_DATA){
-            detecting = true;
-            try{
-              if(barcodeDetector){
-                // BarcodeDetector: video要素から直接検出（canvas不要、iOS対応）
+        if(barcodeDetector){
+          async function tick(){
+            if(detected) return;
+            if(!detecting && video.readyState >= video.HAVE_ENOUGH_DATA){
+              detecting = true;
+              try{
                 const barcodes = await barcodeDetector.detect(video);
                 if(barcodes.length > 0 && !detected){
                   detected = true;
@@ -5449,32 +5469,46 @@ window.addEventListener('storageReady', function(){
                   onDecoded(barcodes[0].rawValue);
                   return;
                 }
-              } else if(typeof jsQR !== 'undefined'){
-                // BarcodeDetector非対応の場合はjsQR（QRコードのみ）
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+              }catch(_){}
+              detecting = false;
+            }
+            rafId = requestAnimationFrame(tick);
+          }
+          rafId = requestAnimationFrame(tick);
+        } else if(!zxingControls && typeof jsQR !== 'undefined'){
+          // 最終フォールバック: jsQR（QRコードのみ）
+          const qrCanvas = document.createElement('canvas');
+          const qrCtx = qrCanvas.getContext('2d', { willReadFrequently: true });
+          let qrScanning = false;
+          async function qrTick(){
+            if(detected) return;
+            if(!qrScanning && video.readyState >= video.HAVE_ENOUGH_DATA){
+              qrScanning = true;
+              try{
+                qrCanvas.width = video.videoWidth; qrCanvas.height = video.videoHeight;
+                qrCtx.drawImage(video, 0, 0);
+                const imageData = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
                 const qr = jsQR(imageData.data, imageData.width, imageData.height);
                 if(qr && qr.data && !detected){
                   detected = true;
                   try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-                  detecting = false;
+                  qrScanning = false;
                   onDecoded(qr.data);
                   return;
                 }
-              }
-            }catch(_){}
-            detecting = false;
+              }catch(_){}
+              qrScanning = false;
+            }
+            rafId = requestAnimationFrame(qrTick);
           }
-          rafId = requestAnimationFrame(tick);
+          rafId = requestAnimationFrame(qrTick);
         }
-        rafId = requestAnimationFrame(tick);
 
         resolve({
           stop: ()=> new Promise(r=>{
             detected = true;
             if(rafId) cancelAnimationFrame(rafId);
+            if(zxingControls) try{ zxingControls.stop(); }catch(_){}
             if(stream) stream.getTracks().forEach(t=>t.stop());
             r();
           }),
