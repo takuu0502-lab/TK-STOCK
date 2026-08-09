@@ -1129,6 +1129,10 @@
         <select id="f_sub"></select>
       </div>
     </div>
+    <div class="field" id="f_subsub_field" style="display:none;">
+      <label>小分類</label>
+      <select id="f_subsub"><option value="">-- 選択なし --</option></select>
+    </div>
     <div class="field" id="f_tiremodel_field" style="display:none;">
       <label>タイヤ銘柄（ブリヂストン価格表より）</label>
       <select id="f_tiremodel"></select>
@@ -2621,6 +2625,14 @@ window.addEventListener('storageReady', function(){
     if(!m) return null;
     return m.subs.find(s=>s.id===subId);
   }
+  function subsubById(majorId, subId, subsubId){
+    const s = subById(majorId, subId);
+    if(!s || !s.subsubs) return null;
+    return s.subsubs.find(ss=>ss.id===subsubId);
+  }
+  function countForSubSub(majorId, subId, subsubId){
+    return products.filter(p=>p.majorId===majorId && p.subId===subId && p.subSubId===subsubId).length;
+  }
   function colorForMajor(majorId){
     const idx = categories.findIndex(c=>c.id===majorId);
     return COLOR_PALETTE[idx >= 0 ? idx % COLOR_PALETTE.length : COLOR_PALETTE.length-1];
@@ -2796,6 +2808,7 @@ window.addEventListener('storageReady', function(){
     specPanelOpen = false;
     selectedMajor = null;
     selectedSub = null;
+    selectedSubSub = null;
     resetSpecSelections();
     showHomeState();
     renderCatTree();
@@ -2805,6 +2818,7 @@ window.addEventListener('storageReady', function(){
 
   let selectedMajor = null;
   let selectedSub = null;
+  let selectedSubSub = null;
   let selectedSpec = null;
   let selectedTireWidth = null;
   let selectedTireAspect = null;
@@ -2826,6 +2840,7 @@ window.addEventListener('storageReady', function(){
     stockOnlyFilter = true;
     manualOnlyFilter = false;
     keywordFilter = '';
+    selectedSubSub = null;
   }
   function isManualProduct(p){
     if(p._fromCatalog) return false;
@@ -2930,12 +2945,30 @@ window.addEventListener('storageReady', function(){
           if(allowedWheelSubIds && _obWheelCat && cat.id === _obWheelCat.id){
             if(!allowedWheelSubIds.includes(sub.id)) return;
           }
-          const isSubSel = selectedMajor === cat.id && selectedSub === sub.id;
+          const isSubSel = selectedMajor === cat.id && selectedSub === sub.id && selectedSubSub === null;
+          const subIsOpen = expanded.has(cat.id+'_'+sub.id);
           html += '<div class="cat-row sub'+(isSubSel?' selected':'')+'" data-major="'+cat.id+'" data-sub="'+sub.id+'">'
+                + (((sub.subsubs||[]).length > 0) ? '<span class="chevron" style="font-size:9px;">'+(subIsOpen?'▾':'▸')+'</span>' : '<span style="display:inline-block;width:14px;"></span>')
                 + '<span class="cat-label">'+escapeHtml(sub.name)+'</span>'
                 + '<span class="cat-count-badge">'+countForSub(cat.id, sub.id)+'</span>'
                 + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-sub" data-major="'+cat.id+'" data-id="'+sub.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-sub" data-major="'+cat.id+'" data-id="'+sub.id+'" title="削除">&times;</button></span>' : '')
                 + '</div>';
+          // 小分類
+          if(subIsOpen || (sub.subsubs||[]).length > 0){
+            if(subIsOpen){
+              (sub.subsubs||[]).forEach(ss=>{
+                const isSSel = selectedMajor===cat.id && selectedSub===sub.id && selectedSubSub===ss.id;
+                html += '<div class="cat-row sub" style="padding-left:32px;'+(isSSel?'background:var(--bg-3);':'')+ '" data-major="'+cat.id+'" data-sub="'+sub.id+'" data-subsub="'+ss.id+'">'
+                      + '<span class="cat-label" style="font-size:12px;">'+escapeHtml(ss.name)+'</span>'
+                      + '<span class="cat-count-badge">'+countForSubSub(cat.id, sub.id, ss.id)+'</span>'
+                      + (writable ? '<span class="cat-actions"><button class="icon-btn" data-action="rename-subsub" data-major="'+cat.id+'" data-sub="'+sub.id+'" data-id="'+ss.id+'" title="名称変更">&#9998;</button><button class="icon-btn" data-action="delete-subsub" data-major="'+cat.id+'" data-sub="'+sub.id+'" data-id="'+ss.id+'" title="削除">&times;</button></span>' : '')
+                      + '</div>';
+              });
+              if(writable){
+                html += '<div class="cat-row sub add-row" style="padding-left:32px;" data-add-subsub-major="'+cat.id+'" data-add-subsub-sub="'+sub.id+'"><span class="cat-label" style="font-size:11px;">＋ 小分類を追加</span></div>';
+              }
+            }
+          }
         });
         if(writable){
           html += '<div class="cat-row sub add-row" data-add-sub="'+cat.id+'"><span class="cat-label" style="font-size:11.5px;">＋ 中分類を追加</span></div>';
@@ -2992,17 +3025,24 @@ window.addEventListener('storageReady', function(){
     });
     wrap.querySelectorAll('.cat-row').forEach(row=>{
       row.addEventListener('click', ()=>{
+        if(row.dataset.addSubsubMajor){ addSubSubCategory(row.dataset.addSubsubMajor, row.dataset.addSubsubSub); return; }
         if(row.dataset.addSub){ addSubCategory(row.dataset.addSub); return; }
         if(row.dataset.addMajor){ addMajorCategory(); return; }
-        if(row.dataset.root){ selectedMajor = null; selectedSub = null; resetSpecSelections(); renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return; }
+        if(row.dataset.root){ selectedMajor = null; selectedSub = null; selectedSubSub = null; resetSpecSelections(); renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return; }
+        if(row.dataset.subsub){
+          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub; selectedSubSub = row.dataset.subsub; resetSpecSelections();
+          renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
+        }
         if(row.dataset.sub){
-          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub; resetSpecSelections();
+          const subKey = row.dataset.major+'_'+row.dataset.sub;
+          if(expanded.has(subKey)) expanded.delete(subKey); else expanded.add(subKey);
+          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub; selectedSubSub = null; resetSpecSelections();
           renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
         }
         if(row.dataset.major){
           const mid = row.dataset.major;
           if(expanded.has(mid)) expanded.delete(mid); else expanded.add(mid);
-          selectedMajor = mid; selectedSub = null; resetSpecSelections();
+          selectedMajor = mid; selectedSub = null; selectedSubSub = null; resetSpecSelections();
           renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
         }
       });
@@ -3048,7 +3088,28 @@ window.addEventListener('storageReady', function(){
       if(!confirm('中分類「'+sub.name+'」を削除しますか？')) return;
       const cat = majorById(majorId);
       cat.subs = cat.subs.filter(s=>s.id!==id);
-      if(selectedSub===id) selectedSub=null;
+      if(selectedSub===id){ selectedSub=null; selectedSubSub=null; }
+      await saveCategories(); renderCatTree(); renderProductTable();
+    } else if(action === 'rename-subsub'){
+      const b = document.querySelector('[data-action="rename-subsub"][data-id="'+id+'"]');
+      const subId2 = b ? b.dataset.sub : null;
+      const ss = subsubById(majorId, subId2, id);
+      if(!ss) return;
+      const name = prompt('小分類の名称を変更', ss.name);
+      if(name && name.trim()){ ss.name = name.trim(); await saveCategories(); renderCatTree(); renderProductTable(); }
+    } else if(action === 'delete-subsub'){
+      const b = document.querySelector('[data-action="delete-subsub"][data-id="'+id+'"]');
+      const subId2 = b ? b.dataset.sub : null;
+      const ss = subsubById(majorId, subId2, id);
+      if(!ss) return;
+      if(countForSubSub(majorId, subId2, id) > 0){
+        alert('この小分類には商品が登録されているため削除できません。先に商品の分類を変更してください。');
+        return;
+      }
+      if(!confirm('小分類「'+ss.name+'」を削除しますか？')) return;
+      const sub2 = subById(majorId, subId2);
+      sub2.subsubs = (sub2.subsubs||[]).filter(s=>s.id!==id);
+      if(selectedSubSub===id) selectedSubSub=null;
       await saveCategories(); renderCatTree(); renderProductTable();
     }
   }
@@ -3065,8 +3126,19 @@ window.addEventListener('storageReady', function(){
     const name = prompt('新しい中分類の名称を入力してください');
     if(!name || !name.trim()) return;
     const cat = majorById(majorId);
-    cat.subs.push({id: uid('s'), name: name.trim()});
+    cat.subs.push({id: uid('s'), name: name.trim(), subsubs: []});
     expanded.add(majorId);
+    await saveCategories(); renderCatTree(); renderProductTable();
+  }
+  async function addSubSubCategory(majorId, subId){
+    if(!canWriteData()) return;
+    const name = prompt('新しい小分類の名称を入力してください');
+    if(!name || !name.trim()) return;
+    const sub = subById(majorId, subId);
+    if(!sub) return;
+    if(!sub.subsubs) sub.subsubs = [];
+    sub.subsubs.push({id: uid('ss'), name: name.trim()});
+    expanded.add(majorId+'_'+subId);
     await saveCategories(); renderCatTree(); renderProductTable();
   }
 
@@ -3668,6 +3740,7 @@ window.addEventListener('storageReady', function(){
       }
       if(selectedMajor !== null && p.majorId !== selectedMajor) return false;
       if(selectedSub !== null && p.subId !== selectedSub) return false;
+      if(selectedSubSub !== null && p.subSubId !== selectedSubSub) return false;
       if(selectedSpec !== null && !(p.spec && p.spec.indexOf(selectedSpec) !== -1)) return false;
       if(selectedTireWidth !== null && !(p.spec && p.spec.indexOf(selectedTireWidth) !== -1)) return false;
       if(selectedTireAspect !== null && !(p.spec && (
@@ -5154,9 +5227,29 @@ window.addEventListener('storageReady', function(){
     if(m){ opts += m.subs.map(s=>'<option value="'+s.id+'">'+escapeHtml(s.name)+'</option>').join(''); }
     sel.innerHTML = opts;
     if(selectedSubId) sel.value = selectedSubId;
+    populateSubSubSelect(majorId, sel.value, null);
+  }
+  function populateSubSubSelect(majorId, subId, selectedSubsubId){
+    const field = document.getElementById('f_subsub_field');
+    const sel = document.getElementById('f_subsub');
+    const sub = subById(majorId, subId);
+    if(!sub || !sub.subsubs || sub.subsubs.length === 0){
+      sel.innerHTML = '<option value="">-- 選択なし --</option>';
+      field.style.display = 'none';
+      return;
+    }
+    let opts = '<option value="">-- 選択なし --</option>';
+    opts += sub.subsubs.map(ss=>'<option value="'+ss.id+'">'+escapeHtml(ss.name)+'</option>').join('');
+    sel.innerHTML = opts;
+    if(selectedSubsubId) sel.value = selectedSubsubId;
+    field.style.display = 'block';
   }
   document.getElementById('f_major').addEventListener('change', function(){
     populateSubSelect(this.value, null);
+  });
+  document.getElementById('f_sub').addEventListener('change', function(){
+    const majorId = document.getElementById('f_major').value;
+    populateSubSubSelect(majorId, this.value, null);
   });
 
   const modal = document.getElementById('productModal');
@@ -5883,6 +5976,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
     if(selectedSub) populateSubSelect(document.getElementById('f_major').value, selectedSub);
+    populateSubSubSelect(document.getElementById('f_major').value, document.getElementById('f_sub').value, null);
     toggleTireNameField();
     document.getElementById('f_spec').value = '';
     prefillSpecTireSelects('');
@@ -5922,6 +6016,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
     populateSubSelect(p.majorId, p.subId);
+    populateSubSubSelect(p.majorId, p.subId, p.subSubId || null);
     toggleTireNameField();
     document.getElementById('f_spec').value = p.spec || '';
     prefillSpecTireSelects(p.spec || '');
@@ -6272,6 +6367,7 @@ window.addEventListener('storageReady', function(){
     }
     const majorId = document.getElementById('f_major').value;
     const subId = document.getElementById('f_sub').value || null;
+    const subSubId = document.getElementById('f_subsub').value || null;
     const spec = document.getElementById('f_spec').value.trim();
     const stock = parseInt(document.getElementById('f_stock').value || '0', 10);
     const minStock = parseInt(document.getElementById('f_minstock').value || '0', 10);
@@ -6320,12 +6416,12 @@ window.addEventListener('storageReady', function(){
       const _saveBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       if(!p.branchLocation) p.branchLocation = {};
       p.branchLocation[_saveBranch] = locationId;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
