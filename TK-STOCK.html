@@ -8210,6 +8210,7 @@ window.addEventListener('storageReady', function(){
   // ---------- ホイールカタログ管理 ----------
   let wheelCatalogIndex = { 梅:[], 竹:[], 松:[] };
   let wcatActiveTier = '梅';
+  let wcatImageCache = {}; // {id: dataUrl} — アップロード済み画像をメモリにキャッシュ
 
   async function loadWheelCatalogIndex(){
     try{
@@ -8219,42 +8220,51 @@ window.addEventListener('storageReady', function(){
     }catch(e){ wheelCatalogIndex = { 梅:[], 竹:[], 松:[] }; }
   }
   async function saveWheelCatalogIndex(){
-    try{ await window.storage.set('wheelCatalogIndex', JSON.stringify(wheelCatalogIndex), SHARED); }
-    catch(e){ console.error('save wheelCatalogIndex failed', e); }
+    const ok = await window.storage.set('wheelCatalogIndex', JSON.stringify(wheelCatalogIndex), SHARED);
+    if(!ok) throw new Error('インデックス保存失敗');
   }
   async function saveWheelCatalogImage(id, dataUrl){
-    try{ await window.storage.set('wheelCatalogImg_'+id, dataUrl, SHARED); }
-    catch(e){ console.error('save wheelCatalogImg failed', e); }
+    const ok = await window.storage.set('wcatImg_'+id, dataUrl, SHARED);
+    if(!ok) throw new Error('画像保存失敗');
   }
   async function deleteWheelCatalogImage(id){
-    try{ await window.storage.delete('wheelCatalogImg_'+id, SHARED); }
-    catch(e){ console.error('delete wheelCatalogImg failed', e); }
+    try{ await window.storage.delete('wcatImg_'+id, SHARED); }
+    catch(e){ console.error('delete wcatImg failed', e); }
   }
 
-  // 画像を最大800pxに圧縮してdata URLを返す
+  // 画像を最大600pxに圧縮してdata URLを返す（Firebaseの制限内に収める）
   function compressImage(file){
     return new Promise((resolve, reject)=>{
       const reader = new FileReader();
       reader.onload = e=>{
         const img = new Image();
         img.onload = ()=>{
-          const MAX = 800;
+          const MAX = 600;
           let w = img.width, h = img.height;
           if(w > MAX || h > MAX){
-            if(w > h){ h = Math.round(h*MAX/w); w = MAX; }
+            if(w >= h){ h = Math.round(h*MAX/w); w = MAX; }
             else{ w = Math.round(w*MAX/h); h = MAX; }
           }
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.78));
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
         };
-        img.onerror = reject;
+        img.onerror = ()=> reject(new Error('画像読み込み失敗'));
         img.src = e.target.result;
       };
-      reader.onerror = reject;
+      reader.onerror = ()=> reject(new Error('ファイル読み込み失敗'));
       reader.readAsDataURL(file);
     });
+  }
+
+  function wcatSetImg(gallery, id, dataUrl){
+    const imgEl = gallery.querySelector('[data-wcat-img="'+id+'"]');
+    if(!imgEl) return;
+    imgEl.src = dataUrl;
+    imgEl.style.display = 'block';
+    const span = imgEl.nextElementSibling;
+    if(span) span.style.display = 'none';
   }
 
   function renderWheelCatalogGallery(){
@@ -8265,28 +8275,28 @@ window.addEventListener('storageReady', function(){
       gallery.innerHTML = '<div style="grid-column:1/-1;padding:20px 0;font-size:13px;color:var(--text-3);">まだ画像がありません</div>';
       return;
     }
-    gallery.innerHTML = items.map((item, ii)=>{
+    gallery.innerHTML = items.map(item=>{
+      const cached = wcatImageCache[item.id];
+      const imgStyle = cached ? 'width:100%;height:100%;object-fit:cover;display:block;' : 'width:100%;height:100%;object-fit:cover;display:none;';
+      const spanStyle = cached ? 'display:none;' : 'font-size:11px;color:var(--text-3);';
       return '<div style="position:relative;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;overflow:hidden;">'
         +'<div style="aspect-ratio:1/1;background:var(--bg-1);display:flex;align-items:center;justify-content:center;overflow:hidden;">'
-        +'<img data-wcat-img="'+item.id+'" src="" alt="'+escapeHtml(item.name||'')+'" style="width:100%;height:100%;object-fit:cover;display:none;">'
-        +'<span class="wcat-img-loading" style="font-size:11px;color:var(--text-3);">…</span>'
+        +'<img data-wcat-img="'+item.id+'" src="'+(cached ? escapeHtml(cached) : '')+'" alt="'+escapeHtml(item.name||'')+'" style="'+imgStyle+'">'
+        +'<span style="'+spanStyle+'">読込中…</span>'
         +'</div>'
         +'<div style="padding:6px 8px;font-size:11.5px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(item.name||'')+'</div>'
-        +'<button data-wcat-del="'+item.id+'" title="削除" style="position:absolute;top:5px;right:5px;width:22px;height:22px;border:none;background:rgba(194,64,44,.85);color:#fff;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;">×</button>'
+        +'<button data-wcat-del="'+item.id+'" title="削除" style="position:absolute;top:5px;right:5px;width:22px;height:22px;border:none;background:rgba(194,64,44,.85);color:#fff;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0;">×</button>'
         +'</div>';
     }).join('');
 
-    // 画像を非同期ロード
+    // キャッシュにない画像だけFirebaseから読み込む
     items.forEach(async item=>{
-      const imgEl = gallery.querySelector('[data-wcat-img="'+item.id+'"]');
-      const loadEl = gallery.querySelector('.wcat-img-loading');
-      if(!imgEl) return;
+      if(wcatImageCache[item.id]) return; // already shown
       try{
-        const r = await window.storage.get('wheelCatalogImg_'+item.id, SHARED);
+        const r = await window.storage.get('wcatImg_'+item.id, SHARED);
         if(r && r.value){
-          imgEl.src = r.value;
-          imgEl.style.display = 'block';
-          if(imgEl.nextElementSibling) imgEl.nextElementSibling.style.display='none';
+          wcatImageCache[item.id] = r.value;
+          wcatSetImg(gallery, item.id, r.value);
         }
       }catch(e){}
     });
@@ -8299,6 +8309,7 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('この画像を削除しますか？');
         if(!ok) return;
         wheelCatalogIndex[tier] = (wheelCatalogIndex[tier]||[]).filter(x=>x.id!==id);
+        delete wcatImageCache[id];
         await saveWheelCatalogIndex();
         await deleteWheelCatalogImage(id);
         renderWheelCatalogGallery();
@@ -8325,21 +8336,47 @@ window.addEventListener('storageReady', function(){
         const files = Array.from(fileInput.files);
         if(!files.length) return;
         const msg = document.getElementById('wcatUploadMsg');
-        msg.textContent = 'アップロード中…';
+        msg.style.color = 'var(--teal)';
+        msg.textContent = '処理中…';
+        let successCount = 0;
+        let errMsg = '';
         for(const file of files){
           try{
+            msg.textContent = file.name+' を変換中…';
             const dataUrl = await compressImage(file);
+            // サイズ確認（約500KBを超えたら警告）
+            if(dataUrl.length > 700000){
+              errMsg = file.name+': ファイルが大きすぎます。小さい画像を使ってください。';
+              continue;
+            }
             const name = file.name.replace(/\.[^.]+$/, '');
             const id = uid('wci');
+            msg.textContent = file.name+' を保存中…';
+            await saveWheelCatalogImage(id, dataUrl);
+            // 保存成功後にインデックスとキャッシュを更新
             if(!wheelCatalogIndex[wcatActiveTier]) wheelCatalogIndex[wcatActiveTier] = [];
             wheelCatalogIndex[wcatActiveTier].push({ id, name });
-            await saveWheelCatalogImage(id, dataUrl);
-          }catch(e){ console.error('upload failed', e); }
+            wcatImageCache[id] = dataUrl;
+            successCount++;
+          }catch(e){
+            errMsg = '保存エラー: '+e.message;
+            console.error('upload failed', e);
+          }
         }
-        await saveWheelCatalogIndex();
+        if(successCount > 0){
+          try{ await saveWheelCatalogIndex(); }
+          catch(e){ errMsg = 'インデックス保存エラー: '+e.message; }
+        }
         fileInput.value = '';
-        msg.textContent = '保存しました ✓';
-        setTimeout(()=>{ msg.textContent=''; }, 2500);
+        if(errMsg){
+          msg.style.color = 'var(--red)';
+          msg.textContent = errMsg;
+          setTimeout(()=>{ msg.textContent=''; }, 5000);
+        } else {
+          msg.style.color = 'var(--teal)';
+          msg.textContent = successCount+'件 保存しました ✓';
+          setTimeout(()=>{ msg.textContent=''; }, 2500);
+        }
         renderWheelCatalogGallery();
       });
     }
