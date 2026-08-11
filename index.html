@@ -2830,6 +2830,7 @@ window.addEventListener('storageReady', function(){
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let recentFilter = false;
+  let brandSortFilter = false;
   let keywordFilter = '';
   let selectedProducts = new Set(); // 一括操作用選択商品ID
   function resetSpecSelections(){
@@ -3633,6 +3634,9 @@ window.addEventListener('storageReady', function(){
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="brandSortChk"'+(brandSortFilter?' checked':'')+'> ブランド順'
+      + '</label>'
       + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
       + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;width:160px;background:var(--surface);color:var(--text-1);">'
       + '<button id="keywordSearchBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-left:none;border-radius:0 20px 20px 0;background:var(--amber);color:#fff;cursor:pointer;font-weight:600;">検索</button>'
@@ -3644,7 +3648,9 @@ window.addEventListener('storageReady', function(){
     const cchk = document.getElementById('customerOrderChk');
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
     const rchk = document.getElementById('recentChk');
-    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
+    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; brandSortFilter = false; const bchk2=document.getElementById('brandSortChk'); if(bchk2) bchk2.checked=false; } renderProductTable(); }); }
+    const bschk = document.getElementById('brandSortChk');
+    if(bschk){ bschk.addEventListener('change', ()=>{ brandSortFilter = bschk.checked; if(brandSortFilter){ recentFilter = false; const rc=document.getElementById('recentChk'); if(rc) rc.checked=false; } renderProductTable(); }); }
     const kwInput = document.getElementById('keywordSearchInput');
     const doKeywordSearch = () => { keywordFilter = kwInput ? kwInput.value : ''; renderProductTable(); };
     if(kwInput){
@@ -3795,7 +3801,13 @@ window.addEventListener('storageReady', function(){
       wrap.innerHTML = '<div class="empty-state" style="color:var(--text-3);">自店舗在庫無し</div>';
       return;
     }
-    if(!recentFilter){
+    if(brandSortFilter){
+      filteredList.sort((a,b)=>{
+        const ba = (a.brand||'').localeCompare(b.brand||'','ja');
+        if(ba !== 0) return ba;
+        return a.name.localeCompare(b.name,'ja');
+      });
+    } else if(!recentFilter){
       filteredList.sort((a,b)=>{
         // 検索したタイヤサイズに一致する商品を先頭に表示
         const hasSize = p => p.spec && (
