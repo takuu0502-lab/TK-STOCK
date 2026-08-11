@@ -1047,6 +1047,19 @@
     </p>
     <button class="btn btn-amber" id="openJanMatchBtn">🔍 JANコードを自動照合する</button>
     <div id="janMatchMsg" style="margin-top:10px;font-size:13px;"></div>
+
+    <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">🔩 ホイールメニュー設定（見積用）</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      タイヤ見積もり時に選べるホイールの松・竹・梅メニューを、インチごとに設定します。名称と価格（税抜・1本あたり）を入力してください。
+    </p>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;color:var(--text-3);">インチを選択</label>
+      <select id="wheelMenuInchSel" style="padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;margin-left:8px;"></select>
+    </div>
+    <div id="wheelMenuEditor" style="display:flex;flex-direction:column;gap:12px;max-width:520px;"></div>
+    <button class="btn btn-amber" id="wheelMenuSaveBtn" style="margin-top:14px;">保存</button>
+    <span id="wheelMenuSaveMsg" style="font-size:12px;color:var(--teal);margin-left:10px;"></span>
   </div>
 </div>
 
@@ -1514,12 +1527,18 @@
   </div>
 </div>
 
-<!-- ホイールピッカーモーダル -->
+<!-- ホイールピッカーモーダル（インチ別 松竹梅） -->
 <div class="modal-overlay" id="wheelPickerModal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:460px;">
     <h3 style="margin-top:0;">🔩 ホイールを選択</h3>
-    <input type="text" id="wheelPickerSearch" placeholder="商品名・ブランド・スペックで絞り込み…" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text-1);font-size:13px;margin-bottom:10px;">
-    <div id="wheelPickerList" style="max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <span style="font-size:13px;color:var(--text-2);">インチ：</span>
+      <select id="wheelPickerInchSel" style="padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
+    </div>
+    <div id="wheelPickerTierList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div id="wheelPickerNoSettings" style="display:none;padding:16px;text-align:center;font-size:13px;color:var(--text-3);">
+      このインチのホイールメニューは未設定です。<br>価格調整タブのホイールメニュー設定から追加してください。
+    </div>
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn btn-ghost" id="wheelPickerClose">キャンセル</button>
     </div>
@@ -2546,6 +2565,8 @@ window.addEventListener('storageReady', function(){
       productEditLog = el ? JSON.parse(el.value) : [];
     }catch(e){ productEditLog = []; }
 
+    await loadWheelMenuSettings();
+
     renderCatTree();
     renderProductTable();
     renderHistory();
@@ -2695,7 +2716,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
     });
@@ -4196,9 +4217,11 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = quoteWheelLines.map((w, wi)=>{
       const sub = (Number(w.qty)||0)*(Number(w.unitPrice)||0);
       const qtyOpts = [1,2,3,4,5,6].map(n=>'<option value="'+n+'"'+(w.qty==n?' selected':'')+'>'+n+'</option>').join('');
+      const TIER_COLORS2 = {'梅':'var(--text-2)','竹':'var(--teal)','松':'var(--amber)'};
+      const tierBadge = w.label ? '<span style="font-size:11px;font-weight:700;color:'+(TIER_COLORS2[w.label]||'var(--text-2)')+';background:var(--bg-1);border:1px solid currentColor;border-radius:4px;padding:1px 5px;margin-right:4px;">'+escapeHtml(w.label)+'</span>' : '';
       return '<div class="quote-line-row" style="flex-wrap:wrap;gap:6px;padding:9px 0;">'
         +'<div class="quote-line-main">'
-        +'<div class="quote-line-name">'+escapeHtml(w.name)+'</div>'
+        +'<div class="quote-line-name">'+tierBadge+escapeHtml(w.name)+'</div>'
         +(w.spec ? '<div class="quote-line-spec">'+escapeHtml(w.spec)+'</div>' : '')
         +'</div>'
         +'<select class="quote-line-qty-sel" data-wl-qty="'+wi+'">'+qtyOpts+'</select>'
@@ -4229,63 +4252,72 @@ window.addEventListener('storageReady', function(){
     renderSharedLabor(); renderQuoteLines(); renderTotals();
   });
 
-  // ホイールピッカー
-  function openWheelPicker(){
+  // ホイールピッカー（インチ別 松竹梅）
+  function openWheelTierPicker(){
     const modal = document.getElementById('wheelPickerModal');
-    const searchEl = document.getElementById('wheelPickerSearch');
-    searchEl.value = '';
-    renderWheelPickerList('');
-    searchEl.oninput = ()=> renderWheelPickerList(searchEl.value.toLowerCase());
+    // 見積で選択中のインチを自動取得
+    const inch = estDualMode ? (estFrontInch || estRearInch || '') : (estInch || '');
+    const sel = document.getElementById('wheelPickerInchSel');
+    if(sel.options.length === 0){
+      WHEEL_INCHES.forEach(i=>{ const o=document.createElement('option'); o.value=i; o.textContent=i+'インチ'; sel.appendChild(o); });
+    }
+    sel.value = inch || '15';
+    renderWheelTierList(sel.value);
+    sel.onchange = ()=> renderWheelTierList(sel.value);
     modal.classList.add('show');
   }
-  function renderWheelPickerList(q){
-    const list = document.getElementById('wheelPickerList');
-    const wheelCat = categories.find(c=>c.name==='ホイール');
-    const aluminumSub = wheelCat && wheelCat.subs.find(s=>s.name==='アルミホイール');
-    let wheels = products.filter(p=>
-      wheelCat && p.majorId === wheelCat.id &&
-      (aluminumSub ? p.subId === aluminumSub.id : true)
-    );
-    if(q){
-      wheels = wheels.filter(p=>
-        (p.name||'').toLowerCase().includes(q) ||
-        (p.brand||'').toLowerCase().includes(q) ||
-        (p.spec||'').toLowerCase().includes(q)
-      );
-    }
-    if(wheels.length === 0){
-      list.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--text-3);">在庫にアルミホイールがありません</div>';
+
+  function renderWheelTierList(inch){
+    const list = document.getElementById('wheelPickerTierList');
+    const noSet = document.getElementById('wheelPickerNoSettings');
+    const settings = wheelMenuSettings[inch];
+    const tiers = (settings || []).filter(t => t.name || t.price);
+    if(tiers.length === 0){
+      list.innerHTML = '';
+      noSet.style.display = 'block';
       return;
     }
-    list.innerHTML = wheels.map(p=>{
-      const ws = p.wheelSpec;
-      let specStr = p.spec || '';
-      if(ws){ const s=(ws.inch&&ws.j)?ws.inch+'x'+ws.j:''; const h=(ws.holes&&ws.pcd)?ws.holes+'/'+ws.pcd:''; const o=ws.offset!==undefined&&ws.offset!==''?'+'+ws.offset:''; specStr=[s,h,o].filter(Boolean).join('　')||specStr; }
-      const stock = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
-      return '<div data-wheel-id="'+p.id+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;" onmouseover="this.style.background=\'var(--bg-2)\'" onmouseout="this.style.background=\'\'">'
-        +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(p.name)+'</div>'
-        +(p.brand?'<div style="font-size:11.5px;color:var(--amber);font-weight:600;">'+escapeHtml(p.brand)+'</div>':'')
-        +(specStr?'<div style="font-size:11.5px;color:var(--text-3);font-family:var(--font-mono);">'+escapeHtml(specStr)+'</div>':'')
+    noSet.style.display = 'none';
+    const TIER_COLORS = {'梅':'var(--text-2)','竹':'var(--teal)','松':'var(--amber)'};
+    list.innerHTML = tiers.map((t, ti)=>{
+      const unitPrice = Number(t.price) || 0;
+      const total4 = unitPrice * 4;
+      return '<div data-wt-tier="'+ti+'" data-wt-inch="'+escapeHtml(inch)+'" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor=\'var(--amber)\'" onmouseout="this.style.borderColor=\'var(--line)\'">'
+        +'<div style="display:flex;align-items:center;gap:12px;">'
+        +'<span style="font-size:22px;font-weight:700;color:'+(TIER_COLORS[t.label]||'var(--text-1)')+';">'+escapeHtml(t.label||'')+'</span>'
+        +'<div>'
+        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+(t.name ? escapeHtml(t.name) : '（名称未設定）')+'</div>'
+        +'<div style="font-size:11.5px;color:var(--text-3);">'+escapeHtml(inch)+'インチ ／ 1本 ¥'+unitPrice.toLocaleString('ja-JP')+'（税抜）</div>'
         +'</div>'
-        +'<div style="font-size:12px;color:var(--text-3);">在庫 '+stock+'</div>'
-        +'<div style="font-size:13px;font-weight:700;color:var(--amber);white-space:nowrap;">'+(p.sellPrice?'¥'+Number(p.sellPrice).toLocaleString('ja-JP'):'価格未設定')+'</div>'
+        +'</div>'
+        +'<div style="text-align:right;">'
+        +'<div style="font-size:14px;font-weight:700;color:var(--amber);">¥'+total4.toLocaleString('ja-JP')+'</div>'
+        +'<div style="font-size:11px;color:var(--text-3);">4本（税抜）</div>'
+        +'</div>'
         +'</div>';
     }).join('');
-    list.querySelectorAll('[data-wheel-id]').forEach(row=>{
-      row.addEventListener('click', ()=>{
-        const p = products.find(x=>x.id===row.dataset.wheelId);
-        if(!p) return;
-        const ws = p.wheelSpec;
-        let specStr = p.spec || '';
-        if(ws){ const s=(ws.inch&&ws.j)?ws.inch+'x'+ws.j:''; const h=(ws.holes&&ws.pcd)?ws.holes+'/'+ws.pcd:''; const o=ws.offset!==undefined&&ws.offset!==''?'+'+ws.offset:''; specStr=[s,h,o].filter(Boolean).join('　')||specStr; }
-        quoteWheelLines.push({id:uid('qw'), productId:p.id, name:p.name, brand:p.brand||'', spec:specStr, qty:4, unitPrice:p.sellPrice||''});
+    list.querySelectorAll('[data-wt-tier]').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const ti = +card.dataset.wtTier;
+        const inch2 = card.dataset.wtInch;
+        const s2 = (wheelMenuSettings[inch2] || []).filter(t=>t.name||t.price);
+        const t2 = s2[ti];
+        if(!t2) return;
+        quoteWheelLines.push({
+          id: uid('qw'),
+          label: t2.label || '',
+          name: (t2.label || '') + (t2.name ? ' - '+t2.name : ''),
+          spec: inch2+'インチ',
+          qty: 4,
+          unitPrice: Number(t2.price) || ''
+        });
         document.getElementById('wheelPickerModal').classList.remove('show');
         renderWheelLines(); renderTotals(); renderQuoteLines();
       });
     });
   }
-  document.getElementById('addWheelLine').addEventListener('click', openWheelPicker);
+
+  document.getElementById('addWheelLine').addEventListener('click', openWheelTierPicker);
   document.getElementById('wheelPickerClose').addEventListener('click', ()=>{
     document.getElementById('wheelPickerModal').classList.remove('show');
   });
@@ -8057,6 +8089,78 @@ window.addEventListener('storageReady', function(){
     });
   }
 
+
+  // ---------- ホイールメニュー設定 ----------
+  let wheelMenuSettings = {}; // { "15": [{label:"梅",name:"",price:0},{label:"竹",...},{label:"松",...}], ... }
+  const WHEEL_TIERS = ['梅','竹','松'];
+  const WHEEL_INCHES = Array.from({length:11},(_,i)=>String(12+i)); // 12〜22
+
+  async function loadWheelMenuSettings(){
+    try{
+      const r = await window.storage.get('wheelMenuSettings', SHARED);
+      wheelMenuSettings = r ? JSON.parse(r.value) : {};
+    }catch(e){ wheelMenuSettings = {}; }
+  }
+  async function saveWheelMenuSettings(){
+    try{ await window.storage.set('wheelMenuSettings', JSON.stringify(wheelMenuSettings), SHARED); }
+    catch(e){ console.error('save wheelMenuSettings failed', e); }
+  }
+  function getWheelMenuForInch(inch){
+    if(!wheelMenuSettings[inch]) wheelMenuSettings[inch] = WHEEL_TIERS.map(t=>({label:t,name:'',price:''}));
+    return wheelMenuSettings[inch];
+  }
+
+  function renderWheelMenuEditor(){
+    const sel = document.getElementById('wheelMenuInchSel');
+    if(!sel) return;
+    // インチセレクト初期化
+    if(sel.options.length === 0){
+      WHEEL_INCHES.forEach(i=>{ const o=document.createElement('option'); o.value=i; o.textContent=i+'インチ'; sel.appendChild(o); });
+      sel.value = '15';
+    }
+    const inch = sel.value;
+    const tiers = getWheelMenuForInch(inch);
+    const wrap = document.getElementById('wheelMenuEditor');
+    if(!wrap) return;
+    const TIER_COLORS = {梅:'var(--text-2)',竹:'var(--teal)',松:'var(--amber)'};
+    wrap.innerHTML = WHEEL_TIERS.map((t,ti)=>{
+      const tier = tiers[ti] || {label:t,name:'',price:''};
+      return '<div style="display:flex;align-items:center;gap:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;">'
+        +'<span style="font-size:18px;font-weight:700;min-width:24px;color:'+TIER_COLORS[t]+';">'+t+'</span>'
+        +'<div style="flex:1;display:flex;flex-direction:column;gap:6px;">'
+        +'<input type="text" data-wm-tier="'+ti+'" data-wm-field="name" value="'+escapeHtml(tier.name||'')+'" placeholder="商品名・説明（例: エコノミーホイール）" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:13px;">'
+        +'<div style="display:flex;align-items:center;gap:6px;">'
+        +'<span style="font-size:12px;color:var(--text-3);">単価（税抜・1本）</span>'
+        +'<input type="number" data-wm-tier="'+ti+'" data-wm-field="price" value="'+(tier.price||'')+'" placeholder="0" min="0" style="width:110px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:13px;">'
+        +'<span style="font-size:12px;color:var(--text-3);">円</span>'
+        +'</div>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+    wrap.querySelectorAll('[data-wm-tier]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const ti = +inp.dataset.wmTier;
+        const field = inp.dataset.wmField;
+        if(!wheelMenuSettings[inch]) wheelMenuSettings[inch] = WHEEL_TIERS.map(t=>({label:t,name:'',price:''}));
+        wheelMenuSettings[inch][ti][field] = field==='price' ? (inp.value===''?'':+inp.value) : inp.value;
+      });
+    });
+  }
+
+  // 価格調整タブへのイベント設定（タブ表示後に呼ぶ）
+  function initWheelMenuEditor(){
+    const sel = document.getElementById('wheelMenuInchSel');
+    if(!sel || sel._wmInit) return;
+    sel._wmInit = true;
+    sel.addEventListener('change', renderWheelMenuEditor);
+    renderWheelMenuEditor();
+    document.getElementById('wheelMenuSaveBtn').addEventListener('click', async ()=>{
+      await saveWheelMenuSettings();
+      const msg = document.getElementById('wheelMenuSaveMsg');
+      msg.textContent = '保存しました ✓';
+      setTimeout(()=>{ msg.textContent=''; }, 2000);
+    });
+  }
 
   // ---------- カタログ表示設定 ----------
   let catalogVisibility = { hiddenBrands: [], hiddenModels: [] };
