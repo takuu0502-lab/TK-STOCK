@@ -4217,11 +4217,9 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = quoteWheelLines.map((w, wi)=>{
       const sub = (Number(w.qty)||0)*(Number(w.unitPrice)||0);
       const qtyOpts = [1,2,3,4,5,6].map(n=>'<option value="'+n+'"'+(w.qty==n?' selected':'')+'>'+n+'</option>').join('');
-      const TIER_COLORS2 = {'梅':'var(--text-2)','竹':'var(--teal)','松':'var(--amber)'};
-      const tierBadge = w.label ? '<span style="font-size:11px;font-weight:700;color:'+(TIER_COLORS2[w.label]||'var(--text-2)')+';background:var(--bg-1);border:1px solid currentColor;border-radius:4px;padding:1px 5px;margin-right:4px;">'+escapeHtml(w.label)+'</span>' : '';
       return '<div class="quote-line-row" style="flex-wrap:wrap;gap:6px;padding:9px 0;">'
         +'<div class="quote-line-main">'
-        +'<div class="quote-line-name">'+tierBadge+escapeHtml(w.name)+'</div>'
+        +'<div class="quote-line-name">'+escapeHtml(w.name)+'</div>'
         +(w.spec ? '<div class="quote-line-spec">'+escapeHtml(w.spec)+'</div>' : '')
         +'</div>'
         +'<select class="quote-line-qty-sel" data-wl-qty="'+wi+'">'+qtyOpts+'</select>'
@@ -4306,7 +4304,7 @@ window.addEventListener('storageReady', function(){
         quoteWheelLines.push({
           id: uid('qw'),
           label: t2.label || '',
-          name: (t2.label || '') + (t2.name ? ' - '+t2.name : ''),
+          name: t2.name || 'アルミホイール',
           spec: inch2+'インチ',
           qty: 4,
           unitPrice: Number(t2.price) || ''
