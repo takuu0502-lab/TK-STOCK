@@ -1060,6 +1060,29 @@
     <div id="wheelMenuEditor" style="display:flex;flex-direction:column;gap:12px;max-width:520px;"></div>
     <button class="btn btn-amber" id="wheelMenuSaveBtn" style="margin-top:14px;">保存</button>
     <span id="wheelMenuSaveMsg" style="font-size:12px;color:var(--teal);margin-left:10px;"></span>
+
+    <div class="pricing-section-divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+      <div class="pricing-section-title" style="margin-bottom:0;">📸 ホイールカタログ管理</div>
+      <a href="wheel-catalog.html" target="_blank" class="btn btn-ghost btn-sm">🔗 カタログページを開く</a>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-bottom:16px;line-height:1.7;">
+      お客様に見せるホイールカタログの画像を登録します。ランクを選んで画像をアップロードしてください。
+    </p>
+    <!-- ランクタブ -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <button class="btn btn-ghost btn-sm wcat-tab-btn active" data-wcat="梅" style="font-weight:700;">梅</button>
+      <button class="btn btn-ghost btn-sm wcat-tab-btn" data-wcat="竹" style="font-weight:700;color:var(--teal);">竹</button>
+      <button class="btn btn-ghost btn-sm wcat-tab-btn" data-wcat="松" style="font-weight:700;color:var(--amber);">松</button>
+    </div>
+    <div id="wcatGallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;max-width:560px;margin-bottom:14px;"></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <label class="btn btn-amber btn-sm" style="cursor:pointer;">
+        ＋ 画像を追加
+        <input type="file" id="wcatFileInput" accept="image/*" style="display:none;" multiple>
+      </label>
+      <span id="wcatUploadMsg" style="font-size:12px;color:var(--teal);"></span>
+    </div>
   </div>
 </div>
 
@@ -2566,6 +2589,7 @@ window.addEventListener('storageReady', function(){
     }catch(e){ productEditLog = []; }
 
     await loadWheelMenuSettings();
+    await loadWheelCatalogIndex();
 
     renderCatTree();
     renderProductTable();
@@ -2716,7 +2740,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogManager(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
     });
@@ -4440,6 +4464,7 @@ window.addEventListener('storageReady', function(){
       + '</label>'
       + '<div style="display:flex;gap:8px;">'
       + '<button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes">📋 保存済み見積</button>'
+      + '<button class="btn btn-ghost btn-sm" id="estOpenWheelCatalog">🔩 ホイールカタログ</button>'
       + '<button class="btn btn-amber" id="estSearchGo">検索</button>'
       + '</div>'
       + '</div>';
@@ -4506,6 +4531,9 @@ window.addEventListener('storageReady', function(){
       await loadSavedQuotes();
       renderSavedQuotesList();
       document.getElementById('savedQuotesModal').classList.add('show');
+    });
+    document.getElementById('estOpenWheelCatalog').addEventListener('click', ()=>{
+      window.open('wheel-catalog.html', '_blank');
     });
   }
 
@@ -8177,6 +8205,145 @@ window.addEventListener('storageReady', function(){
       msg.textContent = '保存しました ✓';
       setTimeout(()=>{ msg.textContent=''; }, 2000);
     });
+  }
+
+  // ---------- ホイールカタログ管理 ----------
+  let wheelCatalogIndex = { 梅:[], 竹:[], 松:[] };
+  let wcatActiveTier = '梅';
+
+  async function loadWheelCatalogIndex(){
+    try{
+      const r = await window.storage.get('wheelCatalogIndex', SHARED);
+      const idx = r ? JSON.parse(r.value) : {};
+      wheelCatalogIndex = { 梅: idx['梅']||[], 竹: idx['竹']||[], 松: idx['松']||[] };
+    }catch(e){ wheelCatalogIndex = { 梅:[], 竹:[], 松:[] }; }
+  }
+  async function saveWheelCatalogIndex(){
+    try{ await window.storage.set('wheelCatalogIndex', JSON.stringify(wheelCatalogIndex), SHARED); }
+    catch(e){ console.error('save wheelCatalogIndex failed', e); }
+  }
+  async function saveWheelCatalogImage(id, dataUrl){
+    try{ await window.storage.set('wheelCatalogImg_'+id, dataUrl, SHARED); }
+    catch(e){ console.error('save wheelCatalogImg failed', e); }
+  }
+  async function deleteWheelCatalogImage(id){
+    try{ await window.storage.delete('wheelCatalogImg_'+id, SHARED); }
+    catch(e){ console.error('delete wheelCatalogImg failed', e); }
+  }
+
+  // 画像を最大800pxに圧縮してdata URLを返す
+  function compressImage(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = e=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const MAX = 800;
+          let w = img.width, h = img.height;
+          if(w > MAX || h > MAX){
+            if(w > h){ h = Math.round(h*MAX/w); w = MAX; }
+            else{ w = Math.round(w*MAX/h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.78));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderWheelCatalogGallery(){
+    const gallery = document.getElementById('wcatGallery');
+    if(!gallery) return;
+    const items = wheelCatalogIndex[wcatActiveTier] || [];
+    if(items.length === 0){
+      gallery.innerHTML = '<div style="grid-column:1/-1;padding:20px 0;font-size:13px;color:var(--text-3);">まだ画像がありません</div>';
+      return;
+    }
+    gallery.innerHTML = items.map((item, ii)=>{
+      return '<div style="position:relative;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;overflow:hidden;">'
+        +'<div style="aspect-ratio:1/1;background:var(--bg-1);display:flex;align-items:center;justify-content:center;overflow:hidden;">'
+        +'<img data-wcat-img="'+item.id+'" src="" alt="'+escapeHtml(item.name||'')+'" style="width:100%;height:100%;object-fit:cover;display:none;">'
+        +'<span class="wcat-img-loading" style="font-size:11px;color:var(--text-3);">…</span>'
+        +'</div>'
+        +'<div style="padding:6px 8px;font-size:11.5px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(item.name||'')+'</div>'
+        +'<button data-wcat-del="'+item.id+'" title="削除" style="position:absolute;top:5px;right:5px;width:22px;height:22px;border:none;background:rgba(194,64,44,.85);color:#fff;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;">×</button>'
+        +'</div>';
+    }).join('');
+
+    // 画像を非同期ロード
+    items.forEach(async item=>{
+      const imgEl = gallery.querySelector('[data-wcat-img="'+item.id+'"]');
+      const loadEl = gallery.querySelector('.wcat-img-loading');
+      if(!imgEl) return;
+      try{
+        const r = await window.storage.get('wheelCatalogImg_'+item.id, SHARED);
+        if(r && r.value){
+          imgEl.src = r.value;
+          imgEl.style.display = 'block';
+          if(imgEl.nextElementSibling) imgEl.nextElementSibling.style.display='none';
+        }
+      }catch(e){}
+    });
+
+    // 削除ボタン
+    gallery.querySelectorAll('[data-wcat-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.dataset.wcatDel;
+        const tier = wcatActiveTier;
+        const ok = await showConfirm('この画像を削除しますか？');
+        if(!ok) return;
+        wheelCatalogIndex[tier] = (wheelCatalogIndex[tier]||[]).filter(x=>x.id!==id);
+        await saveWheelCatalogIndex();
+        await deleteWheelCatalogImage(id);
+        renderWheelCatalogGallery();
+      });
+    });
+  }
+
+  function initWheelCatalogManager(){
+    // タブボタン
+    document.querySelectorAll('.wcat-tab-btn').forEach(btn=>{
+      if(btn._wcatInit) return;
+      btn._wcatInit = true;
+      btn.addEventListener('click', ()=>{
+        wcatActiveTier = btn.dataset.wcat;
+        document.querySelectorAll('.wcat-tab-btn').forEach(b=> b.classList.toggle('active', b===btn));
+        renderWheelCatalogGallery();
+      });
+    });
+    // ファイルアップロード
+    const fileInput = document.getElementById('wcatFileInput');
+    if(fileInput && !fileInput._wcatInit){
+      fileInput._wcatInit = true;
+      fileInput.addEventListener('change', async ()=>{
+        const files = Array.from(fileInput.files);
+        if(!files.length) return;
+        const msg = document.getElementById('wcatUploadMsg');
+        msg.textContent = 'アップロード中…';
+        for(const file of files){
+          try{
+            const dataUrl = await compressImage(file);
+            const name = file.name.replace(/\.[^.]+$/, '');
+            const id = uid('wci');
+            if(!wheelCatalogIndex[wcatActiveTier]) wheelCatalogIndex[wcatActiveTier] = [];
+            wheelCatalogIndex[wcatActiveTier].push({ id, name });
+            await saveWheelCatalogImage(id, dataUrl);
+          }catch(e){ console.error('upload failed', e); }
+        }
+        await saveWheelCatalogIndex();
+        fileInput.value = '';
+        msg.textContent = '保存しました ✓';
+        setTimeout(()=>{ msg.textContent=''; }, 2500);
+        renderWheelCatalogGallery();
+      });
+    }
+    renderWheelCatalogGallery();
   }
 
   // ---------- カタログ表示設定 ----------
