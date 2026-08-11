@@ -4280,15 +4280,19 @@ window.addEventListener('storageReady', function(){
     list.innerHTML = tiers.map((t, ti)=>{
       const unitPrice = Number(t.price) || 0;
       const total4 = unitPrice * 4;
+      const imgHtml = t.imageUrl ? '<img src="'+escapeHtml(t.imageUrl)+'" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid var(--line);background:var(--bg-1);flex-shrink:0;">' : '';
       return '<div data-wt-tier="'+ti+'" data-wt-inch="'+escapeHtml(inch)+'" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor=\'var(--amber)\'" onmouseout="this.style.borderColor=\'var(--line)\'">'
         +'<div style="display:flex;align-items:center;gap:12px;">'
-        +'<span style="font-size:22px;font-weight:700;color:'+(TIER_COLORS[t.label]||'var(--text-1)')+';">'+escapeHtml(t.label||'')+'</span>'
+        +imgHtml
         +'<div>'
-        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+(t.name ? escapeHtml(t.name) : '（名称未設定）')+'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+        +'<span style="font-size:18px;font-weight:700;color:'+(TIER_COLORS[t.label]||'var(--text-1)')+';">'+escapeHtml(t.label||'')+'</span>'
+        +'<span style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+(t.name ? escapeHtml(t.name) : '（名称未設定）')+'</span>'
+        +'</div>'
         +'<div style="font-size:11.5px;color:var(--text-3);">'+escapeHtml(inch)+'インチ ／ 1本 ¥'+unitPrice.toLocaleString('ja-JP')+'（税抜）</div>'
         +'</div>'
         +'</div>'
-        +'<div style="text-align:right;">'
+        +'<div style="text-align:right;flex-shrink:0;">'
         +'<div style="font-size:14px;font-weight:700;color:var(--amber);">¥'+total4.toLocaleString('ja-JP')+'</div>'
         +'<div style="font-size:11px;color:var(--text-3);">4本（税抜）</div>'
         +'</div>'
@@ -8104,7 +8108,7 @@ window.addEventListener('storageReady', function(){
     catch(e){ console.error('save wheelMenuSettings failed', e); }
   }
   function getWheelMenuForInch(inch){
-    if(!wheelMenuSettings[inch]) wheelMenuSettings[inch] = WHEEL_TIERS.map(t=>({label:t,name:'',price:''}));
+    if(!wheelMenuSettings[inch]) wheelMenuSettings[inch] = WHEEL_TIERS.map(t=>({label:t,name:'',price:'',imageUrl:''}));
     return wheelMenuSettings[inch];
   }
 
@@ -8123,8 +8127,10 @@ window.addEventListener('storageReady', function(){
     const TIER_COLORS = {梅:'var(--text-2)',竹:'var(--teal)',松:'var(--amber)'};
     wrap.innerHTML = WHEEL_TIERS.map((t,ti)=>{
       const tier = tiers[ti] || {label:t,name:'',price:''};
-      return '<div style="display:flex;align-items:center;gap:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;">'
-        +'<span style="font-size:18px;font-weight:700;min-width:24px;color:'+TIER_COLORS[t]+';">'+t+'</span>'
+      const imgUrl = tier.imageUrl || '';
+      const previewStyle = imgUrl ? 'display:block;' : 'display:none;';
+      return '<div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;">'
+        +'<span style="font-size:18px;font-weight:700;min-width:24px;color:'+TIER_COLORS[t]+';margin-top:8px;">'+t+'</span>'
         +'<div style="flex:1;display:flex;flex-direction:column;gap:6px;">'
         +'<input type="text" data-wm-tier="'+ti+'" data-wm-field="name" value="'+escapeHtml(tier.name||'')+'" placeholder="商品名・説明（例: エコノミーホイール）" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:13px;">'
         +'<div style="display:flex;align-items:center;gap:6px;">'
@@ -8132,6 +8138,11 @@ window.addEventListener('storageReady', function(){
         +'<input type="number" data-wm-tier="'+ti+'" data-wm-field="price" value="'+(tier.price||'')+'" placeholder="0" min="0" style="width:110px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:13px;">'
         +'<span style="font-size:12px;color:var(--text-3);">円</span>'
         +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+        +'<span style="font-size:12px;color:var(--text-3);white-space:nowrap;">画像URL</span>'
+        +'<input type="text" data-wm-tier="'+ti+'" data-wm-field="imageUrl" value="'+escapeHtml(imgUrl)+'" placeholder="https://... （省略可）" style="flex:1;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:12px;">'
+        +'</div>'
+        +'<img data-wm-preview="'+ti+'" src="'+escapeHtml(imgUrl)+'" alt="" style="'+previewStyle+'max-height:80px;max-width:140px;object-fit:contain;border-radius:6px;border:1px solid var(--line);background:var(--bg-1);">'
         +'</div>'
         +'</div>';
     }).join('');
@@ -8139,8 +8150,16 @@ window.addEventListener('storageReady', function(){
       inp.addEventListener('input', ()=>{
         const ti = +inp.dataset.wmTier;
         const field = inp.dataset.wmField;
-        if(!wheelMenuSettings[inch]) wheelMenuSettings[inch] = WHEEL_TIERS.map(t=>({label:t,name:'',price:''}));
+        if(!wheelMenuSettings[inch]) wheelMenuSettings[inch] = WHEEL_TIERS.map(t=>({label:t,name:'',price:'',imageUrl:''}));
         wheelMenuSettings[inch][ti][field] = field==='price' ? (inp.value===''?'':+inp.value) : inp.value;
+        // 画像URLが変わったらプレビューを即更新
+        if(field === 'imageUrl'){
+          const preview = wrap.querySelector('[data-wm-preview="'+ti+'"]');
+          if(preview){
+            preview.src = inp.value;
+            preview.style.display = inp.value ? 'block' : 'none';
+          }
+        }
       });
     });
   }
