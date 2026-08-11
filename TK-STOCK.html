@@ -1475,6 +1475,15 @@
       <div id="sharedLaborWrap"></div>
     </div>
 
+    <!-- ホイールセクション -->
+    <div class="quote-shared-labor-section no-print" id="quoteWheelSection" style="margin-top:10px;">
+      <div class="quote-shared-labor-title">
+        <span>アルミホイール</span>
+        <button class="quote-add-labor-btn" id="addWheelLine" type="button" title="ホイールを追加">＋</button>
+      </div>
+      <div id="quoteWheelWrap"></div>
+    </div>
+
     <div id="quoteTotalsWrap" style="margin-top:6px;"></div>
 
     <div class="field no-print" style="margin-top:14px;">
@@ -1501,6 +1510,18 @@
     <div id="savedQuotesList" style="max-height:420px;overflow-y:auto;margin-bottom:16px;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="savedQuotesClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ホイールピッカーモーダル -->
+<div class="modal-overlay" id="wheelPickerModal">
+  <div class="modal" style="max-width:520px;">
+    <h3 style="margin-top:0;">🔩 ホイールを選択</h3>
+    <input type="text" id="wheelPickerSearch" placeholder="商品名・ブランド・スペックで絞り込み…" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text-1);font-size:13px;margin-bottom:10px;">
+    <div id="wheelPickerList" style="max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost" id="wheelPickerClose">キャンセル</button>
     </div>
   </div>
 </div>
@@ -3328,6 +3349,7 @@ window.addEventListener('storageReady', function(){
         }
         quoteGroups = groups;
         sharedLaborLines = [];
+        quoteWheelLines = [];
         document.getElementById('quoteCustomer').value = '';
         document.getElementById('quoteCar').value = '';
         document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
@@ -4023,14 +4045,17 @@ window.addEventListener('storageReady', function(){
   // ---------- 見積書 ----------
   // quoteGroups = [{productId, name, spec, qty, unitPrice}]
   // sharedLaborLines = [{id, name, qty, unitPrice}]  ← 全銘柄共通
+  // quoteWheelLines = [{id, productId, name, spec, brand, qty, unitPrice}]
   let quoteGroups = [];
   let sharedLaborLines = [];
+  let quoteWheelLines = [];
   const LABOR_PRESETS = ['組替・バランス・脱着','タイヤ処分料','ゴムバルブ','チッ素ガス','アライメント'];
 
   function openQuoteModal(){
     currentEditingQuoteId = null; // 新規作成時はIDをリセット
     quoteGroups = [];
     sharedLaborLines = [];
+    quoteWheelLines = [];
     document.getElementById('quoteCustomer').value = '';
     document.getElementById('quoteCar').value = '';
     document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
@@ -4045,8 +4070,11 @@ window.addEventListener('storageReady', function(){
   function blockTotal(g){
     return (Number(g.qty)||0)*(Number(g.unitPrice)||0);
   }
+  function wheelLinesTotal(){
+    return quoteWheelLines.reduce((s,w)=>s+(Number(w.qty)||0)*(Number(w.unitPrice)||0),0);
+  }
   function quoteGrandBase(){
-    return quoteGroups.reduce((s,g)=>s+blockTotal(g),0) + sharedLaborTotal();
+    return quoteGroups.reduce((s,g)=>s+blockTotal(g),0) + sharedLaborTotal() + wheelLinesTotal();
   }
 
   function renderQuoteLines(){
@@ -4161,13 +4189,105 @@ window.addEventListener('storageReady', function(){
     el.innerHTML = '';
   }
 
-  function renderAll(){ renderQuoteLines(); renderSharedLabor(); }
+  function renderWheelLines(){
+    const wrap = document.getElementById('quoteWheelWrap');
+    if(!wrap) return;
+    if(quoteWheelLines.length === 0){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML = quoteWheelLines.map((w, wi)=>{
+      const sub = (Number(w.qty)||0)*(Number(w.unitPrice)||0);
+      const qtyOpts = [1,2,3,4,5,6].map(n=>'<option value="'+n+'"'+(w.qty==n?' selected':'')+'>'+n+'</option>').join('');
+      return '<div class="quote-line-row" style="flex-wrap:wrap;gap:6px;padding:9px 0;">'
+        +'<div class="quote-line-main">'
+        +'<div class="quote-line-name">'+escapeHtml(w.name)+'</div>'
+        +(w.spec ? '<div class="quote-line-spec">'+escapeHtml(w.spec)+'</div>' : '')
+        +'</div>'
+        +'<select class="quote-line-qty-sel" data-wl-qty="'+wi+'">'+qtyOpts+'</select>'
+        +'<span style="font-size:11px;color:var(--text-3);">本</span>'
+        +'<input type="number" class="quote-line-price" data-wl-price="'+wi+'" value="'+(w.unitPrice||'')+'" placeholder="単価" min="0">'
+        +'<span class="quote-line-subtotal">¥'+sub.toLocaleString('ja-JP')+'</span>'
+        +'<button class="quote-line-remove" data-wl-remove="'+wi+'">×</button>'
+        +'</div>';
+    }).join('');
+    wrap.querySelectorAll('[data-wl-qty]').forEach(sel=>{
+      sel.addEventListener('change', ()=>{ quoteWheelLines[+sel.dataset.wlQty].qty=+sel.value||1; renderWheelLines(); renderTotals(); renderQuoteLines(); });
+    });
+    wrap.querySelectorAll('[data-wl-price]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{ quoteWheelLines[+inp.dataset.wlPrice].unitPrice=inp.value===''?'':+inp.value; });
+      inp.addEventListener('blur', ()=>{ renderWheelLines(); renderTotals(); renderQuoteLines(); });
+    });
+    wrap.querySelectorAll('[data-wl-remove]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ quoteWheelLines.splice(+btn.dataset.wlRemove,1); renderWheelLines(); renderTotals(); renderQuoteLines(); });
+    });
+  }
+
+  function renderAll(){ renderQuoteLines(); renderSharedLabor(); renderWheelLines(); renderTotals(); }
 
   function renderSharedLaborAndLines(){ renderSharedLabor(); renderQuoteLines(); }
 
   document.getElementById('addSharedLabor').addEventListener('click', ()=>{
     sharedLaborLines.push({id:uid('l'),name:'',qty:4,unitPrice:''});
-    renderSharedLabor(); renderQuoteLines();
+    renderSharedLabor(); renderQuoteLines(); renderTotals();
+  });
+
+  // ホイールピッカー
+  function openWheelPicker(){
+    const modal = document.getElementById('wheelPickerModal');
+    const searchEl = document.getElementById('wheelPickerSearch');
+    searchEl.value = '';
+    renderWheelPickerList('');
+    searchEl.oninput = ()=> renderWheelPickerList(searchEl.value.toLowerCase());
+    modal.classList.add('show');
+  }
+  function renderWheelPickerList(q){
+    const list = document.getElementById('wheelPickerList');
+    const wheelCat = categories.find(c=>c.name==='ホイール');
+    const aluminumSub = wheelCat && wheelCat.subs.find(s=>s.name==='アルミホイール');
+    let wheels = products.filter(p=>
+      wheelCat && p.majorId === wheelCat.id &&
+      (aluminumSub ? p.subId === aluminumSub.id : true)
+    );
+    if(q){
+      wheels = wheels.filter(p=>
+        (p.name||'').toLowerCase().includes(q) ||
+        (p.brand||'').toLowerCase().includes(q) ||
+        (p.spec||'').toLowerCase().includes(q)
+      );
+    }
+    if(wheels.length === 0){
+      list.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--text-3);">在庫にアルミホイールがありません</div>';
+      return;
+    }
+    list.innerHTML = wheels.map(p=>{
+      const ws = p.wheelSpec;
+      let specStr = p.spec || '';
+      if(ws){ const s=(ws.inch&&ws.j)?ws.inch+'x'+ws.j:''; const h=(ws.holes&&ws.pcd)?ws.holes+'/'+ws.pcd:''; const o=ws.offset!==undefined&&ws.offset!==''?'+'+ws.offset:''; specStr=[s,h,o].filter(Boolean).join('　')||specStr; }
+      const stock = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+      return '<div data-wheel-id="'+p.id+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;" onmouseover="this.style.background=\'var(--bg-2)\'" onmouseout="this.style.background=\'\'">'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(p.name)+'</div>'
+        +(p.brand?'<div style="font-size:11.5px;color:var(--amber);font-weight:600;">'+escapeHtml(p.brand)+'</div>':'')
+        +(specStr?'<div style="font-size:11.5px;color:var(--text-3);font-family:var(--font-mono);">'+escapeHtml(specStr)+'</div>':'')
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--text-3);">在庫 '+stock+'</div>'
+        +'<div style="font-size:13px;font-weight:700;color:var(--amber);white-space:nowrap;">'+(p.sellPrice?'¥'+Number(p.sellPrice).toLocaleString('ja-JP'):'価格未設定')+'</div>'
+        +'</div>';
+    }).join('');
+    list.querySelectorAll('[data-wheel-id]').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const p = products.find(x=>x.id===row.dataset.wheelId);
+        if(!p) return;
+        const ws = p.wheelSpec;
+        let specStr = p.spec || '';
+        if(ws){ const s=(ws.inch&&ws.j)?ws.inch+'x'+ws.j:''; const h=(ws.holes&&ws.pcd)?ws.holes+'/'+ws.pcd:''; const o=ws.offset!==undefined&&ws.offset!==''?'+'+ws.offset:''; specStr=[s,h,o].filter(Boolean).join('　')||specStr; }
+        quoteWheelLines.push({id:uid('qw'), productId:p.id, name:p.name, brand:p.brand||'', spec:specStr, qty:4, unitPrice:p.sellPrice||''});
+        document.getElementById('wheelPickerModal').classList.remove('show');
+        renderWheelLines(); renderTotals(); renderQuoteLines();
+      });
+    });
+  }
+  document.getElementById('addWheelLine').addEventListener('click', openWheelPicker);
+  document.getElementById('wheelPickerClose').addEventListener('click', ()=>{
+    document.getElementById('wheelPickerModal').classList.remove('show');
   });
 
   // -------- タイヤ見積もりタブ --------
@@ -4384,6 +4504,7 @@ window.addEventListener('storageReady', function(){
       note: (document.getElementById('quoteNote')||{}).value||'',
       groups: JSON.parse(JSON.stringify(quoteGroups)),
       laborLines: JSON.parse(JSON.stringify(sharedLaborLines)),
+      wheelLines: JSON.parse(JSON.stringify(quoteWheelLines)),
       grandTotal: Math.round(quoteGrandBase() * 1.1)
     };
   }
@@ -4392,6 +4513,7 @@ window.addEventListener('storageReady', function(){
     currentEditingQuoteId = q.id || null; // 上書き保存用にIDを記録
     quoteGroups = JSON.parse(JSON.stringify(q.groups));
     sharedLaborLines = JSON.parse(JSON.stringify(q.laborLines||[]));
+    quoteWheelLines = JSON.parse(JSON.stringify(q.wheelLines||[]));
     document.getElementById('quoteCustomer').value = q.customer||'';
     document.getElementById('quoteCar').value = q.car||'';
     document.getElementById('quoteStaff').value = q.staff||'';
@@ -4514,13 +4636,21 @@ window.addEventListener('storageReady', function(){
         +'<td class="num">&yen;'+lSub.toLocaleString('ja-JP')+'</td></tr>';
     }).join('');
 
+    const wheelTotal = wheelLinesTotal();
+    const wheelRowsHtml = quoteWheelLines.length === 0 ? '' : quoteWheelLines.map(w=>{
+      const wSub = (Number(w.qty)||0)*(Number(w.unitPrice)||0);
+      return '<tr><td class="label">'+escapeHtml(w.name+(w.spec?' ('+w.spec+')':''))+'</td>'
+        +'<td class="num">'+w.qty+' 本</td><td class="num">&yen;'+(Number(w.unitPrice)||0).toLocaleString('ja-JP')+'</td>'
+        +'<td class="num">&yen;'+wSub.toLocaleString('ja-JP')+'</td></tr>';
+    }).join('');
+
     const blocksHtml = [...quoteGroups].sort((a,b)=>{
       const totalA = blockTotal(a) + laborTotal;
       const totalB = blockTotal(b) + laborTotal;
       return totalA - totalB;
     }).map(g=>{
       const tireSub = blockTotal(g);
-      const base = tireSub + laborTotal;
+      const base = tireSub + laborTotal + wheelTotal;
       const tax = Math.floor(base*0.1);
       const total = base + tax;
       return '<div class="qpb">'
@@ -4528,6 +4658,7 @@ window.addEventListener('storageReady', function(){
         +'<table class="qpb-table">'
         +'<tr><td class="label">タイヤ価格</td><td class="num">'+g.qty+' 本</td><td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td><td class="num">&yen;'+tireSub.toLocaleString('ja-JP')+'</td></tr>'
         +laborRowsHtml
+        +wheelRowsHtml
         +'</table>'
         +'<div class="qpb-sep"></div>'
         +'<div class="qpb-total-row">'
