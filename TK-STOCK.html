@@ -6553,7 +6553,11 @@ window.addEventListener('storageReady', function(){
       if(barcodeInput.value.trim()){
         doLookup(false);
       } else {
-        document.getElementById('openSpecSearch').click();
+        switchTab('list');
+        stopAllScanners();
+        specPanelOpen = true;
+        document.getElementById('openSpecSearch').classList.add('active');
+        renderSpecSearchPanel();
       }
     });
     barcodeInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doLookup(false); });
