@@ -8210,9 +8210,10 @@ window.addEventListener('storageReady', function(){
   }
 
   async function saveWheelCatalog(){
-    try{
-      await window.storage.set('wheelCatalog', JSON.stringify(wheelCatalog), SHARED);
-    }catch(e){ console.error('saveWheelCatalog failed', e); }
+    const result = await window.storage.set('wheelCatalog', JSON.stringify(wheelCatalog), SHARED);
+    if(!result){
+      throw new Error('Firebase書き込み失敗');
+    }
   }
 
   function compressImageFile(file, maxPx, quality){
@@ -8317,13 +8318,21 @@ window.addEventListener('storageReady', function(){
       try{
         const dataUrl = await compressImageFile(file, 320, 0.72);
         if(!wheelCatalog[tier]) wheelCatalog[tier] = [];
-        wheelCatalog[tier].push({ id: 'wc_'+Date.now(), name: file.name.replace(/\.[^.]+$/,''), dataUrl });
-        await saveWheelCatalog();
-        renderWheelCatalogEditor();
-        showSaveMsgWcat('アップロード完了 ✓');
+        const newItem = { id: 'wc_'+Date.now(), name: file.name.replace(/\.[^.]+$/,''), dataUrl };
+        wheelCatalog[tier].push(newItem);
+        try{
+          await saveWheelCatalog();
+          renderWheelCatalogEditor();
+          showSaveMsgWcat('アップロード完了 ✓');
+        }catch(saveErr){
+          // Firebase書き込み失敗 → ロールバック
+          wheelCatalog[tier].pop();
+          console.error('wcatSave error', saveErr);
+          showSaveMsgWcat('❌ DB保存に失敗しました（Firebaseエラー）');
+        }
       }catch(e){
-        console.error('wcatUpload error', e);
-        showSaveMsgWcat('エラーが発生しました');
+        console.error('wcatCompress error', e);
+        showSaveMsgWcat('❌ 画像処理エラー');
       }
     });
   }
