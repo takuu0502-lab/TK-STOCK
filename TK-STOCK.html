@@ -8245,7 +8245,7 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('wcatEditorWrap');
     if(!wrap) return;
     const TIER_COLORS = {梅:'var(--text-2)',竹:'var(--teal)',松:'var(--amber)'};
-    const TIER_SUBS = {梅:'スタンダード',竹:'バランス重視',松:'プレミアム'};
+    const TIER_SUBS = {梅:'ベーシック',竹:'スタンダード',松:'プレミアム'};
     wrap.innerHTML = '';
     WHEEL_TIERS.slice().reverse().forEach(tier=>{
       const items = wheelCatalog[tier] || [];
@@ -8317,7 +8317,7 @@ window.addEventListener('storageReady', function(){
 
   function buildCatalogHTML(){
     const TIER_COLORS = {梅:'#5C5A52', 竹:'#1F8F68', 松:'#B8650C'};
-    const TIER_SUBS   = {梅:'スタンダード', 竹:'バランス重視', 松:'プレミアム'};
+    const TIER_SUBS   = {梅:'ベーシック', 竹:'スタンダード', 松:'プレミアム'};
     const sectionsHtml = WHEEL_TIERS.map(tier=>{
       const items = wheelCatalog[tier] || [];
       const hasItems = items.length > 0;
