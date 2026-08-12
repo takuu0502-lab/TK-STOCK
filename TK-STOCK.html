@@ -8317,7 +8317,8 @@ window.addEventListener('storageReady', function(){
 
   function buildCatalogHTML(){
     const TIER_COLORS = {梅:'#5C5A52', 竹:'#1F8F68', 松:'#B8650C'};
-    const TIER_SUBS   = {梅:'ベーシック', 竹:'スタンダード', 松:'プレミアム'};
+    const TIER_EN   = {梅:'BASIC', 竹:'STANDARD', 松:'PREMIUM'};
+    const TIER_SUBS = {梅:'ベーシック', 竹:'スタンダード', 松:'プレミアム'};
     const sectionsHtml = WHEEL_TIERS.map(tier=>{
       const items = wheelCatalog[tier] || [];
       const hasItems = items.length > 0;
@@ -8329,7 +8330,9 @@ window.addEventListener('storageReady', function(){
           +'<p class="photo-name">'+name+'</p></div>';
       }).join('') : '<div class="empty-strip">現在このランクのホイールは準備中です。スタッフにお問い合わせください。</div>';
       return '<section class="tier-section">'
-        +'<div class="tier-header"><div class="tier-label-wrap"><span class="tier-kanji" style="color:'+TIER_COLORS[tier]+';">'+TIER_SUBS[tier]+'</span>'
+        +'<div class="tier-header"><div class="tier-label-wrap">'
+        +'<span class="tier-kanji" style="color:'+TIER_COLORS[tier]+';">'+TIER_EN[tier]+'</span>'
+        +'<span style="font-size:12px;color:#6B6759;font-family:\'Noto Sans JP\',sans-serif;margin-left:8px;font-weight:500;">'+TIER_SUBS[tier]+'</span>'
         +'</div>'
         +'<span class="tier-count">'+(hasItems?items.length+'種類':'準備中')+'</span></div>'
         +(hasItems?'<div class="photo-strip">'+strip+'</div>':strip)
