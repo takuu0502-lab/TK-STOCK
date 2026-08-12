@@ -4457,6 +4457,7 @@ window.addEventListener('storageReady', function(){
       + '仕入れ価格を表示'
       + '</label>'
       + '<div style="display:flex;gap:8px;">'
+      + '<button class="btn btn-ghost btn-sm" id="estSizeCatalogBtn">📸 カタログ</button>'
       + '<button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes">📋 保存済み見積</button>'
       + '<button class="btn btn-amber" id="estSearchGo">検索</button>'
       + '</div>'
@@ -4502,6 +4503,7 @@ window.addEventListener('storageReady', function(){
       document.getElementById('estInch').addEventListener('change', e=>{ estInch = e.target.value||null; updateSizePreview('est', estWidth, estAspect, estInch); });
     }
 
+    document.getElementById('estSizeCatalogBtn').addEventListener('click', openWheelCatalogWindow);
     document.getElementById('estSearchGo').addEventListener('click', ()=>{
       if(estDualMode){
         document.getElementById('estimateCatalogWrap').innerHTML = '';
