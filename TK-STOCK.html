@@ -8329,8 +8329,8 @@ window.addEventListener('storageReady', function(){
           +'<p class="photo-name">'+name+'</p></div>';
       }).join('') : '<div class="empty-strip">現在このランクのホイールは準備中です。スタッフにお問い合わせください。</div>';
       return '<section class="tier-section">'
-        +'<div class="tier-header"><div class="tier-label-wrap"><span class="tier-kanji" style="color:'+TIER_COLORS[tier]+';">'+tier+'</span>'
-        +'<span class="tier-sub">'+TIER_SUBS[tier]+'</span></div>'
+        +'<div class="tier-header"><div class="tier-label-wrap"><span class="tier-kanji" style="color:'+TIER_COLORS[tier]+';">'+TIER_SUBS[tier]+'</span>'
+        +'</div>'
         +'<span class="tier-count">'+(hasItems?items.length+'種類':'準備中')+'</span></div>'
         +(hasItems?'<div class="photo-strip">'+strip+'</div>':strip)
         +'</section>';
