@@ -8261,8 +8261,9 @@ window.addEventListener('storageReady', function(){
           +'<div style="width:90px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg-1);">'
           +'<img src="'+escapeHtml(item.dataUrl||'')+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
           +'</div>'
-          +'<input type="text" data-wcat-name="'+tier+'" data-wcat-idx="'+idx+'" value="'+escapeHtml(item.name||'')+'" placeholder="名称" '
-          +'style="width:90px;margin-top:4px;padding:3px 6px;font-size:11px;border:1px solid var(--line);border-radius:4px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;">'
+          +'<input type="text" data-wcat-name="'+tier+'" data-wcat-idx="'+idx+'" value="'+escapeHtml(item.name||'')+'" placeholder="名称を入力" '
+          +'title="クリックして名前を編集（Enterで保存）" '
+          +'style="width:90px;margin-top:6px;padding:5px 7px;font-size:11.5px;border:1.5px solid var(--amber);border-radius:5px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;cursor:text;outline:none;">'
           +'<button data-wcat-del="'+tier+'" data-wcat-idx="'+idx+'" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">×</button>'
           +'</div>').join('')
         +'</div>';
@@ -8285,13 +8286,20 @@ window.addEventListener('storageReady', function(){
         });
       });
       sec.querySelectorAll('[data-wcat-name]').forEach(inp=>{
-        inp.addEventListener('change', async ()=>{
+        const saveName = async ()=>{
           const t = inp.dataset.wcatName;
           const i = +inp.dataset.wcatIdx;
+          if(!wheelCatalog[t] || !wheelCatalog[t][i]) return;
           wheelCatalog[t][i].name = inp.value;
-          await saveWheelCatalog();
-          showSaveMsgWcat('保存しました ✓');
-        });
+          try{
+            await saveWheelCatalog();
+            showSaveMsgWcat('名前を保存しました ✓');
+          }catch(e){
+            showSaveMsgWcat('❌ 保存に失敗しました');
+          }
+        };
+        inp.addEventListener('change', saveName);
+        inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ inp.blur(); } });
       });
     });
   }
