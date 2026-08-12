@@ -1061,26 +1061,6 @@
     <button class="btn btn-amber" id="wheelMenuSaveBtn" style="margin-top:14px;">保存</button>
     <span id="wheelMenuSaveMsg" style="font-size:12px;color:var(--teal);margin-left:10px;"></span>
 
-    <div class="pricing-section-divider"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
-      <div class="pricing-section-title" style="margin-bottom:0;">📸 ホイールカタログ管理</div>
-      <a href="wheel-catalog.html" target="_blank" class="btn btn-ghost btn-sm">🔗 カタログページを開く</a>
-    </div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-bottom:16px;line-height:1.7;">
-      お客様に見せるホイールカタログの画像を登録します。ランクを選んで画像をアップロードしてください。
-    </p>
-    <!-- ランクタブ -->
-    <div style="display:flex;gap:6px;margin-bottom:16px;">
-      <button class="btn btn-ghost btn-sm wcat-tab-btn active" data-wcat="梅" style="font-weight:700;">梅</button>
-      <button class="btn btn-ghost btn-sm wcat-tab-btn" data-wcat="竹" style="font-weight:700;color:var(--teal);">竹</button>
-      <button class="btn btn-ghost btn-sm wcat-tab-btn" data-wcat="松" style="font-weight:700;color:var(--amber);">松</button>
-    </div>
-    <div id="wcatGallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;max-width:560px;margin-bottom:14px;"></div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <input type="file" id="wcatFileInput" accept="image/*" style="display:none;" multiple>
-      <button class="btn btn-amber btn-sm" id="wcatUploadBtn" type="button">＋ 画像を追加</button>
-      <span id="wcatUploadMsg" style="font-size:12px;color:var(--teal);max-width:280px;word-break:break-all;"></span>
-    </div>
   </div>
 </div>
 
@@ -2587,7 +2567,6 @@ window.addEventListener('storageReady', function(){
     }catch(e){ productEditLog = []; }
 
     await loadWheelMenuSettings();
-    await loadWheelCatalogIndex();
 
     renderCatTree();
     renderProductTable();
@@ -2738,7 +2717,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogManager(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
     });
@@ -4462,7 +4441,6 @@ window.addEventListener('storageReady', function(){
       + '</label>'
       + '<div style="display:flex;gap:8px;">'
       + '<button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes">📋 保存済み見積</button>'
-      + '<button class="btn btn-ghost btn-sm" id="estOpenWheelCatalog">🔩 ホイールカタログ</button>'
       + '<button class="btn btn-amber" id="estSearchGo">検索</button>'
       + '</div>'
       + '</div>';
@@ -4529,9 +4507,6 @@ window.addEventListener('storageReady', function(){
       await loadSavedQuotes();
       renderSavedQuotesList();
       document.getElementById('savedQuotesModal').classList.add('show');
-    });
-    document.getElementById('estOpenWheelCatalog').addEventListener('click', ()=>{
-      window.open('wheel-catalog.html', '_blank');
     });
   }
 
@@ -8203,186 +8178,6 @@ window.addEventListener('storageReady', function(){
       msg.textContent = '保存しました ✓';
       setTimeout(()=>{ msg.textContent=''; }, 2000);
     });
-  }
-
-  // ---------- ホイールカタログ管理 ----------
-  // 画像は wheelCatalogIndex の各エントリに dataUrl として直接格納
-  // { 梅: [{id, name, dataUrl}], 竹: [...], 松: [...] }
-  let wheelCatalogIndex = { 梅:[], 竹:[], 松:[] };
-  let wcatActiveTier = '梅';
-
-  async function loadWheelCatalogIndex(){
-    try{
-      const r = await window.storage.get('wheelCatalogIndex', SHARED);
-      const idx = r ? JSON.parse(r.value) : {};
-      wheelCatalogIndex = { 梅: idx['梅']||[], 竹: idx['竹']||[], 松: idx['松']||[] };
-    }catch(e){ wheelCatalogIndex = { 梅:[], 竹:[], 松:[] }; }
-  }
-  async function saveWheelCatalogIndex(){
-    // dataUrl を除いたメタデータだけ保存（画像本体は別キーに分けて保存）
-    const slimIdx = {};
-    for(const tier of ['梅','竹','松']){
-      slimIdx[tier] = (wheelCatalogIndex[tier]||[]).map(({id,name})=>({id,name}));
-    }
-    const ok = await window.storage.set('wheelCatalogIndex', JSON.stringify(slimIdx), SHARED);
-    if(!ok) throw new Error('インデックス保存失敗');
-  }
-  async function saveWheelCatalogImageData(id, dataUrl){
-    const ok = await window.storage.set('wcatImg_'+id, dataUrl, SHARED);
-    if(!ok) throw new Error('画像保存失敗 (storage返却null)');
-  }
-  async function deleteWheelCatalogImageData(id){
-    try{ await window.storage.delete('wcatImg_'+id, SHARED); }catch(e){}
-  }
-
-  // 画像を圧縮してdata URLを返す (最大480px, quality 0.70)
-  function compressWheelImage(file){
-    return new Promise((resolve, reject)=>{
-      const reader = new FileReader();
-      reader.onerror = ()=> reject(new Error('ファイル読み込みエラー'));
-      reader.onload = evt=>{
-        const img = new Image();
-        img.onerror = ()=> reject(new Error('画像デコードエラー'));
-        img.onload = ()=>{
-          const MAX = 480;
-          let w = img.naturalWidth || img.width;
-          let h = img.naturalHeight || img.height;
-          if(w > MAX || h > MAX){
-            if(w >= h){ h = Math.round(h * MAX / w); w = MAX; }
-            else       { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          if(w < 1) w = 1;
-          if(h < 1) h = 1;
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.70);
-          if(!dataUrl || dataUrl === 'data:,') reject(new Error('canvas変換失敗'));
-          else resolve(dataUrl);
-        };
-        img.src = evt.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function renderWheelCatalogGallery(){
-    const gallery = document.getElementById('wcatGallery');
-    if(!gallery) return;
-    const items = wheelCatalogIndex[wcatActiveTier] || [];
-    if(items.length === 0){
-      gallery.innerHTML = '<div style="grid-column:1/-1;padding:20px 0;font-size:13px;color:var(--text-3);">まだ画像がありません</div>';
-      return;
-    }
-    gallery.innerHTML = items.map(item=>{
-      const hasSrc = !!item.dataUrl;
-      return '<div style="position:relative;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;overflow:hidden;">'
-        +'<div style="aspect-ratio:1/1;background:var(--bg-1);display:flex;align-items:center;justify-content:center;overflow:hidden;">'
-        +(hasSrc
-          ? '<img src="'+escapeHtml(item.dataUrl)+'" alt="'+escapeHtml(item.name||'')+'" style="width:100%;height:100%;object-fit:cover;display:block;">'
-          : '<span data-wcat-load="'+item.id+'" style="font-size:11px;color:var(--text-3);">読込中…</span>')
-        +'</div>'
-        +'<div style="padding:6px 8px;font-size:11.5px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(item.name||'')+'</div>'
-        +'<button data-wcat-del="'+item.id+'" title="削除" style="position:absolute;top:5px;right:5px;width:22px;height:22px;border:none;background:rgba(194,64,44,.85);color:#fff;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;">×</button>'
-        +'</div>';
-    }).join('');
-
-    // dataUrl がない（ページリロード後など）はFirebaseから取得
-    items.forEach(async item=>{
-      if(item.dataUrl) return;
-      const span = gallery.querySelector('[data-wcat-load="'+item.id+'"]');
-      try{
-        const r = await window.storage.get('wcatImg_'+item.id, SHARED);
-        if(r && r.value){
-          item.dataUrl = r.value; // メモリにキャッシュ
-          if(span && span.parentElement){
-            const wrap = span.parentElement;
-            wrap.innerHTML = '<img src="'+escapeHtml(r.value)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">';
-          }
-        }
-      }catch(e){}
-    });
-
-    // 削除ボタン
-    gallery.querySelectorAll('[data-wcat-del]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const id = btn.dataset.wcatDel;
-        const tier = wcatActiveTier;
-        const ok = await showConfirm('この画像を削除しますか？');
-        if(!ok) return;
-        wheelCatalogIndex[tier] = (wheelCatalogIndex[tier]||[]).filter(x=>x.id!==id);
-        await saveWheelCatalogIndex();
-        await deleteWheelCatalogImageData(id);
-        renderWheelCatalogGallery();
-      });
-    });
-  }
-
-  function initWheelCatalogManager(){
-    const el = document.getElementById('wcatFileInput');
-    if(!el) return;
-
-    // タブボタン（一度だけ登録）
-    document.querySelectorAll('.wcat-tab-btn').forEach(btn=>{
-      if(btn._wcatInit) return;
-      btn._wcatInit = true;
-      btn.addEventListener('click', ()=>{
-        wcatActiveTier = btn.dataset.wcat;
-        document.querySelectorAll('.wcat-tab-btn').forEach(b=> b.classList.toggle('active', b===btn));
-        renderWheelCatalogGallery();
-      });
-    });
-
-    // アップロードボタン → hidden input をクリック
-    const uploadBtn = document.getElementById('wcatUploadBtn');
-    if(uploadBtn && !uploadBtn._wcatInit){
-      uploadBtn._wcatInit = true;
-      uploadBtn.addEventListener('click', ()=>{ el.value=''; el.click(); });
-    }
-
-    // ファイル選択 → 圧縮 → 保存
-    if(!el._wcatInit){
-      el._wcatInit = true;
-      el.addEventListener('change', async ()=>{
-        const files = Array.from(el.files);
-        if(!files.length) return;
-        const msg = document.getElementById('wcatUploadMsg');
-        const setMsg = (text, color)=>{ msg.style.color=color||'var(--teal)'; msg.textContent=text; };
-
-        setMsg('処理中…');
-        let ok = 0;
-        for(const file of files){
-          try{
-            setMsg('「'+file.name+'」を変換中…');
-            const dataUrl = await compressWheelImage(file);
-            setMsg('「'+file.name+'」を保存中…');
-            const id = uid('wci');
-            await saveWheelCatalogImageData(id, dataUrl);
-            const name = file.name.replace(/\.[^.]+$/, '');
-            if(!wheelCatalogIndex[wcatActiveTier]) wheelCatalogIndex[wcatActiveTier] = [];
-            wheelCatalogIndex[wcatActiveTier].push({ id, name, dataUrl });
-            ok++;
-          }catch(e){
-            setMsg('エラー: '+e.message, 'var(--red)');
-            console.error('[wcat upload]', e);
-          }
-        }
-        if(ok > 0){
-          try{
-            await saveWheelCatalogIndex();
-            setMsg(ok+'件 保存しました ✓');
-          }catch(e){
-            setMsg('インデックス保存エラー: '+e.message, 'var(--red)');
-          }
-        }
-        el.value = '';
-        setTimeout(()=>{ msg.textContent=''; }, 3000);
-        renderWheelCatalogGallery();
-      });
-    }
-
-    renderWheelCatalogGallery();
   }
 
   // ---------- カタログ表示設定 ----------
