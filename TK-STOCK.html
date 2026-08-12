@@ -1506,7 +1506,7 @@
       <div class="quote-shared-labor-title">
         <span>アルミホイール</span>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn btn-ghost btn-sm" onclick="openWheelCatalogWindow()" style="font-size:11px;padding:3px 10px;line-height:1.5;">📸 カタログ</button>
+          <button class="btn btn-ghost btn-sm" id="estWheelCatalogBtn" style="font-size:11px;padding:3px 10px;line-height:1.5;">📸 カタログ</button>
           <button class="quote-add-labor-btn" id="addWheelLine" type="button" title="ホイールを追加">＋</button>
         </div>
       </div>
@@ -4340,6 +4340,7 @@ window.addEventListener('storageReady', function(){
   document.getElementById('wheelPickerClose').addEventListener('click', ()=>{
     document.getElementById('wheelPickerModal').classList.remove('show');
   });
+  document.getElementById('estWheelCatalogBtn').addEventListener('click', openWheelCatalogWindow);
 
   // -------- タイヤ見積もりタブ --------
   let estWidth = null, estAspect = null, estInch = null;
