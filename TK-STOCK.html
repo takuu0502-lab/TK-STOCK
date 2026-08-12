@@ -1061,6 +1061,18 @@
     <button class="btn btn-amber" id="wheelMenuSaveBtn" style="margin-top:14px;">保存</button>
     <span id="wheelMenuSaveMsg" style="font-size:12px;color:var(--teal);margin-left:10px;"></span>
 
+    <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">📸 ホイールカタログ写真管理</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
+      お客様向けカタログページに表示するホイール写真を登録します。松・竹・梅ごとに画像をアップロードしてください。
+    </p>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <a href="wheel-catalog.html" target="_blank" class="btn btn-ghost btn-sm">🔗 カタログページを開く</a>
+      <span id="wcatSaveMsg" style="font-size:12px;color:var(--teal);"></span>
+    </div>
+    <div id="wcatEditorWrap" style="display:flex;flex-direction:column;gap:20px;max-width:600px;"></div>
+    <input type="file" id="wcatFileInput" accept="image/*" style="display:none;">
+
   </div>
 </div>
 
@@ -1493,7 +1505,10 @@
     <div class="quote-shared-labor-section no-print" id="quoteWheelSection" style="margin-top:10px;">
       <div class="quote-shared-labor-title">
         <span>アルミホイール</span>
-        <button class="quote-add-labor-btn" id="addWheelLine" type="button" title="ホイールを追加">＋</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <a href="wheel-catalog.html" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 10px;line-height:1.5;">📸 カタログ</a>
+          <button class="quote-add-labor-btn" id="addWheelLine" type="button" title="ホイールを追加">＋</button>
+        </div>
       </div>
       <div id="quoteWheelWrap"></div>
     </div>
@@ -2567,6 +2582,7 @@ window.addEventListener('storageReady', function(){
     }catch(e){ productEditLog = []; }
 
     await loadWheelMenuSettings();
+    await loadWheelCatalog();
 
     renderCatTree();
     renderProductTable();
@@ -2717,7 +2733,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
     });
@@ -8177,6 +8193,138 @@ window.addEventListener('storageReady', function(){
       const msg = document.getElementById('wheelMenuSaveMsg');
       msg.textContent = '保存しました ✓';
       setTimeout(()=>{ msg.textContent=''; }, 2000);
+    });
+  }
+
+  // ---------- ホイールカタログ写真管理 ----------
+  let wheelCatalog = { 梅: [], 竹: [], 松: [] };
+
+  async function loadWheelCatalog(){
+    try{
+      const r = await window.storage.get('wheelCatalog', SHARED);
+      if(r && r.value){
+        const d = JSON.parse(r.value);
+        wheelCatalog = { 梅: d['梅']||[], 竹: d['竹']||[], 松: d['松']||[] };
+      }
+    }catch(e){ wheelCatalog = { 梅:[], 竹:[], 松:[] }; }
+  }
+
+  async function saveWheelCatalog(){
+    try{
+      await window.storage.set('wheelCatalog', JSON.stringify(wheelCatalog), SHARED);
+    }catch(e){ console.error('saveWheelCatalog failed', e); }
+  }
+
+  function compressImageFile(file, maxPx, quality){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = e=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderWheelCatalogEditor(){
+    const wrap = document.getElementById('wcatEditorWrap');
+    if(!wrap) return;
+    const TIER_COLORS = {梅:'var(--text-2)',竹:'var(--teal)',松:'var(--amber)'};
+    const TIER_SUBS = {梅:'スタンダード',竹:'バランス重視',松:'プレミアム'};
+    wrap.innerHTML = '';
+    WHEEL_TIERS.slice().reverse().forEach(tier=>{
+      const items = wheelCatalog[tier] || [];
+      const sec = document.createElement('div');
+      sec.style.cssText = 'background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;';
+      sec.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        +'<div style="display:flex;align-items:center;gap:10px;">'
+        +'<span style="font-size:20px;font-weight:700;color:'+TIER_COLORS[tier]+';">'+tier+'</span>'
+        +'<span style="font-size:12px;color:var(--text-2);">'+TIER_SUBS[tier]+'</span>'
+        +'</div>'
+        +'<button class="btn btn-ghost btn-sm" data-wcat-add="'+tier+'" style="font-size:12px;">＋ 写真を追加</button>'
+        +'</div>'
+        +'<div data-wcat-list="'+tier+'" style="display:flex;flex-wrap:wrap;gap:10px;">'
+        + (items.length === 0 ? '<span style="font-size:12px;color:var(--text-3);">写真なし</span>' : '')
+        + items.map((item, idx)=>'<div style="position:relative;width:90px;">'
+          +'<div style="width:90px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg-1);">'
+          +'<img src="'+escapeHtml(item.dataUrl||'')+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
+          +'</div>'
+          +'<input type="text" data-wcat-name="'+tier+'" data-wcat-idx="'+idx+'" value="'+escapeHtml(item.name||'')+'" placeholder="名称" '
+          +'style="width:90px;margin-top:4px;padding:3px 6px;font-size:11px;border:1px solid var(--line);border-radius:4px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;">'
+          +'<button data-wcat-del="'+tier+'" data-wcat-idx="'+idx+'" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">×</button>'
+          +'</div>').join('')
+        +'</div>';
+      wrap.appendChild(sec);
+
+      sec.querySelector('[data-wcat-add]').addEventListener('click', ()=>{
+        const fi = document.getElementById('wcatFileInput');
+        fi._wcatTier = tier;
+        fi.value = '';
+        fi.click();
+      });
+      sec.querySelectorAll('[data-wcat-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const t = btn.dataset.wcatDel;
+          const i = +btn.dataset.wcatIdx;
+          wheelCatalog[t].splice(i, 1);
+          await saveWheelCatalog();
+          renderWheelCatalogEditor();
+          showSaveMsgWcat('削除しました ✓');
+        });
+      });
+      sec.querySelectorAll('[data-wcat-name]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const t = inp.dataset.wcatName;
+          const i = +inp.dataset.wcatIdx;
+          wheelCatalog[t][i].name = inp.value;
+          await saveWheelCatalog();
+          showSaveMsgWcat('保存しました ✓');
+        });
+      });
+    });
+  }
+
+  function showSaveMsgWcat(msg){
+    const el = document.getElementById('wcatSaveMsg');
+    if(!el) return;
+    el.textContent = msg;
+    clearTimeout(el._t);
+    el._t = setTimeout(()=>{ el.textContent=''; }, 2500);
+  }
+
+  function initWheelCatalogEditor(){
+    const wrap = document.getElementById('wcatEditorWrap');
+    if(!wrap || wrap._wcatInit) return;
+    wrap._wcatInit = true;
+    renderWheelCatalogEditor();
+    document.getElementById('wcatFileInput').addEventListener('change', async function(){
+      const file = this.files[0];
+      if(!file) return;
+      const tier = this._wcatTier;
+      if(!tier) return;
+      showSaveMsgWcat('圧縮・保存中…');
+      try{
+        const dataUrl = await compressImageFile(file, 320, 0.72);
+        if(!wheelCatalog[tier]) wheelCatalog[tier] = [];
+        wheelCatalog[tier].push({ id: 'wc_'+Date.now(), name: file.name.replace(/\.[^.]+$/,''), dataUrl });
+        await saveWheelCatalog();
+        renderWheelCatalogEditor();
+        showSaveMsgWcat('アップロード完了 ✓');
+      }catch(e){
+        console.error('wcatUpload error', e);
+        showSaveMsgWcat('エラーが発生しました');
+      }
     });
   }
 
