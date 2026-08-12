@@ -8326,7 +8326,7 @@ window.addEventListener('storageReady', function(){
         const src = escapeHtml(item.dataUrl||'');
         const name = escapeHtml(item.name||'');
         return '<div class="photo-card">'
-          +'<div class="photo-img-wrap">'+(src?'<img src="'+src+'" alt="'+name+'" loading="lazy">':'<div class="photo-placeholder">No image</div>')+'</div>'
+          +'<div class="photo-img-wrap" style="cursor:zoom-in;" onmouseover="__wcZoom(\''+src+'\',\''+name+'\')" onclick="__wcZoom(\''+src+'\',\''+name+'\')">'+(src?'<img src="'+src+'" alt="'+name+'" loading="lazy">':'<div class="photo-placeholder">No image</div>')+'</div>'
           +'<p class="photo-name">'+name+'</p></div>';
       }).join('') : '<div class="empty-strip">現在このランクのホイールは準備中です。スタッフにお問い合わせください。</div>';
       return '<section class="tier-section">'
@@ -8374,6 +8374,11 @@ window.addEventListener('storageReady', function(){
       +'<div class="site-sub">アルミホイール カタログ — TK タイヤ</div></div><span class="site-badge">TK TIRE</span></div></header>'
       +'<div id="main"><div id="sections">'+sectionsHtml+'</div>'
       +'<footer class="site-footer">価格・在庫はスタッフにお問い合わせください。</footer></div>'
+      +'<div id="wcZoomOverlay" onclick="this.style.display=\'none\'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">'
+      +'<img id="wcZoom" src="" style="max-width:min(80vw,520px);max-height:80vh;object-fit:contain;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.5);pointer-events:none;">'
+      +'<div id="wcZoomName" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6);white-space:nowrap;"></div>'
+      +'</div>'
+      +'<script>function __wcZoom(s,n){document.getElementById(\'wcZoom\').src=s;document.getElementById(\'wcZoomName\').textContent=n;document.getElementById(\'wcZoomOverlay\').style.display=\'flex\';}document.addEventListener(\'keydown\',function(e){if(e.key===\'Escape\')document.getElementById(\'wcZoomOverlay\').style.display=\'none\';});<\/script>'
       +'</body></html>';
   }
 
