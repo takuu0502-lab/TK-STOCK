@@ -1067,7 +1067,7 @@
       お客様向けカタログページに表示するホイール写真を登録します。松・竹・梅ごとに画像をアップロードしてください。
     </p>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-      <a href="wheel-catalog.html" target="_blank" class="btn btn-ghost btn-sm">🔗 カタログページを開く</a>
+      <button class="btn btn-ghost btn-sm" id="wcatOpenBtn">🔗 カタログページを開く</button>
       <span id="wcatSaveMsg" style="font-size:12px;color:var(--teal);"></span>
     </div>
     <div id="wcatEditorWrap" style="display:flex;flex-direction:column;gap:20px;max-width:600px;"></div>
@@ -1506,7 +1506,7 @@
       <div class="quote-shared-labor-title">
         <span>アルミホイール</span>
         <div style="display:flex;align-items:center;gap:6px;">
-          <a href="wheel-catalog.html" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 10px;line-height:1.5;">📸 カタログ</a>
+          <button class="btn btn-ghost btn-sm" onclick="openWheelCatalogWindow()" style="font-size:11px;padding:3px 10px;line-height:1.5;">📸 カタログ</button>
           <button class="quote-add-labor-btn" id="addWheelLine" type="button" title="ホイールを追加">＋</button>
         </div>
       </div>
@@ -8304,11 +8304,80 @@ window.addEventListener('storageReady', function(){
     el._t = setTimeout(()=>{ el.textContent=''; }, 2500);
   }
 
+  function buildCatalogHTML(){
+    const TIER_COLORS = {梅:'#5C5A52', 竹:'#1F8F68', 松:'#B8650C'};
+    const TIER_SUBS   = {梅:'スタンダード', 竹:'バランス重視', 松:'プレミアム'};
+    const sectionsHtml = WHEEL_TIERS.map(tier=>{
+      const items = wheelCatalog[tier] || [];
+      const hasItems = items.length > 0;
+      const strip = hasItems ? items.map(item=>{
+        const src = escapeHtml(item.dataUrl||'');
+        const name = escapeHtml(item.name||'');
+        return '<div class="photo-card">'
+          +'<div class="photo-img-wrap">'+(src?'<img src="'+src+'" alt="'+name+'" loading="lazy">':'<div class="photo-placeholder">No image</div>')+'</div>'
+          +'<p class="photo-name">'+name+'</p></div>';
+      }).join('') : '<div class="empty-strip">現在このランクのホイールは準備中です。スタッフにお問い合わせください。</div>';
+      return '<section class="tier-section">'
+        +'<div class="tier-header"><div class="tier-label-wrap"><span class="tier-kanji" style="color:'+TIER_COLORS[tier]+';">'+tier+'</span>'
+        +'<span class="tier-sub">'+TIER_SUBS[tier]+'</span></div>'
+        +'<span class="tier-count">'+(hasItems?items.length+'種類':'準備中')+'</span></div>'
+        +(hasItems?'<div class="photo-strip">'+strip+'</div>':strip)
+        +'</section>';
+    }).join('');
+    return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      +'<title>アルミホイール カタログ</title>'
+      +'<link rel="preconnect" href="https://fonts.googleapis.com">'
+      +'<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">'
+      +'<style>'
+      +'*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}'
+      +':root{--bg:#F5F4EF;--border:#DEDBD1;--text-1:#221F1A;--text-2:#6B6759;--text-3:#9C978A;}'
+      +'body{background:var(--bg);color:var(--text-1);font-family:"Noto Sans JP",sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}'
+      +'.site-header{background:#221F1A;color:#fff;padding:20px;}'
+      +'.site-header-inner{max-width:840px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;}'
+      +'.site-title{font-family:"Oswald",sans-serif;font-size:22px;letter-spacing:.06em;line-height:1;}'
+      +'.site-sub{font-size:11px;opacity:.55;margin-top:4px;}'
+      +'.site-badge{font-size:11px;font-weight:700;background:#B8650C;color:#fff;padding:5px 12px;border-radius:20px;}'
+      +'#main{max-width:840px;margin:0 auto;padding:0 0 48px;}'
+      +'.tier-section{padding:28px 20px;border-bottom:1px solid var(--border);}'
+      +'.tier-section:last-child{border-bottom:none;}'
+      +'.tier-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}'
+      +'.tier-label-wrap{display:flex;align-items:center;gap:12px;}'
+      +'.tier-kanji{font-family:"Oswald",sans-serif;font-size:36px;font-weight:700;line-height:1;}'
+      +'.tier-sub{font-size:13px;color:var(--text-2);font-weight:500;}'
+      +'.tier-count{font-size:12px;color:var(--text-3);}'
+      +'.photo-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}'
+      +'.photo-strip::-webkit-scrollbar{height:4px;}.photo-strip::-webkit-scrollbar-thumb{background:#DEDBD1;border-radius:2px;}'
+      +'.photo-card{flex-shrink:0;width:160px;}'
+      +'.photo-img-wrap{width:160px;height:160px;border-radius:10px;overflow:hidden;background:#ECEAE2;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;}'
+      +'.photo-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}'
+      +'.photo-placeholder{font-size:11px;color:var(--text-3);}'
+      +'.photo-name{margin-top:8px;font-size:12px;font-weight:500;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+      +'.empty-strip{font-size:13px;color:var(--text-3);padding:20px 0 8px;line-height:1.7;}'
+      +'.site-footer{text-align:center;padding:24px 20px;font-size:11px;color:var(--text-3);border-top:1px solid var(--border);max-width:840px;margin:0 auto;}'
+      +'@media(max-width:480px){.photo-card{width:140px;}.photo-img-wrap{width:140px;height:140px;}.tier-kanji{font-size:30px;}}'
+      +'</style></head><body>'
+      +'<header class="site-header"><div class="site-header-inner"><div><div class="site-title">ALUMINUM WHEEL CATALOG</div>'
+      +'<div class="site-sub">アルミホイール カタログ — TK タイヤ</div></div><span class="site-badge">TK TIRE</span></div></header>'
+      +'<div id="main"><div id="sections">'+sectionsHtml+'</div>'
+      +'<footer class="site-footer">価格・在庫はスタッフにお問い合わせください。</footer></div>'
+      +'</body></html>';
+  }
+
+  function openWheelCatalogWindow(){
+    const html = buildCatalogHTML();
+    const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+    if(!w) showToast('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+  }
+
   function initWheelCatalogEditor(){
     const wrap = document.getElementById('wcatEditorWrap');
     if(!wrap || wrap._wcatInit) return;
     wrap._wcatInit = true;
     renderWheelCatalogEditor();
+    document.getElementById('wcatOpenBtn').addEventListener('click', openWheelCatalogWindow);
     document.getElementById('wcatFileInput').addEventListener('change', async function(){
       const file = this.files[0];
       if(!file) return;
