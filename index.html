@@ -4170,8 +4170,10 @@ window.addEventListener('storageReady', function(){
   }
 
   function renderSharedLabor(){
-    const LABOR_UNIT = {'組替・バランス・脱着':'本','タイヤ処分料':'本','ゴムバルブ':'個','チッ素ガス':'本','アライメント':'式'};
+    const LABOR_UNIT = {'組替・バランス・脱着':'本','タイヤ処分料':'本','ゴムバルブ':'個','ナット':'個','チッ素ガス':'本','アライメント':'式'};
+    const LABOR_QTY  = {'ナット':[12,16,20,24]};
     function laborUnit(name){ return LABOR_UNIT[name]||'式'; }
+    function laborQtyOptions(name, cur){ return (LABOR_QTY[name]||[1,2,3,4,5,6]).map(n=>'<option value="'+n+'"'+(cur==n?' selected':'')+'>'+n+'</option>').join(''); }
     const wrap = document.getElementById('sharedLaborWrap');
     if(sharedLaborLines.length === 0){
       wrap.innerHTML = '<div style="font-size:12.5px;color:var(--text-3);padding:4px 0;">＋ボタンで工賃・作業費を追加してください</div>';
@@ -4181,7 +4183,7 @@ window.addEventListener('storageReady', function(){
         const isCustom = l.name && !LABOR_PRESETS.includes(l.name);
         const selectVal = isCustom ? '__custom__' : l.name;
         const unit = laborUnit(l.name);
-        const lqtyOpts = [1,2,3,4,5,6].map(n=>'<option value="'+n+'"'+(l.qty==n?' selected':'')+'>'+n+'</option>').join('');
+        const lqtyOpts = laborQtyOptions(l.name, l.qty);
         return '<div class="quote-line-row">'
           + '<div class="quote-line-main">'
           +   '<select class="quote-labor-select" data-sl-sel="'+li+'">'
@@ -4201,7 +4203,12 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-sl-sel]').forEach(sel=>{
       const li = +sel.dataset.slSel;
       sel.addEventListener('change', ()=>{
-        sharedLaborLines[li].name = sel.value==='__custom__' ? '' : sel.value;
+        const name = sel.value==='__custom__' ? '' : sel.value;
+        sharedLaborLines[li].name = name;
+        // ナット選択時はデフォルト16個にセット
+        if(name && LABOR_QTY[name] && !LABOR_QTY[name].includes(sharedLaborLines[li].qty)){
+          sharedLaborLines[li].qty = LABOR_QTY[name][1] || LABOR_QTY[name][0];
+        }
         renderSharedLabor(); renderQuoteLines(); renderTotals();
       });
     });
