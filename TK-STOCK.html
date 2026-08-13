@@ -273,6 +273,8 @@
   .quote-shared-labor-title{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:8px;}
   .quote-add-labor-btn:hover{background:var(--amber);color:#fff;}
   .quote-labor-select{font-size:12.5px;padding:5px 8px;flex:1;min-width:140px;}
+  .quote-labor-list-btn{font-size:11px;padding:4px 7px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--text-2);line-height:1;flex-shrink:0;}
+  .quote-labor-list-btn:hover{background:var(--line);}
   .quote-line-qty-sel{width:56px;text-align:center;padding:6px 4px;}
   .quote-block-subtotal-wrap{border-top:1px solid var(--line-soft);margin-top:10px;padding-top:8px;}
   .quote-labor-mirror{opacity:0.85;}
@@ -4188,6 +4190,7 @@ window.addEventListener('storageReady', function(){
         return '<div class="quote-line-row">'
           + '<div class="quote-line-main">'
           +   '<input type="text" list="laborPresetList" class="quote-labor-select" placeholder="工賃・作業名を入力" value="'+escapeHtml(l.name||'')+'" data-sl-name="'+li+'">'
+          +   '<button type="button" class="quote-labor-list-btn no-print" data-sl-listbtn="'+li+'" title="一覧から選択">▾</button>'
           + '</div>'
           + '<select class="quote-line-qty-sel" data-sl-qty="'+li+'">'+lqtyOpts+'</select> '+escapeHtml(unit)
           + '<input type="number" class="quote-line-price" style="border:1px solid var(--line);border-radius:4px;" min="0" placeholder="金額" value="'+(l.unitPrice||'')+'" data-sl-price="'+li+'">'
@@ -4205,6 +4208,17 @@ window.addEventListener('storageReady', function(){
           sharedLaborLines[li].qty = LABOR_QTY[name][1] || LABOR_QTY[name][0];
         }
         renderSharedLabor(); renderQuoteLines(); renderTotals();
+      });
+    });
+    wrap.querySelectorAll('[data-sl-listbtn]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const li = +btn.dataset.slListbtn;
+        const inp = wrap.querySelector('[data-sl-name="'+li+'"]');
+        if(!inp) return;
+        inp.value = '';
+        sharedLaborLines[li].name = '';
+        inp.focus();
+        inp.dispatchEvent(new Event('input'));
       });
     });
     wrap.querySelectorAll('[data-sl-qty]').forEach(sel=>{
