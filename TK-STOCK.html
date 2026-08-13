@@ -478,6 +478,14 @@
   #provTooltip .pt-car{color:var(--text-2);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #provTooltip .pt-date{color:var(--text-3);font-size:11px;white-space:nowrap;text-align:right;}
   #provTooltip .pt-over{color:var(--red);font-weight:700;}
+  #inschTooltip{position:fixed;z-index:9999;pointer-events:none;display:none;min-width:220px;max-width:300px;background:var(--bg-1);border:1px solid #1a7a5e;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:12px 16px;font-size:12px;color:var(--text-1);line-height:1.5;}
+  #inschTooltip .it-title{font-weight:700;font-size:13px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+  #inschTooltip .it-row{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;}
+  #inschTooltip .it-row:last-child{border-bottom:none;}
+  #inschTooltip .it-qty{font-weight:700;text-align:center;background:rgba(26,122,94,0.1);color:#1a7a5e;border-radius:4px;padding:1px 4px;font-size:11px;}
+  #inschTooltip .it-date{color:var(--text-1);font-weight:600;}
+  #inschTooltip .it-diff{font-size:11px;white-space:nowrap;text-align:right;}
+  #inschTooltip .it-by{color:var(--text-3);font-size:11px;}
 
   @media (max-width:640px){
     /* ── レイアウト基本 ── */
@@ -1347,6 +1355,7 @@
 </div>
 
 <div id="provTooltip"></div>
+<div id="inschTooltip"></div>
 
 <div class="modal-overlay" id="requestModal">
   <div class="modal" style="max-width:520px;width:95%;">
@@ -5685,6 +5694,56 @@ window.addEventListener('storageReady', function(){
     });
     document.addEventListener('mouseout', e=>{
       const badge = e.target.closest('[data-prov-badge]');
+      if(!badge) return;
+      _hideTimer = setTimeout(()=>{ tip.style.display='none'; }, 150);
+    });
+  })();
+
+  // ---------- 入庫予定ツールチップ ----------
+  (()=>{
+    const tip = document.getElementById('inschTooltip');
+    let _hideTimer = null;
+    const today = ()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; };
+    document.addEventListener('mouseover', e=>{
+      const badge = e.target.closest('[data-insch-badge]');
+      if(!badge) return;
+      clearTimeout(_hideTimer);
+      const productId = badge.dataset.inschBadge;
+      const p = products.find(x=>x.id===productId);
+      if(!p) return;
+      const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const entries = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===productId);
+      const totalQty = entries.reduce((s,x)=>s+x.qty,0);
+      const stk = getStock(p);
+      let html = '<div class="it-title"><span>📦 入庫予定</span><span style="font-size:11px;font-weight:400;color:#1a7a5e;">計 '+totalQty+' 本予定 / 現在庫 '+stk+' 本</span></div>';
+      if(entries.length > 0){
+        html += '<div style="display:grid;grid-template-columns:36px 1fr auto;gap:4px 8px;padding:4px 0 2px;font-size:10px;font-weight:600;color:var(--text-3);border-bottom:1px solid var(--line);margin-bottom:2px;">'
+          +'<span style="text-align:center;">数量</span><span>入荷予定日</span><span style="text-align:right;">担当</span></div>';
+      }
+      entries.slice().sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate)).forEach(s=>{
+        const d = new Date(s.expectedDate+'T00:00:00');
+        const diff = Math.round((d - today())/(1000*60*60*24));
+        const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
+        const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'#1a7a5e';
+        html += '<div class="it-row">'
+          +'<span class="it-qty">'+s.qty+'本</span>'
+          +'<div><div class="it-date">'+s.expectedDate.replace(/\d{4}-/,'').replace('-','/')+'</div>'
+          +'<div style="font-size:10px;font-weight:700;color:'+diffColor+';">'+diffLabel+'</div></div>'
+          +'<span class="it-by">'+escapeHtml(s.createdBy||'')+'</span>'
+          +'</div>';
+      });
+      tip.innerHTML = html;
+      const rect = badge.getBoundingClientRect();
+      tip.style.display = 'block';
+      const tw = tip.offsetWidth;
+      let left = rect.left;
+      let top  = rect.bottom + 6;
+      if(left + tw > window.innerWidth - 10) left = window.innerWidth - tw - 10;
+      tip.style.left = left+'px';
+      tip.style.top  = top+'px';
+    });
+    document.addEventListener('mouseout', e=>{
+      const badge = e.target.closest('[data-insch-badge]');
       if(!badge) return;
       _hideTimer = setTimeout(()=>{ tip.style.display='none'; }, 150);
     });
