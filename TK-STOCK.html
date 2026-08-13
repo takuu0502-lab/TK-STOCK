@@ -831,6 +831,7 @@
     <div id="inReaderWrap"></div>
     <div id="inResult"></div>
     <div id="inCartWrap"></div>
+    <div id="incomingSchedWrap" style="margin-top:24px;"></div>
     <div id="inSessionWrap" style="margin-top:24px;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:14px;font-weight:700;color:var(--text-1);">完了リスト（今回）</div>
@@ -1394,6 +1395,31 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="incomingSchedModal">
+  <div class="modal" style="max-width:380px;">
+    <h3 style="margin-top:0;">📦 入庫予定の登録</h3>
+    <div id="incomingSchedModalProductName" style="font-size:13px;color:var(--text-2);margin-bottom:14px;"></div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">入荷予定日 <span style="color:var(--red);">*</span></label>
+        <input type="date" id="incomingSchedDate" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:var(--bg-1);color:var(--text-1);">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">数量 <span style="color:var(--red);">*</span></label>
+        <div class="qty-stepper">
+          <button type="button" id="incomingSchedQtyMinus">−</button>
+          <input type="number" id="incomingSchedQty" value="4" min="1" style="width:60px;">
+          <button type="button" id="incomingSchedQtyPlus">＋</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;">
+      <button class="btn btn-ghost" id="incomingSchedCancel" style="flex:1;">キャンセル</button>
+      <button class="btn btn-teal" id="incomingSchedSave" style="flex:1;">登録する</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="provisionalFormModal">
   <div class="modal" style="max-width:380px;">
     <h3 style="margin-top:0;">🔖 仮出庫の登録</h3>
@@ -1706,6 +1732,7 @@ window.addEventListener('storageReady', function(){
   let outboundCart = [];  // スキャン済み・未確定リスト（一括出庫用）
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
+  let incomingSchedules = []; // 入庫予定リスト
   let categories = [];
   let editingId = null;
   let janDict = {};
@@ -2548,6 +2575,8 @@ window.addEventListener('storageReady', function(){
       transactions = t ? JSON.parse(t.value) : [];
       const pob = await window.storage.get('provisionalOutbounds', SHARED);
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
+      const isch = await window.storage.get('incomingSchedules', SHARED);
+      incomingSchedules = isch ? JSON.parse(isch.value) : [];
       // branchId未設定の仮出庫レコードにstaff名からbranchIdを補完するマイグレーション
       let pobMigrated = false;
       provisionalOutbounds.forEach(po=>{
@@ -2606,6 +2635,10 @@ window.addEventListener('storageReady', function(){
   async function saveProvisionalOutbounds(){
     try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
     catch(e){ console.error('save provisionalOutbounds failed', e); }
+  }
+  async function saveIncomingSchedules(){
+    try{ await window.storage.set('incomingSchedules', JSON.stringify(incomingSchedules), SHARED); }
+    catch(e){ console.error('save incomingSchedules failed', e); }
   }
   async function saveCategories(){
     try{ await window.storage.set('categories', JSON.stringify(categories), SHARED); }
@@ -2738,6 +2771,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
+      if(tab === 'in'){ renderIncomingScheduleList(); }
     });
   });
 
@@ -3989,7 +4023,9 @@ window.addEventListener('storageReady', function(){
             // 通常の単一列
             const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
             const provOver=provQty>stk;
-            return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(provQty>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+(currentUser?currentUser.branchId||'taniyabe':'taniyabe')+'" style="cursor:default;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+  '</td>';
+            const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
+            const inschQty=incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
+            return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(provQty>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" style="cursor:default;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+(inschQty>0?'<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#1a7a5e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;" title="入庫予定を確認">📦 入庫予定 '+inschQty+'本</div>':'')+  '</td>';
           }
         })()
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
@@ -5644,6 +5680,16 @@ window.addEventListener('storageReady', function(){
     });
   })();
 
+  // ---------- 入庫予定バッジクリック → 商品詳細を開く ----------
+  document.addEventListener('click', e=>{
+    const badge = e.target.closest('[data-insch-badge]');
+    if(!badge) return;
+    e.stopPropagation();
+    const productId = badge.dataset.inschBadge;
+    const p = products.find(x=>x.id===productId);
+    if(p) openDetailModal(p.id);
+  });
+
   // ---------- カメラ起動の共通処理（エラー診断つき） ----------
   function inIframe(){
     try{ return window.self !== window.top; }catch(e){ return true; }
@@ -6382,6 +6428,8 @@ window.addEventListener('storageReady', function(){
       + '<textarea id="detailMemo" rows="3" placeholder="メモを入力…" style="width:100%;resize:vertical;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13.5px;padding:7px 10px;box-sizing:border-box;"'+(writable?'':' readonly')+'>'+escapeHtml(p.memo||'')+'</textarea>'
       + (writable ? '<div style="text-align:right;margin-top:6px;"><button class="btn btn-amber btn-sm" id="detailMemoSave">メモを保存</button></div>' : '')
       + '</div>'
+      + '<div class="detail-hist-title" style="display:flex;align-items:center;justify-content:space-between;">📦 入庫予定<span id="detailInschAddBtn" style="font-size:12px;font-weight:400;color:var(--teal);cursor:pointer;border:1px solid var(--teal);border-radius:6px;padding:2px 10px;">＋ 予定を登録</span></div>'
+      + '<div id="detailInschList" style="margin-bottom:12px;"></div>'
       + '<div class="detail-hist-title">🔖 仮出庫リスト</div>'
       + '<div id="detailProvList" style="margin-bottom:12px;"></div>'
       + '<div class="detail-hist-title">入出庫履歴</div>'
@@ -6469,6 +6517,89 @@ window.addEventListener('storageReady', function(){
       });
     }
     renderDetailProvList();
+
+    // ---------- 入庫予定リスト（商品詳細） ----------
+    function renderDetailInschList(){
+      const el = document.getElementById('detailInschList');
+      if(!el) return;
+      const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const entries = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===id);
+      if(entries.length===0){
+        el.innerHTML='<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">入庫予定なし</div>';
+        return;
+      }
+      entries.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
+      el.innerHTML = entries.map(s=>{
+        const d = new Date(s.expectedDate+'T00:00:00');
+        const today = new Date(); today.setHours(0,0,0,0);
+        const diff = Math.round((d-today)/(1000*60*60*24));
+        const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
+        const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
+        return '<div style="padding:10px 12px;background:rgba(26,122,94,0.07);border:1px solid var(--teal);border-radius:8px;margin-bottom:8px;">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+          +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 '+s.expectedDate+'</span>'
+          +'<span style="font-size:11px;font-weight:600;color:'+diffColor+';">'+diffLabel+'</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          +'<div style="font-size:13px;">数量：<strong>'+s.qty+'本</strong>　担当：<span style="color:var(--text-2);">'+escapeHtml(s.createdBy||'')+'</span></div>'
+          +'<div style="display:flex;gap:6px;">'
+          +'<button class="btn btn-teal btn-sm" data-insch-confirm="'+s.id+'" style="font-size:12px;padding:4px 12px;">入庫確定</button>'
+          +'<button class="btn btn-ghost btn-sm" data-insch-delete="'+s.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);">削除</button>'
+          +'</div>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+
+      el.querySelectorAll('[data-insch-confirm]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!canWriteData()) return;
+          const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschConfirm);
+          if(!sched) return;
+          const p2 = products.find(x=>x.id===sched.productId);
+          if(!p2) return;
+          const opBranch = getOperationBranch();
+          if(!p2.branchStock) p2.branchStock={};
+          p2.branchStock[opBranch]=(p2.branchStock[opBranch]||0)+sched.qty;
+          p2.stock=p2.branchStock[opBranch];
+          transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
+            type:'in', qty:sched.qty, date:new Date().toISOString(),
+            user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
+          sched.status='done';
+          await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+          renderProductTable(); renderHistory(); renderIncomingScheduleList();
+          renderDetailInschList();
+          const msgEl = document.getElementById('detailActionMsg');
+          if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'本）</div>';
+            setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
+        });
+      });
+      el.querySelectorAll('[data-insch-delete]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!confirm('この入庫予定を削除しますか？')) return;
+          const idx = incomingSchedules.findIndex(x=>x.id===btn.dataset.inschDelete);
+          if(idx>=0) incomingSchedules.splice(idx,1);
+          await saveIncomingSchedules();
+          renderProductTable(); renderIncomingScheduleList(); renderDetailInschList();
+        });
+      });
+    }
+    renderDetailInschList();
+
+    // 入庫予定登録ボタン
+    const inschAddBtn = document.getElementById('detailInschAddBtn');
+    if(inschAddBtn){
+      inschAddBtn.addEventListener('click', ()=>{
+        const p2 = products.find(x=>x.id===id);
+        if(!p2) return;
+        document.getElementById('incomingSchedModalProductName').textContent = cleanName(p2.name)+(p2.spec?' / '+p2.spec:'');
+        // 日付のデフォルト：明日
+        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+        document.getElementById('incomingSchedDate').value = tomorrow.toISOString().slice(0,10);
+        document.getElementById('incomingSchedQty').value = 4;
+        document.getElementById('incomingSchedModal').dataset.targetProductId = id;
+        document.getElementById('incomingSchedModal').classList.add('show');
+      });
+    }
 
     if(writable){
       document.getElementById('detailQty').value = 1;
@@ -7315,6 +7446,132 @@ window.addEventListener('storageReady', function(){
     });
     list.innerHTML = html
       + '<div style="font-size:12px;color:var(--text-3);text-align:right;">合計 '+totalItems+' 件 / '+totalQty+' 本</div>';
+  }
+
+  // ---------- 入庫予定モーダル イベント ----------
+  (()=>{
+    const modal = document.getElementById('incomingSchedModal');
+    document.getElementById('incomingSchedCancel').addEventListener('click', ()=> modal.classList.remove('show'));
+    document.getElementById('incomingSchedQtyMinus').addEventListener('click', ()=>{
+      const inp = document.getElementById('incomingSchedQty');
+      inp.value = Math.max(1, parseInt(inp.value||'1',10)-1);
+    });
+    document.getElementById('incomingSchedQtyPlus').addEventListener('click', ()=>{
+      const inp = document.getElementById('incomingSchedQty');
+      inp.value = parseInt(inp.value||'1',10)+1;
+    });
+    document.getElementById('incomingSchedSave').addEventListener('click', async ()=>{
+      const dateVal = document.getElementById('incomingSchedDate').value;
+      const qty = parseInt(document.getElementById('incomingSchedQty').value||'1',10);
+      if(!dateVal){ alert('入荷予定日を入力してください。'); return; }
+      if(!qty||qty<1){ alert('数量を入力してください。'); return; }
+      const productId = modal.dataset.targetProductId;
+      const p2 = products.find(x=>x.id===productId);
+      if(!p2) return;
+      const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      incomingSchedules.push({
+        id: uid('isch'),
+        productId: p2.id,
+        productName: p2.name,
+        brand: p2.brand||'',
+        spec: p2.spec||'',
+        branchId: _ownBr,
+        qty,
+        expectedDate: dateVal,
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser ? currentUser.displayName : '',
+        status: 'pending'
+      });
+      await saveIncomingSchedules();
+      modal.classList.remove('show');
+      renderProductTable();
+      renderIncomingScheduleList();
+      // 詳細モーダルが開いていれば更新
+      const inschList = document.getElementById('detailInschList');
+      if(inschList && document.getElementById('detailModal') && document.getElementById('detailModal').classList.contains('show')){
+        // renderDetailInschList はスコープ外なので再描画は renderProductTable で代替
+      }
+      showToast('入庫予定を登録しました。');
+    });
+  })();
+
+  // ---------- 入庫予定一覧（入庫タブ） ----------
+  function renderIncomingScheduleList(){
+    const wrap = document.getElementById('incomingSchedWrap');
+    if(!wrap) return;
+    const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr);
+    if(pending.length===0){ wrap.innerHTML=''; return; }
+    pending.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
+    const today = new Date(); today.setHours(0,0,0,0);
+    let html = '<div style="border:2px solid var(--teal);border-radius:10px;padding:16px;margin-bottom:4px;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--teal);">📦 入庫予定（'+pending.length+'件）</div>'
+      +'</div>';
+    pending.forEach(s=>{
+      const p2 = products.find(x=>x.id===s.productId);
+      const d = new Date(s.expectedDate+'T00:00:00');
+      const diff = Math.round((d-today)/(1000*60*60*24));
+      const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
+      const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
+      const stk = p2 ? getStock(p2) : '?';
+      html += '<div style="border-bottom:1px solid var(--line-soft);padding:10px 0;">'
+        +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-weight:600;font-size:14px;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+'</div>'
+        +'<div style="font-size:12px;color:var(--text-2);margin-top:2px;display:flex;flex-wrap:wrap;gap:8px;">'
+        +(s.brand?'<span style="color:var(--amber);font-weight:600;">'+escapeHtml(s.brand)+'</span>':'')
+        +(s.spec?'<span>'+escapeHtml(s.spec)+'</span>':'')
+        +'<span style="color:var(--text-3);">現在庫: '+stk+'本</span>'
+        +'</div>'
+        +'<div style="font-size:12px;margin-top:4px;display:flex;gap:10px;align-items:center;">'
+        +'<span>📅 '+s.expectedDate+'</span>'
+        +'<span style="font-weight:700;color:'+diffColor+';">'+diffLabel+'</span>'
+        +'<span style="color:var(--text-3);">担当: '+escapeHtml(s.createdBy||'')+'</span>'
+        +'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--teal);">+'+s.qty+'本</div>'
+        +'<button class="btn btn-teal btn-sm" data-insch-tab-confirm="'+s.id+'" style="font-size:12px;padding:4px 12px;">入庫確定</button>'
+        +'<button class="btn btn-ghost btn-sm" data-insch-tab-delete="'+s.id+'" style="font-size:12px;padding:2px 8px;color:var(--red);">削除</button>'
+        +'</div>'
+        +'</div>'
+        +'</div>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('[data-insch-tab-confirm]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschTabConfirm);
+        if(!sched) return;
+        const p2 = products.find(x=>x.id===sched.productId);
+        if(!p2){ alert('商品が見つかりません。'); return; }
+        const opBranch = getOperationBranch();
+        if(!p2.branchStock) p2.branchStock={};
+        p2.branchStock[opBranch]=(p2.branchStock[opBranch]||0)+sched.qty;
+        p2.stock=p2.branchStock[opBranch];
+        transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
+          type:'in', qty:sched.qty, date:new Date().toISOString(),
+          user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
+        const batchDate = new Date().toISOString();
+        inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:[{ name:p2.name, spec:p2.spec||'', qty:sched.qty, itemType:'stock' }] });
+        sched.status='done';
+        await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+        renderProductTable(); renderHistory(); renderIncomingScheduleList(); renderInboundSession();
+        showToast('入庫確定しました（'+sched.qty+'本）');
+      });
+    });
+    wrap.querySelectorAll('[data-insch-tab-delete]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('この入庫予定を削除しますか？')) return;
+        const idx = incomingSchedules.findIndex(x=>x.id===btn.dataset.inschTabDelete);
+        if(idx>=0) incomingSchedules.splice(idx,1);
+        await saveIncomingSchedules();
+        renderProductTable(); renderIncomingScheduleList();
+      });
+    });
   }
 
   // 一括入庫カート
