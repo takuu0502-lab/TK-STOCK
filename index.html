@@ -1733,6 +1733,7 @@ window.addEventListener('storageReady', function(){
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
   let incomingSchedules = []; // 入庫予定リスト
+  let _detailInschRefresh = null; // 商品詳細の入庫予定再描画関数（モーダル外から呼ぶ用）
   let categories = [];
   let editingId = null;
   let janDict = {};
@@ -6583,6 +6584,7 @@ window.addEventListener('storageReady', function(){
         });
       });
     }
+    _detailInschRefresh = renderDetailInschList;
     renderDetailInschList();
 
     // 入庫予定登録ボタン
@@ -7486,11 +7488,7 @@ window.addEventListener('storageReady', function(){
       modal.classList.remove('show');
       renderProductTable();
       renderIncomingScheduleList();
-      // 詳細モーダルが開いていれば更新
-      const inschList = document.getElementById('detailInschList');
-      if(inschList && document.getElementById('detailModal') && document.getElementById('detailModal').classList.contains('show')){
-        // renderDetailInschList はスコープ外なので再描画は renderProductTable で代替
-      }
+      if(_detailInschRefresh) _detailInschRefresh();
       showToast('入庫予定を登録しました。');
     });
   })();
