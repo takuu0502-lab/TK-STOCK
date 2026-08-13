@@ -4180,17 +4180,20 @@ window.addEventListener('storageReady', function(){
     if(sharedLaborLines.length === 0){
       wrap.innerHTML = '<div style="font-size:12.5px;color:var(--text-3);padding:4px 0;">＋ボタンで工賃・作業費を追加してください</div>';
     } else {
-      wrap.innerHTML = '<datalist id="laborPresetList">'
-        + LABOR_PRESETS.map(p=>'<option value="'+escapeHtml(p)+'">').join('')
-        + '</datalist>'
-        + sharedLaborLines.map((l,li)=>{
+      wrap.innerHTML = sharedLaborLines.map((l,li)=>{
         const lSub = (Number(l.qty)||0)*(Number(l.unitPrice)||0);
+        const isCustom = l.name && !LABOR_PRESETS.includes(l.name);
+        const selectVal = isCustom ? '__custom__' : (l.name || '');
         const unit = laborUnit(l.name);
         const lqtyOpts = laborQtyOptions(l.name, l.qty);
         return '<div class="quote-line-row">'
           + '<div class="quote-line-main">'
-          +   '<input type="text" list="laborPresetList" class="quote-labor-select" placeholder="工賃・作業名を入力" value="'+escapeHtml(l.name||'')+'" data-sl-name="'+li+'">'
-          +   '<button type="button" class="quote-labor-list-btn no-print" data-sl-listbtn="'+li+'" title="一覧から選択">▾</button>'
+          +   '<select class="quote-labor-select" data-sl-sel="'+li+'">'
+          +     '<option value="">選択してください</option>'
+          +     LABOR_PRESETS.map(p=>'<option value="'+escapeHtml(p)+'"'+(selectVal===p?' selected':'')+'>'+escapeHtml(p)+'</option>').join('')
+          +     '<option value="__custom__"'+(selectVal==='__custom__'?' selected':'')+'>手入力</option>'
+          +   '</select>'
+          +   ((isCustom || selectVal==='__custom__')?'<input type="text" class="quote-line-labor-input" placeholder="名称を入力" value="'+escapeHtml(l.name||'')+'" data-sl-custom="'+li+'">':'')
           + '</div>'
           + '<select class="quote-line-qty-sel" data-sl-qty="'+li+'">'+lqtyOpts+'</select> '+escapeHtml(unit)
           + '<input type="number" class="quote-line-price" style="border:1px solid var(--line);border-radius:4px;" min="0" placeholder="金額" value="'+(l.unitPrice||'')+'" data-sl-price="'+li+'">'
@@ -4199,27 +4202,19 @@ window.addEventListener('storageReady', function(){
           + '</div>';
       }).join('');
     }
-    wrap.querySelectorAll('[data-sl-name]').forEach(inp=>{
-      const li = +inp.dataset.slName;
-      inp.addEventListener('input', ()=>{
-        sharedLaborLines[li].name = inp.value;
-        const name = inp.value;
+    wrap.querySelectorAll('[data-sl-sel]').forEach(sel=>{
+      const li = +sel.dataset.slSel;
+      sel.addEventListener('change', ()=>{
+        const name = sel.value==='__custom__' ? '' : sel.value;
+        sharedLaborLines[li].name = name;
         if(name && LABOR_QTY[name] && !LABOR_QTY[name].includes(sharedLaborLines[li].qty)){
           sharedLaborLines[li].qty = LABOR_QTY[name][1] || LABOR_QTY[name][0];
         }
         renderSharedLabor(); renderQuoteLines(); renderTotals();
       });
     });
-    wrap.querySelectorAll('[data-sl-listbtn]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const li = +btn.dataset.slListbtn;
-        const inp = wrap.querySelector('[data-sl-name="'+li+'"]');
-        if(!inp) return;
-        inp.value = '';
-        sharedLaborLines[li].name = '';
-        inp.focus();
-        inp.dispatchEvent(new Event('input'));
-      });
+    wrap.querySelectorAll('[data-sl-custom]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{ sharedLaborLines[+inp.dataset.slCustom].name=inp.value; renderQuoteLines(); renderTotals(); });
     });
     wrap.querySelectorAll('[data-sl-qty]').forEach(sel=>{
       sel.addEventListener('change', ()=>{ sharedLaborLines[+sel.dataset.slQty].qty=+sel.value||1; renderSharedLabor(); renderQuoteLines(); renderTotals(); });
