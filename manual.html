@@ -225,6 +225,7 @@
     <div class="nav-group"><a href="#history">入出庫履歴</a></div>
     <div class="nav-group"><a href="#newproduct">新規商品登録</a></div>
     <div class="nav-group"><a href="#scan">バーコードスキャン</a></div>
+    <div class="nav-group"><a href="#catalog">ホイールカタログ管理</a></div>
     <div class="nav-group"><a href="#tips">よくある操作</a></div>
   </nav>
 
@@ -250,6 +251,7 @@
           <a class="toc-card" href="#provisional"><span class="toc-icon">🔖</span><div><div class="toc-label">仮出庫</div><div class="toc-desc">取り置き予約管理</div></div></a>
           <a class="toc-card" href="#estimate"><span class="toc-icon">📝</span><div><div class="toc-label">タイヤ見積</div><div class="toc-desc">見積書の作成・印刷</div></div></a>
           <a class="toc-card" href="#history"><span class="toc-icon">📊</span><div><div class="toc-label">入出庫履歴</div><div class="toc-desc">取引の記録確認</div></div></a>
+          <a class="toc-card" href="#catalog"><span class="toc-icon">📸</span><div><div class="toc-label">ホイールカタログ</div><div class="toc-desc">写真の登録・管理</div></div></a>
         </div>
 
         <hr class="divider">
@@ -580,18 +582,47 @@
           <div class="step">
             <div class="step-num">4</div>
             <div class="step-content">
-              <strong>お客様情報を入力</strong>
-              <p>見積画面でお客様名・車種・担当者名を入力します。工賃・作業内容も追加できます。</p>
+              <strong>ホイールカタログを活用する（任意）</strong>
+              <p>タイヤサイズ入力画面および見積モーダル内の <span class="ui-label">📸 ホイールカタログ</span> ボタンを押すと、登録済みのアルミホイール写真カタログが別ウィンドウで開きます。お客様にその場でご覧いただけます。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">5</div>
+            <div class="step-content">
+              <strong>お客様情報を入力</strong>
+              <p>見積画面でお客様名・車種・担当者名を入力します。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">6</div>
+            <div class="step-content">
+              <strong>工賃・作業費を追加する</strong>
+              <p>「工賃・作業費（全銘柄共通）」の <span class="ui-label">＋</span> ボタンで工賃行を追加します。<br>
+              プルダウンから作業名を選択するか、「手入力」を選んで任意の名称を入力できます。<br>
+              数量・金額を入力すると小計が自動計算されます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">7</div>
             <div class="step-content">
               <strong>印刷・保存</strong>
               <p><span class="ui-label">🖨 印刷</span> で見積書を印刷、<span class="ui-label">💾 保存</span> で後から呼び出せます。</p>
             </div>
           </div>
         </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:10px;">🔧 工賃プリセット一覧</h3>
+        <table class="def-table">
+          <tr><th>作業名</th><th>単位</th><th>数量の選択肢</th></tr>
+          <tr><td>組替・バランス・脱着</td><td>本</td><td>1〜6</td></tr>
+          <tr><td>タイヤ処分料</td><td>本</td><td>1〜6</td></tr>
+          <tr><td>ゴムバルブ</td><td>個</td><td>1〜6</td></tr>
+          <tr><td>ナット</td><td>個</td><td>12・16・20・24</td></tr>
+          <tr><td>チッ素ガス</td><td>本</td><td>1〜6</td></tr>
+          <tr><td>アライメント</td><td>式</td><td>1〜6</td></tr>
+          <tr><td>手入力（任意）</td><td>式</td><td>1〜6</td></tr>
+        </table>
 
         <div class="callout callout-teal">
           <span class="callout-icon">💡</span>
@@ -734,6 +765,80 @@
         <div class="callout callout-amber">
           <span class="callout-icon">⚠️</span>
           <p>他店舗に登録されている商品のコードをスキャンした場合は「未登録」として扱われます。自店舗で別途登録が必要です。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ホイールカタログ管理 -->
+    <section class="section" id="catalog">
+      <div class="section-header">
+        <div class="section-icon icon-amber">📸</div>
+        <div>
+          <h2>ホイールカタログ管理</h2>
+          <div class="section-desc">お客様向けホイール写真カタログの登録・管理</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <p>アルミホイールの写真を登録し、見積時にお客様へ提示できるカタログページを管理します。<br>
+        カタログはBASIC・STANDARD・PREMIUMの3ランクで構成されています。</p>
+
+        <div class="callout callout-teal" style="margin-top:14px;">
+          <span class="callout-icon">ℹ️</span>
+          <p>この機能は <span class="badge badge-amber">管理者</span> <span class="badge badge-teal">総管理者</span> のみ操作できます。登録した写真は全店舗で共有されます。</p>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">📷 写真を登録する</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>「価格調整」タブを開く</strong>
+              <p>上部メニューの <span class="ui-label">価格調整</span> タブをクリックします。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>「📸 ホイールカタログ写真管理」セクションを確認</strong>
+              <p>ページ下部にある写真管理エリアに進みます。BASIC・STANDARD・PREMIUMの3つのランクが表示されています。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>ランクを選んで写真を追加</strong>
+              <p>追加したいランクの <span class="ui-label">＋ 写真を追加</span> ボタンを押して画像ファイルを選択します。<br>
+              画像は自動でリサイズ・圧縮されます（最大320×320px）。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>ホイール名を入力して保存</strong>
+              <p>写真の下の名称欄にホイール名を入力し、<span class="ui-label">保存</span> ボタンを押します。<br>
+              写真はクラウドに保存され、全店舗で即座に反映されます。</p>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:10px;">🗂 ランクの目安</h3>
+        <table class="def-table">
+          <tr><th>ランク</th><th>表示名</th><th>目安</th></tr>
+          <tr><td>梅</td><td><strong>BASIC</strong>（ベーシック）</td><td>エントリーグレードのホイール</td></tr>
+          <tr><td>竹</td><td><strong>STANDARD</strong>（スタンダード）</td><td>標準グレードのホイール</td></tr>
+          <tr><td>松</td><td><strong>PREMIUM</strong>（プレミアム）</td><td>上位グレードのホイール</td></tr>
+        </table>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">🔗 カタログページを開く</h3>
+        <p style="font-size:13.5px;">タイヤ見積画面のタイヤサイズ入力欄または見積モーダル内の <span class="ui-label">📸 ホイールカタログ</span> ボタンを押すと、登録済みの写真カタログが別ウィンドウで表示されます。<br>
+        ホイール写真にマウスを乗せると拡大表示されます。</p>
+
+        <div class="callout callout-amber" style="margin-top:14px;">
+          <span class="callout-icon">⚠️</span>
+          <p>写真の削除は各写真の <span class="ui-label">🗑</span> ボタンから行えます。削除後は保存ボタンを押してください。削除は全店舗に即反映されます。</p>
         </div>
       </div>
     </section>
