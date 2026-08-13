@@ -4008,6 +4008,15 @@ window.addEventListener('storageReady', function(){
                   badges += '<div data-prov-badge="'+p.id+'" data-prov-branch="'+brId+'" style="cursor:default;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap;">🔖 '+provQty+'本'+(provOver?' ⚠️':'')+' </div>';
                 }
               }
+              // 入庫予定：各支店列にそれぞれ表示
+              const inschQtyBr = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
+              if(inschQtyBr > 0){
+                if(isOwn){
+                  badges += '<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+inschQtyBr+'本</div>';
+                } else {
+                  badges += '<div style="cursor:default;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap;">📦 '+inschQtyBr+'本</div>';
+                }
+              }
               if(isOwn && p.customerOrders && p.customerOrders.length > 0){
                 badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
