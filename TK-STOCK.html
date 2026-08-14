@@ -4770,19 +4770,41 @@ window.addEventListener('storageReady', function(){
         +'<td class="num">&yen;'+wSub.toLocaleString('ja-JP')+'</td></tr>';
     }).join('');
 
-    const blocksHtml = [...quoteGroups].sort((a,b)=>{
-      const totalA = blockTotal(a) + laborTotal;
-      const totalB = blockTotal(b) + laborTotal;
-      return totalA - totalB;
-    }).map(g=>{
-      const tireSub = blockTotal(g);
+    // 同名銘柄をグループ化（前後サイズ違いモードで同一銘柄を1ブロックにまとめる）
+    const _nameGroupMap = new Map();
+    for(const g of quoteGroups){
+      if(!_nameGroupMap.has(g.name)) _nameGroupMap.set(g.name, []);
+      _nameGroupMap.get(g.name).push(g);
+    }
+    const blocksHtml = [..._nameGroupMap.entries()].sort((a,b)=>{
+      const sumA = a[1].reduce((s,g)=>s+blockTotal(g),0) + laborTotal;
+      const sumB = b[1].reduce((s,g)=>s+blockTotal(g),0) + laborTotal;
+      return sumA - sumB;
+    }).map(([name, gList])=>{
+      const tireSub = gList.reduce((s,g)=>s+blockTotal(g),0);
       const base = tireSub + laborTotal + wheelTotal;
       const tax = Math.floor(base*0.1);
       const total = base + tax;
+      const isMulti = gList.length > 1;
+      // タイヤ行：複数スペックは各行にサイズを表示
+      const tireRowsHtml = gList.map(g=>{
+        const gSub = blockTotal(g);
+        const specCell = isMulti && g.spec
+          ? 'タイヤ価格 <span style="font-size:9px;color:#888;font-family:monospace;">'+escapeHtml(g.spec)+'</span>'
+          : 'タイヤ価格';
+        return '<tr><td class="label">'+specCell+'</td>'
+          +'<td class="num">'+g.qty+' 本</td>'
+          +'<td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td>'
+          +'<td class="num">&yen;'+gSub.toLocaleString('ja-JP')+'</td></tr>';
+      }).join('');
+      const g0 = gList[0];
       return '<div class="qpb">'
-        +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(g.name)+'</span>'+(g.spec?'<span style="display:inline-flex;flex-direction:column;line-height:1.2;"><span style="font-size:9px;color:#888;font-weight:400;font-family:sans-serif;letter-spacing:0.5px;">サイズ</span><span class="qpb-spec">'+escapeHtml(g.spec)+'</span></span>':'')+(g.retailPrice?'<span style="margin-left:auto;display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.3;"><span style="font-size:9px;color:#999;font-weight:400;">メーカー希望小売価格（税抜）</span><span style="font-size:12px;color:#888;font-family:monospace;">&yen;'+Number(g.retailPrice).toLocaleString('ja-JP')+' / 本</span></span>':'')+'</div>'
+        +'<div class="qpb-header"><span class="qpb-name">'+escapeHtml(name)+'</span>'
+        +(!isMulti && g0.spec ? '<span style="display:inline-flex;flex-direction:column;line-height:1.2;"><span style="font-size:9px;color:#888;font-weight:400;font-family:sans-serif;letter-spacing:0.5px;">サイズ</span><span class="qpb-spec">'+escapeHtml(g0.spec)+'</span></span>' : '')
+        +(!isMulti && g0.retailPrice ? '<span style="margin-left:auto;display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.3;"><span style="font-size:9px;color:#999;font-weight:400;">メーカー希望小売価格（税抜）</span><span style="font-size:12px;color:#888;font-family:monospace;">&yen;'+Number(g0.retailPrice).toLocaleString('ja-JP')+' / 本</span></span>' : '')
+        +'</div>'
         +'<table class="qpb-table">'
-        +'<tr><td class="label">タイヤ価格</td><td class="num">'+g.qty+' 本</td><td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td><td class="num">&yen;'+tireSub.toLocaleString('ja-JP')+'</td></tr>'
+        +tireRowsHtml
         +laborRowsHtml
         +wheelRowsHtml
         +'</table>'
