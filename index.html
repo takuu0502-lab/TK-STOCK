@@ -5951,11 +5951,15 @@ window.addEventListener('storageReady', function(){
     if(selectedMajor !== null){
       const m = majorById(selectedMajor);
       if(m && m.subs.length){
+        const _subCol = colorForMajor(selectedMajor).text;
         html += '<div class="spec-step"><div class="spec-step-label">2. 中分類</div><div class="spec-step-tabs">';
-        html += '<span class="chip'+(selectedSub===null?' active':'')+'" data-spec-sub="">すべて</span>';
+        const _suballActive = selectedSub===null;
+        html += '<span class="chip'+(_suballActive?' active':'')+'" data-spec-sub="" style="'+(_suballActive?'border-color:'+_subCol+';background:'+_subCol+';color:#fff;':'border-color:'+_subCol+';')+'"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(_suballActive?'rgba(255,255,255,0.85)':_subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>すべて</span>';
         m.subs.forEach(sub=>{
           const active = selectedSub === sub.id;
-          html += '<span class="chip'+(active?' active':'')+'" data-spec-sub="'+sub.id+'">'+escapeHtml(sub.name)+'</span>';
+          html += '<span class="chip'+(active?' active':'')+'" data-spec-sub="'+sub.id+'" style="'+(active?'border-color:'+_subCol+';background:'+_subCol+';color:#fff;':'border-color:'+_subCol+';')+'">'
+            +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':_subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
+            +escapeHtml(sub.name)+'</span>';
         });
         html += '</div></div>';
       }
