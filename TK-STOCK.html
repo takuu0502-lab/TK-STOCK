@@ -7601,10 +7601,9 @@ window.addEventListener('storageReady', function(){
         +'<summary style="list-style:none;background:'+bgColor+';padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;">'
         +'<div style="flex:1;min-width:0;">'
         +(diff<0?'<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px;">⚠️ 入荷日超過</div>':'')
-        +'<div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+'</div>'
+        +'<div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+(s.spec?' <span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(s.spec)+'</span>':'')+'</div>'
         +'<div style="font-size:13px;color:var(--text-2);margin-top:4px;line-height:1.6;">'
         +'📅 入荷予定日: <strong>'+s.expectedDate+'</strong>'
-        +(s.brand?' &nbsp;🏷 <strong>'+escapeHtml(s.brand)+'</strong>':'')
         +'</div>'
         +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+escapeHtml(s.createdBy||'—')+'</div>'
         +'</div>'
