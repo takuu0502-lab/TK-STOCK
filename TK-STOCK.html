@@ -1786,6 +1786,7 @@ window.addEventListener('storageReady', function(){
     return !p.branchId || p.branchId===(currentUser.branchId||'taniyabe');
   }
   let selectedBranchFilter = null; // null=全支店, 'taniyabe'等=絞込
+  let _ownBranchTabActive = false;  // 自店舗在庫タブ選択中フラグ
 
   // 支店別在庫ヘルパー
   function getStock(p){
@@ -3800,26 +3801,37 @@ window.addEventListener('storageReady', function(){
     }
 
     // 管理者または複数支店閲覧可: タブ表示
-    // 管理者のみ「全支店（合計）」タブを表示
+    // 管理者のみ「全支店（合計）」「自店舗在庫」タブを表示
+    const _myBr = (currentUser && currentUser.branchId) || 'taniyabe';
     const tabs = isAdmin
-      ? [{id: null, name: '全支店（合計）'}, ...BRANCHES]
+      ? [{id: null, name: '全支店（合計）'}, {id: '__own__', name: '自店舗在庫'}, ...BRANCHES]
       : BRANCHES.filter(b => visibleIds.includes(b.id));
-    const activeLabel = selectedBranchFilter ? branchName(selectedBranchFilter)+'の在庫を表示中' : '全支店の合計在庫を表示中';
+    const activeLabel = selectedBranchFilter
+      ? (_ownBranchTabActive ? '自店舗（'+branchName(selectedBranchFilter)+'）の在庫を表示中' : branchName(selectedBranchFilter)+'の在庫を表示中')
+      : '全支店の合計在庫を表示中';
     wrap.innerHTML = '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
       + tabs.map(b=>{
-          const active = selectedBranchFilter === b.id;
-          return '<button class="btn btn-sm '+(active?'btn-amber':'btn-ghost')+'" data-branch-tab="'+(b.id||'')+'" style="font-size:12px;">'
-            + escapeHtml(b.name) + '</button>';
+          let active;
+          if(b.id === '__own__') active = _ownBranchTabActive;
+          else active = !_ownBranchTabActive && selectedBranchFilter === b.id;
+          const isOwn = b.id === '__own__';
+          return '<button class="btn btn-sm '+(active ? (isOwn ? 'btn-teal' : 'btn-amber') : 'btn-ghost')+'" data-branch-tab="'+(b.id||'')+'" style="font-size:12px;'+(isOwn && !active ? 'border-color:var(--teal);color:var(--teal);' : '')+'">'
+            + (isOwn ? '🏠 ' : '') + escapeHtml(b.name) + '</button>';
         }).join('')
       + '<span style="font-size:11px;color:var(--text-3);margin-left:6px;">📦 '+escapeHtml(activeLabel)+'</span>'
       + '</div>';
     wrap.querySelectorAll('[data-branch-tab]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const val = btn.dataset.branchTab;
-        const newFilter = val === '' ? null : val;
-        // 閲覧権限チェック
-        if(newFilter && !canViewBranch(newFilter)) return;
-        selectedBranchFilter = newFilter;
+        if(val === '__own__'){
+          _ownBranchTabActive = true;
+          selectedBranchFilter = _myBr;
+        } else {
+          _ownBranchTabActive = false;
+          const newFilter = val === '' ? null : val;
+          if(newFilter && !canViewBranch(newFilter)) return;
+          selectedBranchFilter = newFilter;
+        }
         renderCatTree();
         renderProductTable();
         updateTransactionBranchBanner('in');
