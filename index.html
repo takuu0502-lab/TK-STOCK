@@ -5938,7 +5938,13 @@ window.addEventListener('storageReady', function(){
     html += '<div class="spec-step"><div class="spec-step-label">1. 大分類</div><div class="spec-step-tabs">';
     categories.forEach(cat=>{
       const active = selectedMajor === cat.id;
-      html += '<span class="chip'+(active?' active':'')+'" data-spec-major="'+cat.id+'">'+escapeHtml(cat.name)+'</span>';
+      const col = colorForMajor(cat.id).text;
+      const borderStyle = active
+        ? 'border-color:'+col+';background:'+col+';color:#fff;'
+        : 'border-color:'+col+';';
+      html += '<span class="chip'+(active?' active':'')+'" data-spec-major="'+cat.id+'" style="'+borderStyle+'">'
+        +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':col)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
+        +escapeHtml(cat.name)+'</span>';
     });
     html += '</div></div>';
 
