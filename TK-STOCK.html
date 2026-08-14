@@ -3598,7 +3598,8 @@ window.addEventListener('storageReady', function(){
       cqBtn.addEventListener('click', async ()=>{
         // Map.values()で全選択済みエントリ取得（複数サイズ対応）
         const selectedMatches = Array.from(catalogQuoteSelection.values());
-        // 前後異サイズモード（targetId あり）はデフォルト2本、通常は4本
+        // 前後異サイズモード（Front/Rearパネル）はデフォルト2本、通常は4本
+        const _isDualPanel = opts && (opts.targetId === 'estimateCatalogFront' || opts.targetId === 'estimateCatalogRear');
         const groups = [];
         for(const r of selectedMatches){
           const _rProd = r._productId ? null : findProductForCatalogEntry(r);
@@ -3608,7 +3609,7 @@ window.addEventListener('storageReady', function(){
               ? _rProd.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           if(opts && opts.targetId){
-            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:2, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
+            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:_isDualPanel?2:4, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
           } else {
             const product = await ensureProductForCatalogEntry(r);
             groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:4, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
