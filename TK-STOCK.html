@@ -4185,47 +4185,70 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('quoteLinesWrap');
     if(quoteGroups.length === 0){
       wrap.innerHTML = '<div class="empty-state">品目がありません。</div>';
-    } else {
-      wrap.innerHTML = quoteGroups.map((g, gi)=>{
-        const tireSub = blockTotal(g);
-        const blockBase = tireSub + sharedLaborTotal();
-        const tax = Math.floor(blockBase * 0.1);
-        const blockTotalWithTax = blockBase + tax;
-        const tireQtyOpts = [1,2,3,4,5,6].map(n=>'<option value="'+n+'"'+(g.qty==n?' selected':'')+'>'+n+'</option>').join('');
+      return;
+    }
 
-        // 工賃の内訳行（sharedLaborLinesをここにミラー表示）
-        const laborDetailHtml = sharedLaborLines.length === 0 ? '' :
-          sharedLaborLines.map(l=>{
-            const lSub = (Number(l.qty)||0)*(Number(l.unitPrice)||0);
-            const displayName = l.name || '（未選択）';
-            return '<div class="quote-line-row quote-labor-mirror">'
-              + '<div class="quote-line-main" style="font-size:13px;color:var(--text-2);">'+escapeHtml(displayName)+'</div>'
-              + '<span style="font-size:12px;color:var(--text-3);min-width:40px;text-align:center;">'+l.qty+'</span>'
-              + '<span style="width:100px;text-align:right;font-size:12.5px;color:var(--text-2);">\u00a5'+(Number(l.unitPrice)||0).toLocaleString('ja-JP')+'</span>'
-              + '<span class="quote-line-subtotal">\u00a5'+lSub.toLocaleString('ja-JP')+'</span>'
-              + '<span style="width:28px;"></span>'
-              + '</div>';
-          }).join('');
+    // 同名銘柄をグループ化（前後サイズ違い対応）
+    const _qlNameMap = new Map();
+    quoteGroups.forEach((g, gi)=>{
+      if(!_qlNameMap.has(g.name)) _qlNameMap.set(g.name, []);
+      _qlNameMap.get(g.name).push({g, gi});
+    });
 
-        return '<div class="quote-product-block">'
-          + '<div class="quote-product-header">'+escapeHtml(g.name)+'</div>'
-          + (g.spec?'<div class="quote-product-spec">'+escapeHtml(g.spec)+'</div>':'')
-          + '<div class="quote-line-row">'
-          +   '<div class="quote-line-main" style="font-size:13px;color:var(--text-2);">タイヤ価格</div>'
-          +   '<select class="quote-line-qty-sel" data-group-qty="'+gi+'">'+tireQtyOpts+'</select> 本'
-          +   '<input type="number" class="quote-line-price" style="border:1px solid var(--line);border-radius:4px;" min="0" value="'+g.unitPrice+'" data-group-price="'+gi+'">'
-          +   '<span class="quote-line-subtotal">\u00a5'+tireSub.toLocaleString('ja-JP')+'</span>'
-          +   '<span style="width:28px;"></span>'
-          + '</div>'
-          + laborDetailHtml
-          + '<div class="quote-block-subtotal-wrap">'
-          +   '<div class="quote-block-subtotal"><span>小計</span><span>\u00a5'+blockBase.toLocaleString('ja-JP')+'</span></div>'
-          +   '<div class="quote-block-subtotal quote-tax-row"><span>税額（10%）</span><span>\u00a5'+tax.toLocaleString('ja-JP')+'</span></div>'
-          +   '<div class="quote-block-subtotal quote-total-row"><span>合計</span><span>\u00a5'+blockTotalWithTax.toLocaleString('ja-JP')+'</span></div>'
-          + '</div>'
+    // 工賃の内訳行（全ブロック共通ミラー表示）
+    const laborDetailHtml = sharedLaborLines.length === 0 ? '' :
+      sharedLaborLines.map(l=>{
+        const lSub = (Number(l.qty)||0)*(Number(l.unitPrice)||0);
+        const displayName = l.name || '（未選択）';
+        return '<div class="quote-line-row quote-labor-mirror">'
+          + '<div class="quote-line-main" style="font-size:13px;color:var(--text-2);">'+escapeHtml(displayName)+'</div>'
+          + '<span style="font-size:12px;color:var(--text-3);min-width:40px;text-align:center;">'+l.qty+'</span>'
+          + '<span style="width:100px;text-align:right;font-size:12.5px;color:var(--text-2);">¥'+(Number(l.unitPrice)||0).toLocaleString('ja-JP')+'</span>'
+          + '<span class="quote-line-subtotal">¥'+lSub.toLocaleString('ja-JP')+'</span>'
+          + '<span style="width:28px;"></span>'
           + '</div>';
       }).join('');
-    }
+
+    wrap.innerHTML = [..._qlNameMap.entries()].map(([name, items])=>{
+      const isMulti = items.length > 1;
+      // フロント（幅小）→リア（幅大）の順にソート
+      const sortedItems = isMulti
+        ? [...items].sort((a,b)=>(parseInt(a.g.spec)||0)-(parseInt(b.g.spec)||0))
+        : items;
+
+      const tireSub = sortedItems.reduce((s,{g})=>s+blockTotal(g),0);
+      const blockBase = tireSub + sharedLaborTotal();
+      const tax = Math.floor(blockBase * 0.1);
+      const blockTotalWithTax = blockBase + tax;
+
+      const tireRowsHtml = sortedItems.map(({g, gi}, i)=>{
+        const gSub = blockTotal(g);
+        const tireQtyOpts = [1,2,3,4,5,6].map(n=>'<option value="'+n+'"'+(g.qty==n?' selected':'')+'>'+n+'</option>').join('');
+        const rowLabel = isMulti
+          ? '<span style="font-size:11px;color:var(--text-3);margin-right:5px;">'+(i===0?'フロント':'リア')+'</span><span style="font-family:monospace;font-size:13px;">'+escapeHtml(g.spec||'')+'</span>'
+          : 'タイヤ価格';
+        return '<div class="quote-line-row">'
+          + '<div class="quote-line-main" style="font-size:13px;color:var(--text-2);">'+rowLabel+'</div>'
+          + '<select class="quote-line-qty-sel" data-group-qty="'+gi+'">'+tireQtyOpts+'</select> 本'
+          + '<input type="number" class="quote-line-price" style="border:1px solid var(--line);border-radius:4px;" min="0" value="'+g.unitPrice+'" data-group-price="'+gi+'">'
+          + '<span class="quote-line-subtotal">¥'+gSub.toLocaleString('ja-JP')+'</span>'
+          + '<span style="width:28px;"></span>'
+          + '</div>';
+      }).join('');
+
+      return '<div class="quote-product-block">'
+        + '<div class="quote-product-header">'+escapeHtml(name)+'</div>'
+        + (!isMulti && sortedItems[0].g.spec ? '<div class="quote-product-spec">'+escapeHtml(sortedItems[0].g.spec)+'</div>' : '')
+        + tireRowsHtml
+        + laborDetailHtml
+        + '<div class="quote-block-subtotal-wrap">'
+        +   '<div class="quote-block-subtotal"><span>小計</span><span>¥'+blockBase.toLocaleString('ja-JP')+'</span></div>'
+        +   '<div class="quote-block-subtotal quote-tax-row"><span>税額（10%）</span><span>¥'+tax.toLocaleString('ja-JP')+'</span></div>'
+        +   '<div class="quote-block-subtotal quote-total-row"><span>合計</span><span>¥'+blockTotalWithTax.toLocaleString('ja-JP')+'</span></div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+
     wrap.querySelectorAll('[data-group-qty]').forEach(sel=>{
       sel.addEventListener('change', ()=>{ quoteGroups[+sel.dataset.groupQty].qty=+sel.value||1; renderAll(); });
     });
@@ -4234,7 +4257,6 @@ window.addEventListener('storageReady', function(){
       inp.addEventListener('blur', ()=>renderAll());
     });
   }
-
   function renderSharedLabor(){
     const LABOR_UNIT = {'組替・バランス・脱着':'本','タイヤ処分料':'本','ゴムバルブ':'個','ナット':'個','チッ素ガス':'本','アライメント':'式'};
     const LABOR_QTY  = {'ナット':[12,16,20,24]};
