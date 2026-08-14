@@ -1396,7 +1396,7 @@
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirmTitle">確認</h3>
-    <p id="confirmMessage" style="font-size:13.5px;color:var(--text-2);line-height:1.6;margin-top:0;"></p>
+    <p id="confirmMessage" style="font-size:13.5px;color:var(--text-2);line-height:1.6;margin-top:0;white-space:pre-wrap;"></p>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="confirmCancelBtn">キャンセル</button>
       <button class="btn btn-amber" id="confirmOkBtn">OK</button>
@@ -6626,6 +6626,8 @@ window.addEventListener('storageReady', function(){
           if(!sched) return;
           const p2 = products.find(x=>x.id===sched.productId);
           if(!p2) return;
+          const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'本\n入荷予定日: '+sched.expectedDate);
+          if(!ok) return;
           const opBranch = getOperationBranch();
           if(!p2.branchStock) p2.branchStock={};
           p2.branchStock[opBranch]=(p2.branchStock[opBranch]||0)+sched.qty;
@@ -6644,7 +6646,8 @@ window.addEventListener('storageReady', function(){
       });
       el.querySelectorAll('[data-insch-delete]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
-          if(!confirm('この入庫予定を削除しますか？')) return;
+          const ok = await showConfirm('この入庫予定を削除しますか？');
+          if(!ok) return;
           const idx = incomingSchedules.findIndex(x=>x.id===btn.dataset.inschDelete);
           if(idx>=0) incomingSchedules.splice(idx,1);
           await saveIncomingSchedules();
