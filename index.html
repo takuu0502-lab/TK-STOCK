@@ -2943,6 +2943,7 @@ window.addEventListener('storageReady', function(){
   let selectedTireInch = null;
   let selectedCatalogModelKey = null;
   let stockOnlyFilter = true;
+  let ownStockOnlyFilter = false; // 自店舗在庫あり商品のみ
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let recentFilter = false;
@@ -3746,6 +3747,9 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="stockOnlyChk"'+(stockOnlyFilter?' checked':'')+'> 在庫あり商品のみ'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="ownStockOnlyChk"'+(ownStockOnlyFilter?' checked':'')+'> 自店舗在庫あり'
+      + '</label>'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="customerOrderChk"'+(customerOrderFilter?' checked':'')+'> 仮出庫品のみ表示'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
@@ -3762,6 +3766,8 @@ window.addEventListener('storageReady', function(){
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
+    const ochk = document.getElementById('ownStockOnlyChk');
+    if(ochk){ ochk.addEventListener('change', ()=>{ ownStockOnlyFilter = ochk.checked; renderProductTable(); }); }
     const cchk = document.getElementById('customerOrderChk');
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
     const rchk = document.getElementById('recentChk');
@@ -3902,6 +3908,10 @@ window.addEventListener('storageReady', function(){
       return p.branchStock ? (p.branchStock[_stockFilterBranch] || 0) : (p.stock || 0);
     };
     let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
+    if(ownStockOnlyFilter){
+      const _ownBrId = (currentUser && currentUser.branchId) || 'taniyabe';
+      filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBrId]||0) : (p.stock||0)) > 0);
+    }
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
     if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && po.items.some(i => i.productId === p.id)));
     if(keywordFilter){
