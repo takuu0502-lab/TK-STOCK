@@ -762,10 +762,14 @@
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <a href="/manual.html" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">使い方</a>
         <button class="btn btn-ghost btn-sm" id="openRequestModal">💬 要望</button>
-        <div class="brand-sub" id="userBadge">ログイン者情報：</div>
-        <button class="btn btn-ghost btn-sm" id="openAccounts" style="display:none;">アカウント管理</button>
-        <button class="btn btn-ghost btn-sm" id="switchAccountBtn" style="display:none;">アカウント切替</button>
-        <button class="btn btn-ghost btn-sm" id="logoutBtn">ログアウト</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div class="brand-sub" id="userBadge" style="font-size:11.5px;color:var(--text-3);">ログイン者情報：</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="btn btn-ghost btn-sm" id="openAccounts" style="display:none;">アカウント管理</button>
+            <button class="btn btn-ghost btn-sm" id="switchAccountBtn" style="display:none;">アカウント切替</button>
+            <button class="btn btn-ghost btn-sm" id="logoutBtn">ログアウト</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
