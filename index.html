@@ -4786,13 +4786,18 @@ window.addEventListener('storageReady', function(){
       const tax = Math.floor(base*0.1);
       const total = base + tax;
       const isMulti = gList.length > 1;
-      // タイヤ行：複数スペックは各行にサイズを表示
-      const tireRowsHtml = gList.map(g=>{
+      // タイヤ行：フロント（幅小）→リア（幅大）の順にソートし、ラベルはサイズのみ表示
+      const sortedList = isMulti
+        ? [...gList].sort((a,b)=>(parseInt(a.spec||'0')||0)-(parseInt(b.spec||'0')||0))
+        : gList;
+      const tireRowsHtml = sortedList.map((g,i)=>{
         const gSub = blockTotal(g);
-        const specCell = isMulti && g.spec
-          ? 'タイヤ価格 <span style="font-size:9px;color:#888;font-family:monospace;">'+escapeHtml(g.spec)+'</span>'
-          : 'タイヤ価格';
-        return '<tr><td class="label">'+specCell+'</td>'
+        const axisLabel = isMulti ? (i===0?'フロント':'リア') : 'タイヤ価格';
+        const specLabel = g.spec ? escapeHtml(g.spec) : '';
+        const labelHtml = isMulti
+          ? '<span style="font-size:8.5px;color:#888;margin-right:4px;">'+axisLabel+'</span><span style="font-family:monospace;font-weight:700;">'+specLabel+'</span>'
+          : (specLabel ? specLabel : axisLabel);
+        return '<tr><td class="label">'+labelHtml+'</td>'
           +'<td class="num">'+g.qty+' 本</td>'
           +'<td class="num">&yen;'+Number(g.unitPrice).toLocaleString('ja-JP')+'</td>'
           +'<td class="num">&yen;'+gSub.toLocaleString('ja-JP')+'</td></tr>';
