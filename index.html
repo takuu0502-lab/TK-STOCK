@@ -778,6 +778,7 @@
       <button class="tab-btn" data-tab="out">出庫</button>
       <button class="tab-btn" data-tab="history">入出庫履歴</button>
       <button class="tab-btn" data-tab="pricing">価格調整</button>
+      <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch">商品検索</button>
@@ -1391,6 +1392,11 @@
       <button class="btn btn-ghost" id="requestModalClose">閉じる</button>
     </div>
   </div>
+</div>
+
+<!-- ===== 棚卸しタブ ===== -->
+<div class="panel" id="tab-stockcount" style="display:none;">
+  <div id="stockcountContent"></div>
 </div>
 
 <div class="modal-overlay" id="confirmModal">
@@ -2759,7 +2765,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
-    ['list','estimate','in','out','history','pricing'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
     });
     if(tabName === 'out'){ renderProvisionalList(); }
@@ -2767,7 +2773,7 @@ window.addEventListener('storageReady', function(){
 
   function showHomeState(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    ['list','estimate','in','out','history','pricing'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = 'none';
     });
   }
@@ -2783,6 +2789,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderIncomingScheduleList(); }
+      if(tab === 'stockcount'){ renderStockcountTab(); }
     });
   });
 
@@ -4926,6 +4933,401 @@ window.addEventListener('storageReady', function(){
     w.addEventListener('load', ()=>{ w.focus(); w.print(); });
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
   });
+
+  // ── 棚卸し機能 ──────────────────────────────
+  let inventoryHistory = [];        // 完了済み棚卸し履歴
+  let currentStockcountDraft = null; // 進行中セッション {id, branchId, startedAt, startedBy, counts:{productId:qty}}
+  let stockcountPhase = 'idle';     // 'idle' | 'counting' | 'review'
+  let stockcountCatFilter = null;   // 選択中カテゴリID (null=すべて)
+  let stockcountDiffOnly = false;   // 差異ありのみ表示
+
+  async function loadInventoryHistory(){
+    try{
+      const r = await window.storage.get('inventoryHistory', SHARED);
+      inventoryHistory = r ? JSON.parse(r) : [];
+    } catch(e){ inventoryHistory = []; }
+  }
+  async function saveInventoryHistory(){
+    try{ await window.storage.set('inventoryHistory', JSON.stringify(inventoryHistory), SHARED); }
+    catch(e){ console.error('save inventoryHistory failed', e); }
+  }
+  async function loadStockcountDraft(){
+    const _br = getOperationBranch();
+    try{
+      const r = await window.storage.get('stockcountDraft_'+_br, SHARED);
+      currentStockcountDraft = r ? JSON.parse(r) : null;
+    } catch(e){ currentStockcountDraft = null; }
+  }
+  async function saveStockcountDraft(){
+    const _br = getOperationBranch();
+    try{
+      if(currentStockcountDraft){
+        await window.storage.set('stockcountDraft_'+_br, JSON.stringify(currentStockcountDraft), SHARED);
+      } else {
+        await window.storage.set('stockcountDraft_'+_br, '', SHARED);
+      }
+    } catch(e){ console.error('save stockcountDraft failed', e); }
+  }
+
+  function renderStockcountTab(){
+    const wrap = document.getElementById('stockcountContent');
+    if(!wrap) return;
+    if(stockcountPhase === 'idle') _renderStockcountIdle(wrap);
+    else if(stockcountPhase === 'counting') _renderStockcountCounting(wrap);
+    else if(stockcountPhase === 'review') _renderStockcountReview(wrap);
+  }
+
+  function _renderStockcountIdle(wrap){
+    const _br = getOperationBranch();
+    const hasActive = !!currentStockcountDraft;
+    const countedNum = hasActive ? Object.keys(currentStockcountDraft.counts||{}).length : 0;
+    const totalProducts = products.filter(p=> (p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0)) >= 0).length;
+
+    let html = '<div style="max-width:700px;margin:0 auto;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">';
+    html += '<h2 class="section-title" style="margin:0;">📋 棚卸し</h2>';
+    html += '</div>';
+
+    if(hasActive){
+      const d = new Date(currentStockcountDraft.startedAt);
+      html += '<div style="background:var(--amber-soft,rgba(212,156,42,0.1));border:2px solid var(--amber);border-radius:10px;padding:16px 20px;margin-bottom:20px;">';
+      html += '<div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px;">⚠️ 棚卸しが進行中です</div>';
+      html += '<div style="font-size:13px;color:var(--text-2);">開始日時：'+d.toLocaleDateString('ja-JP')+' '+d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'　担当：'+escapeHtml(currentStockcountDraft.startedBy||'—')+'</div>';
+      html += '<div style="font-size:13px;color:var(--text-2);margin-top:4px;">入力済み：'+countedNum+'件</div>';
+      html += '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">';
+      html += '<button class="btn btn-amber" id="scResume">入力を続ける</button>';
+      html += '<button class="btn btn-ghost" id="scCancel" style="color:var(--red);">棚卸しを中止する</button>';
+      html += '</div></div>';
+    } else {
+      html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:20px;text-align:center;">';
+      html += '<div style="font-size:14px;color:var(--text-2);margin-bottom:16px;">'+escapeHtml(branchName(_br))+'の在庫を実際に数えて、システムの在庫と照合します。</div>';
+      html += '<button class="btn btn-amber" id="scStart" style="font-size:14px;padding:10px 32px;">棚卸しを開始する</button>';
+      html += '</div>';
+    }
+
+    // 棚卸し履歴
+    const brHistory = inventoryHistory.filter(h=>h.branchId===_br).slice().reverse().slice(0,5);
+    if(brHistory.length > 0){
+      html += '<div style="font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:10px;">過去の棚卸し履歴</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      brHistory.forEach(h=>{
+        const sd = new Date(h.startedAt);
+        const ed = new Date(h.completedAt);
+        const diffCount = h.items.filter(i=>i.diff!==0).length;
+        html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">';
+        html += '<div>';
+        html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+ed.toLocaleDateString('ja-JP')+'　'+escapeHtml(h.completedBy||h.startedBy||'—')+'</div>';
+        html += '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">商品数：'+h.items.length+'件　差異あり：'+diffCount+'件</div>';
+        html += '</div>';
+        html += '<button class="btn btn-ghost btn-sm sc-hist-btn" data-hist-id="'+escapeHtml(h.id)+'" style="font-size:12px;">詳細を見る</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    if(hasActive){
+      document.getElementById('scResume').addEventListener('click', ()=>{
+        stockcountPhase = 'counting';
+        renderStockcountTab();
+      });
+      document.getElementById('scCancel').addEventListener('click', async ()=>{
+        const ok = await showConfirm('棚卸しを中止しますか？\n入力済みのデータはすべて破棄されます。');
+        if(!ok) return;
+        currentStockcountDraft = null;
+        await saveStockcountDraft();
+        stockcountPhase = 'idle';
+        renderStockcountTab();
+        showToast('棚卸しを中止しました。');
+      });
+    } else {
+      document.getElementById('scStart').addEventListener('click', async ()=>{
+        currentStockcountDraft = {
+          id: uid('sc'),
+          branchId: _br,
+          startedAt: new Date().toISOString(),
+          startedBy: currentUser ? currentUser.displayName : '',
+          counts: {}
+        };
+        await saveStockcountDraft();
+        stockcountPhase = 'counting';
+        stockcountCatFilter = null;
+        renderStockcountTab();
+      });
+    }
+
+    wrap.querySelectorAll('.sc-hist-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const h = inventoryHistory.find(x=>x.id===btn.dataset.histId);
+        if(!h) return;
+        _showInventoryHistoryDetail(h);
+      });
+    });
+  }
+
+  function _renderStockcountCounting(wrap){
+    const _br = getOperationBranch();
+    const counts = currentStockcountDraft.counts || {};
+    const brProducts = products.filter(p=> !p.deleted);
+
+    // カテゴリ一覧
+    const cats = [{id: null, name: 'すべて'}, ...categories.map(c=>({id:c.id, name:c.name}))];
+
+    // フィルタ済み商品リスト
+    let filtered = brProducts;
+    if(stockcountCatFilter){
+      const cat = categories.find(c=>c.id===stockcountCatFilter);
+      if(cat){
+        const subIds = (cat.subs||[]).map(s=>s.id);
+        filtered = brProducts.filter(p=> p.majorId===stockcountCatFilter || subIds.includes(p.minorId));
+      }
+    }
+
+    const totalAll = brProducts.length;
+    const countedAll = Object.keys(counts).length;
+
+    let html = '<div style="max-width:800px;margin:0 auto;">';
+    // ヘッダー
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">';
+    html += '<div>';
+    html += '<h2 class="section-title" style="margin:0 0 4px;">📋 棚卸し入力中</h2>';
+    html += '<div style="font-size:12.5px;color:var(--text-3);">入力済み '+countedAll+' / '+totalAll+' 件</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+    html += '<button class="btn btn-ghost btn-sm" id="scBackToIdle">中断して戻る</button>';
+    html += '<button class="btn btn-amber" id="scGoReview">差異を確認する（'+countedAll+'件入力済み）</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // カテゴリフィルタ
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">';
+    cats.forEach(c=>{
+      const active = stockcountCatFilter === c.id;
+      html += '<button class="btn btn-sm '+(active?'btn-amber':'btn-ghost')+' sc-cat-btn" data-cat-id="'+(c.id||'')+'" style="font-size:12px;">'+escapeHtml(c.name)+'</button>';
+    });
+    html += '</div>';
+
+    // 商品リスト
+    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+    if(filtered.length === 0){
+      html += '<div class="empty-state">商品がありません。</div>';
+    }
+    filtered.forEach(p=>{
+      const sysQty = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
+      const counted = counts.hasOwnProperty(p.id);
+      const actQty = counted ? counts[p.id] : '';
+      html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-2);border:1px solid '+(counted?'var(--teal)':'var(--line)')+';border-radius:8px;">';
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+(p.spec?' <span style="font-size:12px;color:var(--text-3);">'+escapeHtml(p.spec)+'</span>':'')+'</div>';
+      html += '<div style="font-size:11.5px;color:var(--text-3);margin-top:2px;">'+(p.brand?escapeHtml(p.brand)+'　':'')+'システム在庫：<strong style="color:var(--text-1);">'+sysQty+'本</strong></div>';
+      html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">';
+      html += '<input type="number" class="sc-count-input" data-pid="'+p.id+'" min="0" value="'+actQty+'" placeholder="実数" style="width:72px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:14px;text-align:right;background:var(--bg-1);color:var(--text-1);">';
+      html += '<span style="font-size:12px;color:var(--text-3);">本</span>';
+      if(counted) html += '<span style="font-size:18px;color:var(--teal);">✓</span>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+
+    wrap.innerHTML = html;
+
+    // カテゴリ切替
+    wrap.querySelectorAll('.sc-cat-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const val = btn.dataset.catId;
+        stockcountCatFilter = val === '' ? null : val;
+        renderStockcountTab();
+      });
+    });
+
+    // 実数入力
+    wrap.querySelectorAll('.sc-count-input').forEach(inp=>{
+      inp.addEventListener('change', async ()=>{
+        const pid = inp.dataset.pid;
+        const val = inp.value.trim();
+        if(val === '' || isNaN(Number(val))){
+          delete currentStockcountDraft.counts[pid];
+        } else {
+          currentStockcountDraft.counts[pid] = Math.max(0, parseInt(val,10));
+        }
+        await saveStockcountDraft();
+        // ボーダーだけ即時更新（再描画なし）
+        const counted = currentStockcountDraft.counts.hasOwnProperty(pid);
+        inp.closest('div[style]').style.borderColor = counted ? 'var(--teal)' : 'var(--line)';
+      });
+    });
+
+    document.getElementById('scBackToIdle').addEventListener('click', ()=>{
+      stockcountPhase = 'idle';
+      renderStockcountTab();
+    });
+
+    document.getElementById('scGoReview').addEventListener('click', ()=>{
+      if(countedAll === 0){ showToast('1件以上入力してから確認してください。'); return; }
+      stockcountPhase = 'review';
+      stockcountDiffOnly = false;
+      renderStockcountTab();
+    });
+  }
+
+  function _renderStockcountReview(wrap){
+    const _br = getOperationBranch();
+    const counts = currentStockcountDraft.counts || {};
+
+    // 差異リスト作成（入力済み商品のみ）
+    const items = Object.entries(counts).map(([pid, actQty])=>{
+      const p = products.find(x=>x.id===pid);
+      if(!p) return null;
+      const sysQty = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
+      return { p, sysQty, actQty, diff: actQty - sysQty };
+    }).filter(Boolean);
+
+    const diffItems = items.filter(x=>x.diff!==0);
+
+    let html = '<div style="max-width:800px;margin:0 auto;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">';
+    html += '<div>';
+    html += '<h2 class="section-title" style="margin:0 0 4px;">📋 棚卸し　差異確認</h2>';
+    html += '<div style="font-size:12.5px;color:var(--text-3);">入力済み '+items.length+' 件　差異あり '+diffItems.length+' 件</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+    html += '<button class="btn btn-ghost btn-sm" id="scBackToCounting">← 入力に戻る</button>';
+    html += '<button class="btn btn-amber" id="scConfirm" style="font-size:14px;">在庫を確定する</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // フィルタ
+    html += '<div style="display:flex;gap:8px;margin-bottom:16px;">';
+    html += '<button class="btn btn-sm '+(stockcountDiffOnly?'btn-ghost':'btn-amber')+'" id="scFilterAll">すべて（'+items.length+'）</button>';
+    html += '<button class="btn btn-sm '+(stockcountDiffOnly?'btn-amber':'btn-ghost')+'" id="scFilterDiff" style="'+(stockcountDiffOnly?'':'')+'">差異あり（'+diffItems.length+'）</button>';
+    html += '</div>';
+
+    // テーブル
+    const displayItems = stockcountDiffOnly ? diffItems : items;
+    html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;">';
+    html += '<table style="width:100%;border-collapse:collapse;">';
+    html += '<thead><tr style="background:var(--bg-1);border-bottom:2px solid var(--line);">';
+    html += '<th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--text-3);font-weight:600;">商品名</th>';
+    html += '<th style="text-align:right;padding:10px 10px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">システム</th>';
+    html += '<th style="text-align:right;padding:10px 10px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">実数</th>';
+    html += '<th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">差異</th>';
+    html += '</tr></thead><tbody>';
+    if(displayItems.length === 0){
+      html += '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-3);font-size:13px;">差異のある商品はありません</td></tr>';
+    }
+    displayItems.forEach(item=>{
+      const diffColor = item.diff > 0 ? 'var(--teal)' : item.diff < 0 ? 'var(--red)' : 'var(--text-3)';
+      const diffStr = item.diff > 0 ? '+'+item.diff : String(item.diff);
+      html += '<tr style="border-bottom:1px solid var(--line-soft);">';
+      html += '<td style="padding:10px 14px;">';
+      html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.p.name))+(item.p.spec?' <span style="font-size:11px;color:var(--text-3);">'+escapeHtml(item.p.spec)+'</span>':'')+'</div>';
+      html += '<div style="font-size:11px;color:var(--text-3);">'+(item.p.brand?escapeHtml(item.p.brand):'')+'</div>';
+      html += '</td>';
+      html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;">'+item.sysQty+'</td>';
+      html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;font-weight:600;">'+item.actQty+'</td>';
+      html += '<td style="text-align:right;padding:10px 14px;font-size:14px;font-weight:700;color:'+diffColor+';font-family:monospace;">'+(item.diff===0?'—':diffStr)+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '</div>';
+
+    wrap.innerHTML = html;
+
+    document.getElementById('scFilterAll').addEventListener('click', ()=>{ stockcountDiffOnly=false; renderStockcountTab(); });
+    document.getElementById('scFilterDiff').addEventListener('click', ()=>{ stockcountDiffOnly=true; renderStockcountTab(); });
+    document.getElementById('scBackToCounting').addEventListener('click', ()=>{ stockcountPhase='counting'; renderStockcountTab(); });
+
+    document.getElementById('scConfirm').addEventListener('click', async ()=>{
+      const ok = await showConfirm('棚卸しを確定しますか？\n実数に基づいて'+_br+'の在庫を更新します。\n\n対象：'+items.length+'件（差異あり：'+diffItems.length+'件）');
+      if(!ok) return;
+
+      // 在庫を実数に更新
+      items.forEach(item=>{
+        if(!item.p.branchStock) item.p.branchStock = {};
+        item.p.branchStock[_br] = item.actQty;
+      });
+      await saveProducts();
+
+      // 履歴に保存
+      const histEntry = {
+        id: currentStockcountDraft.id,
+        branchId: _br,
+        startedAt: currentStockcountDraft.startedAt,
+        completedAt: new Date().toISOString(),
+        startedBy: currentStockcountDraft.startedBy,
+        completedBy: currentUser ? currentUser.displayName : '',
+        items: items.map(item=>({
+          productId: item.p.id,
+          name: cleanName(item.p.name),
+          brand: item.p.brand||'',
+          spec: item.p.spec||'',
+          systemQty: item.sysQty,
+          actualQty: item.actQty,
+          diff: item.diff
+        }))
+      };
+      await loadInventoryHistory();
+      inventoryHistory.push(histEntry);
+      await saveInventoryHistory();
+
+      currentStockcountDraft = null;
+      await saveStockcountDraft();
+      stockcountPhase = 'idle';
+      renderProductTable();
+      renderStockcountTab();
+      showToast('棚卸しを完了しました。在庫を更新しました。');
+    });
+  }
+
+  function _showInventoryHistoryDetail(h){
+    const diffItems = h.items.filter(i=>i.diff!==0);
+    let html = '<div style="max-width:700px;">';
+    html += '<h3 style="margin-top:0;">📋 棚卸し結果　'+new Date(h.completedAt).toLocaleDateString('ja-JP')+'</h3>';
+    html += '<div style="font-size:12px;color:var(--text-3);margin-bottom:16px;">担当：'+escapeHtml(h.completedBy||h.startedBy||'—')+'　商品数：'+h.items.length+'件　差異あり：'+diffItems.length+'件</div>';
+    html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;max-height:60vh;overflow-y:auto;">';
+    html += '<table style="width:100%;border-collapse:collapse;">';
+    html += '<thead><tr style="background:var(--bg-1);border-bottom:2px solid var(--line);position:sticky;top:0;">';
+    html += '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-3);">商品名</th>';
+    html += '<th style="text-align:right;padding:8px 8px;font-size:11px;color:var(--text-3);">前回</th>';
+    html += '<th style="text-align:right;padding:8px 8px;font-size:11px;color:var(--text-3);">実数</th>';
+    html += '<th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--text-3);">差異</th>';
+    html += '</tr></thead><tbody>';
+    h.items.filter(i=>i.diff!==0).concat(h.items.filter(i=>i.diff===0)).forEach(item=>{
+      const diffColor = item.diff>0?'var(--teal)':item.diff<0?'var(--red)':'var(--text-3)';
+      const diffStr = item.diff>0?'+'+item.diff:String(item.diff);
+      html += '<tr style="border-bottom:1px solid var(--line-soft);">';
+      html += '<td style="padding:8px 12px;font-size:12.5px;">'+escapeHtml(item.name)+(item.spec?' <span style="color:var(--text-3);font-size:11px;">'+escapeHtml(item.spec)+'</span>':'')+'</td>';
+      html += '<td style="text-align:right;padding:8px;font-size:12.5px;font-family:monospace;">'+item.systemQty+'</td>';
+      html += '<td style="text-align:right;padding:8px;font-size:12.5px;font-family:monospace;font-weight:600;">'+item.actualQty+'</td>';
+      html += '<td style="text-align:right;padding:8px 12px;font-size:13px;font-weight:700;color:'+diffColor+';font-family:monospace;">'+(item.diff===0?'—':diffStr)+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // 簡易モーダル表示（confirmModal を流用）
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('confirmTitle').textContent = '棚卸し履歴';
+    document.getElementById('confirmMessage').innerHTML = html;
+    document.getElementById('confirmMessage').style.maxHeight = '70vh';
+    document.getElementById('confirmMessage').style.overflowY = 'auto';
+    const okBtn = document.getElementById('confirmOk');
+    const cancelBtn = document.getElementById('confirmCancel');
+    okBtn.style.display = 'none';
+    cancelBtn.textContent = '閉じる';
+    modal.classList.add('show');
+    const close = ()=>{ modal.classList.remove('show'); okBtn.style.display=''; cancelBtn.textContent='キャンセル'; document.getElementById('confirmMessage').style.maxHeight=''; };
+    cancelBtn.onclick = close;
+  }
+
+  // 棚卸しデータ初期化（storageReady後に呼ぶ）
+  (async()=>{
+    await loadInventoryHistory();
+    await loadStockcountDraft();
+    if(currentStockcountDraft) stockcountPhase = 'counting';
+  })();
 
   // ── 一括操作バー ──────────────────────────────
   document.addEventListener('DOMContentLoaded', ()=>{
@@ -8420,6 +8822,7 @@ window.addEventListener('storageReady', function(){
     document.querySelector('.tab-btn[data-tab="in"]').style.display = writable ? 'inline-block' : 'none';
     document.querySelector('.tab-btn[data-tab="out"]').style.display = writable ? 'inline-block' : 'none';
     document.querySelector('.tab-btn[data-tab="history"]').style.display = writable ? 'inline-block' : 'none';
+    document.querySelector('.tab-btn[data-tab="stockcount"]').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('quickScanBtn').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('openAddProduct').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('inventoryPrintBtn').style.display = admin ? 'inline-block' : 'none';
