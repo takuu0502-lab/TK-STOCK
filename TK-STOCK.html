@@ -5101,6 +5101,19 @@ window.addEventListener('storageReady', function(){
     html += '</div>';
     html += '</div>';
 
+    // スキャン入力バー
+    html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px;">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:8px;letter-spacing:0.5px;">📷 バーコードスキャン入力</div>';
+    html += '<div style="display:flex;gap:8px;align-items:center;">';
+    html += '<input type="text" id="scBarcodeInput" placeholder="バーコードをスキャンまたは入力…" autocomplete="off" style="flex:1;padding:10px 14px;border:2px solid var(--amber);border-radius:8px;font-size:14px;background:var(--bg-1);color:var(--text-1);outline:none;">';
+    html += '<button class="btn btn-ghost" id="scCameraBtn" style="flex-shrink:0;">📷 カメラ</button>';
+    html += '</div>';
+    html += '<div id="stockcountReaderWrap" style="margin-top:10px;"></div>';
+    html += '<div id="scScanResult" style="display:none;margin-top:12px;background:var(--bg-1);border:2px solid var(--teal);border-radius:8px;padding:14px 16px;">';
+    html += '<div id="scScanResultInner"></div>';
+    html += '</div>';
+    html += '</div>';
+
     // カテゴリフィルタ
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">';
     cats.forEach(c=>{
@@ -5160,17 +5173,121 @@ window.addEventListener('storageReady', function(){
       });
     });
 
+    // スキャン入力バーのイベント
+    const scInput = document.getElementById('scBarcodeInput');
+    if(scInput){
+      scInput.focus();
+      scInput.addEventListener('keydown', e=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          _handleStockcountBarcode(scInput.value.trim());
+          scInput.value = '';
+        }
+      });
+    }
+    const scCameraBtn = document.getElementById('scCameraBtn');
+    if(scCameraBtn){
+      scCameraBtn.addEventListener('click', ()=>{
+        if(activeScannerKind === 'stockcount'){ stopAllScanners(); scCameraBtn.textContent='📷 カメラ'; return; }
+        startStockcountScanner();
+        scCameraBtn.textContent = '⏹ 停止';
+      });
+    }
+
     document.getElementById('scBackToIdle').addEventListener('click', ()=>{
+      stopAllScanners();
       stockcountPhase = 'idle';
       renderStockcountTab();
     });
 
     document.getElementById('scGoReview').addEventListener('click', ()=>{
       if(countedAll === 0){ showToast('1件以上入力してから確認してください。'); return; }
+      stopAllScanners();
       stockcountPhase = 'review';
       stockcountDiffOnly = false;
       renderStockcountTab();
     });
+  }
+
+  function _handleStockcountBarcode(code){
+    if(!code || !currentStockcountDraft) return;
+    const _br = getOperationBranch();
+    // バーコードで商品を検索
+    let p = findByBarcode(code);
+    if(!p){
+      // JAN辞書から照合
+      if(/^\d{13}$/.test(code)){
+        const bsEntry = BS_JAN_LOOKUP ? BS_JAN_LOOKUP.find(e=>e.j===code) : null;
+        if(bsEntry){
+          const pSize = bsEntry.s;
+          const scored = products
+            .filter(pr=> normSpecSize && normSpecSize(pr.spec||'')===pSize)
+            .map(pr=>({pr, score: scoreModelMatch ? scoreModelMatch(pr.name||'', bsEntry.m) : 0}))
+            .sort((a,b)=>b.score-a.score);
+          if(scored.length>0 && scored[0].score>=0.5) p = scored[0].pr;
+        }
+      }
+    }
+    const resultEl = document.getElementById('scScanResult');
+    const innerEl = document.getElementById('scScanResultInner');
+    if(!resultEl || !innerEl) return;
+    if(!p){
+      resultEl.style.display = 'block';
+      resultEl.style.borderColor = 'var(--red)';
+      innerEl.innerHTML = '<div style="color:var(--red);font-size:13px;font-weight:600;">❌ 登録されていない商品です（'+escapeHtml(code)+'）</div>';
+      setTimeout(()=>{ resultEl.style.display='none'; resultEl.style.borderColor='var(--teal)'; }, 3000);
+      return;
+    }
+    const sysQty = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
+    const currentCount = currentStockcountDraft.counts.hasOwnProperty(p.id)
+      ? currentStockcountDraft.counts[p.id]
+      : sysQty;
+
+    resultEl.style.display = 'block';
+    resultEl.style.borderColor = 'var(--teal)';
+    innerEl.innerHTML = ''
+      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+      + '<div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+(p.spec?' <span style="font-size:13px;color:var(--text-3);">'+escapeHtml(p.spec)+'</span>':'')+' </div>'
+      + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">'+(p.brand?escapeHtml(p.brand)+'　':'')+'システム在庫：<strong style="color:var(--text-1);">'+sysQty+'本</strong></div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+      + '<input type="number" id="scScanQtyInput" min="0" value="'+currentCount+'" style="width:80px;padding:8px;border:2px solid var(--teal);border-radius:8px;font-size:16px;text-align:right;background:var(--bg-2);color:var(--text-1);font-weight:700;">'
+      + '<span style="font-size:13px;color:var(--text-2);">本</span>'
+      + '<button id="scScanSaveBtn" class="btn btn-teal" data-pid="'+p.id+'" style="white-space:nowrap;">保存</button>'
+      + '</div>'
+      + '</div>';
+
+    // 保存ボタン
+    const saveBtn = document.getElementById('scScanSaveBtn');
+    const qtyInp = document.getElementById('scScanQtyInput');
+    qtyInp.select();
+    qtyInp.focus();
+
+    const doSave = async ()=>{
+      const val = parseInt(qtyInp.value,10);
+      if(isNaN(val)||val<0){ showToast('正しい数を入力してください。'); return; }
+      currentStockcountDraft.counts[p.id] = val;
+      await saveStockcountDraft();
+      // リスト側のボーダーも更新
+      const listRow = wrap.querySelector('[data-pid="'+p.id+'"]');
+      if(listRow){ listRow.value = val; listRow.closest('div[style]').style.borderColor='var(--teal)'; }
+      resultEl.style.display = 'none';
+      // ヘッダーの件数表示を更新
+      const cnt = document.querySelector('#stockcountContent .section-title');
+      const totalAll2 = brProducts.length;
+      const countedNow = Object.keys(currentStockcountDraft.counts).length;
+      const subEl = wrap.querySelector('[style*="入力済み"]');
+      if(subEl) subEl.textContent = '入力済み '+countedNow+' / '+totalAll2+' 件';
+      // スキャンボタンを更新
+      const goBtn = document.getElementById('scGoReview');
+      if(goBtn) goBtn.textContent = '差異を確認する（'+countedNow+'件入力済み）';
+      showToast('✓ '+cleanName(p.name)+'　'+val+'本 を記録しました');
+      const scIn = document.getElementById('scBarcodeInput');
+      if(scIn){ scIn.value=''; scIn.focus(); }
+    };
+    saveBtn.addEventListener('click', doSave);
+    qtyInp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doSave(); } });
   }
 
   function _renderStockcountReview(wrap){
@@ -8339,11 +8456,25 @@ window.addEventListener('storageReady', function(){
       activeScanner.stop().then(()=>{ activeScanner.clear(); }).catch(()=>{});
       activeScanner = null;
     }
-    ['in','out'].forEach(k=>{
+    ['in','out','stockcount'].forEach(k=>{
       const wrap = document.getElementById(k+'ReaderWrap');
       if(wrap) wrap.innerHTML = '';
     });
     activeScannerKind = null;
+  }
+
+  function startStockcountScanner(){
+    stopAllScanners();
+    const wrap = document.getElementById('stockcountReaderWrap');
+    if(!wrap) return;
+    activeScannerKind = 'stockcount';
+    startCameraInto('reader', wrap, (decodedText)=>{
+      stopAllScanners();
+      _handleStockcountBarcode(decodedText);
+    }).then(scanner=>{
+      activeScanner = scanner;
+      if(!scanner) activeScannerKind = null;
+    });
   }
 
   // ── 長期在庫レポート ────────────────────────────────
