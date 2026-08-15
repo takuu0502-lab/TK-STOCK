@@ -2764,6 +2764,33 @@ window.addEventListener('storageReady', function(){
     const idx = categories.findIndex(c=>c.id===majorId);
     return COLOR_PALETTE[idx >= 0 ? idx % COLOR_PALETTE.length : COLOR_PALETTE.length-1];
   }
+  function _hexToHsl(hex){
+    const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h=0,s=0,l=(max+min)/2;
+    if(max!==min){
+      const d=max-min; s=l>0.5?d/(2-max-min):d/(max+min);
+      switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}
+      h/=6;
+    }
+    return [h*360, s*100, l*100];
+  }
+  function _hslToHex(h,s,l){
+    h/=360; s/=100; l/=100;
+    const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<0.5)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+    let r,g,b;
+    if(s===0){r=g=b=l;}else{const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);}
+    return '#'+[r,g,b].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');
+  }
+  function colorForSubItem(majorId, subIdx){
+    const base = colorForMajor(majorId).text;
+    if(!base || !base.startsWith('#')) return base;
+    const [h,s,l] = _hexToHsl(base);
+    // 中分類ごとに色相を少しずつずらす（0°, +22°, -22°, +44°, -44°...）
+    const shifts = [0, 22, -22, 44, -44, 66, -66];
+    const newH = ((h + shifts[subIdx % shifts.length]) % 360 + 360) % 360;
+    return _hslToHex(newH, Math.min(s, 80), Math.max(32, Math.min(52, l)));
+  }
 
   function switchTab(tabName){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -5951,14 +5978,15 @@ window.addEventListener('storageReady', function(){
     if(selectedMajor !== null){
       const m = majorById(selectedMajor);
       if(m && m.subs.length){
-        const _subCol = colorForMajor(selectedMajor).text;
+        const _majorCol = colorForMajor(selectedMajor).text;
         html += '<div class="spec-step"><div class="spec-step-label">2. 中分類</div><div class="spec-step-tabs">';
         const _suballActive = selectedSub===null;
-        html += '<span class="chip'+(_suballActive?' active':'')+'" data-spec-sub="" style="'+(_suballActive?'border-color:'+_subCol+';background:'+_subCol+';color:#fff;':'border-color:'+_subCol+';')+'"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(_suballActive?'rgba(255,255,255,0.85)':_subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>すべて</span>';
-        m.subs.forEach(sub=>{
+        html += '<span class="chip'+(_suballActive?' active':'')+'" data-spec-sub="" style="'+(_suballActive?'border-color:'+_majorCol+';background:'+_majorCol+';color:#fff;':'border-color:'+_majorCol+';')+'"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(_suballActive?'rgba(255,255,255,0.85)':_majorCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>すべて</span>';
+        m.subs.forEach((sub, si)=>{
           const active = selectedSub === sub.id;
-          html += '<span class="chip'+(active?' active':'')+'" data-spec-sub="'+sub.id+'" style="'+(active?'border-color:'+_subCol+';background:'+_subCol+';color:#fff;':'border-color:'+_subCol+';')+'">'
-            +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':_subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
+          const subCol = colorForSubItem(selectedMajor, si);
+          html += '<span class="chip'+(active?' active':'')+'" data-spec-sub="'+sub.id+'" style="'+(active?'border-color:'+subCol+';background:'+subCol+';color:#fff;':'border-color:'+subCol+';')+'">'
+            +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
             +escapeHtml(sub.name)+'</span>';
         });
         html += '</div></div>';
