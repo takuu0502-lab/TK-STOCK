@@ -4131,7 +4131,7 @@ window.addEventListener('storageReady', function(){
     const locMasterBtn = document.getElementById('openLocationMasterModalBtn');
     if(locMasterBtn){ locMasterBtn.addEventListener('click', openLocationMasterModal); }
     const rcvBtn = document.getElementById('openReceiveScanModalBtn');
-    if(rcvBtn){ rcvBtn.addEventListener('click', openReceiveScanModal); }
+    if(rcvBtn){ rcvBtn.addEventListener('click', ()=>{ if(window.openReceiveScanModal) window.openReceiveScanModal(); }); }
   }
 
   function renderBranchFilter(){
@@ -5912,7 +5912,7 @@ window.addEventListener('storageReady', function(){
     }
     // ── 入庫スキャン ──────────────────────────────────
     let _receiveScanProduct = null; // 現在スキャン中の商品
-    function openReceiveScanModal(){
+    window.openReceiveScanModal = function openReceiveScanModal(){
       _receiveScanProduct = null;
       document.getElementById('receiveScanInput').value = '';
       document.getElementById('receiveScanProductArea').style.display = 'none';
