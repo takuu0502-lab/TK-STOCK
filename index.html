@@ -2825,18 +2825,18 @@ window.addEventListener('storageReady', function(){
   ];
   let _bulkImportCatalogId = null;
   function _bulkResolveCategories(cat){
-    // 大分類「ホイール」を名前で検索
+    // 大分類「ホイール」→中分類「アルミホイール」→小分類「Nインチ」
     const majorCat = categories.find(c=>c.name.includes('ホイール'));
-    // specの先頭「Nインチ」を中分類名として検索
+    const subCat = majorCat ? (majorCat.subs||[]).find(s=>s.name.includes('アルミホイール')) : null;
     const resolveItem = item=>{
       const inchMatch = item.spec.match(/^(\d+インチ)/);
       const inchLabel = inchMatch ? inchMatch[1] : null;
-      const subCat = majorCat && inchLabel
-        ? (majorCat.subs||[]).find(s=>s.name===inchLabel||s.name.includes(inchLabel.replace('インチ','').trim()))
+      const subSubCat = subCat && inchLabel
+        ? (subCat.subsubs||[]).find(ss=>ss.name===inchLabel||ss.name.includes(inchLabel.replace('インチ','').trim()))
         : null;
-      return {majorCat, subCat, inchLabel};
+      return {majorCat, subCat, subSubCat, inchLabel};
     };
-    return {majorCat, resolveItem};
+    return {majorCat, subCat, resolveItem};
   }
   function openBulkImportModal(catalogId){
     _bulkImportCatalogId = catalogId;
@@ -2845,18 +2845,21 @@ window.addEventListener('storageReady', function(){
     const descEl = document.getElementById('bulkImportDesc');
     if(descEl) descEl.textContent = cat.label + ' — ' + cat.items.length + '商品をまとめて登録します。';
     // カテゴリ自動解決
-    const {majorCat, resolveItem} = _bulkResolveCategories(cat);
+    const {majorCat, subCat, resolveItem} = _bulkResolveCategories(cat);
     const catInfoEl = document.getElementById('bulkImportCatInfo');
     if(catInfoEl){
       if(!majorCat){
         catInfoEl.innerHTML = '<span style="color:var(--red);">⚠️ 大分類「ホイール」が見つかりません。先にカテゴリを作成してください。</span>';
+      } else if(!subCat){
+        catInfoEl.innerHTML = '大分類：<strong>' + escapeHtml(majorCat.name) + '</strong><br>'
+          + '<span style="color:var(--red);">⚠️ 中分類「アルミホイール」が見つかりません。先にカテゴリを作成してください。</span>';
       } else {
         const missing = [...new Set(cat.items.map(item=>{
-          const {subCat, inchLabel} = resolveItem(item);
-          return (!subCat && inchLabel) ? inchLabel : null;
+          const {subSubCat, inchLabel} = resolveItem(item);
+          return (!subSubCat && inchLabel) ? inchLabel : null;
         }).filter(Boolean))];
-        catInfoEl.innerHTML = '大分類：<strong>' + escapeHtml(majorCat.name) + '</strong>　中分類：インチ別に自動振り分け'
-          + (missing.length ? '<br><span style="color:var(--amber);font-size:12px;">⚠️ 中分類が見つからないインチ：' + missing.map(escapeHtml).join('、') + '（登録後カテゴリを作成してください）</span>' : '');
+        catInfoEl.innerHTML = '大分類：<strong>' + escapeHtml(majorCat.name) + '</strong>　中分類：<strong>' + escapeHtml(subCat.name) + '</strong>　小分類：インチ別に自動振り分け'
+          + (missing.length ? '<br><span style="color:var(--amber);font-size:12px;">⚠️ 小分類が見つからないインチ：' + missing.map(escapeHtml).join('、') + '（登録後カテゴリを作成してください）</span>' : '');
       }
     }
     const countEl = document.getElementById('bulkImportCount');
@@ -2864,12 +2867,12 @@ window.addEventListener('storageReady', function(){
     const tbody = document.getElementById('bulkImportPreviewBody');
     if(tbody){
       tbody.innerHTML = cat.items.map(item=>{
-        const {subCat, inchLabel} = resolveItem(item);
-        const subLabel = subCat ? escapeHtml(subCat.name) : (inchLabel ? '<span style="color:var(--amber);">'+escapeHtml(inchLabel)+'（未設定）</span>' : '—');
+        const {subSubCat, inchLabel} = resolveItem(item);
+        const subSubLabel = subSubCat ? escapeHtml(subSubCat.name) : (inchLabel ? '<span style="color:var(--amber);">'+escapeHtml(inchLabel)+'（未設定）</span>' : '—');
         return `<tr style="border-top:1px solid var(--line);">
           <td style="padding:6px 10px;">${escapeHtml(item.name)}</td>
           <td style="padding:6px 10px;color:var(--text-2);">${escapeHtml(item.spec)}</td>
-          <td style="padding:6px 10px;">${subLabel}</td>
+          <td style="padding:6px 10px;">${subSubLabel}</td>
           <td style="padding:6px 10px;font-family:var(--font-mono);color:var(--text-3);font-size:11px;">${escapeHtml(item.partno)}</td>
           <td style="padding:6px 10px;text-align:right;">${item.costPrice.toLocaleString()}円</td>
         </tr>`;
@@ -5800,8 +5803,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('bulkImportExec').addEventListener('click', async ()=>{
       const cat = BULK_IMPORT_CATALOGS.find(c=>c.id===_bulkImportCatalogId);
       if(!cat) return;
-      const {majorCat, resolveItem} = _bulkResolveCategories(cat);
+      const {majorCat, subCat, resolveItem} = _bulkResolveCategories(cat);
       if(!majorCat){ alert('大分類「ホイール」が見つかりません。先にカテゴリを作成してください。'); return; }
+      if(!subCat){ alert('中分類「アルミホイール」が見つかりません。先にカテゴリを作成してください。'); return; }
       const msgEl = document.getElementById('bulkImportMsg');
       const execBtn = document.getElementById('bulkImportExec');
       execBtn.disabled = true;
@@ -5811,7 +5815,7 @@ window.addEventListener('storageReady', function(){
         const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         let added = 0;
         for(const item of cat.items){
-          const {subCat} = resolveItem(item);
+          const {subSubCat} = resolveItem(item);
           const newP = {
             id: uid('p'),
             brand: cat.brand,
@@ -5820,8 +5824,8 @@ window.addEventListener('storageReady', function(){
             partno: item.partno,
             barcode: '',
             majorId: majorCat.id,
-            subId: subCat ? subCat.id : '',
-            subSubId: '',
+            subId: subCat.id,
+            subSubId: subSubCat ? subSubCat.id : '',
             costPrice: item.costPrice,
             price: 0,
             stock: 0,
