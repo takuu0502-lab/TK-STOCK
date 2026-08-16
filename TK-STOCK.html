@@ -678,6 +678,19 @@
 
 <div id="orderPrintArea"></div>
 
+<!-- 保管場所マスタ管理モーダル -->
+<div class="modal-overlay" id="locationMasterModal">
+  <div class="modal" style="max-width:480px;width:95%;max-height:88vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">📍 保管場所マスタ管理</h3>
+    <div id="locationMasterModalBranchLabel" style="font-size:12px;color:var(--text-3);margin:-10px 0 14px;font-weight:600;"></div>
+    <div id="locationMasterModalList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div>
+    <button id="locationMasterModalAddBtn" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;">＋ 保管場所を追加</button>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="locationMasterModalClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- 発注書作成モーダル -->
 <div class="modal-overlay" id="orderModal">
   <div class="modal" style="max-width:540px;width:95%;max-height:90vh;overflow-y:auto;">
@@ -1053,9 +1066,8 @@
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">保管場所マスタ</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">商品の保管場所を登録します。商品登録・編集画面でプルダウン選択できます。</p>
-    <div id="locationMasterList" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;"></div>
-    <button class="btn btn-ghost btn-sm" id="addLocationMasterBtn">＋ 保管場所を追加</button>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">支店ごとの保管場所を管理します。商品登録・編集画面でプルダウン選択できます。</p>
+    <button class="btn btn-ghost btn-sm" id="addLocationMasterBtn">📍 保管場所を管理する</button>
     <div style="height:32px;"></div>
     <div class="pricing-section-title">JANコード自動付与（ブリヂストン）</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
@@ -3796,6 +3808,7 @@ window.addEventListener('storageReady', function(){
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="brandSortChk"'+(brandSortFilter?' checked':'')+'> ブランド順'
       + '</label>'
+      + (canWriteData() ? '<button id="openLocationMasterModalBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--text-2);cursor:pointer;white-space:nowrap;">📍 保管場所管理</button>' : '')
       + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
       + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;width:160px;background:var(--surface);color:var(--text-1);">'
       + '<button id="keywordSearchBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-left:none;border-radius:0 20px 20px 0;background:var(--amber);color:#fff;cursor:pointer;font-weight:600;">検索</button>'
@@ -3823,6 +3836,8 @@ window.addEventListener('storageReady', function(){
     if(kwBtn){ kwBtn.addEventListener('click', doKeywordSearch); }
     const kwClear = document.getElementById('keywordClearBtn');
     if(kwClear){ kwClear.addEventListener('click', ()=>{ keywordFilter = ''; renderProductTable(); }); }
+    const locMasterBtn = document.getElementById('openLocationMasterModalBtn');
+    if(locMasterBtn){ locMasterBtn.addEventListener('click', openLocationMasterModal); }
   }
 
   function renderBranchFilter(){
@@ -5545,46 +5560,80 @@ window.addEventListener('storageReady', function(){
       if(ps.length===0) return;
       openOrderModal(ps);
     });
-    // 保管場所マスタ管理（支店別）
-    function renderLocationMaster(){
-      const wrap = document.getElementById('locationMasterList');
-      if(!wrap) return;
-      const br = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-      const brLabel = branchName(br);
-      refreshLocations();
-      wrap.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px;font-weight:600;">📍 '+escapeHtml(brLabel)+'の保管場所</div>';
+    // 保管場所マスタ管理モーダル
+    function _renderLocationMasterModalList(){
+      const listWrap = document.getElementById('locationMasterModalList');
+      if(!listWrap) return;
       if(locations.length === 0){
-        wrap.innerHTML += '<div style="font-size:12.5px;color:var(--text-3);margin-bottom:6px;">保管場所が登録されていません</div>';
-      } else {
-        wrap.innerHTML += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">'
-          + locations.map((l,i)=>
-            '<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;">'
-            + escapeHtml(l.name)
-            + '<button data-loc-del="'+i+'" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;padding:0 2px;line-height:1;" title="削除">×</button>'
-            + '</div>'
-          ).join('')
-          + '</div>';
+        listWrap.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:10px 0;">保管場所が登録されていません</div>';
+        return;
       }
-      wrap.querySelectorAll('[data-loc-del]').forEach(btn=>{
+      listWrap.innerHTML = locations.map((l,i)=>`
+        <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;">
+          <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+            <button data-loc-up="${i}" style="background:none;border:none;cursor:pointer;color:var(--text-2);font-size:12px;padding:0;line-height:1;${i===0?'opacity:0.25;pointer-events:none;':''}">▲</button>
+            <button data-loc-down="${i}" style="background:none;border:none;cursor:pointer;color:var(--text-2);font-size:12px;padding:0;line-height:1;${i===locations.length-1?'opacity:0.25;pointer-events:none;':''}">▼</button>
+          </div>
+          <span style="flex:1;font-size:13.5px;">${escapeHtml(l.name)}</span>
+          <button data-loc-rename="${i}" style="background:none;border:none;cursor:pointer;color:var(--text-2);font-size:12px;padding:2px 6px;border:1px solid var(--line);border-radius:5px;" title="名称変更">編集</button>
+          <button data-loc-del="${i}" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;padding:0 4px;line-height:1;" title="削除">×</button>
+        </div>`).join('');
+      listWrap.querySelectorAll('[data-loc-up]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
-          const idx = parseInt(btn.dataset.locDel, 10);
-          if(!confirm('「'+locations[idx].name+'」を削除しますか？')) return;
-          locations.splice(idx, 1);
-          await saveLocations();
-          renderLocationMaster();
-          populateLocationSelect('');
+          const i=parseInt(btn.dataset.locUp,10);
+          if(i===0) return;
+          [locations[i-1],locations[i]]=[locations[i],locations[i-1]];
+          await saveLocations(); populateLocationSelect(''); _renderLocationMasterModalList();
+        });
+      });
+      listWrap.querySelectorAll('[data-loc-down]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const i=parseInt(btn.dataset.locDown,10);
+          if(i>=locations.length-1) return;
+          [locations[i],locations[i+1]]=[locations[i+1],locations[i]];
+          await saveLocations(); populateLocationSelect(''); _renderLocationMasterModalList();
+        });
+      });
+      listWrap.querySelectorAll('[data-loc-rename]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const i=parseInt(btn.dataset.locRename,10);
+          const name=prompt('保管場所の名称を変更',locations[i].name);
+          if(!name||!name.trim()) return;
+          locations[i].name=name.trim();
+          await saveLocations(); populateLocationSelect(locations[i].id); _renderLocationMasterModalList();
+        });
+      });
+      listWrap.querySelectorAll('[data-loc-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const i=parseInt(btn.dataset.locDel,10);
+          if(!confirm('「'+locations[i].name+'」を削除しますか？')) return;
+          locations.splice(i,1);
+          await saveLocations(); populateLocationSelect(''); _renderLocationMasterModalList();
         });
       });
     }
-    renderLocationMaster();
-    document.getElementById('addLocationMasterBtn').addEventListener('click', async ()=>{
-      const name = prompt('保管場所を入力してください（例：倉庫A、店頭左棚）');
-      if(!name || !name.trim()) return;
-      locations.push({ id: uid('loc'), name: name.trim() });
-      await saveLocations();
-      renderLocationMaster();
-      populateLocationSelect('');
+    window.openLocationMasterModal = function(){
+      refreshLocations();
+      const brLabel = branchName(currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe');
+      const lbl = document.getElementById('locationMasterModalBranchLabel');
+      if(lbl) lbl.textContent = brLabel + ' の保管場所';
+      _renderLocationMasterModalList();
+      document.getElementById('locationMasterModal').classList.add('show');
+    };
+    document.getElementById('locationMasterModalClose').addEventListener('click',()=>{
+      document.getElementById('locationMasterModal').classList.remove('show');
     });
+    document.getElementById('locationMasterModal').addEventListener('click', e=>{
+      if(e.target === document.getElementById('locationMasterModal')) document.getElementById('locationMasterModal').classList.remove('show');
+    });
+    document.getElementById('locationMasterModalAddBtn').addEventListener('click', async ()=>{
+      const name=prompt('保管場所を入力してください（例：倉庫A、店頭左棚）');
+      if(!name||!name.trim()) return;
+      locations.push({id:uid('loc'),name:name.trim()});
+      await saveLocations(); populateLocationSelect(''); _renderLocationMasterModalList();
+    });
+    // 価格調整タブのボタン
+    document.getElementById('addLocationMasterBtn').addEventListener('click', openLocationMasterModal);
 
     // JANコード自動照合
     document.getElementById('openJanMatchBtn').addEventListener('click', ()=>{
