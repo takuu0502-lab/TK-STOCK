@@ -750,7 +750,6 @@
     <div id="receiveScanDoneArea" style="display:none;text-align:center;padding:10px 0;">
       <div id="receiveScanDoneMsg" style="font-size:15px;font-weight:600;color:var(--teal);margin-bottom:16px;"></div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <button class="btn btn-amber" id="receiveScanPrintBtn">🖨️ 入庫済みラベルを印刷</button>
         <button class="btn btn-ghost" id="receiveScanNextBtn">次の商品をスキャン</button>
       </div>
     </div>
@@ -5982,6 +5981,9 @@ window.addEventListener('storageReady', function(){
         msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'本<br>在庫：'+p.branchStock[brId]+'本（'+branchLabel+'）</span>';
         document.getElementById('receiveScanDoneArea').style.display = 'block';
         btn.disabled = false;
+        // 印刷確認ダイアログ
+        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'枚');
+        if(doPrint) _printReceiveLabel(p, qty);
       }catch(e){
         document.getElementById('receiveScanMsg').textContent = '⚠️ 保存失敗: '+e.message;
         btn.disabled = false;
@@ -5994,12 +5996,6 @@ window.addEventListener('storageReady', function(){
       document.getElementById('receiveScanDoneArea').style.display = 'none';
       document.getElementById('receiveScanMsg').textContent = '';
       document.getElementById('receiveScanInput').focus();
-    });
-    document.getElementById('receiveScanPrintBtn').addEventListener('click', ()=>{
-      const p = _receiveScanProduct;
-      if(!p) return;
-      const qty = parseInt(document.getElementById('receiveScanQty').value)||1;
-      _printReceiveLabel(p, qty);
     });
     document.getElementById('receiveScanClose').addEventListener('click',()=>{
       document.getElementById('receiveScanModal').classList.remove('show');
@@ -8034,14 +8030,11 @@ window.addEventListener('storageReady', function(){
     openProductDetail(id);
     const refreshedMsg = document.getElementById('detailActionMsg');
     if(refreshedMsg){
-      if(kind === 'in'){
-        refreshedMsg.innerHTML = '<div class="msg msg-ok">入庫処理が完了しました（現在庫: '+getStock(p)+'）。</div>'
-          + '<button class="btn btn-ghost btn-sm" id="detailPrintLabelBtn" style="margin-top:8px;font-size:12px;">🖨️ 入庫済みラベルを印刷</button>';
-        const printBtn = document.getElementById('detailPrintLabelBtn');
-        if(printBtn){ printBtn.addEventListener('click', ()=> _printReceiveLabel(p, qty)); }
-      } else {
-        refreshedMsg.innerHTML = '<div class="msg msg-ok">出庫処理が完了しました（現在庫: '+getStock(p)+'）。</div>';
-      }
+      refreshedMsg.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+getStock(p)+'）。</div>';
+    }
+    if(kind === 'in'){
+      const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+qty+'枚');
+      if(doPrint) _printReceiveLabel(p, qty);
     }
   }
 
