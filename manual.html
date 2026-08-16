@@ -223,7 +223,9 @@
     <div class="nav-group"><a href="#provisional">仮出庫</a></div>
     <div class="nav-group"><a href="#estimate">タイヤ見積</a></div>
     <div class="nav-group"><a href="#history">入出庫履歴</a></div>
+    <div class="nav-group"><a href="#stockcount">棚卸し</a></div>
     <div class="nav-group"><a href="#newproduct">新規商品登録</a></div>
+    <div class="nav-group"><a href="#location">保管場所管理</a></div>
     <div class="nav-group"><a href="#scan">バーコードスキャン</a></div>
     <div class="nav-group"><a href="#catalog">ホイールカタログ管理</a></div>
     <div class="nav-group"><a href="#tips">よくある操作</a></div>
@@ -242,7 +244,7 @@
         </div>
       </div>
       <div class="section-body">
-        <p>TK-STOCKは、タイヤショップの在庫・見積・入出庫をWeb上で一元管理するシステムです。<br>谷田部店・岩間店・勝田店の3拠点で独立した在庫管理ができます。</p>
+        <p>TK-STOCKは、タイヤショップの在庫・見積・入出庫・棚卸しをWeb上で一元管理するシステムです。<br>谷田部店・岩間店・勝田店の3拠点で独立した在庫管理ができます。</p>
 
         <div class="toc-grid" style="margin-top: 20px;">
           <a class="toc-card" href="#products"><span class="toc-icon">📦</span><div><div class="toc-label">商品一覧</div><div class="toc-desc">在庫の確認・検索</div></div></a>
@@ -251,6 +253,7 @@
           <a class="toc-card" href="#provisional"><span class="toc-icon">🔖</span><div><div class="toc-label">仮出庫</div><div class="toc-desc">取り置き予約管理</div></div></a>
           <a class="toc-card" href="#estimate"><span class="toc-icon">📝</span><div><div class="toc-label">タイヤ見積</div><div class="toc-desc">見積書の作成・印刷</div></div></a>
           <a class="toc-card" href="#history"><span class="toc-icon">📊</span><div><div class="toc-label">入出庫履歴</div><div class="toc-desc">取引の記録確認</div></div></a>
+          <a class="toc-card" href="#stockcount"><span class="toc-icon">🗂</span><div><div class="toc-label">棚卸し</div><div class="toc-desc">在庫数の実棚確認</div></div></a>
           <a class="toc-card" href="#catalog"><span class="toc-icon">📸</span><div><div class="toc-label">ホイールカタログ</div><div class="toc-desc">写真の登録・管理</div></div></a>
         </div>
 
@@ -291,7 +294,7 @@
             <div class="step-num">3</div>
             <div class="step-content">
               <strong>ログイン成功</strong>
-              <p>画面右上に自分の名前と所属店舗が表示されれば完了です。</p>
+              <p>画面右上のアカウントボタン上部に自分の名前と所属店舗が表示されれば完了です。</p>
             </div>
           </div>
         </div>
@@ -300,7 +303,7 @@
         <h3 style="font-size:14px; margin-bottom:10px;">権限の種類</h3>
         <table class="def-table">
           <tr><th>権限</th><th>できること</th></tr>
-          <tr><td><span class="badge badge-gray">社員</span></td><td>商品一覧の閲覧、入庫・出庫の登録、新規商品登録、見積作成、履歴確認</td></tr>
+          <tr><td><span class="badge badge-gray">社員</span></td><td>商品一覧の閲覧、入庫・出庫の登録、新規商品登録、見積作成、履歴確認、棚卸し、保管場所管理</td></tr>
           <tr><td><span class="badge badge-amber">管理者</span></td><td>社員の操作＋商品削除、印刷、価格調整、アカウント管理</td></tr>
           <tr><td><span class="badge badge-teal">総管理者</span></td><td>全支店の全機能</td></tr>
         </table>
@@ -331,22 +334,30 @@
             <div class="step-num">1</div>
             <div class="step-content">
               <strong>カテゴリで絞り込む</strong>
-              <p>左側のカテゴリツリー（タイヤ・ホイール・メンテナンス等）をクリックすると、その分類の商品だけが表示されます。</p>
+              <p>左側のカテゴリツリー（タイヤ・ホイール・メンテナンス等）をクリックすると、その分類の商品だけが表示されます。大分類・中分類ごとに色分けされたチップで素早く選択できます。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">2</div>
             <div class="step-content">
               <strong>キーワードで絞り込む</strong>
-              <p>商品一覧のフィルター行右側にある検索欄にキーワードを入力し、<span class="ui-label">Enterキー</span> または <span class="ui-label">検索</span> ボタンを押すと絞り込まれます。商品名・ブランド・品番・規格サイズが対象です。✕ ボタンで解除できます。</p>
+              <p>フィルター行右側の検索欄にキーワードを入力し、<span class="ui-label">Enterキー</span> または <span class="ui-label">検索</span> ボタンを押すと絞り込まれます。商品名・ブランド・品番・規格サイズが対象です。✕ ボタンで解除できます。</p>
               <p style="margin-top:6px; font-size:12px; color:#888;">※ 右上の <span class="ui-label">商品検索</span> ボタンはカテゴリをまたいだ全商品検索に使います。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
             <div class="step-content">
-              <strong>在庫あり商品だけ表示する</strong>
-              <p>商品一覧を開くと <span class="ui-label">在庫あり商品のみ</span> が初期状態でオンになっています。在庫0の商品も見たい場合はチェックを外してください。</p>
+              <strong>在庫状況で絞り込む</strong>
+              <p>フィルター行にある以下のチェックボックスで表示を絞り込めます。</p>
+              <table class="def-table" style="margin-top:8px;">
+                <tr><th>チェックボックス</th><th>説明</th></tr>
+                <tr><td>在庫あり（他店含む）</td><td>初期状態でオン。在庫0の商品を非表示にします（他店舗の在庫も含む）</td></tr>
+                <tr><td>在庫あり（自店舗のみ）</td><td>自店舗に在庫がある商品だけを表示します</td></tr>
+                <tr><td>仮出庫品のみ表示</td><td>仮出庫登録された商品だけを表示します</td></tr>
+                <tr><td>最近の登録順</td><td>新しく登録した商品を上に表示します</td></tr>
+                <tr><td>ブランド順</td><td>ブランド名のアルファベット順で並び替えます</td></tr>
+              </table>
             </div>
           </div>
         </div>
@@ -364,7 +375,7 @@
 
         <div class="callout callout-teal" style="margin-top: 14px;">
           <span class="callout-icon">💡</span>
-          <p>タイヤ・ホイールカテゴリでは、他店の在庫数も右側の列で確認できます。</p>
+          <p>タイヤ・ホイールカテゴリでは、他店の在庫数も右側の列で確認できます。フィルター行の <span class="ui-label">📍 保管場所管理</span> ボタンから自店舗の保管場所を登録・並び替えできます。</p>
         </div>
       </div>
     </section>
@@ -569,21 +580,24 @@
             <div class="step-num">2</div>
             <div class="step-content">
               <strong>タイヤサイズを選択する</strong>
-              <p>タイヤ幅・扁平率・インチを選択すると、該当するタイヤ一覧が表示されます。</p>
+              <p>タイヤ幅・扁平率・インチを選択すると、該当するタイヤ一覧が表示されます。<br>
+              前後で異なるサイズの場合は <span class="ui-label">前後異サイズ</span> を選択してフロント・リアそれぞれのサイズを設定してください。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
             <div class="step-content">
               <strong>商品を選んで見積に追加</strong>
-              <p>商品の <span class="ui-label">見積に追加</span> または <span class="ui-label">前後異サイズ</span> ボタンで見積リストに追加します。</p>
+              <p>商品の <span class="ui-label">見積に追加</span> ボタンで見積リストに追加します。<br>
+              追加した商品は<strong>銘柄（ブランド）ごとにまとめて表示</strong>されます。前後異サイズの場合はフロント（上段）・リア（下段）の順で表示され、本数のデフォルトは各<strong>2本</strong>です。通常サイズは<strong>4本</strong>がデフォルトです。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">4</div>
             <div class="step-content">
               <strong>ホイールカタログを活用する（任意）</strong>
-              <p>タイヤサイズ入力画面および見積モーダル内の <span class="ui-label">📸 ホイールカタログ</span> ボタンを押すと、登録済みのアルミホイール写真カタログが別ウィンドウで開きます。お客様にその場でご覧いただけます。</p>
+              <p>見積モーダル内の <span class="ui-label">📸 ホイールカタログ</span> ボタンを押すと、登録済みのアルミホイール写真カタログが別ウィンドウで開きます。お客様にその場でご覧いただけます。<br>
+              ホイールはランクで選択でき、<strong>ベーシック / スタンダード / プレミアム</strong>の3段階から選びます。</p>
             </div>
           </div>
           <div class="step">
@@ -606,7 +620,8 @@
             <div class="step-num">7</div>
             <div class="step-content">
               <strong>印刷・保存</strong>
-              <p><span class="ui-label">🖨 印刷</span> で見積書を印刷、<span class="ui-label">💾 保存</span> で後から呼び出せます。</p>
+              <p><span class="ui-label">🖨 印刷</span> で見積書を印刷、<span class="ui-label">💾 保存</span> で後から呼び出せます。<br>
+              印刷プレビューでも銘柄ごとにブロックにまとまって表示されます。前後異サイズの場合はタイヤサイズのみ（フロント上段・リア下段）表示されます。</p>
             </div>
           </div>
         </div>
@@ -670,6 +685,80 @@
       </div>
     </section>
 
+    <!-- 棚卸し -->
+    <section class="section" id="stockcount">
+      <div class="section-header">
+        <div class="section-icon icon-teal">🗂</div>
+        <div>
+          <h2>棚卸し</h2>
+          <div class="section-desc">実際の在庫数を確認してシステムと照合する</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <p>棚の実数をカテゴリごとに入力し、システム上の在庫数と比較・確定できる機能です。支店ごとに独立して実施します。</p>
+
+        <div class="callout callout-teal" style="margin-top:14px; margin-bottom:0;">
+          <span class="callout-icon">ℹ️</span>
+          <p>棚卸しは <span class="badge badge-gray">社員</span> <span class="badge badge-amber">管理者</span> <span class="badge badge-teal">総管理者</span> が操作できます。自店舗の在庫のみ対象です。</p>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">棚卸しの手順</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>「棚卸し」タブを開く</strong>
+              <p>上部メニューの <span class="ui-label">棚卸し</span> タブをクリックします。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>棚卸しを開始する</strong>
+              <p><span class="ui-label">棚卸しを開始</span> ボタンを押します。開始すると前回の棚卸し結果がリセットされ、新しい棚卸しが始まります。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>カテゴリを選んで実数を入力する</strong>
+              <p>カテゴリタブから対象の分類を選び、商品ごとに実際の在庫数を入力します。<br>
+              バーコードリーダー（USBキーボードウェッジ）またはカメラでスキャンして商品を選択し、数量を入力することもできます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>差異を確認する</strong>
+              <p>全カテゴリの入力が終わったら <span class="ui-label">差異を確認する</span> ボタンを押します。<br>
+              システム上の在庫数と実数の差異がある商品だけを絞り込んで確認できます。<br>
+              問題なければ <span class="ui-label">棚卸しを確定する</span> を押して完了です。</p>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:10px;">バーコードスキャンで棚卸しする</h3>
+        <table class="def-table">
+          <tr><th>方法</th><th>手順</th></tr>
+          <tr>
+            <td>USBバーコードリーダー</td>
+            <td>棚卸し画面でスキャンすると対象商品が自動でハイライトされ、数量入力欄にカーソルが移動します。数量を入力してEnterで次の商品へ進めます</td>
+          </tr>
+          <tr>
+            <td>カメラスキャン</td>
+            <td><span class="ui-label">📷 カメラでスキャン</span> ボタンを押してカメラを起動し、商品のバーコード・QRコードを読み取ります</td>
+          </tr>
+        </table>
+
+        <div class="callout callout-amber">
+          <span class="callout-icon">⚠️</span>
+          <p>棚卸しを確定すると在庫数がシステムに反映されます。確定前に差異一覧をよく確認してください。棚卸しの履歴は過去の実施記録として保存されます。</p>
+        </div>
+      </div>
+    </section>
+
     <!-- 新規商品登録 -->
     <section class="section" id="newproduct">
       <div class="section-header">
@@ -705,7 +794,7 @@
             <div class="step-num">3</div>
             <div class="step-content">
               <strong>商品情報を入力</strong>
-              <p>JANコード・ブランド・商品名・規格・仕入れ原価・販売価格などを入力します。</p>
+              <p>JANコード・ブランド・商品名・規格・仕入れ原価・販売価格などを入力します。保管場所は登録済みの場所からプルダウンで選択できます。</p>
             </div>
           </div>
           <div class="step">
@@ -724,6 +813,58 @@
       </div>
     </section>
 
+    <!-- 保管場所管理 -->
+    <section class="section" id="location">
+      <div class="section-header">
+        <div class="section-icon icon-teal">📍</div>
+        <div>
+          <h2>保管場所管理</h2>
+          <div class="section-desc">自店舗の保管場所を登録・並び替えする</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <p>商品登録・編集時に選択できる保管場所（倉庫・棚など）を自店舗ごとに管理できます。各支店のスタッフが独立して登録・編集できます。</p>
+
+        <div class="callout callout-teal" style="margin-top:14px; margin-bottom:0;">
+          <span class="callout-icon">ℹ️</span>
+          <p>保管場所管理は <span class="badge badge-gray">社員</span> <span class="badge badge-amber">管理者</span> <span class="badge badge-teal">総管理者</span> が操作できます。登録した保管場所は自店舗のみで有効です。</p>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">操作方法</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>「📍 保管場所管理」ボタンを押す</strong>
+              <p>商品一覧のフィルター行にある <span class="ui-label">📍 保管場所管理</span> ボタンをクリックします。管理者は価格調整タブの「保管場所マスタ」からも開けます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>保管場所を追加する</strong>
+              <p>モーダル下部の <span class="ui-label">＋ 保管場所を追加</span> ボタンを押して名称を入力します（例：倉庫A、店頭左棚）。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>並び替える</strong>
+              <p>各保管場所の <span class="ui-label">▲</span> / <span class="ui-label">▼</span> ボタンで表示順を変更できます。プルダウンでの選択時にもこの順番で表示されます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>名称変更・削除</strong>
+              <p><span class="ui-label">編集</span> ボタンで名称を変更、<span class="ui-label">×</span> ボタンで削除できます。削除すると商品への設定は残りますが新規選択には表示されなくなります。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- バーコードスキャン -->
     <section class="section" id="scan">
       <div class="section-header">
@@ -734,14 +875,14 @@
         </div>
       </div>
       <div class="section-body">
-        <p>入庫・出庫処理はバーコードスキャナー（USB・Bluetooth）またはスマートフォンのカメラで素早く行えます。</p>
+        <p>入庫・出庫・棚卸し処理はバーコードスキャナー（USB・Bluetooth）またはスマートフォンのカメラで素早く行えます。</p>
 
         <hr class="divider">
         <table class="def-table">
           <tr><th>方法</th><th>手順</th></tr>
           <tr>
             <td>バーコードスキャナー<br><span style="font-size:11px;color:#888;">（推奨）</span></td>
-            <td>入力欄にカーソルを合わせてスキャナーで読み取るだけで自動検索されます。USB・Bluetoothどちらも対応</td>
+            <td>入力欄にカーソルを合わせてスキャナーで読み取るだけで自動検索されます。USB・Bluetoothどちらも対応。棚卸し画面でも同様に使えます</td>
           </tr>
           <tr>
             <td>スマホカメラ<br><span style="font-size:11px;color:#888;">（QRコード）</span></td>
@@ -780,7 +921,7 @@
       </div>
       <div class="section-body">
         <p>アルミホイールの写真を登録し、見積時にお客様へ提示できるカタログページを管理します。<br>
-        カタログはBASIC・STANDARD・PREMIUMの3ランクで構成されています。</p>
+        カタログは<strong>ベーシック・スタンダード・プレミアム</strong>の3ランクで構成されています。</p>
 
         <div class="callout callout-teal" style="margin-top:14px;">
           <span class="callout-icon">ℹ️</span>
@@ -801,7 +942,7 @@
             <div class="step-num">2</div>
             <div class="step-content">
               <strong>「📸 ホイールカタログ写真管理」セクションを確認</strong>
-              <p>ページ下部にある写真管理エリアに進みます。BASIC・STANDARD・PREMIUMの3つのランクが表示されています。</p>
+              <p>ページ下部にある写真管理エリアに進みます。ベーシック・スタンダード・プレミアムの3つのランクが表示されています。</p>
             </div>
           </div>
           <div class="step">
@@ -826,14 +967,14 @@
         <h3 style="font-size:14px; margin-bottom:10px;">🗂 ランクの目安</h3>
         <table class="def-table">
           <tr><th>ランク</th><th>表示名</th><th>目安</th></tr>
-          <tr><td>梅</td><td><strong>BASIC</strong>（ベーシック）</td><td>エントリーグレードのホイール</td></tr>
-          <tr><td>竹</td><td><strong>STANDARD</strong>（スタンダード）</td><td>標準グレードのホイール</td></tr>
-          <tr><td>松</td><td><strong>PREMIUM</strong>（プレミアム）</td><td>上位グレードのホイール</td></tr>
+          <tr><td>梅</td><td><strong>ベーシック</strong>（BASIC）</td><td>エントリーグレードのホイール</td></tr>
+          <tr><td>竹</td><td><strong>スタンダード</strong>（STANDARD）</td><td>標準グレードのホイール</td></tr>
+          <tr><td>松</td><td><strong>プレミアム</strong>（PREMIUM）</td><td>上位グレードのホイール</td></tr>
         </table>
 
         <hr class="divider">
         <h3 style="font-size:14px; margin-bottom:12px;">🔗 カタログページを開く</h3>
-        <p style="font-size:13.5px;">タイヤ見積画面のタイヤサイズ入力欄または見積モーダル内の <span class="ui-label">📸 ホイールカタログ</span> ボタンを押すと、登録済みの写真カタログが別ウィンドウで表示されます。<br>
+        <p style="font-size:13.5px;">タイヤ見積画面の見積モーダル内にある <span class="ui-label">📸 ホイールカタログ</span> ボタンを押すと、登録済みの写真カタログが別ウィンドウで表示されます。<br>
         ホイール写真にマウスを乗せると拡大表示されます。</p>
 
         <div class="callout callout-amber" style="margin-top:14px;">
@@ -864,7 +1005,7 @@
           </tr>
           <tr>
             <td>在庫数がおかしい</td>
-            <td>入出庫履歴タブで最近の操作を確認してください。誤入力があった場合は管理者に報告してください。</td>
+            <td>入出庫履歴タブで最近の操作を確認してください。誤入力があった場合は管理者に報告してください。棚卸し機能で実数と照合することもできます。</td>
           </tr>
           <tr>
             <td>出庫できない（ボタンが押せない）</td>
@@ -877,6 +1018,10 @@
           <tr>
             <td>保存した見積が見つからない</td>
             <td>見積は自店舗のものだけ表示されます。作成した店舗でログインして確認してください。</td>
+          </tr>
+          <tr>
+            <td>保管場所のプルダウンに選択肢がない</td>
+            <td>フィルター行の「📍 保管場所管理」から保管場所を先に登録してください。</td>
           </tr>
           <tr>
             <td>ページが動かない・表示がおかしい</td>
@@ -903,6 +1048,15 @@
           <div class="flow-box">出庫確定</div>
           <div class="flow-arrow">→</div>
           <div class="flow-box amber">在庫数が減少</div>
+        </div>
+        <div class="flow" style="margin-top:10px;">
+          <div class="flow-box">定期棚卸し</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">棚卸しタブで実数入力</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">差異確認</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box amber">在庫数を確定・修正</div>
         </div>
 
         <hr class="divider">
