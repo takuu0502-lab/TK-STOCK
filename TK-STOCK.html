@@ -1173,14 +1173,6 @@
     <div class="pricing-section-title">📦 商品一括インポート</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">メーカー価格表のデータをまとめて商品登録します。カテゴリを選択して一括登録できます。</p>
     <div id="bulkImportBtnWrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
-    <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;">
-      <div style="font-size:12.5px;font-weight:600;margin-bottom:6px;">🔧 ホイール小分類を一括再割り当て</div>
-      <p style="font-size:12px;color:var(--text-2);margin:0 0 10px;line-height:1.6;">登録済みホイール商品の小分類（インチ）が未設定の場合、wheelSpecのインチ情報をもとにカテゴリを自動で割り当てます。</p>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <button class="btn btn-ghost" id="reAssignSubSubBtn">🔧 小分類を再割り当て</button>
-        <span id="reAssignSubSubMsg" style="font-size:13px;"></span>
-      </div>
-    </div>
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🏷️ JANコード一括入力</div>
@@ -6072,58 +6064,6 @@ window.addEventListener('storageReady', function(){
     });
     // 価格調整タブのボタン
     document.getElementById('addLocationMasterBtn').addEventListener('click', openLocationMasterModal);
-
-    // ホイール小分類 再割り当て
-    document.getElementById('reAssignSubSubBtn').addEventListener('click', async ()=>{
-      const majorCat = categories.find(c=>c.name.includes('ホイール'));
-      const subCat   = majorCat ? (majorCat.subs||[]).find(s=>s.name.includes('アルミホイール')) : null;
-      if(!majorCat || !subCat){
-        document.getElementById('reAssignSubSubMsg').style.color='var(--red)';
-        document.getElementById('reAssignSubSubMsg').textContent='⚠️ ホイール／アルミホイールカテゴリが見つかりません';
-        return;
-      }
-      const subsubs = subCat.subsubs||[];
-      if(!subsubs.length){
-        document.getElementById('reAssignSubSubMsg').style.color='var(--red)';
-        document.getElementById('reAssignSubSubMsg').textContent='⚠️ 小分類（インチ）が登録されていません。先にカテゴリ設定で追加してください。';
-        return;
-      }
-      let updated = 0, skipped = 0;
-      products.forEach(p=>{
-        if(p.majorId !== majorCat.id || p.subId !== subCat.id) return;
-        const inch = p.wheelSpec ? String(p.wheelSpec.inch||'') : '';
-        if(!inch){ skipped++; return; }
-        const inchLabel = inch + 'インチ';
-        const ss = subsubs.find(s=>
-          s.name === inchLabel ||
-          s.name === inch ||
-          s.name.replace('インチ','').trim() === inch
-        );
-        if(!ss){ skipped++; return; }
-        if(p.subSubId !== ss.id){
-          p.subSubId = ss.id;
-          p.updatedAt = Date.now();
-          updated++;
-        }
-      });
-      if(!updated){
-        document.getElementById('reAssignSubSubMsg').style.color='var(--text-2)';
-        document.getElementById('reAssignSubSubMsg').textContent='変更なし（既に正しく割り当て済み、または一致する小分類なし: '+skipped+'件）';
-        return;
-      }
-      const btn = document.getElementById('reAssignSubSubBtn');
-      btn.disabled = true;
-      try{
-        await saveProducts();
-        renderProductTable();
-        document.getElementById('reAssignSubSubMsg').style.color='var(--teal)';
-        document.getElementById('reAssignSubSubMsg').textContent='✅ '+updated+'件を再割り当て完了'+(skipped?' （インチ未取得: '+skipped+'件）':'');
-      }catch(e){
-        document.getElementById('reAssignSubSubMsg').style.color='var(--red)';
-        document.getElementById('reAssignSubSubMsg').textContent='⚠️ 保存失敗: '+e.message;
-      }
-      btn.disabled = false;
-    });
 
     // 商品一括インポート
     renderBulkImportBtns();
