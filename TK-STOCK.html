@@ -691,6 +691,41 @@
   </div>
 </div>
 
+<!-- 商品一括インポートモーダル -->
+<div class="modal-overlay" id="bulkImportModal">
+  <div class="modal" style="max-width:640px;width:95%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">📦 商品一括インポート</h3>
+    <p id="bulkImportDesc" style="font-size:13px;color:var(--text-2);margin-bottom:16px;"></p>
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">大分類</label>
+        <select id="bulkImportMajor" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">中分類（任意）</label>
+        <select id="bulkImportSub" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">登録内容プレビュー（<span id="bulkImportCount">0</span>件）</div>
+    <div id="bulkImportPreview" style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:300px;font-size:12px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:var(--bg-2);position:sticky;top:0;">
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">商品名</th>
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">規格・サイズ</th>
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">品番</th>
+          <th style="padding:7px 10px;text-align:right;font-size:11px;color:var(--text-3);white-space:nowrap;">仕入原価</th>
+        </tr></thead>
+        <tbody id="bulkImportPreviewBody"></tbody>
+      </table>
+    </div>
+    <div id="bulkImportMsg" style="margin-top:10px;font-size:13px;min-height:20px;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost" id="bulkImportCancel">キャンセル</button>
+      <button class="btn btn-amber" id="bulkImportExec">📦 一括登録する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 発注書作成モーダル -->
 <div class="modal-overlay" id="orderModal">
   <div class="modal" style="max-width:540px;width:95%;max-height:90vh;overflow-y:auto;">
@@ -1075,6 +1110,11 @@
     </p>
     <button class="btn btn-amber" id="openJanMatchBtn">🔍 JANコードを自動照合する</button>
     <div id="janMatchMsg" style="margin-top:10px;font-size:13px;"></div>
+
+    <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">📦 商品一括インポート</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">メーカー価格表のデータをまとめて商品登録します。カテゴリを選択して一括登録できます。</p>
+    <div id="bulkImportBtnWrap" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🔩 ホイールメニュー設定（見積用）</div>
@@ -2736,6 +2776,107 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('branchLocations', JSON.stringify(branchLocations), SHARED); }
     catch(e){ console.error('save branchLocations failed', e); }
   }
+
+  // ── 商品一括インポート ──────────────────────────────────────────
+  const BULK_IMPORT_CATALOGS = [
+    {
+      id: 'toprun_ws6',
+      label: 'TOPRUN WS6',
+      brand: 'TOPRUN',
+      items: [
+        {name:'WS6 シルバー',     spec:'12インチ 3.5J 4H PCD100 +44', partno:'31116600', costPrice:4550},
+        {name:'WS6 シルバー',     spec:'13インチ 4.0J 4H PCD100 +45', partno:'31116601', costPrice:4370},
+        {name:'WS6 シルバー',     spec:'14インチ 4.5J 4H PCD100 +45', partno:'31116602', costPrice:4900},
+        {name:'WS6 シルバー',     spec:'14インチ 5.5J 4H PCD100 +39', partno:'31116603', costPrice:5620},
+        {name:'WS6 シルバー',     spec:'15インチ 4.5J 4H PCD100 +48', partno:'31116604', costPrice:5890},
+        {name:'WS6 シルバー',     spec:'15インチ 5.5J 4H PCD100 +42', partno:'31116605', costPrice:5360},
+        {name:'WS6 シルバー',     spec:'15インチ 5.5J 4H PCD100 +50', partno:'31116606', costPrice:6280},
+        {name:'WS6 シルバー',     spec:'15インチ 6.0J 5H PCD100 +43', partno:'31116607', costPrice:6280},
+        {name:'WS6 シルバー',     spec:'15インチ 6.0J 5H PCD114 +45', partno:'31116608', costPrice:6280},
+        {name:'WS6 シルバー',     spec:'15インチ 6.0J 5H PCD114 +53', partno:'31116609', costPrice:6280},
+        {name:'WS6 シルバー',     spec:'16インチ 6.0J 4H PCD100 +50', partno:'31116610', costPrice:7560},
+        {name:'WS6 シルバー',     spec:'16インチ 6.0J 5H PCD100 +45', partno:'31116611', costPrice:7560},
+        {name:'WS6 シルバー',     spec:'16インチ 6.0J 5H PCD114 +45', partno:'31116612', costPrice:7560},
+        {name:'WS6 シルバー',     spec:'16インチ 6.5J 5H PCD114 +38', partno:'31116613', costPrice:7560},
+        {name:'WS6 シルバー',     spec:'16インチ 6.5J 5H PCD114 +48', partno:'31116614', costPrice:7560},
+        {name:'WS6 シルバー',     spec:'16インチ 6.5J 5H PCD114 +54', partno:'31116615', costPrice:7560},
+        {name:'WS6 シルバー',     spec:'17インチ 7.0J 5H PCD100 +53', partno:'31116616', costPrice:9490},
+        {name:'WS6 シルバー',     spec:'17インチ 7.0J 5H PCD114 +38', partno:'31116617', costPrice:9490},
+        {name:'WS6 シルバー',     spec:'17インチ 7.0J 5H PCD114 +45', partno:'31116618', costPrice:9490},
+        {name:'WS6 シルバー',     spec:'17インチ 7.0J 5H PCD114 +53', partno:'31116619', costPrice:9490},
+        {name:'WS6 シルバー',     spec:'18インチ 7.5J 5H PCD114 +42', partno:'31116620', costPrice:11400},
+        {name:'WS6 シルバー',     spec:'18インチ 7.5J 5H PCD114 +53', partno:'31116621', costPrice:11400},
+        {name:'WS6 ダークガンメタ', spec:'12インチ 3.5J 4H PCD100 +44', partno:'31116622', costPrice:4550},
+        {name:'WS6 ダークガンメタ', spec:'13インチ 4.0J 4H PCD100 +45', partno:'31116623', costPrice:4370},
+        {name:'WS6 ダークガンメタ', spec:'14インチ 4.5J 4H PCD100 +45', partno:'31116624', costPrice:4900},
+        {name:'WS6 ダークガンメタ', spec:'14インチ 5.5J 4H PCD100 +39', partno:'31116625', costPrice:5620},
+        {name:'WS6 ダークガンメタ', spec:'15インチ 4.5J 4H PCD100 +48', partno:'31116626', costPrice:5890},
+        {name:'WS6 ダークガンメタ', spec:'15インチ 5.5J 4H PCD100 +42', partno:'31116627', costPrice:5360},
+        {name:'WS6 ダークガンメタ', spec:'15インチ 5.5J 4H PCD100 +50', partno:'31116628', costPrice:6280},
+        {name:'WS6 ダークガンメタ', spec:'15インチ 6.0J 5H PCD100 +43', partno:'31116629', costPrice:6280},
+        {name:'WS6 ダークガンメタ', spec:'15インチ 6.0J 5H PCD114 +45', partno:'31116630', costPrice:6280},
+        {name:'WS6 ダークガンメタ', spec:'15インチ 6.0J 5H PCD114 +53', partno:'31116631', costPrice:6280},
+        {name:'WS6 ダークガンメタ', spec:'16インチ 6.0J 4H PCD100 +50', partno:'31116632', costPrice:7560},
+        {name:'WS6 ダークガンメタ', spec:'16インチ 6.0J 5H PCD100 +45', partno:'31116633', costPrice:7560},
+        {name:'WS6 ダークガンメタ', spec:'16インチ 6.0J 5H PCD114 +45', partno:'31116634', costPrice:7560},
+        {name:'WS6 ダークガンメタ', spec:'16インチ 6.5J 5H PCD114 +38', partno:'31116635', costPrice:7560},
+        {name:'WS6 ダークガンメタ', spec:'16インチ 6.5J 5H PCD114 +48', partno:'31116636', costPrice:7560},
+        {name:'WS6 ダークガンメタ', spec:'16インチ 6.5J 5H PCD114 +54', partno:'31116637', costPrice:7560},
+        {name:'WS6 ダークガンメタ', spec:'17インチ 7.0J 5H PCD100 +53', partno:'31116638', costPrice:9490},
+        {name:'WS6 ダークガンメタ', spec:'17インチ 7.0J 5H PCD114 +38', partno:'31116639', costPrice:9490},
+        {name:'WS6 ダークガンメタ', spec:'17インチ 7.0J 5H PCD114 +45', partno:'31116640', costPrice:9490},
+        {name:'WS6 ダークガンメタ', spec:'17インチ 7.0J 5H PCD114 +53', partno:'31116641', costPrice:9490},
+        {name:'WS6 ダークガンメタ', spec:'18インチ 7.5J 5H PCD114 +42', partno:'31116642', costPrice:11400},
+        {name:'WS6 ダークガンメタ', spec:'18インチ 7.5J 5H PCD114 +53', partno:'31116643', costPrice:11400},
+      ]
+    }
+  ];
+  let _bulkImportCatalogId = null;
+  function openBulkImportModal(catalogId){
+    _bulkImportCatalogId = catalogId;
+    const cat = BULK_IMPORT_CATALOGS.find(c=>c.id===catalogId);
+    if(!cat) return;
+    const descEl = document.getElementById('bulkImportDesc');
+    if(descEl) descEl.textContent = cat.label + ' — ' + cat.items.length + '商品をまとめて登録します。登録先カテゴリを選択してください。';
+    const majorSel = document.getElementById('bulkImportMajor');
+    const subSel = document.getElementById('bulkImportSub');
+    if(majorSel){
+      majorSel.innerHTML = categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      const updateSubs = ()=>{
+        const m = majorById(majorSel.value);
+        subSel.innerHTML = '<option value="">（中分類なし）</option>'
+          + (m && m.subs ? m.subs.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('') : '');
+      };
+      updateSubs();
+      majorSel.onchange = updateSubs;
+    }
+    const countEl = document.getElementById('bulkImportCount');
+    if(countEl) countEl.textContent = cat.items.length;
+    const tbody = document.getElementById('bulkImportPreviewBody');
+    if(tbody){
+      tbody.innerHTML = cat.items.map(item=>`
+        <tr style="border-top:1px solid var(--line);">
+          <td style="padding:6px 10px;">${escapeHtml(item.name)}</td>
+          <td style="padding:6px 10px;color:var(--text-2);">${escapeHtml(item.spec)}</td>
+          <td style="padding:6px 10px;font-family:var(--font-mono);color:var(--text-3);">${escapeHtml(item.partno)}</td>
+          <td style="padding:6px 10px;text-align:right;">${item.costPrice.toLocaleString()}円</td>
+        </tr>`).join('');
+    }
+    const msgEl = document.getElementById('bulkImportMsg');
+    if(msgEl) msgEl.textContent = '';
+    document.getElementById('bulkImportModal').classList.add('show');
+  }
+  function renderBulkImportBtns(){
+    const wrap = document.getElementById('bulkImportBtnWrap');
+    if(!wrap) return;
+    wrap.innerHTML = BULK_IMPORT_CATALOGS.map(cat=>
+      `<button class="btn btn-ghost btn-sm" data-bulk-cat="${cat.id}">📄 ${escapeHtml(cat.label)}</button>`
+    ).join('');
+    wrap.querySelectorAll('[data-bulk-cat]').forEach(btn=>{
+      btn.addEventListener('click', ()=>openBulkImportModal(btn.dataset.bulkCat));
+    });
+  }
+
   function populateLocationSelect(selectedId){
     const sel = document.getElementById('f_location');
     if(!sel) return;
@@ -5634,6 +5775,65 @@ window.addEventListener('storageReady', function(){
     });
     // 価格調整タブのボタン
     document.getElementById('addLocationMasterBtn').addEventListener('click', openLocationMasterModal);
+
+    // 商品一括インポート
+    renderBulkImportBtns();
+    document.getElementById('bulkImportCancel').addEventListener('click',()=>{
+      document.getElementById('bulkImportModal').classList.remove('show');
+    });
+    document.getElementById('bulkImportModal').addEventListener('click', e=>{
+      if(e.target===document.getElementById('bulkImportModal')) document.getElementById('bulkImportModal').classList.remove('show');
+    });
+    document.getElementById('bulkImportExec').addEventListener('click', async ()=>{
+      const cat = BULK_IMPORT_CATALOGS.find(c=>c.id===_bulkImportCatalogId);
+      if(!cat) return;
+      const majorId = document.getElementById('bulkImportMajor').value;
+      const subId = document.getElementById('bulkImportSub').value || null;
+      if(!majorId){ alert('大分類を選択してください'); return; }
+      const msgEl = document.getElementById('bulkImportMsg');
+      const execBtn = document.getElementById('bulkImportExec');
+      execBtn.disabled = true;
+      msgEl.textContent = '登録中...';
+      try{
+        const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        let added = 0;
+        for(const item of cat.items){
+          const newP = {
+            id: uid('p'),
+            brand: cat.brand,
+            name: item.name,
+            spec: item.spec,
+            partno: item.partno,
+            barcode: '',
+            majorId: majorId,
+            subId: subId || '',
+            subSubId: '',
+            costPrice: item.costPrice,
+            price: 0,
+            stock: 0,
+            branchStock: {},
+            locationId: '',
+            branchLocation: {},
+            customerOrder: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            createdBy: currentUser ? currentUser.name : '',
+            branchId: brId,
+          };
+          products.push(newP);
+          added++;
+        }
+        await saveProducts();
+        renderProductTable();
+        msgEl.style.color = 'var(--teal)';
+        msgEl.textContent = '✅ ' + added + '件の商品を登録しました。';
+        execBtn.disabled = false;
+      }catch(e){
+        msgEl.style.color = 'var(--red)';
+        msgEl.textContent = '⚠️ 登録に失敗しました: ' + e.message;
+        execBtn.disabled = false;
+      }
+    });
 
     // JANコード自動照合
     document.getElementById('openJanMatchBtn').addEventListener('click', ()=>{
