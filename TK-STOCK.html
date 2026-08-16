@@ -2824,6 +2824,22 @@ window.addEventListener('storageReady', function(){
     }
   ];
   let _bulkImportCatalogId = null;
+  function _parseWheelSpecFromString(specStr){
+    const inchM  = specStr.match(/(\d+)インチ/);
+    const jM     = specStr.match(/([\d.]+)J/);
+    const holesM = specStr.match(/(\d+)H/);
+    const pcdM   = specStr.match(/PCD([\d./]+)/);
+    const offM   = specStr.match(/\+(\d+)/);
+    // PCD正規化：114→114.3 など
+    const _normPcd = v => v === '114' ? '114.3' : v;
+    return {
+      inch:   inchM  ? inchM[1]        : '',
+      j:      jM     ? jM[1]           : '',
+      holes:  holesM ? holesM[1]       : '',
+      pcd:    pcdM   ? _normPcd(pcdM[1]) : '',
+      offset: offM   ? offM[1]         : '',
+    };
+  }
   function _bulkResolveCategories(cat){
     // 大分類「ホイール」→中分類「アルミホイール」→小分類「Nインチ」
     const majorCat = categories.find(c=>c.name.includes('ホイール'));
@@ -2869,9 +2885,15 @@ window.addEventListener('storageReady', function(){
       tbody.innerHTML = cat.items.map(item=>{
         const {subSubCat, inchLabel} = resolveItem(item);
         const subSubLabel = subSubCat ? escapeHtml(subSubCat.name) : (inchLabel ? '<span style="color:var(--amber);">'+escapeHtml(inchLabel)+'（未設定）</span>' : '—');
+        const ws = _parseWheelSpecFromString(item.spec);
+        const wsStr = [
+          ws.inch && ws.j ? ws.inch+'x'+ws.j : ws.inch ? ws.inch+'インチ' : '',
+          ws.holes && ws.pcd ? ws.holes+'/'+ws.pcd : '',
+          ws.offset ? '+'+ws.offset : ''
+        ].filter(Boolean).join(' ');
         return `<tr style="border-top:1px solid var(--line);">
           <td style="padding:6px 10px;">${escapeHtml(item.name)}</td>
-          <td style="padding:6px 10px;color:var(--text-2);">${escapeHtml(item.spec)}</td>
+          <td style="padding:6px 10px;color:var(--text-2);font-family:var(--font-mono);font-size:12px;">${escapeHtml(wsStr)}</td>
           <td style="padding:6px 10px;">${subSubLabel}</td>
           <td style="padding:6px 10px;font-family:var(--font-mono);color:var(--text-3);font-size:11px;">${escapeHtml(item.partno)}</td>
           <td style="padding:6px 10px;text-align:right;">${item.costPrice.toLocaleString()}円</td>
@@ -5826,6 +5848,7 @@ window.addEventListener('storageReady', function(){
             majorId: majorCat.id,
             subId: subCat.id,
             subSubId: subSubCat ? subSubCat.id : '',
+            wheelSpec: _parseWheelSpecFromString(item.spec),
             costPrice: item.costPrice,
             price: 0,
             stock: 0,
