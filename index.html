@@ -3540,7 +3540,9 @@ window.addEventListener('storageReady', function(){
         if(row.dataset.addMajor){ addMajorCategory(); return; }
         if(row.dataset.root){ selectedMajor = null; selectedSub = null; selectedSubSub = null; resetSpecSelections(); renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return; }
         if(row.dataset.subsub){
-          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub; selectedSubSub = row.dataset.subsub; resetSpecSelections();
+          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub;
+          resetSpecSelections();
+          selectedSubSub = row.dataset.subsub; // resetの後にセット（resetで消えないよう）
           renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
         }
         if(row.dataset.sub){
