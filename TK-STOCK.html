@@ -718,6 +718,49 @@
   </div>
 </div>
 
+<!-- 入庫スキャンモーダル -->
+<div class="modal-overlay" id="receiveScanModal">
+  <div class="modal" style="max-width:500px;width:95%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">📦 入庫スキャン</h3>
+    <!-- スキャン入力 -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px;">バーコードをスキャンまたは手入力</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="receiveScanInput" placeholder="JANコードをスキャン…" autocomplete="off"
+          style="flex:1;padding:10px 14px;border:2px solid var(--amber);border-radius:10px;font-size:15px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);outline:none;">
+        <button class="btn btn-amber" id="receiveScanSearchBtn">検索</button>
+      </div>
+    </div>
+    <!-- 商品情報 -->
+    <div id="receiveScanProductArea" style="display:none;">
+      <div id="receiveScanProductCard" style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <div class="field" style="flex:1;min-width:100px;">
+          <label>入庫数量</label>
+          <input type="number" id="receiveScanQty" value="1" min="1" style="width:100%;box-sizing:border-box;font-size:16px;font-weight:600;text-align:center;">
+        </div>
+        <div class="field" style="flex:2;min-width:160px;">
+          <label>保管場所</label>
+          <select id="receiveScanLocation" style="width:100%;box-sizing:border-box;"></select>
+        </div>
+      </div>
+      <button class="btn btn-amber" id="receiveScanConfirmBtn" style="width:100%;justify-content:center;font-size:14px;padding:10px;">✅ 入庫確定</button>
+    </div>
+    <!-- 完了メッセージ -->
+    <div id="receiveScanDoneArea" style="display:none;text-align:center;padding:10px 0;">
+      <div id="receiveScanDoneMsg" style="font-size:15px;font-weight:600;color:var(--teal);margin-bottom:16px;"></div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-amber" id="receiveScanPrintBtn">🖨️ 入庫済みラベルを印刷</button>
+        <button class="btn btn-ghost" id="receiveScanNextBtn">次の商品をスキャン</button>
+      </div>
+    </div>
+    <div id="receiveScanMsg" style="margin-top:10px;font-size:13px;min-height:20px;color:var(--red);"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost" id="receiveScanClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- JANコード一括入力モーダル -->
 <div class="modal-overlay" id="janBulkModal">
   <div class="modal" style="max-width:700px;width:95%;max-height:90vh;overflow-y:auto;">
@@ -4056,6 +4099,7 @@ window.addEventListener('storageReady', function(){
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="brandSortChk"'+(brandSortFilter?' checked':'')+'> ブランド順'
       + '</label>'
+      + (canWriteData() ? '<button id="openReceiveScanModalBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-radius:20px;background:var(--amber);color:#fff;cursor:pointer;white-space:nowrap;font-weight:600;">📦 入庫スキャン</button>' : '')
       + (canWriteData() ? '<button id="openLocationMasterModalBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--text-2);cursor:pointer;white-space:nowrap;">📍 保管場所管理</button>' : '')
       + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
       + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;width:160px;background:var(--surface);color:var(--text-1);">'
@@ -4086,6 +4130,8 @@ window.addEventListener('storageReady', function(){
     if(kwClear){ kwClear.addEventListener('click', ()=>{ keywordFilter = ''; renderProductTable(); }); }
     const locMasterBtn = document.getElementById('openLocationMasterModalBtn');
     if(locMasterBtn){ locMasterBtn.addEventListener('click', openLocationMasterModal); }
+    const rcvBtn = document.getElementById('openReceiveScanModalBtn');
+    if(rcvBtn){ rcvBtn.addEventListener('click', openReceiveScanModal); }
   }
 
   function renderBranchFilter(){
@@ -5864,6 +5910,148 @@ window.addEventListener('storageReady', function(){
         });
       });
     }
+    // ── 入庫スキャン ──────────────────────────────────
+    let _receiveScanProduct = null; // 現在スキャン中の商品
+    function openReceiveScanModal(){
+      _receiveScanProduct = null;
+      document.getElementById('receiveScanInput').value = '';
+      document.getElementById('receiveScanProductArea').style.display = 'none';
+      document.getElementById('receiveScanDoneArea').style.display = 'none';
+      document.getElementById('receiveScanMsg').textContent = '';
+      document.getElementById('receiveScanModal').classList.add('show');
+      setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 100);
+    }
+    function _doReceiveScan(){
+      const barcode = document.getElementById('receiveScanInput').value.trim();
+      if(!barcode) return;
+      const p = products.find(x=>x.barcode && x.barcode === barcode);
+      if(!p){
+        document.getElementById('receiveScanMsg').textContent = '⚠️ 該当する商品が見つかりません（バーコード：'+barcode+'）';
+        document.getElementById('receiveScanProductArea').style.display = 'none';
+        document.getElementById('receiveScanDoneArea').style.display = 'none';
+        return;
+      }
+      document.getElementById('receiveScanMsg').textContent = '';
+      _receiveScanProduct = p;
+      // 商品カード
+      const ws = p.wheelSpec;
+      const specStr = ws ? [
+        ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'',
+        ws.holes&&ws.pcd?ws.holes+'H PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''
+      ].filter(Boolean).join('  ') : (p.spec||'');
+      const card = document.getElementById('receiveScanProductCard');
+      card.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:4px;">'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+'</div>'
+        +'<div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);">'+escapeHtml(specStr)+'</div>'
+        +'<div style="margin-top:6px;font-size:11px;color:var(--text-3);">品番：'+escapeHtml(p.partno||'—')+'　バーコード：'+escapeHtml(p.barcode||'—')+'</div>';
+      // 保管場所
+      const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const locs = (branchLocations[brId]||[]);
+      const locSel = document.getElementById('receiveScanLocation');
+      locSel.innerHTML = '<option value="">— 保管場所を選択 —</option>'
+        + locs.map(l=>'<option value="'+escapeHtml(l.id)+'"'+(p.branchLocation&&p.branchLocation[brId]===l.id?' selected':'')+'>'+escapeHtml(l.name)+'</option>').join('');
+      document.getElementById('receiveScanQty').value = 1;
+      document.getElementById('receiveScanProductArea').style.display = 'block';
+      document.getElementById('receiveScanDoneArea').style.display = 'none';
+    }
+    document.getElementById('receiveScanInput').addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); _doReceiveScan(); }
+    });
+    document.getElementById('receiveScanSearchBtn').addEventListener('click', _doReceiveScan);
+    document.getElementById('receiveScanConfirmBtn').addEventListener('click', async ()=>{
+      const p = _receiveScanProduct;
+      if(!p) return;
+      const qty = parseInt(document.getElementById('receiveScanQty').value)||1;
+      const locId = document.getElementById('receiveScanLocation').value;
+      const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      if(!p.branchStock) p.branchStock = {};
+      p.branchStock[brId] = (p.branchStock[brId]||0) + qty;
+      p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
+      if(locId){
+        if(!p.branchLocation) p.branchLocation = {};
+        p.branchLocation[brId] = locId;
+      }
+      p.updatedAt = Date.now();
+      const btn = document.getElementById('receiveScanConfirmBtn');
+      btn.disabled = true;
+      try{
+        await saveProducts();
+        renderProductTable();
+        document.getElementById('receiveScanProductArea').style.display = 'none';
+        const msg = document.getElementById('receiveScanDoneMsg');
+        const branchLabel = branchName(brId);
+        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'本<br>在庫：'+p.branchStock[brId]+'本（'+branchLabel+'）</span>';
+        document.getElementById('receiveScanDoneArea').style.display = 'block';
+        btn.disabled = false;
+      }catch(e){
+        document.getElementById('receiveScanMsg').textContent = '⚠️ 保存失敗: '+e.message;
+        btn.disabled = false;
+      }
+    });
+    document.getElementById('receiveScanNextBtn').addEventListener('click', ()=>{
+      _receiveScanProduct = null;
+      document.getElementById('receiveScanInput').value = '';
+      document.getElementById('receiveScanProductArea').style.display = 'none';
+      document.getElementById('receiveScanDoneArea').style.display = 'none';
+      document.getElementById('receiveScanMsg').textContent = '';
+      document.getElementById('receiveScanInput').focus();
+    });
+    document.getElementById('receiveScanPrintBtn').addEventListener('click', ()=>{
+      const p = _receiveScanProduct;
+      if(!p) return;
+      const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const brLabel = branchName(brId);
+      const ws = p.wheelSpec;
+      const specStr = ws ? [
+        ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'',
+        ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''
+      ].filter(Boolean).join('  ') : (p.spec||'');
+      const today = new Date();
+      const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
+      const qty = parseInt(document.getElementById('receiveScanQty').value)||1;
+      // qty枚分のラベルを生成
+      const labelHtml = Array.from({length:qty}).map(()=>`
+        <div class="label">
+          <div class="label-status">入庫済み</div>
+          <div class="label-name">${escapeHtml(p.brand||'')} ${escapeHtml(p.name||'')}</div>
+          <div class="label-spec">${escapeHtml(specStr)}</div>
+          <div class="label-partno">品番：${escapeHtml(p.partno||'—')}</div>
+          <div class="label-footer">${escapeHtml(dateStr)}　${escapeHtml(brLabel)}</div>
+        </div>`).join('');
+      const win = window.open('','_blank','width=600,height=400');
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>入庫済みラベル</title>
+      <style>
+        /* ▼ ラベルサイズはここで調整 (デフォルト: 62mm × 29mm) */
+        :root { --label-w: 62mm; --label-h: 29mm; --font-size-name: 9pt; --font-size-spec: 7.5pt; --font-size-small: 6pt; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background:#fff; }
+        .label {
+          width: var(--label-w); height: var(--label-h);
+          border: 1px solid #000; padding: 2mm 3mm;
+          display: flex; flex-direction: column; justify-content: space-between;
+          page-break-after: always; overflow: hidden;
+        }
+        .label:last-child { page-break-after: auto; }
+        .label-status { font-size: 7pt; font-weight: 900; color: #fff; background: #000; display: inline-block; padding: 0.5mm 2mm; border-radius: 2mm; margin-bottom: 1mm; width: fit-content; }
+        .label-name   { font-size: var(--font-size-name); font-weight: 700; line-height: 1.3; }
+        .label-spec   { font-size: var(--font-size-spec); color: #333; line-height: 1.3; }
+        .label-partno { font-size: var(--font-size-small); color: #555; }
+        .label-footer { font-size: var(--font-size-small); color: #555; text-align: right; }
+        @media print {
+          @page { size: var(--label-w) var(--label-h); margin: 0; }
+          body { margin: 0; }
+          .label { border: none; page-break-after: always; }
+        }
+      </style></head><body>${labelHtml}
+      <script>window.onload=()=>window.print();<\/script></body></html>`);
+      win.document.close();
+    });
+    document.getElementById('receiveScanClose').addEventListener('click',()=>{
+      document.getElementById('receiveScanModal').classList.remove('show');
+    });
+    document.getElementById('receiveScanModal').addEventListener('click', e=>{
+      if(e.target===document.getElementById('receiveScanModal')) document.getElementById('receiveScanModal').classList.remove('show');
+    });
+    // ─────────────────────────────────────────────────
     window.openLocationMasterModal = function(){
       refreshLocations();
       const brLabel = branchName(currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe');
