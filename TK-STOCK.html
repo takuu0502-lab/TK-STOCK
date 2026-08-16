@@ -4098,7 +4098,6 @@ window.addEventListener('storageReady', function(){
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="brandSortChk"'+(brandSortFilter?' checked':'')+'> ブランド順'
       + '</label>'
-      + (canWriteData() ? '<button id="openReceiveScanModalBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-radius:20px;background:var(--amber);color:#fff;cursor:pointer;white-space:nowrap;font-weight:600;">📦 入庫スキャン</button>' : '')
       + (canWriteData() ? '<button id="openLocationMasterModalBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--text-2);cursor:pointer;white-space:nowrap;">📍 保管場所管理</button>' : '')
       + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
       + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;width:160px;background:var(--surface);color:var(--text-1);">'
@@ -4129,8 +4128,6 @@ window.addEventListener('storageReady', function(){
     if(kwClear){ kwClear.addEventListener('click', ()=>{ keywordFilter = ''; renderProductTable(); }); }
     const locMasterBtn = document.getElementById('openLocationMasterModalBtn');
     if(locMasterBtn){ locMasterBtn.addEventListener('click', openLocationMasterModal); }
-    const rcvBtn = document.getElementById('openReceiveScanModalBtn');
-    if(rcvBtn){ rcvBtn.addEventListener('click', ()=>{ if(window.openReceiveScanModal) window.openReceiveScanModal(); }); }
   }
 
   function renderBranchFilter(){
