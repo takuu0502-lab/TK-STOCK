@@ -718,6 +718,30 @@
   </div>
 </div>
 
+<!-- JANコード一括入力モーダル -->
+<div class="modal-overlay" id="janBulkModal">
+  <div class="modal" style="max-width:700px;width:95%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">🏷️ JANコード一括入力</h3>
+    <div id="janBulkModalInfo" style="font-size:12.5px;color:var(--text-2);margin-bottom:12px;"></div>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:420px;font-size:12px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:var(--bg-2);position:sticky;top:0;">
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">商品名</th>
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">ホイールスペック</th>
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">品番</th>
+          <th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-3);white-space:nowrap;">JANコード</th>
+        </tr></thead>
+        <tbody id="janBulkModalTbody"></tbody>
+      </table>
+    </div>
+    <div id="janBulkMsg" style="margin-top:10px;font-size:13px;min-height:20px;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost" id="janBulkCancel">キャンセル</button>
+      <button class="btn btn-amber" id="janBulkSave">🏷️ 保存する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 発注書作成モーダル -->
 <div class="modal-overlay" id="orderModal">
   <div class="modal" style="max-width:540px;width:95%;max-height:90vh;overflow-y:auto;">
@@ -1107,6 +1131,15 @@
     <div class="pricing-section-title">📦 商品一括インポート</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">メーカー価格表のデータをまとめて商品登録します。カテゴリを選択して一括登録できます。</p>
     <div id="bulkImportBtnWrap" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+
+    <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">🏷️ JANコード一括入力</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">登録済み商品のJANコードをまとめて入力・更新できます。ブランド名・商品名で絞り込んで一括入力してください。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="text" id="janBulkBrandFilter" placeholder="ブランド名（例：ブリヂストン）" style="flex:1;min-width:160px;max-width:220px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      <input type="text" id="janBulkNameFilter" placeholder="商品名（例：トップラン M7）" style="flex:1;min-width:160px;max-width:220px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      <button class="btn btn-amber" id="openJanBulkModalBtn">🏷️ JANコードを入力する</button>
+    </div>
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🔩 ホイールメニュー設定（見積用）</div>
@@ -5913,6 +5946,94 @@ window.addEventListener('storageReady', function(){
         msgEl.style.color = 'var(--red)';
         msgEl.textContent = '⚠️ 登録に失敗しました: ' + e.message;
         execBtn.disabled = false;
+      }
+    });
+
+    // JANコード一括入力
+    document.getElementById('openJanBulkModalBtn').addEventListener('click', ()=>{
+      const brand = (document.getElementById('janBulkBrandFilter').value || '').trim();
+      const name  = (document.getElementById('janBulkNameFilter').value  || '').trim();
+      const targets = products.filter(p=>{
+        const bMatch = !brand || (p.brand||'').includes(brand);
+        const nMatch = !name  || (p.name||'').includes(name);
+        return bMatch && nMatch;
+      });
+      if(!targets.length){
+        alert('条件に一致する商品が見つかりません。ブランド名・商品名を確認してください。');
+        return;
+      }
+      // インチ昇順・J数昇順でソート
+      targets.sort((a,b)=>{
+        const aInch = a.wheelSpec ? parseInt(a.wheelSpec.inch)||0 : 0;
+        const bInch = b.wheelSpec ? parseInt(b.wheelSpec.inch)||0 : 0;
+        if(aInch !== bInch) return aInch - bInch;
+        const aJ = a.wheelSpec ? parseFloat(a.wheelSpec.j)||0 : 0;
+        const bJ = b.wheelSpec ? parseFloat(b.wheelSpec.j)||0 : 0;
+        return aJ - bJ;
+      });
+      const infoEl = document.getElementById('janBulkModalInfo');
+      infoEl.textContent = (brand||'（全ブランド）') + ' / ' + (name||'（全商品）') + ' — ' + targets.length + '件';
+      const tbody = document.getElementById('janBulkModalTbody');
+      tbody.innerHTML = targets.map(p=>{
+        const ws = p.wheelSpec;
+        const specParts = ws ? [
+          ws.inch ? ws.inch+'インチ' : '',
+          ws.j    ? ws.j+'J'        : '',
+          ws.holes && ws.pcd ? ws.holes+'H PCD'+ws.pcd : '',
+          ws.offset ? '+'+ws.offset : '',
+          ws.color  ? ws.color      : ''
+        ].filter(Boolean) : [];
+        const specStr = specParts.length ? specParts.join(' ') : (p.spec||'');
+        return `<tr style="border-top:1px solid var(--line);">
+          <td style="padding:6px 10px;white-space:nowrap;">${escapeHtml(p.name||'')}</td>
+          <td style="padding:6px 10px;font-family:var(--font-mono);font-size:11px;color:var(--text-2);white-space:nowrap;">${escapeHtml(specStr)}</td>
+          <td style="padding:6px 10px;font-family:var(--font-mono);font-size:11px;color:var(--text-3);white-space:nowrap;">${escapeHtml(p.partno||'')}</td>
+          <td style="padding:6px 10px;">
+            <input type="text" data-jan-pid="${escapeHtml(p.id)}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコードを入力"
+              style="width:160px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);">
+          </td>
+        </tr>`;
+      }).join('');
+      document.getElementById('janBulkMsg').textContent = '';
+      document.getElementById('janBulkModal').classList.add('show');
+    });
+    document.getElementById('janBulkCancel').addEventListener('click',()=>{
+      document.getElementById('janBulkModal').classList.remove('show');
+    });
+    document.getElementById('janBulkModal').addEventListener('click', e=>{
+      if(e.target===document.getElementById('janBulkModal')) document.getElementById('janBulkModal').classList.remove('show');
+    });
+    document.getElementById('janBulkSave').addEventListener('click', async ()=>{
+      const inputs = document.querySelectorAll('[data-jan-pid]');
+      let changed = 0;
+      inputs.forEach(inp=>{
+        const pid = inp.dataset.janPid;
+        const val = inp.value.trim();
+        const p = products.find(x=>x.id===pid);
+        if(p && p.barcode !== val){
+          p.barcode = val;
+          p.updatedAt = Date.now();
+          changed++;
+        }
+      });
+      if(!changed){
+        document.getElementById('janBulkMsg').style.color = 'var(--text-2)';
+        document.getElementById('janBulkMsg').textContent = '変更はありませんでした。';
+        return;
+      }
+      const saveBtn = document.getElementById('janBulkSave');
+      saveBtn.disabled = true;
+      document.getElementById('janBulkMsg').style.color = 'var(--text-2)';
+      document.getElementById('janBulkMsg').textContent = '保存中...';
+      try{
+        await saveProducts();
+        document.getElementById('janBulkMsg').style.color = 'var(--teal)';
+        document.getElementById('janBulkMsg').textContent = '✅ ' + changed + '件のJANコードを保存しました。';
+        saveBtn.disabled = false;
+      }catch(e){
+        document.getElementById('janBulkMsg').style.color = 'var(--red)';
+        document.getElementById('janBulkMsg').textContent = '⚠️ 保存に失敗しました: ' + e.message;
+        saveBtn.disabled = false;
       }
     });
 
