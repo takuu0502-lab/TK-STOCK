@@ -5999,37 +5999,20 @@ window.addEventListener('storageReady', function(){
       document.getElementById('receiveScanDoneArea').style.display = 'none';
     }
     let _scanDebounceTimer = null;
-    let _scanComposing = false; // IME変換中フラグ
     const _scanInput = document.getElementById('receiveScanInput');
     const _scanPreview = document.getElementById('receiveScanRawPreview');
-    // かな入力検知 → 警告表示 + 入力クリア
-    _scanInput.addEventListener('compositionstart', ()=>{
-      _scanComposing = true;
-      if(_scanPreview) _scanPreview.innerHTML = '<span style="color:var(--red);font-weight:700;">⚠️ キーボードを英数字入力（半角）に切り替えてからスキャンしてください</span>';
-      // かな入力で入った文字は捨てる
-      setTimeout(()=>{ _scanInput.value = ''; }, 0);
-    });
-    _scanInput.addEventListener('compositionend', ()=>{
-      _scanComposing = false;
-      // IME確定後も全角→半角変換してクリーン化
-      _scanInput.value = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'').toLowerCase();
-      if(_scanPreview) _scanPreview.textContent = _scanInput.value ? '読み取り中: ' + _scanInput.value : '';
-    });
-    _scanInput.addEventListener('input', ()=>{
-      if(_scanComposing) return;
-      // 全角数字→半角・不要文字除去
-      const cleaned = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'').toLowerCase();
-      if(_scanInput.value !== cleaned) _scanInput.value = cleaned;
-      if(_scanPreview) _scanPreview.textContent = cleaned ? '読み取り中: ' + cleaned : '';
-      // スキャナーは高速入力なので300ms後に自動検索
-      clearTimeout(_scanDebounceTimer);
-      if(cleaned.length >= 4){
-        _scanDebounceTimer = setTimeout(()=>{ if(!_scanComposing) _doReceiveScan(); }, 300);
-      }
-    });
-    _scanInput.addEventListener('keydown', e=>{
-      if(e.key==='Enter' && !_scanComposing){ e.preventDefault(); clearTimeout(_scanDebounceTimer); _doReceiveScan(); }
-    });
+    // IMEバイパス：物理キーコードから直接文字を組み立て（かな入力でも正常動作）
+    setupBarcodeKeyCapture(
+      _scanInput,
+      (val)=>{
+        if(_scanPreview) _scanPreview.textContent = val ? '読み取り中: ' + val : '';
+        clearTimeout(_scanDebounceTimer);
+        if(val.length >= 4){
+          _scanDebounceTimer = setTimeout(()=>{ _doReceiveScan(); }, 300);
+        }
+      },
+      ()=>{ clearTimeout(_scanDebounceTimer); _doReceiveScan(); }
+    );
     document.getElementById('receiveScanSearchBtn').addEventListener('click', ()=>{ clearTimeout(_scanDebounceTimer); _doReceiveScan(); });
     document.getElementById('receiveScanConfirmBtn').addEventListener('click', async ()=>{
       const p = _receiveScanProduct;
@@ -8318,6 +8301,29 @@ window.addEventListener('storageReady', function(){
     banner.innerHTML = '<div style="font-size:12px;padding:6px 12px;background:var(--bg-2);border-left:3px solid '+color+';border-radius:4px;color:var(--text-2);">'+msg+'</div>';
   }
 
+  // IMEを完全バイパスするバーコード入力セットアップ
+  // keydown の物理キーコード(e.code)から直接文字を組み立てる
+  function setupBarcodeKeyCapture(input, onInput, onEnter){
+    const K = {
+      Digit0:'0',Digit1:'1',Digit2:'2',Digit3:'3',Digit4:'4',
+      Digit5:'5',Digit6:'6',Digit7:'7',Digit8:'8',Digit9:'9',
+      KeyA:'a',KeyB:'b',KeyC:'c',KeyD:'d',KeyE:'e',KeyF:'f',
+      KeyG:'g',KeyH:'h',KeyI:'i',KeyJ:'j',KeyK:'k',KeyL:'l',
+      KeyM:'m',KeyN:'n',KeyO:'o',KeyP:'p',KeyQ:'q',KeyR:'r',
+      KeyS:'s',KeyT:'t',KeyU:'u',KeyV:'v',KeyW:'w',KeyX:'x',
+      KeyY:'y',KeyZ:'z',Minus:'-',Period:'.',
+      Numpad0:'0',Numpad1:'1',Numpad2:'2',Numpad3:'3',Numpad4:'4',
+      Numpad5:'5',Numpad6:'6',Numpad7:'7',Numpad8:'8',Numpad9:'9',
+    };
+    input.addEventListener('keydown', (e)=>{
+      if(e.code==='Enter'||e.code==='NumpadEnter'){ e.preventDefault(); if(onEnter) onEnter(input.value); return; }
+      if(e.code==='Backspace'||e.code==='Tab') return; // 通常動作
+      const ch = K[e.code];
+      if(ch!==undefined){ e.preventDefault(); input.value+=ch; if(onInput) onInput(input.value); }
+      else if(!['Shift','Control','Alt','Meta','CapsLock'].includes(e.key)){ e.preventDefault(); } // 不明な文字はIMEに渡さない
+    });
+  }
+
   function setupTransactionTab(kind){
     const barcodeInput = document.getElementById(kind+'Barcode');
     const lookupBtn = document.getElementById(kind+'LookupBtn');
@@ -8400,21 +8406,12 @@ window.addEventListener('storageReady', function(){
         renderSpecSearchPanel();
       }
     });
-    // リアルタイム小文字変換
-    barcodeInput.addEventListener('input', ()=>{
-      const lower = barcodeInput.value.toLowerCase();
-      if(barcodeInput.value !== lower) barcodeInput.value = lower;
-    });
-    // かな入力検知 → 警告 + クリア
-    const _imeWarnEl = document.getElementById(kind+'Result');
-    barcodeInput.addEventListener('compositionstart', ()=>{
-      setTimeout(()=>{ barcodeInput.value = ''; }, 0);
-      if(_imeWarnEl) _imeWarnEl.innerHTML = '<div class="msg msg-error">⚠️ キーボードを英数字入力（半角）に切り替えてからスキャンしてください<br><span style="font-size:12px;font-weight:400;">Macの場合：メニューバーの入力ソースを「英数」に切り替えるか、Caps Lockキーを押してください</span></div>';
-    });
-    barcodeInput.addEventListener('compositionend', ()=>{
-      barcodeInput.value = barcodeInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'').toLowerCase();
-    });
-    barcodeInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doLookup(false); });
+    // IMEバイパス：物理キーコードから直接文字を組み立て（かな入力でも正常動作）
+    setupBarcodeKeyCapture(
+      barcodeInput,
+      ()=>{}, // onInput（値はkeydownで直接セット済み）
+      ()=> doLookup(false) // onEnter
+    );
     barcodeInput.__doScanLookup = ()=> doLookup(true);
   }
 
