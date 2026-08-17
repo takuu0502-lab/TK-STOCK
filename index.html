@@ -726,10 +726,13 @@
     <div style="margin-bottom:14px;">
       <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px;">バーコードをスキャンまたは手入力</label>
       <div style="display:flex;gap:8px;">
-        <input type="text" id="receiveScanInput" placeholder="JANコードをスキャン…" autocomplete="off"
-          style="flex:1;padding:10px 14px;border:2px solid var(--amber);border-radius:10px;font-size:15px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);outline:none;">
+        <input type="text" id="receiveScanInput" placeholder="JANコードをスキャン…"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          inputmode="numeric" lang="en"
+          style="flex:1;padding:10px 14px;border:2px solid var(--amber);border-radius:10px;font-size:15px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);outline:none;ime-mode:disabled;">
         <button class="btn btn-amber" id="receiveScanSearchBtn">検索</button>
       </div>
+      <div id="receiveScanRawPreview" style="margin-top:6px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);min-height:16px;"></div>
     </div>
     <!-- 商品情報 -->
     <div id="receiveScanProductArea" style="display:none;">
@@ -5952,6 +5955,7 @@ window.addEventListener('storageReady', function(){
     window.openReceiveScanModal = function openReceiveScanModal(){
       _receiveScanProduct = null;
       document.getElementById('receiveScanInput').value = '';
+      document.getElementById('receiveScanRawPreview').textContent = '';
       document.getElementById('receiveScanProductArea').style.display = 'none';
       document.getElementById('receiveScanDoneArea').style.display = 'none';
       document.getElementById('receiveScanMsg').textContent = '';
@@ -5990,10 +5994,34 @@ window.addEventListener('storageReady', function(){
       document.getElementById('receiveScanProductArea').style.display = 'block';
       document.getElementById('receiveScanDoneArea').style.display = 'none';
     }
-    document.getElementById('receiveScanInput').addEventListener('keydown', e=>{
-      if(e.key==='Enter'){ e.preventDefault(); _doReceiveScan(); }
+    let _scanDebounceTimer = null;
+    let _scanComposing = false; // IME変換中フラグ
+    const _scanInput = document.getElementById('receiveScanInput');
+    const _scanPreview = document.getElementById('receiveScanRawPreview');
+    // IME変換中は無視
+    _scanInput.addEventListener('compositionstart', ()=>{ _scanComposing = true; });
+    _scanInput.addEventListener('compositionend', ()=>{
+      _scanComposing = false;
+      // IME確定後に全角→半角変換してクリーン化
+      _scanInput.value = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'');
+      if(_scanPreview) _scanPreview.textContent = '読み取り中: ' + _scanInput.value;
     });
-    document.getElementById('receiveScanSearchBtn').addEventListener('click', _doReceiveScan);
+    _scanInput.addEventListener('input', ()=>{
+      if(_scanComposing) return;
+      // 全角数字→半角・不要文字除去
+      const cleaned = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'');
+      if(_scanInput.value !== cleaned) _scanInput.value = cleaned;
+      if(_scanPreview) _scanPreview.textContent = cleaned ? '読み取り中: ' + cleaned : '';
+      // スキャナーは高速入力なので300ms後に自動検索
+      clearTimeout(_scanDebounceTimer);
+      if(cleaned.length >= 4){
+        _scanDebounceTimer = setTimeout(()=>{ if(!_scanComposing) _doReceiveScan(); }, 300);
+      }
+    });
+    _scanInput.addEventListener('keydown', e=>{
+      if(e.key==='Enter' && !_scanComposing){ e.preventDefault(); clearTimeout(_scanDebounceTimer); _doReceiveScan(); }
+    });
+    document.getElementById('receiveScanSearchBtn').addEventListener('click', ()=>{ clearTimeout(_scanDebounceTimer); _doReceiveScan(); });
     document.getElementById('receiveScanConfirmBtn').addEventListener('click', async ()=>{
       const p = _receiveScanProduct;
       if(!p) return;
