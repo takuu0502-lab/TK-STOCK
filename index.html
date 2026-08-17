@@ -972,7 +972,6 @@
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch">商品検索</button>
-      <button class="btn btn-ghost btn-sm" id="openBulkEditBtn">✏️ 一括編集</button>
       <button class="btn btn-amber btn-sm" id="openAddProduct">＋ 新規商品登録</button>
       <button class="btn btn-amber btn-sm" id="quickScanBtn">スキャン</button>
     </div>
@@ -1003,6 +1002,7 @@
   <button class="btn-bulk btn-bulk-prov" id="bulkProvBtn">🔖 仮出庫登録</button>
   <button class="btn-bulk btn-bulk-qr" id="bulkQrBtn">🖨 QR印刷</button>
   <button class="btn-bulk btn-bulk-order" id="bulkOrderBtn">📋 発注書作成</button>
+  <button class="btn-bulk" id="bulkEditFromBarBtn" style="background:#555;color:#fff;">✏️ 一括編集</button>
   <button class="btn-bulk btn-bulk-clear" id="bulkClearBtn">選択解除</button>
 </div>
 
@@ -5964,6 +5964,22 @@ window.addEventListener('storageReady', function(){
     document.getElementById('bulkClearBtn').addEventListener('click', ()=>{
       selectedProducts.clear(); updateBulkBar(); renderProductTable();
     });
+    // 一括編集（選択中の商品をモーダルで編集）
+    document.getElementById('bulkEditFromBarBtn').addEventListener('click', ()=>{
+      const selectedIds = [...selectedProducts];
+      if(!selectedIds.length) return;
+      window._openBulkEditForCatalog('');
+      // 選択中の商品IDにチェックを入れる
+      setTimeout(()=>{
+        document.querySelectorAll('#bulkEditTbody .be-chk').forEach(chk=>{
+          if(selectedIds.includes(chk.dataset.pid)){
+            chk.checked = true;
+          }
+        });
+        const countEl = document.getElementById('bulkEditSelectedCount');
+        if(countEl) countEl.textContent = selectedIds.length+'件選択中';
+      }, 50);
+    });
     // 発注書作成
     document.getElementById('bulkOrderBtn').addEventListener('click', ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
@@ -7188,12 +7204,6 @@ window.addEventListener('storageReady', function(){
       _beUpdateCount();
     }
 
-    document.getElementById('openBulkEditBtn').addEventListener('click', ()=>{
-      _beFilter.value = '';
-      _beStatus.textContent = '';
-      _beModal.style.display = 'flex';
-      _beRender();
-    });
     _beFilter.addEventListener('input', _beRender);
 
     document.getElementById('bulkEditAllChk').addEventListener('change', e=>{
