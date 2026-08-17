@@ -5967,13 +5967,14 @@ window.addEventListener('storageReady', function(){
       setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 300);
     }
     function _doReceiveScan(){
-      const barcode = document.getElementById('receiveScanInput').value.trim();
+      const barcode = document.getElementById('receiveScanInput').value.trim().toLowerCase();
       if(!barcode) return;
-      const p = products.find(x=>x.barcode && x.barcode === barcode);
+      const p = products.find(x=>x.barcode && x.barcode.toLowerCase() === barcode);
       if(!p){
         document.getElementById('receiveScanMsg').textContent = '⚠️ 該当する商品が見つかりません（バーコード：'+barcode+'）';
         document.getElementById('receiveScanProductArea').style.display = 'none';
         document.getElementById('receiveScanDoneArea').style.display = 'none';
+        setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 50);
         return;
       }
       document.getElementById('receiveScanMsg').textContent = '';
@@ -5997,6 +5998,7 @@ window.addEventListener('storageReady', function(){
       document.getElementById('receiveScanQty').value = 1;
       document.getElementById('receiveScanProductArea').style.display = 'block';
       document.getElementById('receiveScanDoneArea').style.display = 'none';
+      setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 50);
     }
     let _scanDebounceTimer = null;
     const _scanInput = document.getElementById('receiveScanInput');
@@ -7789,17 +7791,23 @@ window.addEventListener('storageReady', function(){
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<button class="btn btn-ghost" id="detailQrBtn" style="margin-top:10px;font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
       + '</div>'
-      + '<div class="detail-stats">'
-      + '<div class="detail-stat"><div class="detail-stat-label">現在庫数</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-      + '<div class="detail-stat-value">'+getStock(p)+'</div>'
-      + (()=>{ const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe'; const provQty=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const provOver=provQty>getStock(p); return provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':''; })()
-      + '</div></div>'
-      + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
-      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
-      + '<div class="detail-stat"><div class="detail-stat-label">販売価格（1点）</div><div class="detail-stat-value">'+(sell ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</div></div>'
-      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">粗利（1点）</div><div class="detail-stat-value">'+(margin !== null ? '\u00a5'+margin.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
-      + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*getStock(p)).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
-      + '</div>'
+      + (()=>{
+          const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+          const _detOwnStk = p.branchStock ? (p.branchStock[_detOwnBranch]||0) : (p.stock||0);
+          const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const provOver = provQty > _detOwnStk;
+          return '<div class="detail-stats">'
+            + '<div class="detail-stat"><div class="detail-stat-label">現在庫数（自店舗）</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+            + '<div class="detail-stat-value">'+_detOwnStk+'</div>'
+            + (provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'🔖')+' 仮出庫 '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':'')
+            + '</div></div>'
+            + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
+            + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
+            + '<div class="detail-stat"><div class="detail-stat-label">販売価格（1点）</div><div class="detail-stat-value">'+(sell ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</div></div>'
+            + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">粗利（1点）</div><div class="detail-stat-value">'+(margin !== null ? '\u00a5'+margin.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
+            + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*_detOwnStk).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
+            + '</div>';
+        })()
       + (writable ? (''
         + '<div class="detail-quick-actions">'
         + '<div class="detail-hist-title" style="margin:0 0 8px;">入庫・出庫</div>'
@@ -8381,7 +8389,7 @@ window.addEventListener('storageReady', function(){
         resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
         barcodeInput.value = '';
         setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
-        if(fromScan){ setTimeout(()=>{ startScanner('in'); }, 900); } else { barcodeInput.focus(); }
+        if(fromScan){ setTimeout(()=>{ startScanner('in'); }, 900); } else { setTimeout(()=>{ barcodeInput.focus(); }, 50); }
         return;
       }
       if(kind === 'out'){
@@ -8390,7 +8398,7 @@ window.addEventListener('storageReady', function(){
         resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
         barcodeInput.value = '';
         setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
-        if(fromScan){ setTimeout(()=>{ startScanner('out'); }, 900); } else { barcodeInput.focus(); }
+        if(fromScan){ setTimeout(()=>{ startScanner('out'); }, 900); } else { setTimeout(()=>{ barcodeInput.focus(); }, 50); }
         return;
       }
       renderLookupCard(kind, p);
