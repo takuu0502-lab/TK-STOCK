@@ -3168,6 +3168,8 @@ window.addEventListener('storageReady', function(){
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
+      if(tab === 'in'){ setTimeout(()=>{ document.getElementById('inBarcode').focus(); }, 200); }
+      if(tab === 'out'){ setTimeout(()=>{ document.getElementById('outBarcode').focus(); }, 200); }
     });
   });
 
@@ -8316,7 +8318,7 @@ window.addEventListener('storageReady', function(){
     updateTransactionBranchBanner(kind);
 
     function doLookup(fromScan){
-      const code = barcodeInput.value.trim();
+      const code = barcodeInput.value.trim().toLowerCase();
       resultEl.innerHTML = '';
       if(!code) return;
       const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -8390,6 +8392,11 @@ window.addEventListener('storageReady', function(){
         document.getElementById('openSpecSearch').classList.add('active');
         renderSpecSearchPanel();
       }
+    });
+    // リアルタイム小文字変換
+    barcodeInput.addEventListener('input', ()=>{
+      const lower = barcodeInput.value.toLowerCase();
+      if(barcodeInput.value !== lower) barcodeInput.value = lower;
     });
     barcodeInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doLookup(false); });
     barcodeInput.__doScanLookup = ()=> doLookup(true);
