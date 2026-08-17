@@ -2589,30 +2589,6 @@ window.addEventListener('storageReady', function(){
     });
   }
 
-  document.getElementById('bulkSetBrandBtn').addEventListener('click', async ()=>{
-    const overwrite = document.getElementById('bulkBrandOverwrite').checked;
-    const msgEl = document.getElementById('bulkBrandMsg');
-    let updated = 0, skipped = 0;
-    products.forEach(p => {
-      if(!overwrite && p.brand) { skipped++; return; }
-      const entry = findCatalogEntryForProduct(p);
-      if(entry && entry.b){
-        p.brand = entry.b;
-        updated++;
-      } else {
-        skipped++;
-      }
-    });
-    if(updated > 0){
-      await saveProducts();
-      renderProductTable();
-      msgEl.innerHTML = '<span style="color:var(--teal);">✓ '+updated+'件を更新しました。'+(skipped>0?' '+skipped+'件はスキップ。':'')+'</span>';
-    } else {
-      msgEl.innerHTML = '<span style="color:var(--text-2);">更新対象の商品がありませんでした。'+(skipped>0?' '+skipped+'件はスキップ。':'')+'</span>';
-    }
-    setTimeout(()=>{ msgEl.innerHTML=''; }, 4000);
-  });
-
   document.getElementById('saveExternalPricingRules').addEventListener('click', async ()=>{
     externalPriceRules.default = {
       basis: document.getElementById('er_default_basis').value,
