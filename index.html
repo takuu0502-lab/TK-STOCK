@@ -4051,9 +4051,13 @@ window.addEventListener('storageReady', function(){
         + '</select>'
         + '</div>'
       : '';
+    const _unregisteredCount = matches.filter(r=>!findProductForCatalogEntry(r)).length;
+    const _catalogRegisterBtn = (!forceTire && _unregisteredCount > 0)
+      ? '<button class="btn btn-teal btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._bulkRegisterCatalog()">📥 未登録'+_unregisteredCount+'件を一括登録</button>'
+      : '';
     const _catalogEditBtn = !forceTire ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openCatalogBulkEdit(window._lastCatalogMatches||[])">✏️ 一括編集</button>' : '';
     window._lastCatalogMatches = matches;
-    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'+_catalogEditBtn+'</div>'
+    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
@@ -7296,6 +7300,44 @@ window.addEventListener('storageReady', function(){
     const _cbModal  = document.getElementById('catalogBulkEditModal');
     const _cbTbody  = document.getElementById('catalogBulkEditTbody');
     const _cbStatus = document.getElementById('catalogBulkEditStatus');
+
+    window._bulkRegisterCatalog = async ()=>{
+      const matches = window._lastCatalogMatches || [];
+      const unregistered = matches.filter(r=>!findProductForCatalogEntry(r));
+      if(!unregistered.length){ alert('未登録の商品はありません。'); return; }
+      const ok = await showConfirm(unregistered.length+'件の商品を一括登録しますか？\n（在庫数0・価格は価格調整ルールから自動計算）');
+      if(!ok) return;
+      const tireCat = categories.find(c=>c.name==='タイヤ');
+      const majorId = tireCat ? tireCat.id : (categories[0]&&categories[0].id);
+      const _newBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      for(const r of unregistered){
+        if(findProductForCatalogEntry(r)) continue; // 念のため再チェック
+        const sell = computeSellPrice(r.b, r.m, r.w, r.t);
+        const cost = computeCostPrice(r.b, r.m, r.w, r.t);
+        const _brStock = {}; BRANCHES.forEach(b=>{ _brStock[b.id]=0; });
+        products.push({
+          id: uid('p'),
+          barcode: '',
+          name: r.b===r.m ? r.b : r.b+' '+r.m,
+          brand: r.b,
+          majorId,
+          subId: null,
+          spec: r.s,
+          stock: 0,
+          minStock: 0,
+          costPrice: cost!==null ? cost : r.w,
+          sellPrice: sell!==null ? sell : 0,
+          _fromCatalog: true,
+          branchId: _newBrId,
+          branchStock: _brStock,
+          createdAt: new Date().toISOString()
+        });
+      }
+      await saveProducts();
+      renderCatTree();
+      renderProductTable();
+      showToast(unregistered.length+'件の商品を登録しました');
+    };
 
     window._openCatalogBulkEdit = (matches)=>{
       _cbStatus.textContent = '';
