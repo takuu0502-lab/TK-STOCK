@@ -1930,8 +1930,8 @@ window.addEventListener('storageReady', function(){
       // スコア計算してソート（高スコア順 → 同スコアはモデル名アルファベット順）
       const scored = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
         .sort((a,b)=> b.score-a.score || a.m.localeCompare(b.m,'ja'));
-      // 最高スコアが0.5以上なら自動選択
-      const autoIdx = scored.length>0 && scored[0].score>=0.5 ? 0 : -1;
+      // 候補があれば最上位を自動選択（ユーザーがドロップダウンで変更可能）
+      const autoIdx = scored.length>0 ? 0 : -1;
       rows.push({product: p, matches: scored, selectedIdx: autoIdx});
     }
     return rows;
