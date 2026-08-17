@@ -793,8 +793,15 @@
 <div class="modal-overlay" id="catalogBulkEditModal">
   <div class="modal" style="max-width:960px;width:96%;max-height:90vh;overflow-y:auto;">
     <h3 style="margin-top:0;font-size:16px;">✏️ 価格表 一括編集</h3>
-    <p style="font-size:12px;color:var(--text-3);margin-top:-8px;margin-bottom:12px;">商品が登録済みの行のみ編集・保存できます。未登録行はグレーで表示されます。</p>
-    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:460px;">
+    <p style="font-size:12px;color:var(--text-3);margin-top:-8px;margin-bottom:10px;">商品が登録済みの行のみ編集・保存できます。未登録行はグレーで表示されます。</p>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;background:var(--bg-2);border-radius:8px;padding:8px 12px;">
+      <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">一括入力：</span>
+      <input type="text" id="cbBulkBrand" placeholder="ブランド名（例：ブリヂストン）" style="flex:1;min-width:140px;padding:5px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);">
+      <button class="btn btn-ghost btn-sm" id="cbApplyBrand" style="white-space:nowrap;">全行のブランド名に適用</button>
+      <input type="text" id="cbBulkName" placeholder="商品名" style="flex:1;min-width:140px;padding:5px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);">
+      <button class="btn btn-ghost btn-sm" id="cbApplyName" style="white-space:nowrap;">全行の商品名に適用</button>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:400px;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
           <th style="padding:7px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">銘柄（カタログ）</th>
@@ -7357,6 +7364,17 @@ window.addEventListener('storageReady', function(){
       }).join('');
       _cbModal.style.display = 'flex';
     };
+
+    document.getElementById('cbApplyBrand').addEventListener('click', ()=>{
+      const val = document.getElementById('cbBulkBrand').value.trim();
+      if(!val) return;
+      _cbTbody.querySelectorAll('.cb-brand:not([disabled])').forEach(inp=>{ inp.value=val; inp.style.borderColor='var(--teal)'; });
+    });
+    document.getElementById('cbApplyName').addEventListener('click', ()=>{
+      const val = document.getElementById('cbBulkName').value.trim();
+      if(!val) return;
+      _cbTbody.querySelectorAll('.cb-name:not([disabled])').forEach(inp=>{ inp.value=val; inp.style.borderColor='var(--teal)'; });
+    });
 
     document.getElementById('catalogBulkEditSave').addEventListener('click', async ()=>{
       const matches = window._lastCatalogMatches || [];
