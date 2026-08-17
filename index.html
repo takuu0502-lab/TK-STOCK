@@ -2811,6 +2811,27 @@ window.addEventListener('storageReady', function(){
     await loadWheelMenuSettings();
     await loadWheelCatalog();
 
+    // BS JAN自動設定（起動時・スコア0.9以上・未登録商品のみ・サイレント実行）
+    {
+      let _bsAutoCount = 0;
+      for(const p of products){
+        if(p.barcode) continue;
+        const pSize = normSpecSize(p.spec||'');
+        if(!pSize) continue;
+        const best = BS_JAN_LOOKUP
+          .filter(e=>e.s===pSize)
+          .map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
+          .sort((a,b)=>b.score-a.score)[0];
+        if(best && best.score>=0.9){
+          p.barcode = best.j;
+          if(!p.partno) p.partno = best.p;
+          p.updatedAt = Date.now();
+          _bsAutoCount++;
+        }
+      }
+      if(_bsAutoCount) await saveProducts();
+    }
+
     renderCatTree();
     renderProductTable();
     renderHistory();
