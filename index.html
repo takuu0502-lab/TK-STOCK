@@ -5960,7 +5960,7 @@ window.addEventListener('storageReady', function(){
       document.getElementById('receiveScanDoneArea').style.display = 'none';
       document.getElementById('receiveScanMsg').textContent = '';
       document.getElementById('receiveScanModal').classList.add('show');
-      setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 100);
+      setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 300);
     }
     function _doReceiveScan(){
       const barcode = document.getElementById('receiveScanInput').value.trim();
@@ -6067,7 +6067,15 @@ window.addEventListener('storageReady', function(){
       document.getElementById('receiveScanModal').classList.remove('show');
     });
     document.getElementById('receiveScanModal').addEventListener('click', e=>{
-      if(e.target===document.getElementById('receiveScanModal')) document.getElementById('receiveScanModal').classList.remove('show');
+      if(e.target===document.getElementById('receiveScanModal')){
+        document.getElementById('receiveScanModal').classList.remove('show');
+      } else {
+        // モーダル内クリック時、ボタン・入力欄以外ならスキャン入力にフォーカスを戻す
+        const tag = e.target.tagName;
+        if(!['BUTTON','INPUT','SELECT','TEXTAREA','LABEL'].includes(tag)){
+          document.getElementById('receiveScanInput').focus();
+        }
+      }
     });
     // ─────────────────────────────────────────────────
     window.openLocationMasterModal = function(){
