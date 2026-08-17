@@ -1202,7 +1202,10 @@
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
       登録済み商品のサイズ・商品名をもとにJANコードを自動照合します。バーコードが未登録の商品が対象です。照合結果を確認してから適用できます。
     </p>
-    <button class="btn btn-amber" id="openJanMatchBtn">🔍 JANコードを自動照合する</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn-amber" id="openJanMatchBtn">🔍 JANコードを自動照合する</button>
+      <button class="btn btn-teal" id="janBulkAutoSaveBtn">⚡ 一括自動設定（確認なし）</button>
+    </div>
     <div id="janMatchMsg" style="margin-top:10px;font-size:13px;"></div>
 
     <div class="pricing-section-divider"></div>
@@ -6495,6 +6498,45 @@ window.addEventListener('storageReady', function(){
       }
       msgEl.textContent = '';
       openJanMatchModal(candidates);
+    });
+
+    // 一括自動設定（スコア0.5以上を確認なしで即保存）
+    document.getElementById('janBulkAutoSaveBtn').addEventListener('click', async ()=>{
+      const msgEl = document.getElementById('janMatchMsg');
+      const btn = document.getElementById('janBulkAutoSaveBtn');
+      btn.disabled = true;
+      msgEl.style.color = 'var(--text-2)';
+      msgEl.textContent = '処理中...';
+      let changed = 0;
+      for(const p of products){
+        if(p.barcode) continue;
+        const pSize = normSpecSize(p.spec||'');
+        if(!pSize) continue;
+        const best = BS_JAN_LOOKUP.filter(e=>e.s===pSize)
+          .map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
+          .sort((a,b)=>b.score-a.score)[0];
+        if(best && best.score>=0.5){
+          p.barcode = best.j;
+          if(!p.partno) p.partno = best.p;
+          p.updatedAt = Date.now();
+          changed++;
+        }
+      }
+      if(!changed){
+        msgEl.style.color = 'var(--text-2)';
+        msgEl.textContent = '自動設定できる商品がありませんでした（スコア0.5以上の候補なし）';
+        btn.disabled = false;
+        return;
+      }
+      try{
+        await saveProducts();
+        msgEl.style.color = 'var(--teal)';
+        msgEl.textContent = '✅ '+changed+'件にJANコードを自動設定・保存しました';
+      }catch(e){
+        msgEl.style.color = 'var(--red)';
+        msgEl.textContent = '⚠️ 保存失敗: '+e.message;
+      }
+      btn.disabled = false;
     });
   });
 
