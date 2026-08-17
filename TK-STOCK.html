@@ -808,20 +808,23 @@
     <!-- ステータス -->
     <div id="janScanRegisterStatus" style="font-size:13px;min-height:22px;margin-bottom:8px;"></div>
     <!-- 未登録商品リスト -->
-    <div style="font-size:11px;color:var(--text-3);margin-bottom:5px;">JANコード未登録の商品 — <span id="janScanRegisterCount"></span></div>
-    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:360px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;flex-wrap:wrap;">
+      <div style="font-size:11px;color:var(--text-3);">JANコード未登録の商品 — <span id="janScanRegisterCount"></span></div>
+      <button class="btn btn-ghost btn-sm" id="janScanApplyAllSuggestedBtn" style="margin-left:auto;white-space:nowrap;display:none;">✅ BS候補をすべて適用して保存</button>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:340px;">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;">
           <th style="padding:7px 10px;text-align:left;color:var(--text-3);">商品名</th>
-          <th style="padding:7px 10px;text-align:left;color:var(--text-3);">サイズ/スペック</th>
-          <th style="padding:7px 10px;text-align:left;color:var(--text-3);">JANコード</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);">サイズ</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);">BS候補 / スキャン登録</th>
         </tr></thead>
         <tbody id="janScanRegisterList"></tbody>
       </table>
     </div>
     <!-- 非表示スキャン入力 -->
     <input type="text" id="janScanRegisterInput" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;">
-    <div style="margin-top:10px;font-size:11.5px;color:var(--text-3);">商品を選択した状態でバーコードをスキャンすると自動保存されます</div>
+    <div style="margin-top:10px;font-size:11.5px;color:var(--text-3);">商品行をクリックして選択 → バーコードをスキャンで登録。BS候補がある商品は「適用」ボタンで即登録できます。</div>
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn btn-ghost" id="janScanRegisterClose">閉じる</button>
     </div>
@@ -6279,16 +6282,36 @@ window.addEventListener('storageReady', function(){
         const unregistered = products.filter(p=>!p.barcode && (p.branchId||'taniyabe')===ownBranch)
           .sort((a,b)=>(a.spec||'').localeCompare(b.spec||'ja'));
         _jsrCount.textContent = unregistered.length + '件';
+        // BS候補を計算（スコア不問で最高候補を取得）
+        const bsCandidateMap = {};
+        for(const p of unregistered){
+          const pSize = normSpecSize(p.spec||'');
+          if(!pSize) continue;
+          const sizeMatches = BS_JAN_LOOKUP.filter(e=>e.s===pSize);
+          if(!sizeMatches.length) continue;
+          const best = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
+            .sort((a,b)=>b.score-a.score)[0];
+          if(best) bsCandidateMap[p.id] = best;
+        }
+        const hasSuggested = Object.values(bsCandidateMap).some(e=>e.score>=0.3);
+        document.getElementById('janScanApplyAllSuggestedBtn').style.display = hasSuggested ? '' : 'none';
         _jsrList.innerHTML = unregistered.length===0
           ? '<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--text-3);">✅ 全商品にJANコードが登録されています</td></tr>'
-          : unregistered.map((p,i)=>`
-            <tr id="jsr-row-${p.id}" data-pid="${p.id}" style="cursor:pointer;border-top:1px solid var(--line);transition:background 0.1s;"
-              onmouseover="this.style.background='var(--bg-2)'" onmouseout="this.style.background=_jsrSelected&&_jsrSelected.id==='${p.id}'?'var(--teal-bg)':''"
-            >
-              <td style="padding:8px 10px;">${escapeHtml(cleanName(p.name||''))}</td>
-              <td style="padding:8px 10px;color:var(--text-2);">${escapeHtml(p.spec||'—')}</td>
-              <td style="padding:8px 10px;color:var(--text-3);" id="jsr-jan-${p.id}">未登録</td>
-            </tr>`).join('');
+          : unregistered.map(p=>{
+              const cand = bsCandidateMap[p.id];
+              const candCell = cand
+                ? `<div style="font-size:11px;color:var(--text-3);">${escapeHtml(cand.m)}</div>
+                   <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+                     <span style="font-family:monospace;color:${cand.score>=0.5?'var(--teal)':'var(--text-2)'};">${cand.j}</span>
+                     <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" onclick="event.stopPropagation();window._jsrApplyCandidate('${p.id}','${cand.j}')">適用</button>
+                   </div>`
+                : `<span style="color:var(--text-3);font-size:11px;">スキャンで登録</span>`;
+              return `<tr id="jsr-row-${p.id}" data-pid="${p.id}" style="cursor:pointer;border-top:1px solid var(--line);">
+                <td style="padding:8px 10px;">${escapeHtml(cleanName(p.name||''))}</td>
+                <td style="padding:8px 10px;color:var(--text-2);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
+                <td style="padding:8px 10px;" id="jsr-jan-${p.id}">${candCell}</td>
+              </tr>`;
+            }).join('');
         // クリックで選択
         unregistered.forEach(p=>{
           const row = document.getElementById('jsr-row-'+p.id);
@@ -6300,9 +6323,44 @@ window.addEventListener('storageReady', function(){
           if(stillExists) _jsrHighlightRow(_jsrSelected.id);
           else _jsrSelected = null;
         }
-        // 未登録商品が残っていれば最初の商品を自動選択
         if(!_jsrSelected && unregistered.length>0) _jsrSelectProduct(unregistered[0]);
       }
+
+      // 候補を1件適用
+      window._jsrApplyCandidate = async (pid, jan)=>{
+        const p = products.find(x=>x.id===pid);
+        if(!p) return;
+        p.barcode = jan; p.updatedAt = Date.now();
+        try{
+          await saveProducts();
+          _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ 登録: '+jan;
+          const ownBranch = currentUser?(currentUser.branchId||'taniyabe'):'taniyabe';
+          const remaining = products.filter(q=>!q.barcode&&(q.branchId||'taniyabe')===ownBranch);
+          _jsrCount.textContent=remaining.length+'件';
+          _jsrRenderList();
+        }catch(e){ p.barcode=''; _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+e.message; }
+      };
+
+      // 全候補を適用
+      document.getElementById('janScanApplyAllSuggestedBtn').addEventListener('click', async ()=>{
+        const ownBranch = currentUser?(currentUser.branchId||'taniyabe'):'taniyabe';
+        const unregistered = products.filter(p=>!p.barcode&&(p.branchId||'taniyabe')===ownBranch);
+        let changed=0;
+        for(const p of unregistered){
+          const pSize=normSpecSize(p.spec||'');
+          if(!pSize) continue;
+          const best=BS_JAN_LOOKUP.filter(e=>e.s===pSize)
+            .map(e=>({...e,score:scoreModelMatch(p.name||'',e.m)}))
+            .sort((a,b)=>b.score-a.score)[0];
+          if(best&&best.score>=0.3){ p.barcode=best.j; p.updatedAt=Date.now(); changed++; }
+        }
+        if(!changed){ _jsrStatus.textContent='候補がありませんでした。'; return; }
+        try{
+          await saveProducts();
+          _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ '+changed+'件を一括登録しました。';
+          _jsrRenderList();
+        }catch(e){ _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+e.message; }
+      });
 
       function _jsrHighlightRow(pid){
         _jsrList.querySelectorAll('tr[data-pid]').forEach(r=>{
