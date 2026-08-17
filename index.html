@@ -1189,6 +1189,12 @@
     </div>
 
     <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">🔧 JANコード一括クリーンアップ</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">保存済みJANコードの前後スペース・大文字を一括で整理します。スキャン照合がうまくいかない場合に実行してください。</p>
+    <button class="btn btn-ghost" id="janCleanupBtn">🔧 JANコードを整理する</button>
+    <div id="janCleanupMsg" style="margin-top:8px;font-size:13px;"></div>
+
+    <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🖨️ 入庫済みラベル設定</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">入庫済みラベルの印刷サイズ・フォントサイズを設定します。変更後は「保存」を押してください。</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
@@ -3090,10 +3096,10 @@ window.addEventListener('storageReady', function(){
     const c = code.trim().toLowerCase();
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     // 自店舗の商品を優先して返す（大文字小文字を区別しない）
-    return products.find(p => (p.barcode||'').toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
-      || products.find(p => (p.id||'').toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
-      || products.find(p => (p.barcode||'').toLowerCase() === c)
-      || products.find(p => (p.id||'').toLowerCase() === c);
+    return products.find(p => (p.barcode||'').trim().toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
+      || products.find(p => (p.id||'').trim().toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
+      || products.find(p => (p.barcode||'').trim().toLowerCase() === c)
+      || products.find(p => (p.id||'').trim().toLowerCase() === c);
   }
   function majorById(id){ return categories.find(c=>c.id===id); }
   function subById(majorId, subId){
@@ -5972,7 +5978,7 @@ window.addEventListener('storageReady', function(){
       _si.value = ''; // 読み取り直後にクリア（次のスキャンが追記されないよう）
       if(_scanPreview) _scanPreview.textContent = '';
       if(!barcode) return;
-      const p = products.find(x=>x.barcode && x.barcode.toLowerCase() === barcode);
+      const p = products.find(x=>x.barcode && x.barcode.trim().toLowerCase() === barcode);
       if(!p){
         document.getElementById('receiveScanMsg').textContent = '⚠️ 該当する商品が見つかりません（バーコード：'+barcode+'）';
         document.getElementById('receiveScanProductArea').style.display = 'none';
@@ -6253,6 +6259,29 @@ window.addEventListener('storageReady', function(){
         document.getElementById('janBulkMsg').style.color = 'var(--red)';
         document.getElementById('janBulkMsg').textContent = '⚠️ 保存に失敗しました: ' + e.message;
         saveBtn.disabled = false;
+      }
+    });
+
+    // JANコード一括クリーンアップ
+    document.getElementById('janCleanupBtn').addEventListener('click', async ()=>{
+      const msg = document.getElementById('janCleanupMsg');
+      msg.style.color = 'var(--text-2)';
+      msg.textContent = '処理中...';
+      let changed = 0;
+      products.forEach(p=>{
+        if(p.barcode){
+          const clean = p.barcode.trim().toLowerCase();
+          if(p.barcode !== clean){ p.barcode = clean; p.updatedAt = Date.now(); changed++; }
+        }
+      });
+      if(!changed){ msg.textContent = '変更が必要なJANコードはありませんでした。'; return; }
+      try{
+        await saveProducts();
+        msg.style.color = 'var(--teal)';
+        msg.textContent = '✅ '+changed+'件のJANコードを整理しました。';
+      }catch(e){
+        msg.style.color = 'var(--red)';
+        msg.textContent = '⚠️ 保存に失敗しました: '+e.message;
       }
     });
 
