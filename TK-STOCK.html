@@ -789,6 +789,31 @@
   </div>
 </div>
 
+<!-- 価格表一括編集モーダル -->
+<div class="modal-overlay" id="catalogBulkEditModal">
+  <div class="modal" style="max-width:960px;width:96%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">✏️ 価格表 一括編集</h3>
+    <p style="font-size:12px;color:var(--text-3);margin-top:-8px;margin-bottom:12px;">商品が登録済みの行のみ編集・保存できます。未登録行はグレーで表示されます。</p>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:460px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">銘柄（カタログ）</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">サイズ</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">JANコード</th>
+        </tr></thead>
+        <tbody id="catalogBulkEditTbody"></tbody>
+      </table>
+    </div>
+    <div id="catalogBulkEditStatus" style="font-size:13px;min-height:20px;margin-top:8px;"></div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="btn btn-ghost" id="catalogBulkEditClose">閉じる</button>
+      <button class="btn btn-amber" id="catalogBulkEditSave">✅ 変更を保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 商品一括編集モーダル -->
 <div class="modal-overlay" id="bulkEditModal">
   <div class="modal" style="max-width:860px;width:96%;max-height:90vh;overflow-y:auto;">
@@ -4026,7 +4051,8 @@ window.addEventListener('storageReady', function(){
         + '</select>'
         + '</div>'
       : '';
-    const _catalogEditBtn = !forceTire ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openBulkEditForCatalog(\''+escapeHtml(queryLabel)+'\')">✏️ 一括編集</button>' : '';
+    const _catalogEditBtn = !forceTire ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openCatalogBulkEdit(window._lastCatalogMatches||[])">✏️ 一括編集</button>' : '';
+    window._lastCatalogMatches = matches;
     wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'+_catalogEditBtn+'</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
@@ -7263,6 +7289,67 @@ window.addEventListener('storageReady', function(){
       _beModal.style.display = 'flex';
       _beRender();
     };
+  })();
+
+  // ── 価格表一括編集 ─────────────────────────────────────────
+  (()=>{
+    const _cbModal  = document.getElementById('catalogBulkEditModal');
+    const _cbTbody  = document.getElementById('catalogBulkEditTbody');
+    const _cbStatus = document.getElementById('catalogBulkEditStatus');
+
+    window._openCatalogBulkEdit = (matches)=>{
+      _cbStatus.textContent = '';
+      _cbTbody.innerHTML = matches.map((r,i)=>{
+        const prod = findProductForCatalogEntry(r);
+        const disabled = !prod;
+        const rowStyle = disabled ? 'opacity:0.45;' : '';
+        const inputStyle = 'width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:11.5px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;';
+        const label = (r.b===r.m ? r.b : r.b+' '+r.m);
+        return `<tr data-cidx="${i}" style="border-top:1px solid var(--line);${rowStyle}">
+          <td style="padding:6px 10px;white-space:nowrap;color:var(--amber);">${escapeHtml(label)}</td>
+          <td style="padding:6px 10px;font-family:var(--font-mono);color:var(--text-2);white-space:nowrap;">${escapeHtml(r.s)}</td>
+          <td style="padding:4px 6px;"><input class="cb-name" data-cidx="${i}" ${disabled?'disabled':''} value="${escapeHtml(prod?prod.name:'')}" placeholder="${escapeHtml(label)}" style="${inputStyle}"></td>
+          <td style="padding:4px 6px;"><input class="cb-brand" data-cidx="${i}" ${disabled?'disabled':''} value="${escapeHtml(prod?prod.brand||'':r.b)}" style="${inputStyle}"></td>
+          <td style="padding:4px 6px;"><input class="cb-jan" data-cidx="${i}" ${disabled?'disabled':''} value="${escapeHtml(prod?prod.barcode||'':'')}" placeholder="JANコード" style="${inputStyle};font-family:var(--font-mono);"></td>
+        </tr>`;
+      }).join('');
+      _cbModal.style.display = 'flex';
+    };
+
+    document.getElementById('catalogBulkEditSave').addEventListener('click', async ()=>{
+      const matches = window._lastCatalogMatches || [];
+      const saveBtn = document.getElementById('catalogBulkEditSave');
+      let changed = 0;
+      _cbTbody.querySelectorAll('tr[data-cidx]').forEach(row=>{
+        const i = parseInt(row.dataset.cidx);
+        const r = matches[i];
+        if(!r) return;
+        const prod = findProductForCatalogEntry(r);
+        if(!prod) return;
+        const nameVal  = row.querySelector('.cb-name')?.value.trim() || '';
+        const brandVal = row.querySelector('.cb-brand')?.value.trim() || '';
+        const janVal   = row.querySelector('.cb-jan')?.value.trim().toLowerCase() || '';
+        let dirty = false;
+        if(nameVal  && nameVal  !== prod.name)       { prod.name=nameVal;    dirty=true; }
+        if(brandVal !== (prod.brand||''))             { prod.brand=brandVal;  dirty=true; }
+        if(janVal   !== (prod.barcode||''))           { prod.barcode=janVal;  dirty=true; }
+        if(dirty){ prod.updatedAt=Date.now(); changed++; }
+      });
+      if(!changed){ _cbStatus.style.color='var(--text-2)'; _cbStatus.textContent='変更がありません。'; return; }
+      saveBtn.disabled = true;
+      _cbStatus.style.color='var(--text-2)'; _cbStatus.textContent='保存中...';
+      try{
+        await saveProducts();
+        renderCatTree(); renderProductTable();
+        _cbStatus.style.color='var(--teal)'; _cbStatus.textContent='✅ '+changed+'件を保存しました。';
+      }catch(e){
+        _cbStatus.style.color='var(--red)'; _cbStatus.textContent='⚠️ 保存失敗: '+e.message;
+      }
+      saveBtn.disabled = false;
+    });
+
+    document.getElementById('catalogBulkEditClose').addEventListener('click', ()=>{ _cbModal.style.display='none'; });
+    _cbModal.addEventListener('click', e=>{ if(e.target===_cbModal) _cbModal.style.display='none'; });
   })();
   document.getElementById('modalCancel').addEventListener('click', closeModal);
 
