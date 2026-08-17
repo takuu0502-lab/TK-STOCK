@@ -4026,7 +4026,8 @@ window.addEventListener('storageReady', function(){
         + '</select>'
         + '</div>'
       : '';
-    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'
+    const _catalogEditBtn = !forceTire ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openBulkEditForCatalog(\''+escapeHtml(queryLabel)+'\')">✏️ 一括編集</button>' : '';
+    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'+_catalogEditBtn+'</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
@@ -7244,6 +7245,14 @@ window.addEventListener('storageReady', function(){
 
     document.getElementById('bulkEditClose').addEventListener('click', ()=>{ _beModal.style.display='none'; });
     _beModal.addEventListener('click', e=>{ if(e.target===_beModal) _beModal.style.display='none'; });
+
+    // 価格カタログからモデル名で絞り込んで開く
+    window._openBulkEditForCatalog = (query)=>{
+      _beFilter.value = query || '';
+      _beStatus.textContent = '';
+      _beModal.style.display = 'flex';
+      _beRender();
+    };
   })();
   document.getElementById('modalCancel').addEventListener('click', closeModal);
 
