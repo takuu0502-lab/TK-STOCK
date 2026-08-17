@@ -789,6 +789,36 @@
   </div>
 </div>
 
+<!-- 商品一括編集モーダル -->
+<div class="modal-overlay" id="bulkEditModal">
+  <div class="modal" style="max-width:860px;width:96%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">✏️ 商品一括編集</h3>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+      <input type="text" id="bulkEditFilter" placeholder="商品名・ブランド名で絞り込み" style="flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      <button class="btn btn-ghost btn-sm" id="bulkEditSelectAll">全選択</button>
+      <button class="btn btn-ghost btn-sm" id="bulkEditDeselectAll">全解除</button>
+      <span id="bulkEditSelectedCount" style="font-size:12px;color:var(--text-3);white-space:nowrap;"></span>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:420px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
+          <th style="padding:8px 10px;width:36px;"><input type="checkbox" id="bulkEditAllChk"></th>
+          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
+          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
+          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">JANコード</th>
+          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
+        </tr></thead>
+        <tbody id="bulkEditTbody"></tbody>
+      </table>
+    </div>
+    <div id="bulkEditStatus" style="font-size:13px;min-height:20px;margin-top:8px;"></div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="btn btn-ghost" id="bulkEditClose">閉じる</button>
+      <button class="btn btn-amber" id="bulkEditSave">✅ 選択した商品を保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- JANコードスキャン一括登録モーダル -->
 <div class="modal-overlay" id="janScanRegisterModal">
   <div class="modal" style="max-width:640px;width:95%;max-height:90vh;overflow-y:auto;">
@@ -942,6 +972,7 @@
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch">商品検索</button>
+      <button class="btn btn-ghost btn-sm" id="openBulkEditBtn">✏️ 一括編集</button>
       <button class="btn btn-amber btn-sm" id="openAddProduct">＋ 新規商品登録</button>
       <button class="btn btn-amber btn-sm" id="quickScanBtn">スキャン</button>
     </div>
@@ -7111,6 +7142,109 @@ window.addEventListener('storageReady', function(){
 
   const modal = document.getElementById('productModal');
   document.getElementById('openAddProduct').addEventListener('click', ()=>{ if(canWriteData()) openAddModal(); });
+
+  // ── 商品一括編集 ──────────────────────────────────────────
+  (()=>{
+    const _beModal  = document.getElementById('bulkEditModal');
+    const _beTbody  = document.getElementById('bulkEditTbody');
+    const _beFilter = document.getElementById('bulkEditFilter');
+    const _beStatus = document.getElementById('bulkEditStatus');
+    const _beCount  = document.getElementById('bulkEditSelectedCount');
+    let _beRows = []; // {p, nameEl, brandEl, janEl}
+
+    function _beGetFiltered(){
+      const q = _beFilter.value.trim().toLowerCase();
+      return q
+        ? products.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q))
+        : [...products];
+    }
+
+    function _beUpdateCount(){
+      const checked = _beTbody.querySelectorAll('input[type=checkbox]:checked').length;
+      _beCount.textContent = checked ? checked+'件選択中' : '';
+    }
+
+    function _beRender(){
+      const list = _beGetFiltered().sort((a,b)=>(a.name||'').localeCompare(b.name||'ja'));
+      _beTbody.innerHTML = list.map(p=>`
+        <tr id="be-row-${p.id}" style="border-top:1px solid var(--line);">
+          <td style="padding:6px 10px;text-align:center;"><input type="checkbox" class="be-chk" data-pid="${p.id}"></td>
+          <td style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;"></td>
+          <td style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;"></td>
+          <td style="padding:4px 6px;"><input type="text" class="be-jan" data-pid="${p.id}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコード" style="width:140px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);box-sizing:border-box;"></td>
+          <td style="padding:6px 10px;font-size:11px;color:var(--text-3);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
+        </tr>`).join('');
+      // チェックボックス変更で件数更新
+      _beTbody.querySelectorAll('.be-chk').forEach(c=>c.addEventListener('change', _beUpdateCount));
+      // 入力変更で行をハイライト＆自動チェック
+      _beTbody.querySelectorAll('.be-name,.be-brand,.be-jan').forEach(inp=>{
+        inp.addEventListener('input', ()=>{
+          const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
+          if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
+          inp.style.borderColor = 'var(--teal)';
+        });
+      });
+      _beUpdateCount();
+    }
+
+    document.getElementById('openBulkEditBtn').addEventListener('click', ()=>{
+      _beFilter.value = '';
+      _beStatus.textContent = '';
+      _beModal.style.display = 'flex';
+      _beRender();
+    });
+    _beFilter.addEventListener('input', _beRender);
+
+    document.getElementById('bulkEditAllChk').addEventListener('change', e=>{
+      _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=e.target.checked);
+      _beUpdateCount();
+    });
+    document.getElementById('bulkEditSelectAll').addEventListener('click', ()=>{
+      _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=true);
+      document.getElementById('bulkEditAllChk').checked=true;
+      _beUpdateCount();
+    });
+    document.getElementById('bulkEditDeselectAll').addEventListener('click', ()=>{
+      _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=false);
+      document.getElementById('bulkEditAllChk').checked=false;
+      _beUpdateCount();
+    });
+
+    document.getElementById('bulkEditSave').addEventListener('click', async ()=>{
+      const saveBtn = document.getElementById('bulkEditSave');
+      const checked = _beTbody.querySelectorAll('.be-chk:checked');
+      if(!checked.length){ _beStatus.style.color='var(--text-2)'; _beStatus.textContent='商品を選択してください。'; return; }
+      let changed = 0;
+      checked.forEach(chk=>{
+        const pid = chk.dataset.pid;
+        const p = products.find(x=>x.id===pid);
+        if(!p) return;
+        const nameVal  = (_beTbody.querySelector(`.be-name[data-pid="${pid}"]`)?.value||'').trim();
+        const brandVal = (_beTbody.querySelector(`.be-brand[data-pid="${pid}"]`)?.value||'').trim();
+        const janVal   = (_beTbody.querySelector(`.be-jan[data-pid="${pid}"]`)?.value||'').trim().toLowerCase();
+        let dirty = false;
+        if(nameVal  && nameVal  !== p.name)    { p.name=nameVal;    dirty=true; }
+        if(brandVal !== (p.brand||''))         { p.brand=brandVal;  dirty=true; }
+        if(janVal   !== (p.barcode||''))       { p.barcode=janVal;  dirty=true; }
+        if(dirty){ p.updatedAt=Date.now(); changed++; }
+      });
+      if(!changed){ _beStatus.style.color='var(--text-2)'; _beStatus.textContent='変更がありません。'; return; }
+      saveBtn.disabled=true;
+      _beStatus.style.color='var(--text-2)'; _beStatus.textContent='保存中...';
+      try{
+        await saveProducts();
+        renderCatTree(); renderProductTable();
+        _beStatus.style.color='var(--teal)'; _beStatus.textContent='✅ '+changed+'件を保存しました。';
+        _beRender();
+      }catch(e){
+        _beStatus.style.color='var(--red)'; _beStatus.textContent='⚠️ 保存失敗: '+e.message;
+      }
+      saveBtn.disabled=false;
+    });
+
+    document.getElementById('bulkEditClose').addEventListener('click', ()=>{ _beModal.style.display='none'; });
+    _beModal.addEventListener('click', e=>{ if(e.target===_beModal) _beModal.style.display='none'; });
+  })();
   document.getElementById('modalCancel').addEventListener('click', closeModal);
 
   // 印刷設定モーダル
