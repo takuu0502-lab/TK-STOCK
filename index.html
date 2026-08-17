@@ -6303,7 +6303,7 @@ window.addEventListener('storageReady', function(){
                 ? `<div style="font-size:11px;color:var(--text-3);">${escapeHtml(cand.m)}</div>
                    <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
                      <span style="font-family:monospace;color:${cand.score>=0.5?'var(--teal)':'var(--text-2)'};">${cand.j}</span>
-                     <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" onclick="event.stopPropagation();window._jsrApplyCandidate('${p.id}','${cand.j}')">適用</button>
+                     <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" data-apply-pid="${p.id}" data-apply-jan="${cand.j}">適用</button>
                    </div>`
                 : `<span style="color:var(--text-3);font-size:11px;">スキャンで登録</span>`;
               return `<tr id="jsr-row-${p.id}" data-pid="${p.id}" style="cursor:pointer;border-top:1px solid var(--line);">
@@ -6312,11 +6312,7 @@ window.addEventListener('storageReady', function(){
                 <td style="padding:8px 10px;" id="jsr-jan-${p.id}">${candCell}</td>
               </tr>`;
             }).join('');
-        // クリックで選択
-        unregistered.forEach(p=>{
-          const row = document.getElementById('jsr-row-'+p.id);
-          if(row) row.addEventListener('click', ()=>_jsrSelectProduct(p));
-        });
+        // クリック処理はデリゲーションで管理（後述）
         // 選択中商品の状態を復元
         if(_jsrSelected){
           const stillExists = unregistered.find(p=>p.id===_jsrSelected.id);
@@ -6326,20 +6322,30 @@ window.addEventListener('storageReady', function(){
         if(!_jsrSelected && unregistered.length>0) _jsrSelectProduct(unregistered[0]);
       }
 
-      // 候補を1件適用
-      window._jsrApplyCandidate = async (pid, jan)=>{
-        const p = products.find(x=>x.id===pid);
-        if(!p) return;
-        p.barcode = jan; p.updatedAt = Date.now();
-        try{
-          await saveProducts();
-          _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ 登録: '+jan;
-          const ownBranch = currentUser?(currentUser.branchId||'taniyabe'):'taniyabe';
-          const remaining = products.filter(q=>!q.barcode&&(q.branchId||'taniyabe')===ownBranch);
-          _jsrCount.textContent=remaining.length+'件';
-          _jsrRenderList();
-        }catch(e){ p.barcode=''; _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+e.message; }
-      };
+      // テーブルのクリックをデリゲーション（適用ボタン・行選択を一元管理）
+      _jsrList.addEventListener('click', async (e)=>{
+        const applyBtn = e.target.closest('[data-apply-pid]');
+        if(applyBtn){
+          e.stopPropagation();
+          const pid = applyBtn.dataset.applyPid;
+          const jan = applyBtn.dataset.applyJan;
+          const p = products.find(x=>x.id===pid);
+          if(!p) return;
+          p.barcode = jan; p.updatedAt = Date.now();
+          applyBtn.disabled = true; applyBtn.textContent = '保存中…';
+          try{
+            await saveProducts();
+            _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ 登録: '+jan;
+            _jsrRenderList();
+          }catch(ex){ p.barcode=''; applyBtn.disabled=false; applyBtn.textContent='適用'; _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+ex.message; }
+          return;
+        }
+        const row = e.target.closest('tr[data-pid]');
+        if(row){
+          const p = products.find(x=>x.id===row.dataset.pid);
+          if(p) _jsrSelectProduct(p);
+        }
+      });
 
       // 全候補を適用
       document.getElementById('janScanApplyAllSuggestedBtn').addEventListener('click', async ()=>{
