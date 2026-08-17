@@ -1174,20 +1174,6 @@
 
     <div class="pricing-section-divider"></div>
 
-    <div class="pricing-section-title">ブランド名一括設定</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
-      登録済み商品のブランド名をカタログのブランド名で一括更新します。商品情報にすでにブランド名が入力されている商品はスキップされます。
-    </p>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-amber" id="bulkSetBrandBtn">カタログのブランド名を一括適用</button>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);">
-        <input type="checkbox" id="bulkBrandOverwrite"> 既存のブランド名も上書きする
-      </label>
-    </div>
-    <div id="bulkBrandMsg" style="margin-top:10px;font-size:13px;"></div>
-
-    <div class="pricing-section-divider"></div>
-
     <div class="pricing-section-title">価格表取込</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:18px;line-height:1.7;">
       Excelファイル（.xlsx）から価格表を取り込み、在庫検索・見積もりに反映できます。取込済み価格表の削除もここから行えます。
@@ -1220,18 +1206,6 @@
       <input type="text" id="janBulkNameFilter" placeholder="商品名（例：トップラン M7）" style="flex:1;min-width:160px;max-width:220px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
       <button class="btn btn-amber" id="openJanBulkModalBtn">🏷️ JANコードを入力する</button>
     </div>
-
-    <div class="pricing-section-divider"></div>
-    <div class="pricing-section-title">🔧 JANコード一括クリーンアップ</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">保存済みJANコードの前後スペース・大文字を一括で整理します。スキャン照合がうまくいかない場合に実行してください。</p>
-    <button class="btn btn-ghost" id="janCleanupBtn">🔧 JANコードを整理する</button>
-    <div id="janCleanupMsg" style="margin-top:8px;font-size:13px;"></div>
-
-    <div class="pricing-section-divider"></div>
-    <div class="pricing-section-title">🏷️ JANコード一括自動補完</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">ブリヂストン価格表をもとに、JANコード未登録の商品に自動でJANコードを設定・保存します。スキャンしても「未登録」になる商品がある場合に実行してください。</p>
-    <button class="btn btn-ghost" id="janAutoFillBtn">🏷️ JANコードを自動補完する</button>
-    <div id="janAutoFillMsg" style="margin-top:8px;font-size:13px;"></div>
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">📷 JANコードをスキャンして登録</div>
@@ -6307,29 +6281,6 @@ window.addEventListener('storageReady', function(){
       }
     });
 
-    // JANコード一括クリーンアップ
-    document.getElementById('janCleanupBtn').addEventListener('click', async ()=>{
-      const msg = document.getElementById('janCleanupMsg');
-      msg.style.color = 'var(--text-2)';
-      msg.textContent = '処理中...';
-      let changed = 0;
-      products.forEach(p=>{
-        if(p.barcode){
-          const clean = p.barcode.trim().toLowerCase();
-          if(p.barcode !== clean){ p.barcode = clean; p.updatedAt = Date.now(); changed++; }
-        }
-      });
-      if(!changed){ msg.textContent = '変更が必要なJANコードはありませんでした。'; return; }
-      try{
-        await saveProducts();
-        msg.style.color = 'var(--teal)';
-        msg.textContent = '✅ '+changed+'件のJANコードを整理しました。';
-      }catch(e){
-        msg.style.color = 'var(--red)';
-        msg.textContent = '⚠️ 保存に失敗しました: '+e.message;
-      }
-    });
-
     // JANコードスキャン一括登録
     (()=>{
       let _jsrSelected = null; // 選択中の商品
@@ -6433,32 +6384,6 @@ window.addEventListener('storageReady', function(){
       document.getElementById('janScanRegisterClose').addEventListener('click', ()=>{ _jsrModal.style.display='none'; });
       _jsrModal.addEventListener('click', e=>{ if(e.target===_jsrModal) _jsrModal.style.display='none'; });
     })();
-
-    // JANコード一括自動補完
-    document.getElementById('janAutoFillBtn').addEventListener('click', async ()=>{
-      const msg = document.getElementById('janAutoFillMsg');
-      msg.style.color = 'var(--text-2)';
-      msg.textContent = '処理中...';
-      const rows = runJanAutoMatch();
-      let changed = 0;
-      for(const row of rows){
-        if(!row.product.barcode && row.selectedIdx >= 0){
-          const entry = row.matches[row.selectedIdx];
-          row.product.barcode = entry.j;
-          row.product.updatedAt = Date.now();
-          changed++;
-        }
-      }
-      if(!changed){ msg.textContent = '補完できる商品がありませんでした（既に登録済みか、価格表に一致なし）。'; return; }
-      try{
-        await saveProducts();
-        msg.style.color = 'var(--teal)';
-        msg.textContent = '✅ '+changed+'件の商品にJANコードを自動設定しました。';
-      }catch(e){
-        msg.style.color = 'var(--red)';
-        msg.textContent = '⚠️ 保存に失敗しました: '+e.message;
-      }
-    });
 
     // ラベル設定
     function _fillLabelSettingInputs(){
