@@ -5974,7 +5974,8 @@ window.addEventListener('storageReady', function(){
     }
     function _doReceiveScan(){
       const _si = document.getElementById('receiveScanInput');
-      const barcode = _si.value.trim().toLowerCase();
+      // AIM識別子を除去（例: ]E0, ]Q0, ]C0 など — スキャナーが付加するプレフィックス）
+      const barcode = _si.value.trim().toLowerCase().replace(/^\].{1,2}/, '');
       _si.value = ''; // 読み取り直後にクリア（次のスキャンが追記されないよう）
       if(_scanPreview) _scanPreview.textContent = '';
       if(!barcode) return;
@@ -8344,6 +8345,7 @@ window.addEventListener('storageReady', function(){
   // IMEを完全バイパスするバーコード入力セットアップ
   // keydown の物理キーコード(e.code)から直接文字を組み立てる
   function setupBarcodeKeyCapture(input, onInput, onEnter){
+    // 通常キー（Shiftなし）
     const K = {
       Digit0:'0',Digit1:'1',Digit2:'2',Digit3:'3',Digit4:'4',
       Digit5:'5',Digit6:'6',Digit7:'7',Digit8:'8',Digit9:'9',
@@ -8351,14 +8353,32 @@ window.addEventListener('storageReady', function(){
       KeyG:'g',KeyH:'h',KeyI:'i',KeyJ:'j',KeyK:'k',KeyL:'l',
       KeyM:'m',KeyN:'n',KeyO:'o',KeyP:'p',KeyQ:'q',KeyR:'r',
       KeyS:'s',KeyT:'t',KeyU:'u',KeyV:'v',KeyW:'w',KeyX:'x',
-      KeyY:'y',KeyZ:'z',Minus:'-',Period:'.',
+      KeyY:'y',KeyZ:'z',
+      Minus:'-',Period:'.',Slash:'/',Backslash:'\\',
+      Semicolon:';',Quote:"'",Comma:',',Equal:'=',Backquote:'`',Space:' ',
+      BracketLeft:'[',BracketRight:']',
       Numpad0:'0',Numpad1:'1',Numpad2:'2',Numpad3:'3',Numpad4:'4',
       Numpad5:'5',Numpad6:'6',Numpad7:'7',Numpad8:'8',Numpad9:'9',
+      NumpadMultiply:'*',NumpadAdd:'+',NumpadSubtract:'-',NumpadDecimal:'.',NumpadDivide:'/',
+    };
+    // Shift+キー
+    const KS = {
+      Digit0:')',Digit1:'!',Digit2:'@',Digit3:'#',Digit4:'$',
+      Digit5:'%',Digit6:'^',Digit7:'&',Digit8:'*',Digit9:'(',
+      KeyA:'A',KeyB:'B',KeyC:'C',KeyD:'D',KeyE:'E',KeyF:'F',
+      KeyG:'G',KeyH:'H',KeyI:'I',KeyJ:'J',KeyK:'K',KeyL:'L',
+      KeyM:'M',KeyN:'N',KeyO:'O',KeyP:'P',KeyQ:'Q',KeyR:'R',
+      KeyS:'S',KeyT:'T',KeyU:'U',KeyV:'V',KeyW:'W',KeyX:'X',
+      KeyY:'Y',KeyZ:'Z',
+      Minus:'_',Period:'>',Slash:'?',Backslash:'|',
+      Semicolon:':',Quote:'"',Comma:'<',Equal:'+',Backquote:'~',
+      BracketLeft:'{',BracketRight:'}',
     };
     input.addEventListener('keydown', (e)=>{
       if(e.code==='Enter'||e.code==='NumpadEnter'){ e.preventDefault(); if(onEnter) onEnter(input.value); return; }
       if(e.code==='Backspace'||e.code==='Tab') return; // 通常動作
-      const ch = K[e.code];
+      const map = e.shiftKey ? KS : K;
+      const ch = map[e.code];
       if(ch!==undefined){ e.preventDefault(); input.value+=ch; if(onInput) onInput(input.value); }
       else if(!['Shift','Control','Alt','Meta','CapsLock'].includes(e.key)){ e.preventDefault(); } // 不明な文字はIMEに渡さない
     });
@@ -8371,7 +8391,8 @@ window.addEventListener('storageReady', function(){
     updateTransactionBranchBanner(kind);
 
     function doLookup(fromScan){
-      const code = barcodeInput.value.trim().toLowerCase();
+      // AIM識別子を除去（例: ]E0, ]Q0, ]C0 など — スキャナーが付加するプレフィックス）
+      const code = barcodeInput.value.trim().toLowerCase().replace(/^\].{1,2}/, '');
       barcodeInput.value = ''; // 読み取り直後にクリア
       resultEl.innerHTML = '';
       if(!code) return;
