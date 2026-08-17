@@ -6009,7 +6009,7 @@ window.addEventListener('storageReady', function(){
     _scanInput.addEventListener('input', ()=>{
       if(_scanComposing) return;
       // 全角数字→半角・不要文字除去
-      const cleaned = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'');
+      const cleaned = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'').toLowerCase();
       if(_scanInput.value !== cleaned) _scanInput.value = cleaned;
       if(_scanPreview) _scanPreview.textContent = cleaned ? '読み取り中: ' + cleaned : '';
       // スキャナーは高速入力なので300ms後に自動検索
@@ -6209,12 +6209,20 @@ window.addEventListener('storageReady', function(){
     document.getElementById('janBulkModal').addEventListener('click', e=>{
       if(e.target===document.getElementById('janBulkModal')) document.getElementById('janBulkModal').classList.remove('show');
     });
+    // 入力中も小文字に変換
+    document.getElementById('janBulkModal').addEventListener('input', e=>{
+      if(e.target.dataset.janPid !== undefined){
+        const v = e.target.value;
+        const lower = v.toLowerCase();
+        if(v !== lower){ e.target.value = lower; }
+      }
+    });
     document.getElementById('janBulkSave').addEventListener('click', async ()=>{
       const inputs = document.querySelectorAll('[data-jan-pid]');
       let changed = 0;
       inputs.forEach(inp=>{
         const pid = inp.dataset.janPid;
-        const val = inp.value.trim();
+        const val = inp.value.trim().toLowerCase();
         const p = products.find(x=>x.id===pid);
         if(p && p.barcode !== val){
           p.barcode = val;
@@ -8168,7 +8176,7 @@ window.addEventListener('storageReady', function(){
 
 
   document.getElementById('modalSave').addEventListener('click', async ()=>{
-    const barcode = document.getElementById('f_barcode').value.trim();
+    const barcode = document.getElementById('f_barcode').value.trim().toLowerCase();
     const brand = document.getElementById('f_brand').value.trim();
     const partno = document.getElementById('f_partno').value.trim();
     const supplierId = document.getElementById('f_supplier').value || '';
