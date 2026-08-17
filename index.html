@@ -825,18 +825,28 @@
 <div class="modal-overlay" id="bulkEditModal">
   <div class="modal" style="max-width:860px;width:96%;max-height:90vh;overflow-y:auto;">
     <h3 style="margin-top:0;font-size:16px;">✏️ 商品一括編集</h3>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
       <input type="text" id="bulkEditFilter" placeholder="商品名・ブランド名で絞り込み" style="flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
       <button class="btn btn-ghost btn-sm" id="bulkEditSelectAll">全選択</button>
       <button class="btn btn-ghost btn-sm" id="bulkEditDeselectAll">全解除</button>
       <span id="bulkEditSelectedCount" style="font-size:12px;color:var(--text-3);white-space:nowrap;"></span>
     </div>
-    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:420px;">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+    <!-- 一括適用バー -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;background:var(--bg-2);border-radius:8px;padding:8px 12px;">
+      <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">全行一括：</span>
+      <select id="beBulkMajor" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);"></select>
+      <button class="btn btn-ghost btn-sm" id="beApplyMajor" style="white-space:nowrap;">大分類を適用</button>
+      <select id="beBulkSub" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);"></select>
+      <button class="btn btn-ghost btn-sm" id="beApplySub" style="white-space:nowrap;">中分類を適用</button>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:380px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
           <th style="padding:8px 10px;width:36px;"><input type="checkbox" id="bulkEditAllChk"></th>
           <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
           <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
+          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">大分類</th>
+          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">中分類</th>
           <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">JANコード</th>
           <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
         </tr></thead>
@@ -7199,12 +7209,32 @@ window.addEventListener('storageReady', function(){
 
   // ── 商品一括編集 ──────────────────────────────────────────
   (()=>{
-    const _beModal  = document.getElementById('bulkEditModal');
-    const _beTbody  = document.getElementById('bulkEditTbody');
-    const _beFilter = document.getElementById('bulkEditFilter');
-    const _beStatus = document.getElementById('bulkEditStatus');
-    const _beCount  = document.getElementById('bulkEditSelectedCount');
-    let _beRows = []; // {p, nameEl, brandEl, janEl}
+    const _beModal       = document.getElementById('bulkEditModal');
+    const _beTbody       = document.getElementById('bulkEditTbody');
+    const _beFilter      = document.getElementById('bulkEditFilter');
+    const _beStatus      = document.getElementById('bulkEditStatus');
+    const _beCount       = document.getElementById('bulkEditSelectedCount');
+    const _beBulkMajor   = document.getElementById('beBulkMajor');
+    const _beBulkSub     = document.getElementById('beBulkSub');
+
+    // ヘルパー: 大分類オプションHTML
+    function _beMajorOpts(selectedId){
+      return '<option value="">大分類なし</option>'
+        + (categories||[]).map(c=>`<option value="${c.id}"${c.id===selectedId?' selected':''}>${escapeHtml(c.name)}</option>`).join('');
+    }
+    // ヘルパー: 中分類オプションHTML (majorIdから)
+    function _beSubOpts(majorId, selectedId){
+      const major = (categories||[]).find(c=>c.id===majorId);
+      if(!major || !major.subs || !major.subs.length) return '<option value="">中分類なし</option>';
+      return '<option value="">中分類なし</option>'
+        + major.subs.map(s=>`<option value="${s.id}"${s.id===selectedId?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
+    }
+
+    // 一括適用バーの大分類セレクトを初期化
+    function _beInitBulkSelects(){
+      _beBulkMajor.innerHTML = _beMajorOpts('');
+      _beBulkSub.innerHTML = '<option value="">中分類なし</option>';
+    }
 
     function _beGetFiltered(){
       const q = _beFilter.value.trim().toLowerCase();
@@ -7220,18 +7250,42 @@ window.addEventListener('storageReady', function(){
 
     function _beRender(){
       const list = _beGetFiltered().sort((a,b)=>(a.name||'').localeCompare(b.name||'ja'));
+      const selStyle = 'padding:3px 6px;border:1px solid var(--line);border-radius:6px;font-size:11px;background:var(--bg-1);color:var(--text-1);max-width:110px;';
+      const inpStyle = (w)=>`width:${w};padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;`;
       _beTbody.innerHTML = list.map(p=>`
         <tr id="be-row-${p.id}" style="border-top:1px solid var(--line);">
           <td style="padding:6px 10px;text-align:center;"><input type="checkbox" class="be-chk" data-pid="${p.id}"></td>
-          <td style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;"></td>
-          <td style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="width:100%;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;"></td>
-          <td style="padding:4px 6px;"><input type="text" class="be-jan" data-pid="${p.id}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコード" style="width:140px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);box-sizing:border-box;"></td>
+          <td style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="${inpStyle('100%')}"></td>
+          <td style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="${inpStyle('100%')}"></td>
+          <td style="padding:4px 6px;">
+            <select class="be-major" data-pid="${p.id}" style="${selStyle}">${_beMajorOpts(p.majorId||'')}</select>
+          </td>
+          <td style="padding:4px 6px;">
+            <select class="be-sub" data-pid="${p.id}" style="${selStyle}">${_beSubOpts(p.majorId||'', p.subId||'')}</select>
+          </td>
+          <td style="padding:4px 6px;"><input type="text" class="be-jan" data-pid="${p.id}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコード" style="${inpStyle('130px')}font-family:var(--font-mono);"></td>
           <td style="padding:6px 10px;font-size:11px;color:var(--text-3);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
         </tr>`).join('');
-      // チェックボックス変更で件数更新
+      // チェックボックス変更
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.addEventListener('change', _beUpdateCount));
-      // 入力変更で行をハイライト＆自動チェック
-      _beTbody.querySelectorAll('.be-name,.be-brand,.be-jan').forEach(inp=>{
+      // 大分類変更 → 中分類を更新
+      _beTbody.querySelectorAll('.be-major').forEach(sel=>{
+        sel.addEventListener('change', ()=>{
+          const pid = sel.dataset.pid;
+          const subSel = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+          if(subSel){ subSel.innerHTML = _beSubOpts(sel.value, ''); }
+          const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
+          if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
+          sel.style.borderColor = 'var(--teal)';
+        });
+      });
+      // 入力変更でハイライト＆自動チェック
+      _beTbody.querySelectorAll('.be-name,.be-brand,.be-jan,.be-sub').forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
+          if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
+          inp.style.borderColor = 'var(--teal)';
+        });
         inp.addEventListener('input', ()=>{
           const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
           if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
@@ -7242,6 +7296,37 @@ window.addEventListener('storageReady', function(){
     }
 
     _beFilter.addEventListener('input', _beRender);
+
+    // 一括適用バー: 大分類が変わったら中分類を更新
+    _beBulkMajor.addEventListener('change', ()=>{
+      _beBulkSub.innerHTML = _beSubOpts(_beBulkMajor.value, '');
+    });
+
+    document.getElementById('beApplyMajor').addEventListener('click', ()=>{
+      const majorId = _beBulkMajor.value;
+      _beTbody.querySelectorAll('.be-major').forEach(sel=>{
+        const pid = sel.dataset.pid;
+        sel.value = majorId;
+        sel.style.borderColor = 'var(--teal)';
+        const subSel = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+        if(subSel){ subSel.innerHTML = _beSubOpts(majorId, ''); }
+        const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
+        if(chk && !chk.checked){ chk.checked=true; }
+      });
+      _beUpdateCount();
+    });
+
+    document.getElementById('beApplySub').addEventListener('click', ()=>{
+      const subId = _beBulkSub.value;
+      _beTbody.querySelectorAll('.be-sub').forEach(sel=>{
+        sel.value = subId;
+        sel.style.borderColor = 'var(--teal)';
+        const pid = sel.dataset.pid;
+        const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
+        if(chk && !chk.checked){ chk.checked=true; }
+      });
+      _beUpdateCount();
+    });
 
     document.getElementById('bulkEditAllChk').addEventListener('change', e=>{
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=e.target.checked);
@@ -7270,10 +7355,14 @@ window.addEventListener('storageReady', function(){
         const nameVal  = (_beTbody.querySelector(`.be-name[data-pid="${pid}"]`)?.value||'').trim();
         const brandVal = (_beTbody.querySelector(`.be-brand[data-pid="${pid}"]`)?.value||'').trim();
         const janVal   = (_beTbody.querySelector(`.be-jan[data-pid="${pid}"]`)?.value||'').trim().toLowerCase();
+        const majorVal = (_beTbody.querySelector(`.be-major[data-pid="${pid}"]`)?.value)||'';
+        const subVal   = (_beTbody.querySelector(`.be-sub[data-pid="${pid}"]`)?.value)||'';
         let dirty = false;
         if(nameVal  && nameVal  !== p.name)    { p.name=nameVal;    dirty=true; }
         if(brandVal !== (p.brand||''))         { p.brand=brandVal;  dirty=true; }
         if(janVal   !== (p.barcode||''))       { p.barcode=janVal;  dirty=true; }
+        if(majorVal !== (p.majorId||''))       { p.majorId=majorVal||null; dirty=true; }
+        if(subVal   !== (p.subId||''))         { p.subId=subVal||null;     dirty=true; }
         if(dirty){ p.updatedAt=Date.now(); changed++; }
       });
       if(!changed){ _beStatus.style.color='var(--text-2)'; _beStatus.textContent='変更がありません。'; return; }
@@ -7297,6 +7386,7 @@ window.addEventListener('storageReady', function(){
     window._openBulkEditForCatalog = (query)=>{
       _beFilter.value = query || '';
       _beStatus.textContent = '';
+      _beInitBulkSelects();
       _beModal.style.display = 'flex';
       _beRender();
     };
