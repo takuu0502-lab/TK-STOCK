@@ -791,41 +791,44 @@
 
 <!-- JANコードスキャン一括登録モーダル -->
 <div class="modal-overlay" id="janScanRegisterModal">
-  <div class="modal" style="max-width:620px;width:95%;max-height:90vh;overflow-y:auto;">
+  <div class="modal" style="max-width:640px;width:95%;max-height:90vh;overflow-y:auto;">
     <h3 style="margin-top:0;font-size:16px;">📷 JANコードをスキャンして登録</h3>
-    <!-- ブリヂストン一括補完 -->
-    <div style="background:var(--bg-2);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:160px;font-size:12.5px;color:var(--text-2);">🟢 ブリヂストン商品はJAN価格表から自動補完できます</div>
-      <button class="btn btn-ghost btn-sm" id="janScanBsAutoFillBtn" style="white-space:nowrap;">ブリヂストン商品を一括補完</button>
-      <div id="janScanBsAutoFillMsg" style="font-size:12px;width:100%;min-height:16px;"></div>
-    </div>
-    <!-- 選択中の商品 -->
-    <div id="janScanRegisterTarget" style="background:var(--bg-2);border:2px solid var(--teal);border-radius:10px;padding:12px 16px;margin-bottom:10px;">
-      <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">▶ スキャン待機中の商品</div>
-      <div id="janScanRegisterTargetName" style="font-size:15px;font-weight:700;">← リストから商品をクリックして選択</div>
-      <div id="janScanRegisterTargetSpec" style="font-size:12px;color:var(--text-2);margin-top:2px;"></div>
+    <!-- 選択中の商品 + 操作エリア -->
+    <div style="background:var(--bg-2);border:2px solid var(--teal);border-radius:10px;padding:12px 16px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">▶ 選択中の商品</div>
+      <div id="janScanRegisterTargetName" style="font-size:15px;font-weight:700;margin-bottom:2px;">↓ リストから商品をクリックして選択</div>
+      <div id="janScanRegisterTargetSpec" style="font-size:12px;color:var(--text-2);margin-bottom:8px;"></div>
+      <!-- BS候補エリア（候補がある場合のみ表示） -->
+      <div id="janScanRegisterCandArea" style="display:none;background:var(--bg-1);border-radius:6px;padding:8px 12px;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:10px;color:var(--text-3);">BS価格表候補</div>
+          <div id="janScanRegisterCandName" style="font-size:11px;color:var(--text-2);"></div>
+          <div id="janScanRegisterCandJan" style="font-family:monospace;font-size:13px;color:var(--teal);font-weight:600;"></div>
+        </div>
+        <button class="btn btn-amber btn-sm" id="janScanApplyCandBtn" style="margin-left:auto;white-space:nowrap;">この候補を適用</button>
+      </div>
     </div>
     <!-- ステータス -->
-    <div id="janScanRegisterStatus" style="font-size:13px;min-height:22px;margin-bottom:8px;"></div>
-    <!-- 未登録商品リスト -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;flex-wrap:wrap;">
-      <div style="font-size:11px;color:var(--text-3);">JANコード未登録の商品 — <span id="janScanRegisterCount"></span></div>
-      <button class="btn btn-ghost btn-sm" id="janScanApplyAllSuggestedBtn" style="margin-left:auto;white-space:nowrap;display:none;">✅ BS候補をすべて適用して保存</button>
+    <div id="janScanRegisterStatus" style="font-size:13px;min-height:20px;margin-bottom:6px;"></div>
+    <!-- リストヘッダー -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <div style="font-size:11px;color:var(--text-3);">JANコード未登録 — <span id="janScanRegisterCount"></span></div>
+      <button class="btn btn-ghost btn-sm" id="janScanApplyAllSuggestedBtn" style="margin-left:auto;white-space:nowrap;font-size:11px;">BS候補を全件適用</button>
     </div>
-    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:340px;">
+    <!-- 未登録商品テーブル -->
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:320px;">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;">
           <th style="padding:7px 10px;text-align:left;color:var(--text-3);">商品名</th>
           <th style="padding:7px 10px;text-align:left;color:var(--text-3);">サイズ</th>
-          <th style="padding:7px 10px;text-align:left;color:var(--text-3);">BS候補 / スキャン登録</th>
+          <th style="padding:7px 10px;text-align:left;color:var(--text-3);">BS候補</th>
         </tr></thead>
         <tbody id="janScanRegisterList"></tbody>
       </table>
     </div>
-    <!-- 非表示スキャン入力 -->
     <input type="text" id="janScanRegisterInput" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;">
-    <div style="margin-top:10px;font-size:11.5px;color:var(--text-3);">商品行をクリックして選択 → バーコードをスキャンで登録。BS候補がある商品は「適用」ボタンで即登録できます。</div>
-    <div class="modal-actions" style="margin-top:14px;">
+    <div style="margin-top:10px;font-size:11.5px;color:var(--text-3);">商品をクリックして選択 → バーコードをスキャン、またはBS候補ボタンで登録</div>
+    <div class="modal-actions" style="margin-top:12px;">
       <button class="btn btn-ghost" id="janScanRegisterClose">閉じる</button>
     </div>
   </div>
@@ -6269,104 +6272,76 @@ window.addEventListener('storageReady', function(){
     // JANコードスキャン一括登録
     (()=>{
       let _jsrSelected = null; // 選択中の商品
-      const _jsrModal = document.getElementById('janScanRegisterModal');
-      const _jsrInput = document.getElementById('janScanRegisterInput');
-      const _jsrStatus = document.getElementById('janScanRegisterStatus');
-      const _jsrTargetName = document.getElementById('janScanRegisterTargetName');
-      const _jsrTargetSpec = document.getElementById('janScanRegisterTargetSpec');
-      const _jsrCount = document.getElementById('janScanRegisterCount');
-      const _jsrList = document.getElementById('janScanRegisterList');
+      let _jsrCandMap = {};    // pid -> {j, m, score}
+      const _jsrModal     = document.getElementById('janScanRegisterModal');
+      const _jsrInput     = document.getElementById('janScanRegisterInput');
+      const _jsrStatus    = document.getElementById('janScanRegisterStatus');
+      const _jsrTargetName= document.getElementById('janScanRegisterTargetName');
+      const _jsrTargetSpec= document.getElementById('janScanRegisterTargetSpec');
+      const _jsrCount     = document.getElementById('janScanRegisterCount');
+      const _jsrList      = document.getElementById('janScanRegisterList');
+      const _jsrCandArea  = document.getElementById('janScanRegisterCandArea');
+      const _jsrCandName  = document.getElementById('janScanRegisterCandName');
+      const _jsrCandJan   = document.getElementById('janScanRegisterCandJan');
+      const _jsrCandBtn   = document.getElementById('janScanApplyCandBtn');
 
-      function _jsrRenderList(){
-        const ownBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-        const unregistered = products.filter(p=>!p.barcode && (p.branchId||'taniyabe')===ownBranch)
-          .sort((a,b)=>(a.spec||'').localeCompare(b.spec||'ja'));
-        _jsrCount.textContent = unregistered.length + '件';
-        // BS候補を計算（スコア不問で最高候補を取得）
-        const bsCandidateMap = {};
-        for(const p of unregistered){
+      function _jsrBuildCandMap(list){
+        const map = {};
+        for(const p of list){
           const pSize = normSpecSize(p.spec||'');
           if(!pSize) continue;
           const sizeMatches = BS_JAN_LOOKUP.filter(e=>e.s===pSize);
           if(!sizeMatches.length) continue;
-          const best = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
+          const best = sizeMatches
+            .map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
             .sort((a,b)=>b.score-a.score)[0];
-          if(best) bsCandidateMap[p.id] = best;
+          if(best) map[p.id] = best;
         }
-        const hasSuggested = Object.values(bsCandidateMap).some(e=>e.score>=0.3);
+        return map;
+      }
+
+      function _jsrShowCandArea(cand){
+        if(cand){
+          _jsrCandName.textContent = cand.m;
+          _jsrCandJan.textContent  = cand.j;
+          _jsrCandArea.style.display = 'flex';
+        } else {
+          _jsrCandArea.style.display = 'none';
+        }
+      }
+
+      function _jsrRenderList(){
+        const ownBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        const unregistered = products
+          .filter(p=>!p.barcode && (p.branchId||'taniyabe')===ownBranch)
+          .sort((a,b)=>(a.spec||'').localeCompare(b.spec||''));
+        _jsrCount.textContent = unregistered.length + '件';
+        _jsrCandMap = _jsrBuildCandMap(unregistered);
+        const hasSuggested = Object.values(_jsrCandMap).some(e=>e.score>=0.3);
         document.getElementById('janScanApplyAllSuggestedBtn').style.display = hasSuggested ? '' : 'none';
+
         _jsrList.innerHTML = unregistered.length===0
           ? '<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--text-3);">✅ 全商品にJANコードが登録されています</td></tr>'
           : unregistered.map(p=>{
-              const cand = bsCandidateMap[p.id];
+              const cand = _jsrCandMap[p.id];
               const candCell = cand
-                ? `<div style="font-size:11px;color:var(--text-3);">${escapeHtml(cand.m)}</div>
-                   <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-                     <span style="font-family:monospace;color:${cand.score>=0.5?'var(--teal)':'var(--text-2)'};">${cand.j}</span>
-                     <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;" data-apply-pid="${p.id}" data-apply-jan="${cand.j}">適用</button>
-                   </div>`
-                : `<span style="color:var(--text-3);font-size:11px;">スキャンで登録</span>`;
-              return `<tr id="jsr-row-${p.id}" data-pid="${p.id}" style="cursor:pointer;border-top:1px solid var(--line);">
+                ? `<span style="font-size:11px;color:${cand.score>=0.5?'var(--teal)':'var(--text-3)'};">${escapeHtml(cand.j)}</span>`
+                : `<span style="color:var(--text-3);font-size:11px;">—</span>`;
+              return `<tr id="jsr-row-${p.id}" data-pid="${escapeHtml(p.id)}" style="cursor:pointer;border-top:1px solid var(--line);">
                 <td style="padding:8px 10px;">${escapeHtml(cleanName(p.name||''))}</td>
                 <td style="padding:8px 10px;color:var(--text-2);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
-                <td style="padding:8px 10px;" id="jsr-jan-${p.id}">${candCell}</td>
+                <td style="padding:8px 10px;">${candCell}</td>
               </tr>`;
             }).join('');
-        // クリック処理はデリゲーションで管理（後述）
-        // 選択中商品の状態を復元
+
+        // 選択中商品を復元
         if(_jsrSelected){
-          const stillExists = unregistered.find(p=>p.id===_jsrSelected.id);
-          if(stillExists) _jsrHighlightRow(_jsrSelected.id);
-          else _jsrSelected = null;
+          const still = unregistered.find(p=>p.id===_jsrSelected.id);
+          if(still){ _jsrHighlightRow(_jsrSelected.id); _jsrShowCandArea(_jsrCandMap[_jsrSelected.id]||null); }
+          else { _jsrSelected=null; _jsrShowCandArea(null); }
         }
         if(!_jsrSelected && unregistered.length>0) _jsrSelectProduct(unregistered[0]);
       }
-
-      // テーブルのクリックをデリゲーション（適用ボタン・行選択を一元管理）
-      _jsrList.addEventListener('click', async (e)=>{
-        const applyBtn = e.target.closest('[data-apply-pid]');
-        if(applyBtn){
-          e.stopPropagation();
-          const pid = applyBtn.dataset.applyPid;
-          const jan = applyBtn.dataset.applyJan;
-          const p = products.find(x=>x.id===pid);
-          if(!p) return;
-          p.barcode = jan; p.updatedAt = Date.now();
-          applyBtn.disabled = true; applyBtn.textContent = '保存中…';
-          try{
-            await saveProducts();
-            _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ 登録: '+jan;
-            _jsrRenderList();
-          }catch(ex){ p.barcode=''; applyBtn.disabled=false; applyBtn.textContent='適用'; _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+ex.message; }
-          return;
-        }
-        const row = e.target.closest('tr[data-pid]');
-        if(row){
-          const p = products.find(x=>x.id===row.dataset.pid);
-          if(p) _jsrSelectProduct(p);
-        }
-      });
-
-      // 全候補を適用
-      document.getElementById('janScanApplyAllSuggestedBtn').addEventListener('click', async ()=>{
-        const ownBranch = currentUser?(currentUser.branchId||'taniyabe'):'taniyabe';
-        const unregistered = products.filter(p=>!p.barcode&&(p.branchId||'taniyabe')===ownBranch);
-        let changed=0;
-        for(const p of unregistered){
-          const pSize=normSpecSize(p.spec||'');
-          if(!pSize) continue;
-          const best=BS_JAN_LOOKUP.filter(e=>e.s===pSize)
-            .map(e=>({...e,score:scoreModelMatch(p.name||'',e.m)}))
-            .sort((a,b)=>b.score-a.score)[0];
-          if(best&&best.score>=0.3){ p.barcode=best.j; p.updatedAt=Date.now(); changed++; }
-        }
-        if(!changed){ _jsrStatus.textContent='候補がありませんでした。'; return; }
-        try{
-          await saveProducts();
-          _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ '+changed+'件を一括登録しました。';
-          _jsrRenderList();
-        }catch(e){ _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+e.message; }
-      });
 
       function _jsrHighlightRow(pid){
         _jsrList.querySelectorAll('tr[data-pid]').forEach(r=>{
@@ -6381,38 +6356,81 @@ window.addEventListener('storageReady', function(){
         _jsrTargetSpec.textContent = p.spec||'';
         _jsrStatus.textContent = '';
         _jsrHighlightRow(p.id);
+        _jsrShowCandArea(_jsrCandMap[p.id]||null);
         _jsrInput.focus();
       }
 
-      // スキャン入力をフック
+      // 行クリック → 選択
+      _jsrList.addEventListener('click', e=>{
+        const row = e.target.closest('tr[data-pid]');
+        if(row){
+          const p = products.find(x=>x.id===row.dataset.pid);
+          if(p) _jsrSelectProduct(p);
+        }
+      });
+
+      // 「この候補を適用」ボタン
+      _jsrCandBtn.addEventListener('click', async ()=>{
+        if(!_jsrSelected) return;
+        const cand = _jsrCandMap[_jsrSelected.id];
+        if(!cand) return;
+        _jsrCandBtn.disabled = true;
+        _jsrStatus.style.color='var(--text-2)'; _jsrStatus.textContent='保存中...';
+        _jsrSelected.barcode = cand.j;
+        _jsrSelected.updatedAt = Date.now();
+        try{
+          await saveProducts();
+          _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ 登録しました: '+cand.j;
+          _jsrRenderList();
+        }catch(ex){
+          _jsrSelected.barcode='';
+          _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+ex.message;
+        }finally{ _jsrCandBtn.disabled=false; }
+      });
+
+      // BS候補を全件適用
+      document.getElementById('janScanApplyAllSuggestedBtn').addEventListener('click', async ()=>{
+        const ownBranch = currentUser?(currentUser.branchId||'taniyabe'):'taniyabe';
+        const unregistered = products.filter(p=>!p.barcode&&(p.branchId||'taniyabe')===ownBranch);
+        let changed=0;
+        for(const p of unregistered){
+          const pSize=normSpecSize(p.spec||'');
+          if(!pSize) continue;
+          const best=BS_JAN_LOOKUP.filter(e=>e.s===pSize)
+            .map(e=>({...e,score:scoreModelMatch(p.name||'',e.m)}))
+            .sort((a,b)=>b.score-a.score)[0];
+          if(best&&best.score>=0.3){ p.barcode=best.j; p.updatedAt=Date.now(); changed++; }
+        }
+        if(!changed){ _jsrStatus.style.color='var(--text-2)'; _jsrStatus.textContent='候補がありませんでした。'; return; }
+        try{
+          await saveProducts();
+          _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ '+changed+'件を一括登録しました。';
+          _jsrRenderList();
+        }catch(e){ _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+e.message; }
+      });
+
+      // スキャン入力
       setupBarcodeKeyCapture(_jsrInput,
         ()=>{},
         async (val)=>{
           const barcode = val.trim().toLowerCase().replace(/^\].{1,2}/,'');
           _jsrInput.value = '';
-          if(!barcode||!_jsrSelected){ _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 商品を選択してからスキャンしてください'; return; }
-          // 既に他商品に登録済みのJANでないか確認
+          if(!barcode||!_jsrSelected){
+            _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 商品を選択してからスキャンしてください'; return;
+          }
           const existing = products.find(p=>p.id!==_jsrSelected.id && (p.barcode||'').trim().toLowerCase()===barcode);
-          if(existing){ _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ このJANコードは「'+cleanName(existing.name||'')+'」に既に登録されています'; return; }
-          // 登録
+          if(existing){
+            _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ このJANは「'+cleanName(existing.name||'')+'」に既に登録されています'; return;
+          }
           _jsrSelected.barcode = barcode;
           _jsrSelected.updatedAt = Date.now();
           _jsrStatus.style.color='var(--text-2)'; _jsrStatus.textContent='保存中...';
           try{
             await saveProducts();
-            _jsrStatus.style.color='var(--teal)';
-            _jsrStatus.textContent='✅ 登録しました: '+barcode;
-            // セル更新
-            const janCell = document.getElementById('jsr-jan-'+_jsrSelected.id);
-            if(janCell){ janCell.textContent=barcode; janCell.style.color='var(--teal)'; }
-            // 次の未登録商品に移動
-            const ownBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-            const remaining = products.filter(p=>!p.barcode && (p.branchId||'taniyabe')===ownBranch);
-            _jsrCount.textContent = remaining.length+'件';
-            if(remaining.length>0){ setTimeout(()=>_jsrSelectProduct(remaining[0]),300); }
-            else{ _jsrSelected=null; _jsrTargetName.textContent='✅ 全商品の登録完了！'; _jsrTargetSpec.textContent=''; }
+            _jsrStatus.style.color='var(--teal)'; _jsrStatus.textContent='✅ 登録しました: '+barcode;
+            _jsrRenderList();
           }catch(e){
-            _jsrSelected.barcode=''; // ロールバック
+            _jsrSelected.barcode='';
             _jsrStatus.style.color='var(--red)'; _jsrStatus.textContent='⚠️ 保存失敗: '+e.message;
           }
         }
@@ -6420,7 +6438,8 @@ window.addEventListener('storageReady', function(){
 
       document.getElementById('janScanRegisterBtn').addEventListener('click', ()=>{
         _jsrSelected=null;
-        _jsrTargetName.textContent='← リストから商品をクリックして選択';
+        _jsrShowCandArea(null);
+        _jsrTargetName.textContent='↓ リストから商品をクリックして選択';
         _jsrTargetSpec.textContent='';
         _jsrStatus.textContent='';
         _jsrModal.style.display='flex';
@@ -6429,30 +6448,6 @@ window.addEventListener('storageReady', function(){
       });
       document.getElementById('janScanRegisterClose').addEventListener('click', ()=>{ _jsrModal.style.display='none'; });
       _jsrModal.addEventListener('click', e=>{ if(e.target===_jsrModal) _jsrModal.style.display='none'; });
-
-      // ブリヂストン商品一括補完
-      document.getElementById('janScanBsAutoFillBtn').addEventListener('click', async ()=>{
-        const msgEl = document.getElementById('janScanBsAutoFillMsg');
-        msgEl.style.color='var(--text-2)'; msgEl.textContent='処理中...';
-        const rows = runJanAutoMatch();
-        let changed = 0;
-        for(const row of rows){
-          if(!row.product.barcode && row.selectedIdx >= 0){
-            row.product.barcode = row.matches[row.selectedIdx].j;
-            row.product.updatedAt = Date.now();
-            changed++;
-          }
-        }
-        if(!changed){ msgEl.textContent='補完できる商品がありませんでした。'; return; }
-        try{
-          await saveProducts();
-          msgEl.style.color='var(--teal)';
-          msgEl.textContent='✅ '+changed+'件のブリヂストン商品にJANコードを設定しました。';
-          _jsrRenderList();
-        }catch(e){
-          msgEl.style.color='var(--red)'; msgEl.textContent='⚠️ 保存失敗: '+e.message;
-        }
-      });
     })();
 
     // ラベル設定
