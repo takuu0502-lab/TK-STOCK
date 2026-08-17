@@ -727,8 +727,8 @@
       <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px;">バーコードをスキャンまたは手入力</label>
       <div style="display:flex;gap:8px;">
         <input type="text" id="receiveScanInput" placeholder="JANコードをスキャン…"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-          inputmode="numeric" lang="en"
+          autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+          lang="en" oninput="this.value=this.value.toLowerCase()"
           style="flex:1;padding:10px 14px;border:2px solid var(--amber);border-radius:10px;font-size:15px;font-family:var(--font-mono);background:var(--bg-1);color:var(--text-1);outline:none;ime-mode:disabled;">
         <button class="btn btn-amber" id="receiveScanSearchBtn">検索</button>
       </div>
@@ -945,7 +945,7 @@
     <div class="row">
       <div>
         <label>バーコードを入力またはスキャン</label>
-        <input type="text" id="inBarcode" placeholder="バーコード番号" style="width:220px;">
+        <input type="text" id="inBarcode" placeholder="バーコード番号" style="width:220px;" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="this.value=this.value.toLowerCase()">
       </div>
       <button class="btn btn-ghost" id="inScanBtn">カメラでスキャン</button>
       <button class="btn btn-ghost" id="inLookupBtn">検索</button>
@@ -969,7 +969,7 @@
     <div class="row">
       <div>
         <label>バーコードを入力またはスキャン</label>
-        <input type="text" id="outBarcode" placeholder="バーコード番号" style="width:220px;">
+        <input type="text" id="outBarcode" placeholder="バーコード番号" style="width:220px;" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="this.value=this.value.toLowerCase()">
       </div>
       <button class="btn btn-ghost" id="outScanBtn">カメラでスキャン</button>
       <button class="btn btn-ghost" id="outLookupBtn">検索</button>
