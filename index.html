@@ -6002,13 +6002,18 @@ window.addEventListener('storageReady', function(){
     let _scanComposing = false; // IME変換中フラグ
     const _scanInput = document.getElementById('receiveScanInput');
     const _scanPreview = document.getElementById('receiveScanRawPreview');
-    // IME変換中は無視
-    _scanInput.addEventListener('compositionstart', ()=>{ _scanComposing = true; });
+    // かな入力検知 → 警告表示 + 入力クリア
+    _scanInput.addEventListener('compositionstart', ()=>{
+      _scanComposing = true;
+      if(_scanPreview) _scanPreview.innerHTML = '<span style="color:var(--red);font-weight:700;">⚠️ キーボードを英数字入力（半角）に切り替えてからスキャンしてください</span>';
+      // かな入力で入った文字は捨てる
+      setTimeout(()=>{ _scanInput.value = ''; }, 0);
+    });
     _scanInput.addEventListener('compositionend', ()=>{
       _scanComposing = false;
-      // IME確定後に全角→半角変換してクリーン化
-      _scanInput.value = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'');
-      if(_scanPreview) _scanPreview.textContent = '読み取り中: ' + _scanInput.value;
+      // IME確定後も全角→半角変換してクリーン化
+      _scanInput.value = _scanInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'').toLowerCase();
+      if(_scanPreview) _scanPreview.textContent = _scanInput.value ? '読み取り中: ' + _scanInput.value : '';
     });
     _scanInput.addEventListener('input', ()=>{
       if(_scanComposing) return;
@@ -8399,6 +8404,15 @@ window.addEventListener('storageReady', function(){
     barcodeInput.addEventListener('input', ()=>{
       const lower = barcodeInput.value.toLowerCase();
       if(barcodeInput.value !== lower) barcodeInput.value = lower;
+    });
+    // かな入力検知 → 警告 + クリア
+    const _imeWarnEl = document.getElementById(kind+'Result');
+    barcodeInput.addEventListener('compositionstart', ()=>{
+      setTimeout(()=>{ barcodeInput.value = ''; }, 0);
+      if(_imeWarnEl) _imeWarnEl.innerHTML = '<div class="msg msg-error">⚠️ キーボードを英数字入力（半角）に切り替えてからスキャンしてください<br><span style="font-size:12px;font-weight:400;">Macの場合：メニューバーの入力ソースを「英数」に切り替えるか、Caps Lockキーを押してください</span></div>';
+    });
+    barcodeInput.addEventListener('compositionend', ()=>{
+      barcodeInput.value = barcodeInput.value.replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9A-Za-z\-]/g,'').toLowerCase();
     });
     barcodeInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doLookup(false); });
     barcodeInput.__doScanLookup = ()=> doLookup(true);
