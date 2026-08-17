@@ -4136,7 +4136,7 @@ window.addEventListener('storageReady', function(){
       return _catColOrder.indexOf(a) - _catColOrder.indexOf(b);
     });
     const _catShowMultiCols = _catVisibleBranches.length > 1
-      && !(currentUser && isSuperAdminUser() && selectedBranchFilter === null);
+      && (forceTire || !(currentUser && isSuperAdminUser() && selectedBranchFilter === null));
 
     const rows = matches.map((r,i)=>{
       // カタログ表示は常に価格調整ルールで計算（商品登録の個別価格は使用しない）
