@@ -1933,8 +1933,8 @@ window.addEventListener('storageReady', function(){
       // スコア計算してソート（高スコア順 → 同スコアはモデル名アルファベット順）
       const scored = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
         .sort((a,b)=> b.score-a.score || a.m.localeCompare(b.m,'ja'));
-      // 候補があれば最上位を自動選択（ユーザーがドロップダウンで変更可能）
-      const autoIdx = scored.length>0 ? 0 : -1;
+      // スコア0.9以上（ほぼ完全一致）のみ自動選択
+      const autoIdx = scored.length>0 && scored[0].score>=0.9 ? 0 : -1;
       rows.push({product: p, matches: scored, selectedIdx: autoIdx});
     }
     return rows;
@@ -6320,7 +6320,7 @@ window.addEventListener('storageReady', function(){
           .sort((a,b)=>(a.spec||'').localeCompare(b.spec||''));
         _jsrCount.textContent = unregistered.length + '件';
         _jsrCandMap = _jsrBuildCandMap(unregistered);
-        const hasSuggested = Object.values(_jsrCandMap).some(e=>e.score>=0.3);
+        const hasSuggested = Object.values(_jsrCandMap).some(e=>e.score>=0.9);
         document.getElementById('janScanApplyAllSuggestedBtn').style.display = hasSuggested ? '' : 'none';
 
         _jsrList.innerHTML = unregistered.length===0
@@ -6328,7 +6328,7 @@ window.addEventListener('storageReady', function(){
           : unregistered.map(p=>{
               const cand = _jsrCandMap[p.id];
               const candCell = cand
-                ? `<span style="font-size:11px;color:${cand.score>=0.5?'var(--teal)':'var(--text-3)'};">${escapeHtml(cand.j)}</span>`
+                ? `<span style="font-size:11px;color:${cand.score>=0.9?'var(--teal)':'var(--text-3)'};">${escapeHtml(cand.j)}</span>`
                 : `<span style="color:var(--text-3);font-size:11px;">—</span>`;
               return `<tr id="jsr-row-${p.id}" data-pid="${escapeHtml(p.id)}" style="cursor:pointer;border-top:1px solid var(--line);">
                 <td style="padding:8px 10px;">${escapeHtml(cleanName(p.name||''))}</td>
@@ -6402,7 +6402,7 @@ window.addEventListener('storageReady', function(){
           const best=BS_JAN_LOOKUP.filter(e=>e.s===pSize)
             .map(e=>({...e,score:scoreModelMatch(p.name||'',e.m)}))
             .sort((a,b)=>b.score-a.score)[0];
-          if(best&&best.score>=0.3){ p.barcode=best.j; p.updatedAt=Date.now(); changed++; }
+          if(best&&best.score>=0.9){ p.barcode=best.j; p.updatedAt=Date.now(); changed++; }
         }
         if(!changed){ _jsrStatus.style.color='var(--text-2)'; _jsrStatus.textContent='候補がありませんでした。'; return; }
         try{
@@ -6515,7 +6515,7 @@ window.addEventListener('storageReady', function(){
         const best = BS_JAN_LOOKUP.filter(e=>e.s===pSize)
           .map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
           .sort((a,b)=>b.score-a.score)[0];
-        if(best && best.score>=0.5){
+        if(best && best.score>=0.9){
           p.barcode = best.j;
           if(!p.partno) p.partno = best.p;
           p.updatedAt = Date.now();
@@ -7948,7 +7948,7 @@ window.addEventListener('storageReady', function(){
         const sizeMatches = BS_JAN_LOOKUP.filter(e=>e.s===pSize);
         const scored = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
           .sort((a,b)=>b.score-a.score);
-        if(scored.length>0 && scored[0].score>=0.5){
+        if(scored.length>0 && scored[0].score>=0.9){
           const best = scored[0];
           document.getElementById('f_barcode').value = best.j;
           if(!p.partno) document.getElementById('f_partno').value = best.p;
