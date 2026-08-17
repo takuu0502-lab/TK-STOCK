@@ -1026,10 +1026,16 @@
       <div class="table-area">
         <div class="breadcrumb" id="breadcrumb"></div>
         <div id="priceCatalogWrap"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-          <div id="branchFilterWrap"></div>
+        <!-- キーワード検索 + 印刷ボタン -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <input type="text" id="keywordSearchInput" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 12px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;flex:1;min-width:140px;max-width:240px;background:var(--surface);color:var(--text-1);">
+          <button id="keywordSearchBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-left:none;border-radius:0 20px 20px 0;background:var(--amber);color:#fff;cursor:pointer;font-weight:600;">検索</button>
+          <button id="keywordClearBtn" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:0 4px;" title="クリア">✕</button>
+          <div style="flex:1;"></div>
           <button class="btn btn-ghost btn-sm" id="inventoryPrintBtn" style="font-size:12px;">🖨 在庫一覧を印刷</button>
         </div>
+        <!-- 支店フィルター -->
+        <div style="margin-bottom:8px;"><div id="branchFilterWrap"></div></div>
         <div id="inventoryFilter" style="display:none;margin-bottom:10px;"></div>
         <div id="productTableWrap" style="overflow-x:auto;"></div>
       </div>
@@ -3446,6 +3452,7 @@ window.addEventListener('storageReady', function(){
   let customerOrderFilter = false;
   let recentFilter = false;
   let brandSortFilter = false;
+  let nameSortFilter = false;
   let keywordFilter = '';
   let selectedProducts = new Set(); // 一括操作用選択商品ID
   function resetSpecSelections(){
@@ -4259,16 +4266,14 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="customerOrderChk"'+(customerOrderFilter?' checked':'')+'> 仮出庫品のみ表示'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="nameSortChk"'+(nameSortFilter?' checked':'')+'> 商品名順'
+      + '</label>'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="brandSortChk"'+(brandSortFilter?' checked':'')+'> ブランド順'
       + '</label>'
-      + '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'
-      + '<input type="text" id="keywordSearchInput" value="'+escapeHtml(keywordFilter)+'" placeholder="キーワードで絞り込み…" style="font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:20px 0 0 20px;outline:none;width:160px;background:var(--surface);color:var(--text-1);">'
-      + '<button id="keywordSearchBtn" style="font-size:12px;padding:4px 12px;border:1px solid var(--amber);border-left:none;border-radius:0 20px 20px 0;background:var(--amber);color:#fff;cursor:pointer;font-weight:600;">検索</button>'
-      + (keywordFilter ? '<button id="keywordClearBtn" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:0 2px;" title="クリア">✕</button>' : '')
-      + '</div>'
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
@@ -4276,21 +4281,19 @@ window.addEventListener('storageReady', function(){
     if(ochk){ ochk.addEventListener('change', ()=>{ ownStockOnlyFilter = ochk.checked; renderProductTable(); }); }
     const cchk = document.getElementById('customerOrderChk');
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
+    const nschk = document.getElementById('nameSortChk');
+    if(nschk){ nschk.addEventListener('change', ()=>{
+      nameSortFilter = nschk.checked;
+      if(nameSortFilter){ recentFilter = false; brandSortFilter = false;
+        const rc=document.getElementById('recentChk'); if(rc) rc.checked=false;
+        const bc=document.getElementById('brandSortChk'); if(bc) bc.checked=false;
+      }
+      renderProductTable();
+    }); }
     const rchk = document.getElementById('recentChk');
-    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; brandSortFilter = false; const bchk2=document.getElementById('brandSortChk'); if(bchk2) bchk2.checked=false; } renderProductTable(); }); }
+    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; brandSortFilter = false; nameSortFilter = false; const bchk2=document.getElementById('brandSortChk'); if(bchk2) bchk2.checked=false; const nc=document.getElementById('nameSortChk'); if(nc) nc.checked=false; } renderProductTable(); }); }
     const bschk = document.getElementById('brandSortChk');
-    if(bschk){ bschk.addEventListener('change', ()=>{ brandSortFilter = bschk.checked; if(brandSortFilter){ recentFilter = false; const rc=document.getElementById('recentChk'); if(rc) rc.checked=false; } renderProductTable(); }); }
-    const kwInput = document.getElementById('keywordSearchInput');
-    const doKeywordSearch = () => { keywordFilter = kwInput ? kwInput.value : ''; renderProductTable(); };
-    if(kwInput){
-      kwInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') doKeywordSearch(); });
-      kwInput.addEventListener('focus', ()=>{ kwInput.style.borderColor = 'var(--amber)'; });
-      kwInput.addEventListener('blur', ()=>{ kwInput.style.borderColor = 'var(--line)'; });
-    }
-    const kwBtn = document.getElementById('keywordSearchBtn');
-    if(kwBtn){ kwBtn.addEventListener('click', doKeywordSearch); }
-    const kwClear = document.getElementById('keywordClearBtn');
-    if(kwClear){ kwClear.addEventListener('click', ()=>{ keywordFilter = ''; renderProductTable(); }); }
+    if(bschk){ bschk.addEventListener('change', ()=>{ brandSortFilter = bschk.checked; if(brandSortFilter){ recentFilter = false; nameSortFilter = false; const rc=document.getElementById('recentChk'); if(rc) rc.checked=false; const nc=document.getElementById('nameSortChk'); if(nc) nc.checked=false; } renderProductTable(); }); }
   }
 
   function renderBranchFilter(){
@@ -4437,8 +4440,10 @@ window.addEventListener('storageReady', function(){
       filteredList.sort((a,b)=>{
         const ba = (a.brand||'').localeCompare(b.brand||'','ja');
         if(ba !== 0) return ba;
-        return a.name.localeCompare(b.name,'ja');
+        return (a.name||'').localeCompare(b.name||'','ja');
       });
+    } else if(nameSortFilter){
+      filteredList.sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
     } else if(!recentFilter){
       filteredList.sort((a,b)=>{
         // 検索したタイヤサイズに一致する商品を先頭に表示
@@ -4451,7 +4456,7 @@ window.addEventListener('storageReady', function(){
         const bMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(b) : false;
         if(aMatch && !bMatch) return -1;
         if(!aMatch && bMatch) return 1;
-        return a.name.localeCompare(b.name,'ja');
+        return (a.name||'').localeCompare(b.name||'','ja');
       });
     }
     // 複数支店閲覧可能な場合は支店別在庫列を表示
@@ -7502,6 +7507,21 @@ window.addEventListener('storageReady', function(){
     _cbModal.addEventListener('click', e=>{ if(e.target===_cbModal) _cbModal.style.display='none'; });
   })();
   document.getElementById('modalCancel').addEventListener('click', closeModal);
+
+  // キーワード検索（静的HTML）
+  {
+    const _kwInput = document.getElementById('keywordSearchInput');
+    const _doKw = () => { keywordFilter = _kwInput ? _kwInput.value : ''; renderProductTable(); };
+    if(_kwInput){
+      _kwInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') _doKw(); });
+      _kwInput.addEventListener('focus', ()=>{ _kwInput.style.borderColor = 'var(--amber)'; });
+      _kwInput.addEventListener('blur', ()=>{ _kwInput.style.borderColor = 'var(--line)'; });
+    }
+    const _kwBtn = document.getElementById('keywordSearchBtn');
+    if(_kwBtn){ _kwBtn.addEventListener('click', _doKw); }
+    const _kwClear = document.getElementById('keywordClearBtn');
+    if(_kwClear){ _kwClear.addEventListener('click', ()=>{ keywordFilter = ''; if(_kwInput) _kwInput.value = ''; renderProductTable(); }); }
+  }
 
   // 印刷設定モーダル
   const _printSettingsModal = document.getElementById('inventoryPrintSettingsModal');
