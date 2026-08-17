@@ -793,6 +793,12 @@
 <div class="modal-overlay" id="janScanRegisterModal">
   <div class="modal" style="max-width:620px;width:95%;max-height:90vh;overflow-y:auto;">
     <h3 style="margin-top:0;font-size:16px;">📷 JANコードをスキャンして登録</h3>
+    <!-- ブリヂストン一括補完 -->
+    <div style="background:var(--bg-2);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;font-size:12.5px;color:var(--text-2);">🟢 ブリヂストン商品はJAN価格表から自動補完できます</div>
+      <button class="btn btn-ghost btn-sm" id="janScanBsAutoFillBtn" style="white-space:nowrap;">ブリヂストン商品を一括補完</button>
+      <div id="janScanBsAutoFillMsg" style="font-size:12px;width:100%;min-height:16px;"></div>
+    </div>
     <!-- 選択中の商品 -->
     <div id="janScanRegisterTarget" style="background:var(--bg-2);border:2px solid var(--teal);border-radius:10px;padding:12px 16px;margin-bottom:10px;">
       <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">▶ スキャン待機中の商品</div>
@@ -6359,6 +6365,30 @@ window.addEventListener('storageReady', function(){
       });
       document.getElementById('janScanRegisterClose').addEventListener('click', ()=>{ _jsrModal.style.display='none'; });
       _jsrModal.addEventListener('click', e=>{ if(e.target===_jsrModal) _jsrModal.style.display='none'; });
+
+      // ブリヂストン商品一括補完
+      document.getElementById('janScanBsAutoFillBtn').addEventListener('click', async ()=>{
+        const msgEl = document.getElementById('janScanBsAutoFillMsg');
+        msgEl.style.color='var(--text-2)'; msgEl.textContent='処理中...';
+        const rows = runJanAutoMatch();
+        let changed = 0;
+        for(const row of rows){
+          if(!row.product.barcode && row.selectedIdx >= 0){
+            row.product.barcode = row.matches[row.selectedIdx].j;
+            row.product.updatedAt = Date.now();
+            changed++;
+          }
+        }
+        if(!changed){ msgEl.textContent='補完できる商品がありませんでした。'; return; }
+        try{
+          await saveProducts();
+          msgEl.style.color='var(--teal)';
+          msgEl.textContent='✅ '+changed+'件のブリヂストン商品にJANコードを設定しました。';
+          _jsrRenderList();
+        }catch(e){
+          msgEl.style.color='var(--red)'; msgEl.textContent='⚠️ 保存失敗: '+e.message;
+        }
+      });
     })();
 
     // ラベル設定
