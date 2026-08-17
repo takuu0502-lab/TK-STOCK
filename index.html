@@ -5967,7 +5967,10 @@ window.addEventListener('storageReady', function(){
       setTimeout(()=>{ document.getElementById('receiveScanInput').focus(); }, 300);
     }
     function _doReceiveScan(){
-      const barcode = document.getElementById('receiveScanInput').value.trim().toLowerCase();
+      const _si = document.getElementById('receiveScanInput');
+      const barcode = _si.value.trim().toLowerCase();
+      _si.value = ''; // 読み取り直後にクリア（次のスキャンが追記されないよう）
+      if(_scanPreview) _scanPreview.textContent = '';
       if(!barcode) return;
       const p = products.find(x=>x.barcode && x.barcode.toLowerCase() === barcode);
       if(!p){
@@ -8340,6 +8343,7 @@ window.addEventListener('storageReady', function(){
 
     function doLookup(fromScan){
       const code = barcodeInput.value.trim().toLowerCase();
+      barcodeInput.value = ''; // 読み取り直後にクリア
       resultEl.innerHTML = '';
       if(!code) return;
       const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
