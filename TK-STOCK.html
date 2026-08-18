@@ -6361,6 +6361,14 @@ window.addEventListener('storageReady', function(){
       const qty = parseInt(document.getElementById('receiveScanQty').value)||1;
       const locId = document.getElementById('receiveScanLocation').value;
       const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const btn = document.getElementById('receiveScanConfirmBtn');
+      const branchLabel0 = branchName(brId);
+      const currentStk0 = p.branchStock ? (p.branchStock[brId]||0) : 0;
+      const confirmed0 = await showConfirm(
+        '「'+escapeHtml(cleanName(p.name))+'」を '+qty+' 本 入庫します。よろしいですか？\n\n'
+        +'在庫：'+currentStk0+' → '+(currentStk0+qty)+' 本（'+escapeHtml(branchLabel0)+'）'
+      );
+      if(!confirmed0) return;
       if(!p.branchStock) p.branchStock = {};
       p.branchStock[brId] = (p.branchStock[brId]||0) + qty;
       p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
@@ -6369,7 +6377,6 @@ window.addEventListener('storageReady', function(){
         p.branchLocation[brId] = locId;
       }
       p.updatedAt = Date.now();
-      const btn = document.getElementById('receiveScanConfirmBtn');
       btn.disabled = true;
       try{
         await saveProducts();
@@ -10118,6 +10125,14 @@ window.addEventListener('storageReady', function(){
     document.getElementById('inBatchConfirmBtn').addEventListener('click', async ()=>{
       if(!canWriteData()) return;
       if(inboundCart.length===0) return;
+      const confirmLines = inboundCart.map(item=>{
+        const _cp = products.find(x=>x.id===item.productId);
+        return _cp ? '・'+escapeHtml(cleanName(_cp.name))+' × '+item.qty+'本' : '';
+      }).filter(Boolean).join('\n');
+      const confirmed2 = await showConfirm(
+        '以下 '+inboundCart.length+' 商品を一括入庫します。よろしいですか？\n\n'+confirmLines
+      );
+      if(!confirmed2) return;
       const msgEl = document.getElementById('inBatchMsg');
       if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
       const batchDate = new Date().toISOString();
