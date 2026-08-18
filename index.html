@@ -4620,7 +4620,7 @@ window.addEventListener('storageReady', function(){
           })()
           : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
           + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>')
-        + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&p.branchLocation[_locBr])||p.locationId||''; return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
+        + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
           if(_showMultiCols){
             // 支店別在庫列（ヘッダーと列数を合わせるため別々の<td>）
@@ -7704,7 +7704,7 @@ window.addEventListener('storageReady', function(){
       const brand = p.brand || '';
       const isTW = p.majorId===tireCatId || p.majorId===wheelCatId;
       const catName = (majorById(p.majorId)||{}).name||'';
-      const _locId2 = (p.branchLocation&&p.branchLocation[ownBranch])||p.locationId||'';
+      const _locId2 = (p.branchLocation&&ownBranch in p.branchLocation)?p.branchLocation[ownBranch]:(p.locationId||'');
       const locName = _locId2 && locations.find(l=>l.id===_locId2) ? locations.find(l=>l.id===_locId2).name : '—';
 
       let tdCols = '<td>'+escapeHtml(p.name)+'</td>';
@@ -8447,7 +8447,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_partno').value = p.partno || '';
     populateSupplierSelect(p.supplierId || '');
     const _editLocBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-    const _editLocId = (p.branchLocation && p.branchLocation[_editLocBranch]) || p.locationId || '';
+    const _editLocId = (p.branchLocation && _editLocBranch in p.branchLocation) ? p.branchLocation[_editLocBranch] : (p.locationId || '');
     populateLocationSelect(_editLocId);
     document.getElementById('f_name').value = p.name;
     document.getElementById('f_tiremodel').value = '';
