@@ -9186,8 +9186,10 @@ window.addEventListener('storageReady', function(){
           }
           resultEl.innerHTML = '<div class="msg msg-error">未登録のバーコードです。新規商品として登録できます。</div><button class="btn btn-amber" id="'+kind+'RegisterNew" style="margin-top:10px;">この商品を新規登録</button>';
           document.getElementById(kind+'RegisterNew').addEventListener('click', ()=>{ openAddModal(code); });
+          setTimeout(()=>{ barcodeInput.focus(); }, 50);
         } else {
           resultEl.innerHTML = '<div class="msg msg-error">未登録のバーコードです。出庫するには先に商品登録が必要です。</div>';
+          setTimeout(()=>{ barcodeInput.focus(); }, 50);
         }
         return;
       }
@@ -9201,7 +9203,7 @@ window.addEventListener('storageReady', function(){
         resultEl.innerHTML = '<div class="msg msg-ok" style="padding:8px 14px;">✓ '+escapeHtml(cleanName(p.name))+(p.spec?' ('+escapeHtml(p.spec)+')':'')+'  をリストに追加しました</div>';
         barcodeInput.value = '';
         setTimeout(()=>{ if(resultEl) resultEl.innerHTML=''; }, 2000);
-        if(fromScan){ setTimeout(()=>{ startScanner('in'); }, 900); } else { setTimeout(()=>{ barcodeInput.focus(); }, 50); }
+        if(fromScan){ setTimeout(()=>{ startScanner('in'); }, 900); } else { setTimeout(()=>{ barcodeInput.focus(); barcodeInput.select(); }, 100); }
         return;
       }
       if(kind === 'out'){
@@ -10011,6 +10013,7 @@ window.addEventListener('storageReady', function(){
       const msg2 = document.getElementById('inBatchMsg');
       if(msg2){ msg2.innerHTML='<div class="msg msg-ok">'+count+' 商品の入庫処理が完了しました。</div>';
         setTimeout(()=>{ const e=document.getElementById('inBatchMsg'); if(e) e.innerHTML=''; },3000); }
+      setTimeout(()=>{ const el=document.getElementById('inBarcode'); if(el){ el.focus(); el.select(); } }, 150);
     });
   }
 
