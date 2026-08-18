@@ -3390,7 +3390,12 @@ window.addEventListener('storageReady', function(){
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
-      if(tab === 'in'){ setTimeout(()=>{ document.getElementById('inBarcode').focus(); }, 200); }
+      if(tab === 'in'){
+        setTimeout(()=>{
+          const el = document.getElementById('inBarcode');
+          if(el){ el.focus(); el.select(); }
+        }, 400);
+      }
       if(tab === 'out'){ setTimeout(()=>{ document.getElementById('outBarcode').focus(); }, 200); }
     });
   });
