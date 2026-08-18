@@ -3557,7 +3557,7 @@ window.addEventListener('storageReady', function(){
   let selectedTireInch = null;
   let selectedCatalogModelKey = null;
   let stockOnlyFilter = false;
-  let ownStockOnlyFilter = false; // 自店舗在庫あり商品のみ
+  let ownStockOnlyFilter = true; // 自店舗在庫あり商品のみ
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let orderOnlyFilter = false;
@@ -4471,8 +4471,6 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
-      + '<input type="checkbox" id="brandSortChk"'+(brandSortFilter?' checked':'')+'> ブランド順'
-      + '</label>'
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
@@ -4483,9 +4481,8 @@ window.addEventListener('storageReady', function(){
     const oochk = document.getElementById('orderOnlyChk');
     if(oochk){ oochk.addEventListener('change', ()=>{ orderOnlyFilter = oochk.checked; renderProductTable(); }); }
     const rchk = document.getElementById('recentChk');
-    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; brandSortFilter = false; const bchk2=document.getElementById('brandSortChk'); if(bchk2) bchk2.checked=false; } renderProductTable(); }); }
-    const bschk = document.getElementById('brandSortChk');
-    if(bschk){ bschk.addEventListener('change', ()=>{ brandSortFilter = bschk.checked; if(brandSortFilter){ recentFilter = false; const rc=document.getElementById('recentChk'); if(rc) rc.checked=false; } renderProductTable(); }); }
+    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
+
   }
 
   function renderBranchFilter(){
