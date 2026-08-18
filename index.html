@@ -4102,33 +4102,24 @@ window.addEventListener('storageReady', function(){
       matches = matches.filter(r => r.b === fb && r.m === fm);
     }
     const queryLabel = query || (useModel ? useModel.replace('||',' ') : '');
-    if(matches.length === 0){
+    // 自社登録タイヤを取得（統合表示用）
+    const _tireCatM = categories.find(c => c.name === 'タイヤ');
+    const manualMatched = (_tireCatM && (useWidth || useInch)) ? products.filter(p => {
+      if(p.majorId !== _tireCatM.id) return false;
+      if(!p.spec) return false;
+      if(useWidth && p.spec.indexOf(useWidth) === -1) return false;
+      if(useInch  && p.spec.indexOf(useInch)  === -1) return false;
+      if(useAspect && useAspect !== 'NOASPECT' && p.spec.indexOf(useAspect) === -1) return false;
+      if(useAspect === 'NOASPECT' && !/^\d+R\d+/.test(p.spec)) return false;
+      if(p._fromCatalog) return false;
+      if(findCatalogEntryForProduct(p)) return false;
+      return true;
+    }) : [];
+    if(matches.length === 0 && manualMatched.length === 0){
       wrap.innerHTML = '<div class="price-catalog"><div class="price-catalog-title">ブリヂストン 夏タイヤA表価格表</div>'
         + '<div class="price-catalog-sub">茨城地区本部 A表・2026年2月以降</div>'
         + '<div style="font-size:12.5px;color:var(--text-3);">「'+escapeHtml(queryLabel)+'」に該当する銘柄は価格表に見つかりませんでした。</div></div>';
       return;
-    }
-    if(forceTire){
-      // 見積タブ: estimateSortOrder に従う
-      matches.sort((a,b)=>{
-        const sa = getEffectiveSellPrice(a.b, a.m, a.w, a.t);
-        const sb = getEffectiveSellPrice(b.b, b.m, b.w, b.t);
-        if(estimateSortOrder === 'price_asc'){
-          if(sa===null && sb===null) return 0;
-          if(sa===null) return 1;
-          if(sb===null) return -1;
-          return sa - sb || (a.b+a.m).localeCompare(b.b+b.m,'ja');
-        } else if(estimateSortOrder === 'price_desc'){
-          if(sa===null && sb===null) return 0;
-          if(sa===null) return 1;
-          if(sb===null) return -1;
-          return sb - sa || (a.b+a.m).localeCompare(b.b+b.m,'ja');
-        } else {
-          return (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja');
-        }
-      });
-    } else {
-      matches.sort((a,b)=> (a.b+a.m).localeCompare(b.b+b.m,'ja') || a.s.localeCompare(b.s,'ja'));
     }
     // 仕入れ価格表示：外部ユーザーは常に非表示、それ以外はチェックボックスで制御
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
@@ -4143,33 +4134,79 @@ window.addEventListener('storageReady', function(){
     const _catShowMultiCols = _catVisibleBranches.length > 1
       && (forceTire || !(currentUser && isSuperAdminUser() && selectedBranchFilter === null));
 
-    const rows = matches.map((r,i)=>{
-      // カタログ表示は常に価格調整ルールで計算（商品登録の個別価格は使用しない）
-      const _prod = findProductForCatalogEntry(r);
-      const cost = computeCostPrice(r.b, r.m, r.w, r.t);
-      const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-      const cKey = r.b+'||'+r.m+'||'+r.s;
-      const checked = catalogQuoteSelection.has(cKey);
-      // 在庫セル
-      const stockCell = _catShowMultiCols
-        ? _catVisibleBranches.map(brId => {
-            const bStk = stockForCatalogEntryByBranch(r, brId);
-            const isOwn = brId === _catOwnBranchId;
-            return '<td class="price-num" style="padding:4px 6px;">'
-              + '<span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'
-              + '</td>';
-          }).join('')
-        : '<td class="price-num" style="color:'+(stockForCatalogEntry(r)>0?'var(--teal)':'var(--text-3)')+';">'+stockForCatalogEntry(r)+'</td>';
-      return '<tr data-catalog-idx="'+i+'">'
-        + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
-        + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
-        + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
-        + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b==='SEIBERLING'||r.b==='TOPRUN'||/^LUFT/i.test(r.b) ? '—' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
-        + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
-        + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost!==null ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</td>' : '')
-        + '<td class="price-num" style="color:var(--amber);">'+(sell!==null ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</td>'
-        + stockCell
-        + '</tr>';
+    // カタログ + 自社登録を統合ソート
+    const _chkPrefixManual = '_prod_';
+    const allTireItems = [
+      ...matches.map(r=>({type:'catalog',r})),
+      ...manualMatched.map(p=>({type:'manual',p}))
+    ];
+    if(forceTire){
+      allTireItems.sort((a,b)=>{
+        const sa = a.type==='catalog' ? getEffectiveSellPrice(a.r.b,a.r.m,a.r.w,a.r.t) : (a.p.sellPrice||null);
+        const sb = b.type==='catalog' ? getEffectiveSellPrice(b.r.b,b.r.m,b.r.w,b.r.t) : (b.p.sellPrice||null);
+        if(estimateSortOrder==='price_asc'){
+          if(sa===null&&sb===null) return 0; if(sa===null) return 1; if(sb===null) return -1;
+          return sa-sb || (a.type==='catalog'?a.r.b+a.r.m:a.p.name).localeCompare(b.type==='catalog'?b.r.b+b.r.m:b.p.name,'ja');
+        } else if(estimateSortOrder==='price_desc'){
+          if(sa===null&&sb===null) return 0; if(sa===null) return 1; if(sb===null) return -1;
+          return sb-sa || (a.type==='catalog'?a.r.b+a.r.m:a.p.name).localeCompare(b.type==='catalog'?b.r.b+b.r.m:b.p.name,'ja');
+        } else {
+          const na=a.type==='catalog'?a.r.b+a.r.m:a.p.name, nb=b.type==='catalog'?b.r.b+b.r.m:b.p.name;
+          return na.localeCompare(nb,'ja');
+        }
+      });
+    } else {
+      allTireItems.sort((a,b)=>{
+        const na=a.type==='catalog'?a.r.b+a.r.m:a.p.name, nb=b.type==='catalog'?b.r.b+b.r.m:b.p.name;
+        const sa=a.type==='catalog'?a.r.s:a.p.spec||'', sb=b.type==='catalog'?b.r.s:b.p.spec||'';
+        return na.localeCompare(nb,'ja') || sa.localeCompare(sb,'ja');
+      });
+    }
+    let _catI=0, _manI=0;
+    const rows = allTireItems.map(item=>{
+      if(item.type==='catalog'){
+        const r=item.r, i=_catI++;
+        const cost = computeCostPrice(r.b, r.m, r.w, r.t);
+        const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+        const cKey = r.b+'||'+r.m+'||'+r.s;
+        const checked = catalogQuoteSelection.has(cKey);
+        const stockCell = _catShowMultiCols
+          ? _catVisibleBranches.map(brId => {
+              const bStk = stockForCatalogEntryByBranch(r, brId);
+              return '<td class="price-num" style="padding:4px 6px;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span></td>';
+            }).join('')
+          : '<td class="price-num" style="color:'+(stockForCatalogEntry(r)>0?'var(--teal)':'var(--text-3)')+';">'+stockForCatalogEntry(r)+'</td>';
+        return '<tr data-catalog-idx="'+i+'">'
+          + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
+          + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m))+'</td>'
+          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
+          + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b==='SEIBERLING'||r.b==='TOPRUN'||/^LUFT/i.test(r.b) ? '\u2014' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
+          + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
+          + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost!==null ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</td>' : '')
+          + '<td class="price-num" style="color:var(--amber);">'+(sell!==null ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</td>'
+          + stockCell + '</tr>';
+      } else {
+        const p=item.p, j=_manI++;
+        const cost = p.costPrice || 0;
+        const sell = p.sellPrice || 0;
+        const cKey = _chkPrefixManual + p.id;
+        const checked = catalogQuoteSelection.has(cKey);
+        const stockCell = _catShowMultiCols
+          ? _catVisibleBranches.map(brId => {
+              const bStk = p.branchStock ? (p.branchStock[brId]||0) : 0;
+              return '<td class="price-num" style="padding:4px 6px;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span></td>';
+            }).join('')
+          : '<td class="price-num" style="color:'+((getStock(p))>0?'var(--teal)':'var(--text-3)')+';">'+getStock(p)+'</td>';
+        return '<tr>'
+          + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+j+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
+          + '<td style="color:var(--amber);font-weight:600;text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
+          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec||'')+'</td>'
+          + (showCost ? '<td class="price-num" style="color:var(--text-2);">\u2014</td>' : '')
+          + '<td class="price-num" style="color:var(--text-2);">\u2014</td>'
+          + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost?'\u00a5'+cost.toLocaleString('ja-JP'):'\u2014')+'</td>' : '')
+          + '<td class="price-num" style="color:var(--amber);">'+(sell?'\u00a5'+sell.toLocaleString('ja-JP'):'\u2014')+'</td>'
+          + stockCell + '</tr>';
+      }
     }).join('');
     const quoteBarHtml = catalogQuoteSelection.size > 0
       ? '<div class="catalog-quote-bar">'+catalogQuoteSelection.size+'件選択中 <button class="btn btn-amber btn-sm" id="catalogQuoteBtn">見積もりを作成</button><button class="btn btn-ghost btn-sm" id="catalogClearBtn">選択クリア</button></div>'
@@ -4191,7 +4228,7 @@ window.addEventListener('storageReady', function(){
       : '';
     const _catalogEditBtn = !forceTire ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openCatalogBulkEdit(window._lastCatalogMatches||[])">✏️ 一括編集</button>' : '';
     window._lastCatalogMatches = matches;
-    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+matches.length+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
+    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+(matches.length+manualMatched.length)+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
@@ -4209,6 +4246,28 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-catalog-click]').forEach(td=>{
       td.addEventListener('click', ()=> handleCatalogRowClick(matches[Number(td.dataset.catalogClick)]));
     });
+    wrap.querySelectorAll('[data-manual-detail]').forEach(td=>{
+      td.addEventListener('click', ()=> openProductDetail(td.dataset.manualDetail));
+    });
+    if(forceTire){
+      wrap.querySelectorAll('[data-manual-chk]').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const p = manualMatched[Number(cb.dataset.manualChk)];
+          const cKey = _chkPrefixManual + p.id;
+          if(cb.checked){
+            catalogQuoteSelection.set(cKey, {
+              b: p.name, m: p.name, s: p.spec,
+              w: p.costPrice||0, t: null,
+              _productId: p.id, _sellPrice: p.sellPrice||0
+            });
+          } else {
+            catalogQuoteSelection.delete(cKey);
+          }
+          renderPriceCatalog(opts);
+          renderEstSelectionBar();
+        });
+      });
+    }
     const sortSel = document.getElementById('estimateSortSelect');
     if(sortSel){
       sortSel.addEventListener('change', ()=>{
@@ -4260,8 +4319,6 @@ window.addEventListener('storageReady', function(){
       });
     }
 
-    // 自社登録商品セクションを追記
-    renderManualProductSection(wrap, useWidth, useAspect, useInch, forceTire, showCost, opts);
   }
 
   // 自社登録商品（products配列）からサイズ一致するものを表示
