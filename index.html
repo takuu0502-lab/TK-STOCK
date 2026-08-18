@@ -4612,10 +4612,11 @@ window.addEventListener('storageReady', function(){
     if(keywordFilter){
       const kw = keywordFilter.trim().toLowerCase();
       if(kw) filteredList = filteredList.filter(p =>
-        (p.name   || '').toLowerCase().includes(kw) ||
-        (p.brand  || '').toLowerCase().includes(kw) ||
-        (p.partno || '').toLowerCase().includes(kw) ||
-        (p.spec   || '').toLowerCase().includes(kw)
+        (p.name    || '').toLowerCase().includes(kw) ||
+        (p.brand   || '').toLowerCase().includes(kw) ||
+        (p.partno  || '').toLowerCase().includes(kw) ||
+        (p.spec    || '').toLowerCase().includes(kw) ||
+        (p.barcode || '').toLowerCase().includes(kw)
       );
     }
     if(recentFilter){
