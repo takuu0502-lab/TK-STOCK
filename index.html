@@ -10371,6 +10371,24 @@ window.addEventListener('storageReady', function(){
     renderLongTermReport();
   });
 
+  window._histPrint = async function(batchIdx){
+    const items = window._histBatches && window._histBatches[batchIdx];
+    if(!items || items.length === 0) return;
+    const targets = items.map(t=>{
+      const p = products.find(x=>x.id===t.productId);
+      return p ? {p, qty:t.qty} : null;
+    }).filter(Boolean);
+    if(targets.length === 0) return;
+    const names = targets.map(t=>escapeHtml(t.p.name)+' × '+t.qty+'枚').join('\n');
+    const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+names);
+    if(!doPrint) return;
+    if(targets.length === 1){
+      _printReceiveLabel(targets[0].p, targets[0].qty);
+    } else {
+      _printReceiveLabelBatch(targets);
+    }
+  };
+
   function renderHistory(){
     const el = document.getElementById('historyList');
     let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
@@ -10449,6 +10467,7 @@ window.addEventListener('storageReady', function(){
 
     const sortedDayKeys = Object.keys(dayGroups).sort((a,b)=>new Date(b)-new Date(a));
 
+    window._histBatches = [];
     el.innerHTML = sortedDayKeys.map(dayKey=>{
       const { txns: dayItems, provs: dayProvs } = dayGroups[dayKey];
       const dayInQty   = dayItems.filter(t=>t.type==='in').reduce((s,t)=>s+t.qty,0);
@@ -10519,6 +10538,7 @@ window.addEventListener('storageReady', function(){
         }
 
         // 通常トランザクション
+        const _hBatchIdx = (batch.type==='in') ? (window._histBatches.push(batch.items)-1) : -1;
         const isBulk = batch.items.length > 1;
         const bQty = batch.items.reduce((s,t)=>s+t.qty,0);
         const typeColor = batch.type==='in' ? 'var(--teal)' : batch.type==='delete' ? 'var(--text-3)' : 'var(--red)';
@@ -10550,6 +10570,7 @@ window.addEventListener('storageReady', function(){
           +'<span style="font-size:13px;font-weight:700;color:var(--text-1);">'+headerLabel+'</span>'
           +(batch.user?'<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">操作者：'+escapeHtml(batch.user)+'</span>':'')
           +'</div>'
+          +(batch.type==='in' ? '<button onclick="event.stopPropagation();window._histPrint('+_hBatchIdx+')" class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 8px;flex-shrink:0;">🖨️ ラベル印刷</button>' : '')
           +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="hist-arrow">▼</span></div>'
           +'</summary>'
           +'<div style="padding:0 4px;">'+rows+'</div>'
