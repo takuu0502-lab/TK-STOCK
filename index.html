@@ -4464,8 +4464,6 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="customerOrderChk"'+(customerOrderFilter?' checked':'')+'> 仮出庫品のみ表示'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
-      + '<input type="checkbox" id="nameSortChk"'+(nameSortFilter?' checked':'')+'> 商品名順'
-      + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
@@ -4479,19 +4477,10 @@ window.addEventListener('storageReady', function(){
     if(ochk){ ochk.addEventListener('change', ()=>{ ownStockOnlyFilter = ochk.checked; renderProductTable(); }); }
     const cchk = document.getElementById('customerOrderChk');
     if(cchk){ cchk.addEventListener('change', ()=>{ customerOrderFilter = cchk.checked; renderProductTable(); }); }
-    const nschk = document.getElementById('nameSortChk');
-    if(nschk){ nschk.addEventListener('change', ()=>{
-      nameSortFilter = nschk.checked;
-      if(nameSortFilter){ recentFilter = false; brandSortFilter = false;
-        const rc=document.getElementById('recentChk'); if(rc) rc.checked=false;
-        const bc=document.getElementById('brandSortChk'); if(bc) bc.checked=false;
-      }
-      renderProductTable();
-    }); }
     const rchk = document.getElementById('recentChk');
-    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; brandSortFilter = false; nameSortFilter = false; const bchk2=document.getElementById('brandSortChk'); if(bchk2) bchk2.checked=false; const nc=document.getElementById('nameSortChk'); if(nc) nc.checked=false; } renderProductTable(); }); }
+    if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; brandSortFilter = false; const bchk2=document.getElementById('brandSortChk'); if(bchk2) bchk2.checked=false; } renderProductTable(); }); }
     const bschk = document.getElementById('brandSortChk');
-    if(bschk){ bschk.addEventListener('change', ()=>{ brandSortFilter = bschk.checked; if(brandSortFilter){ recentFilter = false; nameSortFilter = false; const rc=document.getElementById('recentChk'); if(rc) rc.checked=false; const nc=document.getElementById('nameSortChk'); if(nc) nc.checked=false; } renderProductTable(); }); }
+    if(bschk){ bschk.addEventListener('change', ()=>{ brandSortFilter = bschk.checked; if(brandSortFilter){ recentFilter = false; const rc=document.getElementById('recentChk'); if(rc) rc.checked=false; } renderProductTable(); }); }
   }
 
   function renderBranchFilter(){
