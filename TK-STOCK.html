@@ -4179,7 +4179,7 @@ window.addEventListener('storageReady', function(){
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===_catProd.id).reduce((s,x)=>s+x.qty,0);
                 const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===_catProd.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===_catProd.id).reduce((ss,i)=>ss+i.qty,0),0);
                 if(_inschQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#1a7a5e;white-space:nowrap;">📦 +'+_inschQ+'</div>';
-                if(_provQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#e8a020;white-space:nowrap;">🔖 −'+_provQ+'</div>';
+                if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div style="font-size:9px;font-weight:700;color:'+(_over?'var(--red)':'#e8a020')+';white-space:nowrap;">'+(_over?'⚠️':'🔖')+' −'+_provQ+(_over?' 超過':'')+' </div>'; }
               }
               return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
             }).join('')
@@ -4190,7 +4190,7 @@ window.addEventListener('storageReady', function(){
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===_catProd.id).reduce((s,x)=>s+x.qty,0);
                 const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===_catProd.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===_catProd.id).reduce((ss,i)=>ss+i.qty,0),0);
                 if(_inschQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#1a7a5e;white-space:nowrap;">📦 +'+_inschQ+'</div>';
-                if(_provQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#e8a020;white-space:nowrap;">🔖 −'+_provQ+'</div>';
+                if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div style="font-size:9px;font-weight:700;color:'+(_over?'var(--red)':'#e8a020')+';white-space:nowrap;">'+(_over?'⚠️':'🔖')+' −'+_provQ+(_over?' 超過':'')+' </div>'; }
               }
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+'</td>';
             })();
@@ -4216,7 +4216,7 @@ window.addEventListener('storageReady', function(){
               const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               let _extra = '';
               if(_inschQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#1a7a5e;white-space:nowrap;">📦 +'+_inschQ+'</div>';
-              if(_provQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#e8a020;white-space:nowrap;">🔖 −'+_provQ+'</div>';
+              if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div style="font-size:9px;font-weight:700;color:'+(_over?'var(--red)':'#e8a020')+';white-space:nowrap;">'+(_over?'⚠️':'🔖')+' −'+_provQ+(_over?' 超過':'')+' </div>'; }
               return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
             }).join('')
           : (()=>{
@@ -4225,7 +4225,7 @@ window.addEventListener('storageReady', function(){
               const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               let _extra = '';
               if(_inschQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#1a7a5e;white-space:nowrap;">📦 +'+_inschQ+'</div>';
-              if(_provQ>0) _extra+='<div style="font-size:9px;font-weight:700;color:#e8a020;white-space:nowrap;">🔖 −'+_provQ+'</div>';
+              if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div style="font-size:9px;font-weight:700;color:'+(_over?'var(--red)':'#e8a020')+';white-space:nowrap;">'+(_over?'⚠️':'🔖')+' −'+_provQ+(_over?' 超過':'')+' </div>'; }
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+'</td>';
             })();
         return '<tr>'
