@@ -4335,7 +4335,6 @@ window.addEventListener('storageReady', function(){
       if(useInch  && p.spec.indexOf(useInch)  === -1) return false;
       if(useAspect && useAspect !== 'NOASPECT' && p.spec.indexOf(useAspect) === -1) return false;
       if(useAspect === 'NOASPECT' && !/^\d+R\d+/.test(p.spec)) return false;
-      if(p._fromCatalog) return false;
       if(findCatalogEntryForProduct(p)) return false;
       return true;
     }) : [];
