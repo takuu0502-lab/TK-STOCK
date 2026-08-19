@@ -6225,7 +6225,7 @@ window.addEventListener('storageReady', function(){
         for(const item of entry.items){
           const _bp = products.find(x=>x.id===item.productId);
           if(!_bp) continue;
-          incomingSchedules.push({ id:uid('isch'), productId:_bp.id, productName:_bp.name, brand:_bp.brand||'', spec:_bp.spec||'', branchId:_bpBr, qty:item.qty, expectedDate:formResult.inboundDate, createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          incomingSchedules.push({ id:uid('isch'), productId:_bp.id, productName:_bp.name, brand:_bp.brand||'', spec:_bp.spec||'', branchId:_bpBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
         }
         await saveIncomingSchedules();
         renderProductTable();
@@ -8980,7 +8980,7 @@ window.addEventListener('storageReady', function(){
         await saveProvisionalOutbounds();
         if(formResult.inboundDate){
           const _dpBr = _detPobOwnBranch;
-          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_dpBr, qty, expectedDate:formResult.inboundDate, createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_dpBr, qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
           await saveIncomingSchedules();
         }
         renderProductTable();
@@ -9762,7 +9762,7 @@ window.addEventListener('storageReady', function(){
           for(const item of entry.items){
             const _op = products.find(x=>x.id===item.productId);
             if(!_op) continue;
-            incomingSchedules.push({ id:uid('isch'), productId:_op.id, productName:_op.name, brand:_op.brand||'', spec:_op.spec||'', branchId:_opBr, qty:item.qty, expectedDate:formResult.inboundDate, createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+            incomingSchedules.push({ id:uid('isch'), productId:_op.id, productName:_op.name, brand:_op.brand||'', spec:_op.spec||'', branchId:_opBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
           }
           await saveIncomingSchedules();
         }
@@ -10024,6 +10024,7 @@ window.addEventListener('storageReady', function(){
         +'📅 入荷予定日: <strong>'+s.expectedDate+'</strong>'
         +'</div>'
         +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+escapeHtml(s.createdBy||'—')+'</div>'
+        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:3px;">👤 '+escapeHtml(s.customerName)+(s.carName?' / '+escapeHtml(s.carName):'')+(s.provScheduledDate?' 引渡:'+s.provScheduledDate:'')+'</div>':'')
         +'</div>'
         +'<span style="font-size:14px;color:'+diffColor+';font-weight:700;flex-shrink:0;">+'+s.qty+'本</span>'
         +'</summary>'
@@ -10031,6 +10032,7 @@ window.addEventListener('storageReady', function(){
         +'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:10px;">'
         +'<div>'
         +'<div style="font-size:14px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+'</div>'
+        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:4px;padding:6px 8px;background:rgba(232,160,32,0.1);border-radius:6px;">👤 取引先: '+escapeHtml(s.customerName)+(s.carName?' &nbsp;|&nbsp; 車種: '+escapeHtml(s.carName):'')+(s.provScheduledDate?' &nbsp;|&nbsp; 引渡予定: '+s.provScheduledDate:'')+'</div>':'')
         +'<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(s.brand?escapeHtml(s.brand)+' ':'')+(s.spec?escapeHtml(s.spec):'')+'</div>'
         +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">現在庫: <strong>'+stk+'本</strong>　入荷後: <strong style="color:var(--teal);">'+(stk==='?'?'?':stk+s.qty)+'本</strong></div>'
         +'</div>'
