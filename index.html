@@ -209,13 +209,16 @@
   .spec-step-tabs{display:flex;gap:6px;flex-wrap:wrap;}
   #specSelect{min-width:200px;}
   /* 商品検索タイヤサイズ（旧レイアウト） */
-  .tire-size-row{display:inline-flex;align-items:flex-end;gap:0;flex-wrap:nowrap;}
-  .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:none;}
-  .tire-size-col select{width:90px;font-size:14px;padding:0 4px;border-radius:0;text-align:center;height:38px;box-sizing:border-box;}
-  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;width:100px;}
-  .tire-size-col:last-of-type select{border-radius:0 6px 6px 0;width:80px;}
+  .tire-size-row{display:flex;align-items:flex-end;gap:0;flex-wrap:wrap;width:100%;}
+  .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:1;min-width:70px;}
+  .tire-size-col select{width:100%;font-size:13px;padding:0 4px;border-radius:0;text-align:center;height:38px;box-sizing:border-box;}
+  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;}
   .tire-size-col label{font-size:11px;color:var(--text-3);font-weight:600;letter-spacing:0.3px;display:block;text-align:center;width:100%;}
-  .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-2);font-size:16px;background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:0 3px;height:38px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;}
+  .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-2);font-size:16px;background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:0 3px;height:38px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;flex:none;}
+  .tire-size-li-wrap{display:flex;align-items:center;gap:4px;width:100%;}
+  .tire-size-li-wrap select{flex:1;font-size:13px;height:38px;border-radius:0;text-align:center;box-sizing:border-box;}
+  .tire-size-li-wrap select:last-child{border-radius:0 6px 6px 0;}
+  .tire-size-li-sep{font-weight:700;color:var(--text-3);flex:none;}
   /* 見積もりタブ タイヤサイズセレクター（新デザイン） */
   .tss-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .tss-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--bg-2);border:1.5px solid var(--line);border-radius:12px;padding:10px 8px 8px;flex:1;min-width:80px;max-width:110px;transition:border-color 0.15s;}
@@ -1397,7 +1400,7 @@
 </div>
 
 <div class="modal-overlay" id="productModal">
-  <div class="modal">
+  <div class="modal" style="max-width:580px;width:95%;">
     <h3 id="modalTitle">新規商品登録</h3>
     <div class="field">
       <label>商品コード / JANコード</label>
@@ -1515,13 +1518,12 @@
           <label>インチ</label>
           <select id="f_spec_inch"><option value="">-</option></select>
         </div>
-        <span class="tire-size-sep" style="padding:0 2px;"> </span>
-        <div class="tire-size-col" style="min-width:120px;">
+        <div class="tire-size-col" style="flex:1.6;min-width:110px;">
           <label>ロードインデックス</label>
-          <div style="display:flex;align-items:center;gap:3px;">
-            <select id="f_spec_li1" style="flex:1;min-width:52px;"><option value="">-</option></select>
-            <span style="color:var(--text-3);font-weight:700;">/</span>
-            <select id="f_spec_li2" style="flex:1;min-width:52px;"><option value="">-</option></select>
+          <div class="tire-size-li-wrap">
+            <select id="f_spec_li1"><option value="">-</option></select>
+            <span class="tire-size-li-sep">/</span>
+            <select id="f_spec_li2"><option value="">-</option></select>
           </div>
         </div>
       </div>
