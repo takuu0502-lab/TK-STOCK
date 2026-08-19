@@ -8326,6 +8326,17 @@ window.addEventListener('storageReady', function(){
     catalogModels.forEach(key=>{
       opts += '<option value="'+escapeHtml(key)+'">'+escapeHtml(key.replace('||',' '))+'</option>';
     });
+    // 自社登録商品のブランド+商品名も追加（カタログ外）
+    const catalogKeys = new Set(catalogModels);
+    const manualKeys = Array.from(new Set(
+      products.filter(p=>p.brand&&p.name).map(p=>(p.brand+'||'+p.name))
+    )).filter(k=>!catalogKeys.has(k)).sort((a,b)=>a.localeCompare(b,'ja'));
+    if(manualKeys.length > 0){
+      opts += '<option disabled>── 自社登録 ──</option>';
+      manualKeys.forEach(key=>{
+        opts += '<option value="'+escapeHtml(key)+'">'+escapeHtml(key.replace('||',' '))+'</option>';
+      });
+    }
     sel.innerHTML = opts;
   }
   populateTireModelSelect();
