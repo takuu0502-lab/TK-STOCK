@@ -8617,6 +8617,7 @@ window.addEventListener('storageReady', function(){
     populateSupplierSelect('');
     populateLocationSelect('');
     document.getElementById('f_name').value = '';
+    populateTireModelSelect();
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
     if(selectedSub) populateSubSelect(document.getElementById('f_major').value, selectedSub);
