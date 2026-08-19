@@ -8902,7 +8902,7 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">'
           +'<div><div style="color:var(--text-3);font-size:10px;">👤 お客様</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'様</div></div>'
-          +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+escapeHtml(po.scheduledDate)+'</div></div>'
+          +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+(()=>{const _p=po.scheduledDate?po.scheduledDate.split('-'):[];return _p.length>=3?_p[0]+'年'+parseInt(_p[1])+'月'+parseInt(_p[2])+'日':(po.scheduledDate||'—');})()+'</div></div>'
           +'</div>'
           +(po.carName?'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">🚗 車種：</span><span style="color:var(--text-2);">'+escapeHtml(po.carName)+'</span></div>':'')
           +'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">本数：</span><span style="font-weight:700;color:var(--amber);">'+qty+'本</span>'
