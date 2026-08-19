@@ -2204,6 +2204,8 @@ window.addEventListener('storageReady', function(){
   let _detailInschRefresh = null; // 商品詳細の入庫予定再描画関数（モーダル外から呼ぶ用）
   let categories = [];
   let editingId = null;
+  let _pendingCatalogKey = null;
+  let _pendingFromCatalog = false;
   let janDict = {};
   // ── 支店マスタ ──────────────────────────────────────────
   const BRANCHES = [
@@ -8808,6 +8810,8 @@ window.addEventListener('storageReady', function(){
 
   function openAddModal(prefillBarcode){
     editingId = null;
+    _pendingCatalogKey = null;
+    _pendingFromCatalog = false;
     document.getElementById('modalTitle').textContent = '新規商品登録';
     document.getElementById('f_barcode').value = prefillBarcode || '';
     document.getElementById('f_brand').value = '';
@@ -9421,6 +9425,8 @@ window.addEventListener('storageReady', function(){
         document.getElementById('f_name').value = p.name || '';
         document.getElementById('f_spec').value = p.spec || '';
         document.getElementById('f_mfyear').value = '';  // 製造年は意図的に空（入力させる）
+        _pendingCatalogKey = p.catalogKey || null;
+        _pendingFromCatalog = !!p._fromCatalog;
         document.getElementById('f_memo').value = p.memo || '';
         document.getElementById('f_cost').value = p.costPrice || '';
         document.getElementById('f_price').value = p.sellPrice || '';
@@ -9675,7 +9681,10 @@ window.addEventListener('storageReady', function(){
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
+      if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
+      products.push(_newProd);
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
