@@ -3021,8 +3021,7 @@ window.addEventListener('storageReady', function(){
       if(p._fromCatalog && !p.catalogKey && p.spec && p.name){
         const _bfEntry = getCatalog().find(r => {
           if(r.s.indexOf(p.spec.trim()) === -1 && p.spec.trim().indexOf(r.s) === -1) return false;
-          const cn = r.b===r.m ? r.b : r.b+' '+r.m;
-          return p.name.trim() === cn;
+          return _nameMatchesCatalog(p.name, r.b, r.m);
         });
         if(_bfEntry){ p.catalogKey = _bfEntry.b+'||'+_bfEntry.m+'||'+_bfEntry.s; migrated = true; }
       }
@@ -4114,7 +4113,16 @@ window.addEventListener('storageReady', function(){
     return ps === rS || ps.startsWith(rS) || rS.indexOf(ps) !== -1;
   }
   function _nameMatchesCatalog(pName, rB, rM){
-    return (pName||'').indexOf(rB) !== -1 && (pName||'').indexOf(rM) !== -1;
+    const n = (pName||'').trim();
+    if(!n) return false;
+    if(n.indexOf(rB) !== -1 && n.indexOf(rM) !== -1) return true;
+    // "A)NH200 B)NH200C" → "NH200C" のように B)以降の略称でもマッチ
+    const bPart = (rM||'').match(/B\)(\S+)/);
+    if(bPart && n.indexOf(rB) !== -1 && n.indexOf(bPart[1]) !== -1) return true;
+    // "A)NH200 B)NH200C" → "NH200" (A表) でもマッチ
+    const aPart = (rM||'').match(/A\)(\S+)/);
+    if(aPart && n.indexOf(rB) !== -1 && n.indexOf(aPart[1]) !== -1) return true;
+    return false;
   }
   function _matchesCatalogEntry(p, r){
     // catalogKey（商品登録時に保存したキー）で優先照合 → 商品名変更後も追跡できる
