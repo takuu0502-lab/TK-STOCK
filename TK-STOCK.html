@@ -9578,7 +9578,7 @@ window.addEventListener('storageReady', function(){
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
         + '<div class="qty-stepper">'
         + '<button type="button" data-out-idx="'+idx+'" data-step="-1">−</button>'
-        + '<input type="number" class="out-qty-input" data-out-idx="'+idx+'" value="'+item.qty+'" min="1" max="'+item.maxStock+'" style="width:70px;'+(over?'border-color:var(--red);color:var(--red);':'')+'">'
+        + '<input type="number" class="out-qty-input" data-out-idx="'+idx+'" value="'+item.qty+'" min="1" style="width:70px;'+(over?'border-color:var(--red);color:var(--red);':'')+'">'
         + '<button type="button" data-out-idx="'+idx+'" data-step="1">＋</button>'
         + '</div>'
         + '<div style="font-size:12px;color:'+(over?'var(--red)':'var(--text-3)')+';">在庫: '+item.maxStock+(over?' <b>超過</b>':'')+'</div>'
@@ -9588,9 +9588,9 @@ window.addEventListener('storageReady', function(){
     const hasError = outboundCart.some(x=>x.qty>x.maxStock);
     html += '</div>'
       + '<div style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:right;">'+outboundCart.length+' 商品 / 合計 '+totalQty+' 本</div>'
-      + (hasError ? '<div class="msg msg-error" style="margin-top:8px;">在庫数を超える数量があります。確認してください。</div>' : '')
+      + (hasError ? '<div class="msg msg-error" style="margin-top:8px;">在庫数を超える数量があります。仮出庫は登録可能ですが、一括出庫はできません。</div>' : '')
       + '<div style="display:flex;gap:8px;margin-top:14px;">'
-      + '<button class="btn btn-ghost" id="outProvisionalBtn" style="flex:1;padding:14px 0;font-size:14px;font-weight:700;border-radius:10px;border:2px solid var(--amber);color:var(--amber);"'+(hasError?' disabled':'')+'>仮出庫として登録</button>'
+      + '<button class="btn btn-ghost" id="outProvisionalBtn" style="flex:1;padding:14px 0;font-size:14px;font-weight:700;border-radius:10px;border:2px solid var(--amber);color:var(--amber);">仮出庫として登録</button>'
       + '<button class="btn btn-red" id="outBatchConfirmBtn" style="flex:1;padding:14px 0;font-size:14px;font-weight:700;border-radius:10px;"'+(hasError?' disabled':'')+'>一括出庫確定</button>'
       + '</div>'
       + '<div id="outBatchMsg" style="margin-top:8px;"></div>'
@@ -9606,7 +9606,7 @@ window.addEventListener('storageReady', function(){
         const idx=parseInt(btn.dataset.outIdx,10);
         const p=products.find(x=>x.id===outboundCart[idx].productId);
         const maxSt = p?getStock(p):outboundCart[idx].maxStock;
-        outboundCart[idx].qty = Math.min(maxSt, Math.max(1, outboundCart[idx].qty + parseInt(btn.dataset.step,10)));
+        outboundCart[idx].qty = Math.max(1, outboundCart[idx].qty + parseInt(btn.dataset.step,10));
         renderOutboundCart();
       });
     });
