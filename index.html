@@ -1518,6 +1518,7 @@
           <label>インチ</label>
           <select id="f_spec_inch"><option value="">-</option></select>
         </div>
+        <div style="width:12px;align-self:flex-end;height:38px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-1);flex:none;"></div>
         <div class="tire-size-col" style="flex:1.6;min-width:110px;">
           <label>ロードインデックス</label>
           <div class="tire-size-li-wrap">
@@ -1543,13 +1544,13 @@
       </div>
     </div>
     <div class="row">
-      <div class="field" style="flex:1;">
+      <div class="field" style="flex:0 0 120px;">
         <label>現在庫数</label>
-        <input type="number" id="f_stock" min="0" value="0">
+        <input type="number" id="f_stock" min="0" value="0" style="width:100%;">
       </div>
-      <div class="field" style="flex:1;">
+      <div class="field" style="flex:0 0 150px;">
         <label>最低在庫数（アラート基準）</label>
-        <input type="number" id="f_minstock" min="0" value="0">
+        <input type="number" id="f_minstock" min="0" value="0" style="width:100%;">
       </div>
     </div>
     <div class="row">
@@ -1557,14 +1558,14 @@
         <label>仕入れ原価（1点あたり・円）</label>
         <input type="number" id="f_cost" min="0" placeholder="例) 8000">
         <label style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" id="f_cost_fixed"> この価格を固定（価格調整ルールを無視）
+          <input type="checkbox" id="f_cost_fixed"><span style="white-space:nowrap;"> この価格を固定</span>
         </label>
       </div>
       <div class="field" style="flex:1;">
         <label>販売価格（1点あたり・円）</label>
         <input type="number" id="f_price" min="0" placeholder="例) 12000">
         <label style="font-size:12px;margin-top:4px;display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" id="f_sell_fixed"> この価格を固定（価格調整ルールを無視）
+          <input type="checkbox" id="f_sell_fixed"><span style="white-space:nowrap;"> この価格を固定</span>
         </label>
       </div>
     </div>
