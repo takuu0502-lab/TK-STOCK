@@ -9716,6 +9716,10 @@ window.addEventListener('storageReady', function(){
     await saveProducts();
     renderCatTree();
     renderProductTable();
+    // 見積タブのカタログも再描画して仕入れ価格等を最新化
+    if(window._lastEstOpts) renderPriceCatalog(window._lastEstOpts);
+    if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
+    if(window._lastEstRearOpts) renderPriceCatalog(window._lastEstRearOpts);
     closeModal();
   });
 
