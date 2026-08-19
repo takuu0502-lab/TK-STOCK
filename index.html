@@ -3015,6 +3015,15 @@ window.addEventListener('storageReady', function(){
         p.branchStock = {};
         BRANCHES.forEach(b=>{ p.branchStock[b.id] = b.id==='taniyabe' ? (p.stock||0) : 0; });
       }
+      // catalogKeyバックフィル（_fromCatalogがあるのにcatalogKeyがない既存商品に付与）
+      if(p._fromCatalog && !p.catalogKey && p.spec && p.name){
+        const _bfEntry = getCatalog().find(r => {
+          if(r.s.indexOf(p.spec.trim()) === -1 && p.spec.trim().indexOf(r.s) === -1) return false;
+          const cn = r.b===r.m ? r.b : r.b+' '+r.m;
+          return p.name.trim() === cn;
+        });
+        if(_bfEntry){ p.catalogKey = _bfEntry.b+'||'+_bfEntry.m+'||'+_bfEntry.s; migrated = true; }
+      }
     });
     if(migrated) await saveProducts();
 
@@ -4094,48 +4103,48 @@ window.addEventListener('storageReady', function(){
   }
 
   function _specMatchesCatalog(pSpec, rS){
-    // 双方向チェック：カタログサイズがスペックの先頭に含まれるか、またはスペックがカタログサイズに含まれるか
     const ps = (pSpec||'').trim();
     return ps === rS || ps.startsWith(rS) || rS.indexOf(ps) !== -1;
   }
   function _nameMatchesCatalog(pName, rB, rM){
     return (pName||'').indexOf(rB) !== -1 && (pName||'').indexOf(rM) !== -1;
   }
+  function _matchesCatalogEntry(p, r){
+    // catalogKey（商品登録時に保存したキー）で優先照合 → 商品名変更後も追跡できる
+    const cKey = r.b+'||'+r.m+'||'+r.s;
+    if(p.catalogKey && p.catalogKey === cKey) return true;
+    // フォールバック：スペック＋名前の部分一致
+    if(!p.spec) return false;
+    if(!_specMatchesCatalog(p.spec, r.s)) return false;
+    return _nameMatchesCatalog(p.name, r.b, r.m);
+  }
   function stockForCatalogEntry(r){
-    let total = 0;
-    products.forEach(p=>{
-      if(!p.spec || !p.name) return;
-      if(!_specMatchesCatalog(p.spec, r.s)) return;
-      if(!_nameMatchesCatalog(p.name, r.b, r.m)) return;
-      total += getStock(p);
-    });
-    return total;
+    return products.reduce((total, p) => total + (_matchesCatalogEntry(p,r) ? getStock(p) : 0), 0);
   }
   function stockForCatalogEntryByBranch(r, branchId){
-    let total = 0;
-    products.forEach(p=>{
-      if(!p.spec || !p.name) return;
-      if(!_specMatchesCatalog(p.spec, r.s)) return;
-      if(!_nameMatchesCatalog(p.name, r.b, r.m)) return;
-      const bStk = p.branchStock ? (p.branchStock[branchId] || 0) : (branchId === 'taniyabe' ? (p.stock || 0) : 0);
-      total += bStk;
-    });
-    return total;
+    return products.reduce((total, p) => {
+      if(!_matchesCatalogEntry(p,r)) return total;
+      return total + (p.branchStock ? (p.branchStock[branchId]||0) : (branchId==='taniyabe'?(p.stock||0):0));
+    }, 0);
   }
   function findProductForCatalogEntry(r){
-    return products.find(p => p.spec && p.name && _specMatchesCatalog(p.spec, r.s) && _nameMatchesCatalog(p.name, r.b, r.m)) || null;
+    return products.find(p => _matchesCatalogEntry(p, r)) || null;
   }
   function findAllProductsForCatalogEntry(r){
-    return products.filter(p => p.spec && p.name && _specMatchesCatalog(p.spec, r.s) && _nameMatchesCatalog(p.name, r.b, r.m));
+    return products.filter(p => _matchesCatalogEntry(p, r));
   }
   function findCatalogEntryForProduct(p){
+    // catalogKeyで優先照合（商品名を変更してもカタログとの紐付けが維持される）
+    if(p.catalogKey){
+      const [ckB, ckM, ckS] = p.catalogKey.split('||');
+      const byKey = getCatalog().find(r => r.b===ckB && r.m===ckM && r.s===ckS);
+      if(byKey) return byKey;
+    }
     if(!p.spec || !p.name) return null;
     const spec = p.spec.trim();
     const nameTrim = p.name.trim();
     return getCatalog().find(r => {
-      // サイズ一致（部分一致）
       if(r.s.indexOf(spec) === -1 && spec.indexOf(r.s) === -1) return false;
-      // ensureProductForCatalogEntryが生成する名前と完全一致するもののみ
       const catalogName = r.b === r.m ? r.b : r.b + ' ' + r.m;
       return nameTrim === catalogName;
     }) || null;
@@ -4161,6 +4170,7 @@ window.addEventListener('storageReady', function(){
       costPrice: cost !== null ? cost : r.w,
       sellPrice: sell !== null ? sell : 0,
       _fromCatalog: true,
+      catalogKey: r.b+'||'+r.m+'||'+r.s,
       branchId: _newBrId,
       branchStock: _newBrStock,
       createdAt: new Date().toISOString()
