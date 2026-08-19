@@ -8899,7 +8899,12 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_wheel_color').value  = ws.color  || '';
     document.getElementById('f_stock').value = getStock(p);
     document.getElementById('f_minstock').value = p.minStock;
-    document.getElementById('f_cost').value = p.costPrice || '';
+    // 固定フラグがある場合はその価格を、ない場合はカタログ計算価格（なければ登録価格）を表示
+    const _editCatEntry = findCatalogEntryForProduct(p);
+    const _editEffCost = (p._fixedCost && p.costPrice)
+      ? p.costPrice
+      : (_editCatEntry ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? p.costPrice || 0) : (p.costPrice || 0));
+    document.getElementById('f_cost').value = _editEffCost || '';
     document.getElementById('f_price').value = p.sellPrice || '';
     document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
