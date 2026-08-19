@@ -9150,9 +9150,9 @@ window.addEventListener('storageReady', function(){
     }
     if(barcode){
       const _myBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-      const dup = products.find(p => p.barcode === barcode && p.id !== editingId && (p.branchId || 'taniyabe') === _myBranch);
+      const dup = products.find(p => p.barcode === barcode && p.id !== editingId);
       if(dup){
-        msgEl.innerHTML = '<div class="msg msg-error">この商品コードは既に「'+escapeHtml(dup.name)+'」に登録されています。</div>';
+        msgEl.innerHTML = '<div class="msg msg-error">この商品コードは既に「'+escapeHtml(dup.name)+'」（'+escapeHtml(branchName(dup.branchId||'taniyabe'))+'）に登録されています。</div>';
         return;
       }
     }
@@ -9283,8 +9283,6 @@ window.addEventListener('storageReady', function(){
       if(!code) return;
       const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       let p = findByBarcode(code);
-      // 他店の商品は「自店未登録」として扱う（他店在庫を汚染しないため）
-      if(p && (p.branchId || 'taniyabe') !== _scanBranch) p = null;
       // バーコード未登録でもBS_JAN_LOOKUPで照合して登録済み商品を探す
       if(!p && /^\d{13}$/.test(code)){
         const bsEntry = ALL_JAN_LOOKUP.find(e=>e.j===code);
