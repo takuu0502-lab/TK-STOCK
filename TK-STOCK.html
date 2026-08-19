@@ -8862,13 +8862,17 @@ window.addEventListener('storageReady', function(){
       + (()=>{
           const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
           const _detOwnStk = p.branchStock ? (p.branchStock[_detOwnBranch]||0) : (p.stock||0);
-          const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const _detPOs = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id));
+          const _detProvQty = _detPOs.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const _detCustQty = _detPOs.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const provQty = _detProvQty + _detCustQty;
           const provOver = provQty > _detOwnStk;
-          const _provTipDet=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+          const _provTipDet=_detPOs.map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
           return '<div class="detail-stats">'
             + '<div class="detail-stat"><div class="detail-stat-label">現在庫数（自店舗）</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
             + '<div class="detail-stat-value">'+_detOwnStk+'</div>'
-            + (provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;" title="'+_provTipDet+'">'+(provOver?'⚠️':(provType==='custody'?'📦':'🔖'))+(provType==='custody'?' うち預かり':' うち仮出庫')+' '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':'')
+            + (_detProvQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;" title="'+_provTipDet+'">🔖 仮出庫 '+_detProvQty+'本</div>':'')
+            + (_detCustQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:#e8a020;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;" title="'+_provTipDet+'">📦 預かり '+_detCustQty+'本</div>':'')
             + '</div></div>'
             + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
