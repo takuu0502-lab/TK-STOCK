@@ -1731,6 +1731,17 @@
         <label style="font-size:13px;font-weight:600;">車種名</label>
         <input type="text" id="prov_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;margin-top:4px;">
       </div>
+      <div style="border-top:1px solid var(--line-soft);padding-top:10px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
+          <input type="checkbox" id="prov_inbound_check" style="width:16px;height:16px;cursor:pointer;">
+          📦 入庫予定も同時に登録する
+        </label>
+        <div id="prov_inbound_wrap" style="display:none;margin-top:10px;">
+          <label style="font-size:13px;font-weight:600;">入庫予定日 <span style="color:var(--red);">*</span></label>
+          <input type="date" id="prov_inbound_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">仮出庫の商品数と同数で入庫予定が自動登録されます。</div>
+        </div>
+      </div>
       <div style="font-size:12px;color:var(--text-3);padding:8px 10px;background:var(--bg-2);border-radius:8px;">
         ※在庫数は変わりません。確定時に出庫処理されます。
       </div>
@@ -3472,18 +3483,27 @@ window.addEventListener('storageReady', function(){
       const customerInput = document.getElementById('prov_customer');
       const dateInput = document.getElementById('prov_date');
       const carInput = document.getElementById('prov_car');
+      const inboundCheck = document.getElementById('prov_inbound_check');
+      const inboundWrap = document.getElementById('prov_inbound_wrap');
+      const inboundDateInput = document.getElementById('prov_inbound_date');
       const errorEl = document.getElementById('provFormError');
       customerInput.value = '';
       dateInput.value = '';
       carInput.value = '';
+      inboundCheck.checked = false;
+      inboundWrap.style.display = 'none';
+      inboundDateInput.value = '';
       errorEl.style.display = 'none';
       errorEl.textContent = '';
       overlay.classList.add('show');
       setTimeout(()=>{ customerInput.focus(); }, 100);
+      function onCheckChange(){ inboundWrap.style.display = inboundCheck.checked ? 'block' : 'none'; }
+      inboundCheck.addEventListener('change', onCheckChange);
       const okBtn = document.getElementById('provFormOkBtn');
       const cancelBtn = document.getElementById('provFormCancelBtn');
       function cleanup(result){
         overlay.classList.remove('show');
+        inboundCheck.removeEventListener('change', onCheckChange);
         okBtn.removeEventListener('click', onOk);
         cancelBtn.removeEventListener('click', onCancel);
         resolve(result);
@@ -3492,10 +3512,13 @@ window.addEventListener('storageReady', function(){
         const name = customerInput.value.trim();
         const date = dateInput.value;
         const car = carInput.value.trim();
+        const useInbound = inboundCheck.checked;
+        const inboundDate = inboundDateInput.value;
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
         if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
-        cleanup({ customerName: name, scheduledDate: date, carName: car });
+        if(useInbound && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
+        cleanup({ customerName: name, scheduledDate: date, carName: car, inboundDate: useInbound ? inboundDate : '' });
       }
       function onCancel(){ cleanup(null); }
       okBtn.addEventListener('click', onOk);
@@ -6197,6 +6220,16 @@ window.addEventListener('storageReady', function(){
       };
       provisionalOutbounds.push(entry);
       await saveProvisionalOutbounds();
+      if(formResult.inboundDate){
+        const _bpBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        for(const item of entry.items){
+          const _bp = products.find(x=>x.id===item.productId);
+          if(!_bp) continue;
+          incomingSchedules.push({ id:uid('isch'), productId:_bp.id, productName:_bp.name, brand:_bp.brand||'', spec:_bp.spec||'', branchId:_bpBr, qty:item.qty, expectedDate:formResult.inboundDate, createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+        }
+        await saveIncomingSchedules();
+        renderProductTable();
+      }
       selectedProducts.clear(); updateBulkBar();
       renderProductTable();
       switchTab('out');
@@ -8945,6 +8978,11 @@ window.addEventListener('storageReady', function(){
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
+        if(formResult.inboundDate){
+          const _dpBr = _detPobOwnBranch;
+          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_dpBr, qty, expectedDate:formResult.inboundDate, createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          await saveIncomingSchedules();
+        }
         renderProductTable();
         renderHistory();
         renderProvisionalList();
@@ -9719,6 +9757,15 @@ window.addEventListener('storageReady', function(){
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
+        if(formResult.inboundDate){
+          const _opBr = _batchPobOwnBranch;
+          for(const item of entry.items){
+            const _op = products.find(x=>x.id===item.productId);
+            if(!_op) continue;
+            incomingSchedules.push({ id:uid('isch'), productId:_op.id, productName:_op.name, brand:_op.brand||'', spec:_op.spec||'', branchId:_opBr, qty:item.qty, expectedDate:formResult.inboundDate, createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          }
+          await saveIncomingSchedules();
+        }
         renderProductTable();
         renderProvisionalList();
         outboundCart = [];
