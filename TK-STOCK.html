@@ -4093,12 +4093,20 @@ window.addEventListener('storageReady', function(){
     }).join(' &rsaquo; ');
   }
 
+  function _specMatchesCatalog(pSpec, rS){
+    // 双方向チェック：カタログサイズがスペックの先頭に含まれるか、またはスペックがカタログサイズに含まれるか
+    const ps = (pSpec||'').trim();
+    return ps === rS || ps.startsWith(rS) || rS.indexOf(ps) !== -1;
+  }
+  function _nameMatchesCatalog(pName, rB, rM){
+    return (pName||'').indexOf(rB) !== -1 && (pName||'').indexOf(rM) !== -1;
+  }
   function stockForCatalogEntry(r){
     let total = 0;
     products.forEach(p=>{
       if(!p.spec || !p.name) return;
-      if(r.s.indexOf(p.spec) === -1) return;
-      if(p.name.indexOf(r.b) === -1 || p.name.indexOf(r.m) === -1) return;
+      if(!_specMatchesCatalog(p.spec, r.s)) return;
+      if(!_nameMatchesCatalog(p.name, r.b, r.m)) return;
       total += getStock(p);
     });
     return total;
@@ -4107,15 +4115,18 @@ window.addEventListener('storageReady', function(){
     let total = 0;
     products.forEach(p=>{
       if(!p.spec || !p.name) return;
-      if(r.s.indexOf(p.spec) === -1) return;
-      if(p.name.indexOf(r.b) === -1 || p.name.indexOf(r.m) === -1) return;
+      if(!_specMatchesCatalog(p.spec, r.s)) return;
+      if(!_nameMatchesCatalog(p.name, r.b, r.m)) return;
       const bStk = p.branchStock ? (p.branchStock[branchId] || 0) : (branchId === 'taniyabe' ? (p.stock || 0) : 0);
       total += bStk;
     });
     return total;
   }
   function findProductForCatalogEntry(r){
-    return products.find(p => p.spec && p.name && r.s.indexOf(p.spec) !== -1 && p.name.indexOf(r.b) !== -1 && p.name.indexOf(r.m) !== -1) || null;
+    return products.find(p => p.spec && p.name && _specMatchesCatalog(p.spec, r.s) && _nameMatchesCatalog(p.name, r.b, r.m)) || null;
+  }
+  function findAllProductsForCatalogEntry(r){
+    return products.filter(p => p.spec && p.name && _specMatchesCatalog(p.spec, r.s) && _nameMatchesCatalog(p.name, r.b, r.m));
   }
   function findCatalogEntryForProduct(p){
     if(!p.spec || !p.name) return null;
@@ -4354,28 +4365,38 @@ window.addEventListener('storageReady', function(){
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         const cKey = r.b+'||'+r.m+'||'+r.s;
         const checked = catalogQuoteSelection.has(cKey);
-        const _catProd = findProductForCatalogEntry(r);
+        const _catProds = findAllProductsForCatalogEntry(r);
+        const _catProd = _catProds[0] || null;
+        // 製造年ラベル（複数商品ある場合に年別内訳を表示）
+        const _yearBreakdown = (brId)=>{
+          if(_catProds.length <= 1) return '';
+          return _catProds.filter(cp=>cp.manufactureYear).map(cp=>{
+            const ys = brId ? (cp.branchStock?cp.branchStock[brId]||0:0) : getStock(cp);
+            if(!ys) return '';
+            return '<div style="font-size:10px;color:var(--text-3);white-space:nowrap;">'+cp.manufactureYear+'年製:'+ys+'本</div>';
+          }).join('');
+        };
         const stockCell = _catShowMultiCols
           ? _catVisibleBranches.map(brId => {
               const bStk = stockForCatalogEntryByBranch(r, brId);
-              let _extra = '';
-              if(_catProd){
-                const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===_catProd.id).reduce((s,x)=>s+x.qty,0);
-                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===_catProd.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===_catProd.id).reduce((ss,i)=>ss+i.qty,0),0);
-                if(_inschQ>0) _extra+='<div data-insch-badge="'+_catProd.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
-                if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+_catProd.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              }
+              let _extra = _yearBreakdown(brId);
+              _catProds.forEach(cp=>{
+                const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
+                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===cp.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
+                if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
+                if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+              });
               return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
             }).join('')
           : (()=>{
               const _bStk = stockForCatalogEntry(r);
-              let _extra = '';
-              if(_catProd){
-                const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===_catProd.id).reduce((s,x)=>s+x.qty,0);
-                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===_catProd.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===_catProd.id).reduce((ss,i)=>ss+i.qty,0),0);
-                if(_inschQ>0) _extra+='<div data-insch-badge="'+_catProd.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
-                if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+_catProd.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              }
+              let _extra = _yearBreakdown(null);
+              _catProds.forEach(cp=>{
+                const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
+                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===cp.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
+                if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
+                if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+              });
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+'</td>';
             })();
         return '<tr data-catalog-idx="'+i+'">'
@@ -4415,7 +4436,7 @@ window.addEventListener('storageReady', function(){
         return '<tr>'
           + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+j+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
           + '<td style="color:var(--amber);font-weight:600;text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
-          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec||'')+'</td>'
+          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec||'')+(p.manufactureYear?'<span style="font-family:var(--font-sans);font-size:10px;color:var(--teal);margin-left:4px;font-weight:600;">'+p.manufactureYear+'年製</span>':'')+'</td>'
           + (showCost ? '<td class="price-num" style="color:var(--text-2);">\u2014</td>' : '')
           + '<td class="price-num" style="color:var(--text-2);">\u2014</td>'
           + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost?'\u00a5'+cost.toLocaleString('ja-JP'):'\u2014')+'</td>' : '')
