@@ -9086,13 +9086,13 @@ window.addEventListener('storageReady', function(){
           scheduledDate,
           carName: carName||'',
           staff: currentUser ? currentUser.displayName : '',
-          items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty }],
+          items: [{ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty }],
           status: 'pending'
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
         if(formResult.inboundDate){
-          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
           await saveIncomingSchedules();
         }
         renderProductTable(); renderHistory(); renderProvisionalList(); renderDetailProvList();
