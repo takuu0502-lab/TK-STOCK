@@ -8918,20 +8918,23 @@ window.addEventListener('storageReady', function(){
         custHtml += custEntries.map(po=>{
           const myItems = po.items.filter(i=>i.productId===id);
           const qty = myItems.reduce((s,i)=>s+i.qty,0);
-          const d = new Date(po.date);
-          const ds = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-          return '<div style="padding:10px 12px;background:rgba(26,122,94,0.07);border:1px solid #1a7a5e;border-radius:8px;margin-bottom:8px;">'
+          // 引き渡し予定日を日本語形式に
+          const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
+          const _sdStr = _sdp.length===3 ? _sdp[0]+'年'+parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日 引き渡し予定' : (po.scheduledDate||'—');
+          // 引き渡しまでの日数
+          const _today2 = new Date(); _today2.setHours(0,0,0,0);
+          const _dd = po.scheduledDate ? Math.round((new Date(po.scheduledDate+'T00:00:00')-_today2)/(1000*60*60*24)) : null;
+          const _ddLabel = _dd===null?'':_dd===0?'今日':_dd>0?_dd+'日後':Math.abs(_dd)+'日超過';
+          const _ddColor = _dd===null?'':_dd<0?'var(--red)':_dd===0?'var(--amber)':'#b36a00';
+          return '<div style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;">'
             +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-            +'<span style="font-size:12px;font-weight:700;color:#1a7a5e;">📦 未確定</span>'
-            +'<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
+            +'<span style="font-size:13px;font-weight:700;color:var(--amber);">📦 '+_sdStr+'</span>'
+            +'<span style="font-size:11px;font-weight:600;color:'+_ddColor+';">'+_ddLabel+'</span>'
             +'</div>'
-            +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">'
-            +'<div><div style="color:var(--text-3);font-size:10px;">👤 取引先</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'様</div></div>'
-            +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+escapeHtml(po.scheduledDate)+'</div></div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+            +'<div style="font-size:13px;">本数：<strong>'+qty+'本</strong>'+(po.staff?'　担当：<span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')+'</div>'
             +'</div>'
-            +(po.carName?'<div style="margin-top:5px;font-size:12px;"><span style="color:var(--text-3);">🚗 車種：</span><span>'+escapeHtml(po.carName)+'</span></div>':'')
-            +'<div style="margin-top:5px;font-size:12px;"><span style="color:var(--text-3);">本数：</span><span style="font-weight:700;color:#1a7a5e;">'+qty+'本</span>'
-            +(po.staff?'　<span style="color:var(--text-3);">担当：</span><span>'+escapeHtml(po.staff)+'</span>':'')+'</div>'
+            +(po.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(232,160,32,0.1);border-radius:6px;font-size:12px;color:var(--amber);font-weight:600;">👤 '+escapeHtml(po.customerName)+(po.carName?' ／ 車種：'+escapeHtml(po.carName):'')+'</div>':'')
             +'</div>';
         }).join('');
         el.innerHTML += custHtml;
