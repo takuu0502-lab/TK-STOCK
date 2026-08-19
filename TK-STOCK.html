@@ -8903,7 +8903,7 @@ window.addEventListener('storageReady', function(){
     const _editCatEntry = findCatalogEntryForProduct(p);
     const _editEffCost = (p._fixedCost && p.costPrice)
       ? p.costPrice
-      : (_editCatEntry ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? p.costPrice || 0) : (p.costPrice || 0));
+      : (_editCatEntry ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? (p.costPrice || 0)) : (p.costPrice || 0));
     document.getElementById('f_cost').value = _editEffCost || '';
     document.getElementById('f_price').value = p.sellPrice || '';
     document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
