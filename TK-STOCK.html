@@ -8933,12 +8933,42 @@ window.addEventListener('storageReady', function(){
             +'</div>'
             +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
             +'<div style="font-size:13px;">本数：<strong>'+qty+'本</strong>'+(po.staff?'　担当：<span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')+'</div>'
+            +'<div style="display:flex;gap:6px;">'
+            +'<button class="btn btn-ghost btn-sm" data-cust-edit="'+po.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--amber);color:var(--amber);" onclick="event.stopPropagation();">編集</button>'
+            +'<button class="btn btn-ghost btn-sm" data-cust-delete="'+po.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);" onclick="event.stopPropagation();">削除</button>'
+            +'</div>'
             +'</div>'
             +(po.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(232,160,32,0.1);border-radius:6px;font-size:12px;color:var(--amber);font-weight:600;">👤 '+escapeHtml(po.customerName)+(po.carName?' ／ 車種：'+escapeHtml(po.carName):'')+'</div>':'')
             +'</div>';
         }).join('');
         el.innerHTML += custHtml;
         if(hd && provEntries.length===0) hd.textContent = '📦 預かり出庫リスト';
+        // 編集ボタン
+        el.querySelectorAll('[data-cust-edit]').forEach(btn=>{
+          btn.addEventListener('click', async ()=>{
+            const po = provisionalOutbounds.find(x=>x.id===btn.dataset.custEdit);
+            if(!po) return;
+            const result = await showProvisionalEditForm(po);
+            if(!result) return;
+            po.customerName = result.customerName;
+            po.scheduledDate = result.scheduledDate;
+            po.carName = result.carName||'';
+            po.items = result.items;
+            await saveProvisionalOutbounds();
+            renderProductTable(); renderProvisionalList(); renderDetailProvList();
+          });
+        });
+        // 削除ボタン
+        el.querySelectorAll('[data-cust-delete]').forEach(btn=>{
+          btn.addEventListener('click', async ()=>{
+            const ok = await showConfirm('この預かり出庫を削除しますか？');
+            if(!ok) return;
+            const idx = provisionalOutbounds.findIndex(x=>x.id===btn.dataset.custDelete);
+            if(idx>=0) provisionalOutbounds.splice(idx,1);
+            await saveProvisionalOutbounds();
+            renderProductTable(); renderProvisionalList(); renderDetailProvList();
+          });
+        });
       }
 
       // 未確定カードクリック → 出庫タブへ遷移
@@ -8990,6 +9020,7 @@ window.addEventListener('storageReady', function(){
           +'<div style="font-size:13px;">数量：<strong>'+s.qty+'本</strong>　担当：<span style="color:var(--text-2);">'+escapeHtml(s.createdBy||'')+'</span></div>'
           +'<div style="display:flex;gap:6px;">'
           +'<button class="btn btn-teal btn-sm" data-insch-confirm="'+s.id+'" style="font-size:12px;padding:4px 12px;">入庫確定</button>'
+          +'<button class="btn btn-ghost btn-sm" data-insch-edit="'+s.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--teal);color:var(--teal);">編集</button>'
           +'<button class="btn btn-ghost btn-sm" data-insch-delete="'+s.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);">削除</button>'
           +'</div>'
           +'</div>'
@@ -9020,6 +9051,21 @@ window.addEventListener('storageReady', function(){
           const msgEl = document.getElementById('detailActionMsg');
           if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'本）</div>';
             setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
+        });
+      });
+      el.querySelectorAll('[data-insch-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschEdit);
+          if(!sched) return;
+          const modal = document.getElementById('incomingSchedModal');
+          modal.dataset.editId = sched.id;
+          modal.dataset.targetProductId = sched.productId;
+          document.querySelector('#incomingSchedModal h3').textContent = '📦 入庫予定の編集';
+          document.getElementById('incomingSchedSave').textContent = '更新する';
+          document.getElementById('incomingSchedModalProductName').textContent = cleanName(sched.productName)+(sched.spec?' / '+sched.spec:'');
+          document.getElementById('incomingSchedDate').value = sched.expectedDate||'';
+          document.getElementById('incomingSchedQty').value = sched.qty||1;
+          modal.classList.add('show');
         });
       });
       el.querySelectorAll('[data-insch-delete]').forEach(btn=>{
