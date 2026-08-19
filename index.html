@@ -8956,6 +8956,7 @@ window.addEventListener('storageReady', function(){
           +'<button class="btn btn-ghost btn-sm" data-insch-delete="'+s.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);">削除</button>'
           +'</div>'
           +'</div>'
+          +(s.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(26,122,94,0.1);border-radius:6px;font-size:12px;color:#1a7a5e;font-weight:600;">👤 '+escapeHtml(s.customerName)+(s.carName?' ／ 車種：'+escapeHtml(s.carName):'')+(s.provScheduledDate?' ／ 引渡予定：'+s.provScheduledDate:'')+'分</div>':'')
           +'</div>';
       }).join('');
 
