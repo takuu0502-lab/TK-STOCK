@@ -8839,7 +8839,7 @@ window.addEventListener('storageReady', function(){
       + '</div>'
       + '<div class="detail-hist-title" style="display:flex;align-items:center;justify-content:space-between;">📦 入庫予定<span id="detailInschAddBtn" style="font-size:12px;font-weight:400;color:var(--teal);cursor:pointer;border:1px solid var(--teal);border-radius:6px;padding:2px 10px;">＋ 予定を登録</span></div>'
       + '<div id="detailInschList" style="margin-bottom:12px;"></div>'
-      + '<div class="detail-hist-title">🔖 仮出庫リスト</div>'
+      + '<div id="detailProvListHeader" class="detail-hist-title"></div>'
       + '<div id="detailProvList" style="margin-bottom:12px;"></div>'
       + '<div class="detail-hist-title">入出庫履歴</div>'
       + '<div class="detail-hist-list">'+histHtml+'</div>'
@@ -8871,10 +8871,16 @@ window.addEventListener('storageReady', function(){
     // 仮出庫リスト描画（この商品に紐づくもの）
     function renderDetailProvList(){
       const el = document.getElementById('detailProvList');
+      const hd = document.getElementById('detailProvListHeader');
       if(!el) return;
       const _detListOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-      const entries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&po.items.some(i=>i.productId===id));
-      if(entries.length === 0){
+      const allEntries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&po.items.some(i=>i.productId===id));
+      const provEntries = allEntries.filter(po=>(po.type||'custody')==='provisional');
+      const custEntries = allEntries.filter(po=>(po.type||'custody')==='custody');
+      // Update header
+      if(hd){ hd.textContent = provEntries.length>0 ? '🔖 仮出庫リスト' : (custEntries.length>0 ? '📦 預かり出庫リスト' : '🔖 仮出庫リスト'); }
+      const entries = provEntries; // For the main block below
+      if(allEntries.length === 0){
         el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">仮出庫なし</div>';
         return;
       }
@@ -8904,6 +8910,33 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           +'</div>';
       }).join('');
+
+      // 預かり出庫セクション追加
+      let custHtml = '';
+      if(custEntries.length > 0){
+        if(provEntries.length > 0) custHtml += '<div class="detail-hist-title" style="margin-top:10px;">📦 預かり出庫リスト</div>';
+        custHtml += custEntries.map(po=>{
+          const myItems = po.items.filter(i=>i.productId===id);
+          const qty = myItems.reduce((s,i)=>s+i.qty,0);
+          const d = new Date(po.date);
+          const ds = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+          return '<div style="padding:10px 12px;background:rgba(26,122,94,0.07);border:1px solid #1a7a5e;border-radius:8px;margin-bottom:8px;">'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+            +'<span style="font-size:12px;font-weight:700;color:#1a7a5e;">📦 未確定</span>'
+            +'<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
+            +'</div>'
+            +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">'
+            +'<div><div style="color:var(--text-3);font-size:10px;">👤 取引先</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'様</div></div>'
+            +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+escapeHtml(po.scheduledDate)+'</div></div>'
+            +'</div>'
+            +(po.carName?'<div style="margin-top:5px;font-size:12px;"><span style="color:var(--text-3);">🚗 車種：</span><span>'+escapeHtml(po.carName)+'</span></div>':'')
+            +'<div style="margin-top:5px;font-size:12px;"><span style="color:var(--text-3);">本数：</span><span style="font-weight:700;color:#1a7a5e;">'+qty+'本</span>'
+            +(po.staff?'　<span style="color:var(--text-3);">担当：</span><span>'+escapeHtml(po.staff)+'</span>':'')+'</div>'
+            +'</div>';
+        }).join('');
+        el.innerHTML += custHtml;
+        if(hd && provEntries.length===0) hd.textContent = '📦 預かり出庫リスト';
+      }
 
       // 未確定カードクリック → 出庫タブへ遷移
       el.querySelectorAll('[data-jump-prov-id]').forEach(card=>{
@@ -8944,9 +8977,10 @@ window.addEventListener('storageReady', function(){
         const diff = Math.round((d-today)/(1000*60*60*24));
         const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
         const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
+        const _edp=s.expectedDate.split('-'); const _edStr=_edp[0]+'年'+parseInt(_edp[1])+'月'+parseInt(_edp[2])+'日入庫予定';
         return '<div style="padding:10px 12px;background:rgba(26,122,94,0.07);border:1px solid var(--teal);border-radius:8px;margin-bottom:8px;">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-          +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 '+s.expectedDate+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 '+_edStr+'</span>'
           +'<span style="font-size:11px;font-weight:600;color:'+diffColor+';">'+diffLabel+'</span>'
           +'</div>'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
