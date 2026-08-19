@@ -1607,6 +1607,7 @@
     <div class="modal-actions">
       <button class="btn btn-red" id="detailDelete" style="margin-right:auto;">削除する</button>
       <button class="btn btn-ghost" id="detailClose">閉じる</button>
+      <button class="btn btn-ghost" id="detailDuplicate" style="display:none;" title="この商品情報をコピーして新規登録">📋 複製</button>
       <button class="btn btn-amber" id="detailEdit">編集する</button>
     </div>
   </div>
@@ -9366,6 +9367,39 @@ window.addEventListener('storageReady', function(){
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
     document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
+    // 複製ボタン（管理者以上のみ）
+    const _dupBtn = document.getElementById('detailDuplicate');
+    _dupBtn.style.display = isAdminUser() ? 'inline-block' : 'none';
+    _dupBtn.onclick = ()=>{
+      detailModal.classList.remove('show');
+      openAddModal();
+      // 少し待ってから情報を複製セット
+      setTimeout(()=>{
+        document.getElementById('f_barcode').value = p.barcode || '';
+        document.getElementById('f_brand').value = p.brand || '';
+        document.getElementById('f_partno').value = p.partno || '';
+        document.getElementById('f_name').value = p.name || '';
+        document.getElementById('f_spec').value = p.spec || '';
+        document.getElementById('f_mfyear').value = '';  // 製造年は意図的に空（入力させる）
+        document.getElementById('f_memo').value = p.memo || '';
+        document.getElementById('f_cost').value = p.costPrice || '';
+        document.getElementById('f_price').value = p.sellPrice || '';
+        document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
+        document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
+        document.getElementById('f_stock').value = 0;
+        document.getElementById('f_minstock').value = p.minStock || 0;
+        populateMajorSelect(p.majorId);
+        populateSubSelect(p.majorId, p.subId);
+        populateSubSubSelect(p.majorId, p.subId, p.subSubId || null);
+        toggleTireNameField();
+        populateTireModelSelect();
+        populateSpecTireSelects();
+        prefillSpecTireSelects(p.spec || '');
+        populateSupplierSelect(p.supplierId || '');
+        document.getElementById('modalTitle').textContent = '商品を複製して登録';
+        document.getElementById('modalMsg').innerHTML = '<div class="msg msg-ok" style="font-size:12px;">📋 「'+escapeHtml(cleanName(p.name))+'」の情報をコピーしました。製造年・在庫数を確認して保存してください。</div>';
+      }, 50);
+    };
 
     detailModal.classList.add('show');
   }
