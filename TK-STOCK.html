@@ -1605,9 +1605,11 @@
   <div class="modal" style="max-width:480px;">
     <div id="productDetailBody"></div>
     <div class="modal-actions">
-      <button class="btn btn-red" id="detailDelete" style="margin-right:auto;">削除する</button>
+      <div style="display:flex;gap:8px;margin-right:auto;">
+        <button class="btn btn-red" id="detailDelete">削除する</button>
+        <button class="btn btn-ghost" id="detailDuplicate" style="display:none;" title="この商品情報をコピーして新規登録">📋 複製</button>
+      </div>
       <button class="btn btn-ghost" id="detailClose">閉じる</button>
-      <button class="btn btn-ghost" id="detailDuplicate" style="display:none;" title="この商品情報をコピーして新規登録">📋 複製</button>
       <button class="btn btn-amber" id="detailEdit">編集する</button>
     </div>
   </div>
