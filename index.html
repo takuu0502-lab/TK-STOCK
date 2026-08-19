@@ -8877,99 +8877,98 @@ window.addEventListener('storageReady', function(){
       const allEntries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&po.items.some(i=>i.productId===id));
       const provEntries = allEntries.filter(po=>(po.type||'custody')==='provisional');
       const custEntries = allEntries.filter(po=>(po.type||'custody')==='custody');
-      // Update header
-      if(hd){ hd.textContent = provEntries.length>0 ? '🔖 仮出庫リスト' : (custEntries.length>0 ? '📦 預かり出庫リスト' : '🔖 仮出庫リスト'); }
-      const entries = provEntries; // For the main block below
+      if(hd){ hd.textContent = '🔖 仮出庫リスト'; }
       if(allEntries.length === 0){
         el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">仮出庫なし</div>';
         return;
       }
-      const statusMap = { pending:['🔖 未確定','var(--amber)'], confirmed:['✅ 確定済','var(--teal)'], cancelled:['❌ キャンセル','var(--text-3)'] };
-      el.innerHTML = entries.map(po=>{
-        const d = new Date(po.date);
-        const ds = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      // 共通カードビルダー
+      const buildCard = (po, isCustody) => {
         const myItems = po.items.filter(i=>i.productId===id);
         const qty = myItems.reduce((s,i)=>s+i.qty,0);
-        const [statusLabel, statusColor] = statusMap[po.status]||statusMap.pending;
-        const isPending = po.status === 'pending';
-        return '<div data-jump-prov-id="'+po.id+'" style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;'+(isPending?'cursor:pointer;':'')+(isPending?'transition:box-shadow 0.15s;':'')+'" '+(isPending?'title="出庫タブで確認する"':'')+' >'
+        const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
+        const _sdStr = _sdp.length>=3 ? _sdp[0]+'年'+parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日 引き渡し予定' : (po.scheduledDate||'—');
+        const _today2 = new Date(); _today2.setHours(0,0,0,0);
+        const _dd = po.scheduledDate ? Math.round((new Date(po.scheduledDate+'T00:00:00')-_today2)/(1000*60*60*24)) : null;
+        const _ddLabel = _dd===null?'':_dd===0?'今日':_dd>0?_dd+'日後':Math.abs(_dd)+'日超過';
+        const _ddColor = _dd===null?'':_dd<0?'var(--red)':_dd===0?'var(--amber)':'#b36a00';
+        const icon = isCustody ? '📦' : '🔖';
+        const editAttr = isCustody ? 'data-cust-edit' : 'data-prov-edit';
+        const delAttr  = isCustody ? 'data-cust-delete' : 'data-prov-delete';
+        return '<div data-jump-prov-id="'+po.id+'" style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;cursor:pointer;" title="出庫タブで確認する">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-          +'<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
-          +'<div style="display:flex;align-items:center;gap:6px;">'
-          +'<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
-          +(isPending?'<span style="font-size:10px;color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px;">詳細 →</span>':'')
+          +'<span style="font-size:13px;font-weight:700;color:var(--amber);">'+icon+' '+_sdStr+'</span>'
+          +'<span style="font-size:11px;font-weight:600;color:'+_ddColor+';">'+_ddLabel+'</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          +'<div style="font-size:13px;">本数：<strong>'+qty+'本</strong>'+(po.staff?'　担当：<span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')+'</div>'
+          +'<div style="display:flex;gap:6px;">'
+          +'<button class="btn btn-ghost btn-sm" '+editAttr+'="'+po.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--amber);color:var(--amber);" onclick="event.stopPropagation();">編集</button>'
+          +'<button class="btn btn-ghost btn-sm" '+delAttr+'="'+po.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);" onclick="event.stopPropagation();">削除</button>'
           +'</div>'
           +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">'
-          +'<div><div style="color:var(--text-3);font-size:10px;">👤 お客様</div><div style="font-weight:700;color:var(--text-1);">'+escapeHtml(po.customerName)+'様</div></div>'
-          +'<div><div style="color:var(--text-3);font-size:10px;">📅 引き渡し予定</div><div style="color:var(--text-2);">'+(()=>{const _p=po.scheduledDate?po.scheduledDate.split('-'):[];return _p.length>=3?_p[0]+'年'+parseInt(_p[1])+'月'+parseInt(_p[2])+'日':(po.scheduledDate||'—');})()+'</div></div>'
-          +'</div>'
-          +(po.carName?'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">🚗 車種：</span><span style="color:var(--text-2);">'+escapeHtml(po.carName)+'</span></div>':'')
-          +'<div style="margin-top:6px;font-size:12px;"><span style="color:var(--text-3);">本数：</span><span style="font-weight:700;color:var(--amber);">'+qty+'本</span>'
-          +(po.staff?'　<span style="color:var(--text-3);">担当：</span><span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')
-          +'</div>'
+          +(po.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(232,160,32,0.1);border-radius:6px;font-size:12px;color:var(--amber);font-weight:600;">👤 '+escapeHtml(po.customerName)+(po.carName?' ／ 車種：'+escapeHtml(po.carName):'')+'</div>':'')
           +'</div>';
-      }).join('');
+      };
 
-      // 預かり出庫セクション追加
-      let custHtml = '';
-      if(custEntries.length > 0){
-        if(provEntries.length > 0) custHtml += '<div class="detail-hist-title" style="margin-top:10px;">📦 預かり出庫リスト</div>';
-        custHtml += custEntries.map(po=>{
-          const myItems = po.items.filter(i=>i.productId===id);
-          const qty = myItems.reduce((s,i)=>s+i.qty,0);
-          // 引き渡し予定日を日本語形式に
-          const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
-          const _sdStr = _sdp.length===3 ? _sdp[0]+'年'+parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日 引き渡し予定' : (po.scheduledDate||'—');
-          // 引き渡しまでの日数
-          const _today2 = new Date(); _today2.setHours(0,0,0,0);
-          const _dd = po.scheduledDate ? Math.round((new Date(po.scheduledDate+'T00:00:00')-_today2)/(1000*60*60*24)) : null;
-          const _ddLabel = _dd===null?'':_dd===0?'今日':_dd>0?_dd+'日後':Math.abs(_dd)+'日超過';
-          const _ddColor = _dd===null?'':_dd<0?'var(--red)':_dd===0?'var(--amber)':'#b36a00';
-          return '<div data-jump-prov-id="'+po.id+'" style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;cursor:pointer;" title="出庫タブで確認する">'
-            +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-            +'<span style="font-size:13px;font-weight:700;color:var(--amber);">📦 '+_sdStr+'</span>'
-            +'<span style="font-size:11px;font-weight:600;color:'+_ddColor+';">'+_ddLabel+'</span>'
-            +'</div>'
-            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
-            +'<div style="font-size:13px;">本数：<strong>'+qty+'本</strong>'+(po.staff?'　担当：<span style="color:var(--text-2);">'+escapeHtml(po.staff)+'</span>':'')+'</div>'
-            +'<div style="display:flex;gap:6px;">'
-            +'<button class="btn btn-ghost btn-sm" data-cust-edit="'+po.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--amber);color:var(--amber);" onclick="event.stopPropagation();">編集</button>'
-            +'<button class="btn btn-ghost btn-sm" data-cust-delete="'+po.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);" onclick="event.stopPropagation();">削除</button>'
-            +'</div>'
-            +'</div>'
-            +(po.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(232,160,32,0.1);border-radius:6px;font-size:12px;color:var(--amber);font-weight:600;">👤 '+escapeHtml(po.customerName)+(po.carName?' ／ 車種：'+escapeHtml(po.carName):'')+'</div>':'')
-            +'</div>';
-        }).join('');
-        el.innerHTML += custHtml;
-        if(hd && provEntries.length===0) hd.textContent = '📦 預かり出庫リスト';
-        // 編集ボタン
-        el.querySelectorAll('[data-cust-edit]').forEach(btn=>{
-          btn.addEventListener('click', async ()=>{
-            const po = provisionalOutbounds.find(x=>x.id===btn.dataset.custEdit);
-            if(!po) return;
-            const result = await showProvisionalEditForm(po);
-            if(!result) return;
-            po.customerName = result.customerName;
-            po.scheduledDate = result.scheduledDate;
-            po.carName = result.carName||'';
-            po.items = result.items;
-            await saveProvisionalOutbounds();
-            renderProductTable(); renderProvisionalList(); renderDetailProvList();
-          });
-        });
-        // 削除ボタン
-        el.querySelectorAll('[data-cust-delete]').forEach(btn=>{
-          btn.addEventListener('click', async ()=>{
-            const ok = await showConfirm('この預かり出庫を削除しますか？');
-            if(!ok) return;
-            const idx = provisionalOutbounds.findIndex(x=>x.id===btn.dataset.custDelete);
-            if(idx>=0) provisionalOutbounds.splice(idx,1);
-            await saveProvisionalOutbounds();
-            renderProductTable(); renderProvisionalList(); renderDetailProvList();
-          });
-        });
+      let allHtml = '';
+      if(provEntries.length > 0){
+        if(hd) hd.textContent = '🔖 仮出庫リスト';
+        allHtml += provEntries.map(po=>buildCard(po, false)).join('');
       }
+      if(custEntries.length > 0){
+        if(provEntries.length > 0) allHtml += '<div class="detail-hist-title" style="margin-top:10px;">📦 預かり出庫リスト</div>';
+        else if(hd) hd.textContent = '📦 預かり出庫リスト';
+        allHtml += custEntries.map(po=>buildCard(po, true)).join('');
+      }
+      el.innerHTML = allHtml;
+
+      // 仮出庫 編集
+      el.querySelectorAll('[data-prov-edit]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const po = provisionalOutbounds.find(x=>x.id===btn.dataset.provEdit);
+          if(!po) return;
+          const result = await showProvisionalEditForm(po);
+          if(!result) return;
+          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||''; po.items = result.items;
+          await saveProvisionalOutbounds();
+          renderProductTable(); renderProvisionalList(); renderDetailProvList();
+        });
+      });
+      // 仮出庫 削除
+      el.querySelectorAll('[data-prov-delete]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const ok = await showConfirm('この仮出庫を削除しますか？');
+          if(!ok) return;
+          const idx = provisionalOutbounds.findIndex(x=>x.id===btn.dataset.provDelete);
+          if(idx>=0) provisionalOutbounds.splice(idx,1);
+          await saveProvisionalOutbounds();
+          renderProductTable(); renderProvisionalList(); renderDetailProvList();
+        });
+      });
+      // 預かり出庫 編集
+      el.querySelectorAll('[data-cust-edit]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const po = provisionalOutbounds.find(x=>x.id===btn.dataset.custEdit);
+          if(!po) return;
+          const result = await showProvisionalEditForm(po);
+          if(!result) return;
+          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||''; po.items = result.items;
+          await saveProvisionalOutbounds();
+          renderProductTable(); renderProvisionalList(); renderDetailProvList();
+        });
+      });
+      // 預かり出庫 削除
+      el.querySelectorAll('[data-cust-delete]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const ok = await showConfirm('この預かり出庫を削除しますか？');
+          if(!ok) return;
+          const idx = provisionalOutbounds.findIndex(x=>x.id===btn.dataset.custDelete);
+          if(idx>=0) provisionalOutbounds.splice(idx,1);
+          await saveProvisionalOutbounds();
+          renderProductTable(); renderProvisionalList(); renderDetailProvList();
+        });
+      });
 
       // 未確定カードクリック → 出庫タブへ遷移
       el.querySelectorAll('[data-jump-prov-id]').forEach(card=>{
