@@ -4394,8 +4394,11 @@ window.addEventListener('storageReady', function(){
         const _catProds = findAllProductsForCatalogEntry(r);
         const _catProd = _catProds[0] || null;
         let cost = computeCostPrice(r.b, r.m, r.w, r.t);
-        // 自支店に固定仕入れ価格が設定された商品がある場合はその価格を優先表示
-        const _ownFixedProd = _catProds.find(cp => (cp.branchId||'taniyabe') === _catOwnBranchId && cp._fixedCost && cp.costPrice);
+        // 自支店に在庫があり固定仕入れ価格が設定された商品がある場合はその価格を優先表示
+        const _ownFixedProd = _catProds.find(cp => cp._fixedCost && cp.costPrice && (
+          (cp.branchId||'taniyabe') === _catOwnBranchId ||
+          (cp.branchStock && (cp.branchStock[_catOwnBranchId]||0) > 0)
+        ));
         if(_ownFixedProd) cost = _ownFixedProd.costPrice;
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         // 製造年tooltip（在庫がある支店のみ）
