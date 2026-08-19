@@ -6190,6 +6190,7 @@ window.addEventListener('storageReady', function(){
         customerName,
         scheduledDate,
         carName: carName||'',
+        branchId: currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe',
         staff: currentUser?.displayName || '',
         items: ps.map(p=>({ productId: p.id, name: p.name, brand: p.brand||'', spec: p.spec||'', partno: p.partno||'', qty: 1 })),
         status: 'pending'
@@ -7863,7 +7864,7 @@ window.addEventListener('storageReady', function(){
       const stk = p.branchStock ? (p.branchStock[branchId]||0) : (p.stock||0);
       const totalProv = relPOs.reduce((s,po)=>s+po.items.filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0),0);
       const isOver = totalProv > stk;
-      let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':'🔖 仮出庫')+'</span><span style="font-size:11px;font-weight:400;color:var(--text-2);">計 '+totalProv+' 本 / 在庫 '+stk+' 本'+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'本超過</span>':'')+'</span></div>';
+      let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':'🔖 うち預かり')+'</span><span style="font-size:11px;font-weight:400;color:var(--text-2);">計 '+totalProv+' 本 / 在庫 '+stk+' 本'+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'本超過</span>':'')+'</span></div>';
       if(relPOs.length > 0){
         html += '<div style="display:grid;grid-template-columns:36px 1fr 1fr auto;gap:4px 8px;padding:4px 0 2px;font-size:10px;font-weight:600;color:var(--text-3);border-bottom:1px solid var(--line);margin-bottom:2px;">'
           +'<span style="text-align:center;">数量</span><span>お客様</span><span>車種</span><span style="text-align:right;">引渡日</span></div>';
