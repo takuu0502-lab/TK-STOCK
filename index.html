@@ -3542,6 +3542,11 @@ window.addEventListener('storageReady', function(){
       // Lock type selector if specified (hide toggle)
       const _typeRow = typeProvLabel.parentElement.parentElement;
       _typeRow.style.display = (opts&&opts.lockType) ? 'none' : '';
+      // Auto-expand 入庫予定 for custody type
+      if(_defType==='custody'){
+        inboundCheck.checked = true;
+        inboundWrap.style.display = 'block';
+      }
       function onTypeChange(){ applyType(document.querySelector('input[name="prov_type"]:checked').value); }
       document.getElementById('prov_type_provisional').addEventListener('change', onTypeChange);
       document.getElementById('prov_type_custody').addEventListener('change', onTypeChange);
@@ -3571,6 +3576,8 @@ window.addEventListener('storageReady', function(){
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent=(type==='custody'?'取引先名':'お客様名')+'を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
         if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
+        const _isCustody = type === 'custody';
+        if(_isCustody && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。（預かり出庫には必須です）'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
         if(useInbound && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
         cleanup({ customerName: name, scheduledDate: date, carName: car, inboundDate: useInbound ? inboundDate : '', type });
       }
@@ -9096,6 +9103,7 @@ window.addEventListener('storageReady', function(){
           await saveIncomingSchedules();
         }
         renderProductTable(); renderHistory(); renderProvisionalList(); renderDetailProvList();
+        if(_detailInschRefresh) _detailInschRefresh();
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">📦 預かり出庫として登録しました。</div>';
           setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
       });
