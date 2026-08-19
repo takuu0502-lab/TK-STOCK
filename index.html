@@ -3500,6 +3500,11 @@ window.addEventListener('storageReady', function(){
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
+      if(tab === 'list'){
+        specPanelOpen = true;
+        document.getElementById('openSpecSearch').classList.add('active');
+        renderSpecSearchPanel();
+      }
       if(tab === 'in'){
         setTimeout(()=>{
           const el = document.getElementById('inBarcode');
