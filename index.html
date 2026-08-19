@@ -3491,7 +3491,7 @@ window.addEventListener('storageReady', function(){
     });
   }
 
-  function showProvisionalForm(){
+  function showProvisionalForm(opts){
     return new Promise((resolve)=>{
       const overlay = document.getElementById('provisionalFormModal');
       const customerInput = document.getElementById('prov_customer');
@@ -3533,7 +3533,15 @@ window.addEventListener('storageReady', function(){
           customerInput.placeholder='例) 田中様';
         }
       }
-      applyType('provisional');
+      const _defType = (opts&&opts.defaultType) || 'provisional';
+      applyType(_defType);
+      if(_defType==='custody'){ document.getElementById('prov_type_custody').checked=true; } else { document.getElementById('prov_type_provisional').checked=true; }
+      // Hide custody option for branches other than katsuta/iwama
+      const _custodyBranch = currentUser && ['katsuta','iwama'].includes(currentUser.branchId);
+      typeCustLabel.style.display = _custodyBranch ? '' : 'none';
+      // Lock type selector if specified (hide toggle)
+      const _typeRow = typeProvLabel.parentElement.parentElement;
+      _typeRow.style.display = (opts&&opts.lockType) ? 'none' : '';
       function onTypeChange(){ applyType(document.querySelector('input[name="prov_type"]:checked').value); }
       document.getElementById('prov_type_provisional').addEventListener('change', onTypeChange);
       document.getElementById('prov_type_custody').addEventListener('change', onTypeChange);
@@ -8812,6 +8820,7 @@ window.addEventListener('storageReady', function(){
         + '<button class="btn btn-red detail-action-btn" id="detailStockOut">出庫する</button>'
         + '</div>'
         + '<button class="btn btn-ghost detail-action-btn" id="detailProvisionalOut" style="width:100%;margin-top:8px;border:2px solid var(--amber);color:var(--amber);font-size:13px;">🔖 仮出庫として登録</button>'
+        + (['katsuta','iwama'].includes(currentUser&&currentUser.branchId) ? '<button class="btn btn-ghost detail-action-btn" id="detailCustodyOut" style="width:100%;margin-top:6px;border:2px solid #1a7a5e;color:#1a7a5e;font-size:13px;">📦 預かり出庫として登録</button>' : '')
         + '<div id="detailActionMsg"></div>'
         + '</div>'
       ) : '')
@@ -9052,6 +9061,41 @@ window.addEventListener('storageReady', function(){
         renderProvisionalList();
         renderDetailProvList();
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">🔖 仮出庫として登録しました。</div>';
+          setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
+      });
+    }
+    // 預かり出庫ボタン（勝田・岩間のみ）
+    const custodyBtn = document.getElementById('detailCustodyOut');
+    if(custodyBtn){
+      custodyBtn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const qty = parseInt(document.getElementById('detailQty').value || '1', 10);
+        const msgEl = document.getElementById('detailActionMsg');
+        if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
+        const _custBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        const formResult = await showProvisionalForm({ defaultType:'custody', lockType:true });
+        if(!formResult) return;
+        const { customerName, scheduledDate, carName } = formResult;
+        const entry = {
+          id: uid('pob'),
+          date: new Date().toISOString(),
+          type: 'custody',
+          branchId: _custBranch,
+          customerName,
+          scheduledDate,
+          carName: carName||'',
+          staff: currentUser ? currentUser.displayName : '',
+          items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty }],
+          status: 'pending'
+        };
+        provisionalOutbounds.unshift(entry);
+        await saveProvisionalOutbounds();
+        if(formResult.inboundDate){
+          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          await saveIncomingSchedules();
+        }
+        renderProductTable(); renderHistory(); renderProvisionalList(); renderDetailProvList();
+        if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">📦 預かり出庫として登録しました。</div>';
           setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
       });
     }
