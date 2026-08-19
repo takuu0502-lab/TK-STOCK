@@ -4706,7 +4706,7 @@ window.addEventListener('storageReady', function(){
       const isChecked = selectedProducts.has(p.id);
       const pBranch = p.branchId || 'taniyabe';
       const showBranchBadge = selectedBranchFilter === null; // 全支店表示時のみバッジ表示
-      return '<tr class="clickable-row'+(isChecked?' row-selected':'')+'" data-detail="'+p.id+'">'
+      return '<tr class="clickable-row'+(isChecked?' row-selected':'')+'" data-detail="'+p.id+'" style="vertical-align:top;">'
         + '<td class="chk-col"><input type="checkbox" class="row-chk" data-chk-id="'+p.id+'"'+(isChecked?' checked':'')+' onclick="event.stopPropagation();"></td>'
         + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+(showBranchBadge?'<br><span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>' : '<td>'+(showBranchBadge?'<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+(p.productType==='order'?'<span style="margin-left:6px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--amber-dim);color:var(--amber);white-space:nowrap;">客注品'+(p.orderCustomer?' / '+escapeHtml(p.orderCustomer):'')+(p.orderDueDate?' / '+(()=>{const d=new Date(p.orderDueDate);return (d.getMonth()+1)+'/'+d.getDate();})():'')+'</span>':'')+'</td>'
