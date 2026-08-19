@@ -4809,8 +4809,8 @@ window.addEventListener('storageReady', function(){
               let badges = '';
               // 仮出庫：全支店の列にそれぞれ表示
               const _poPend = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===p.id));
-              const provQtyProv = _poPend.filter(po=>(po.type||'custody')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-              const provQtyCust = _poPend.filter(po=>(po.type||'custody')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const provQtyProv = _poPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const provQtyCust = _poPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               const provQty = provQtyProv + provQtyCust;
               if(provQtyProv > 0){
                 if(isOwn){
@@ -4851,11 +4851,11 @@ window.addEventListener('storageReady', function(){
           } else {
             // 通常の単一列
             const _scPoPend=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id));
-            const _scProvQtyProv=_scPoPend.filter(po=>(po.type||'custody')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-            const _scProvQtyCust=_scPoPend.filter(po=>(po.type||'custody')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+            const _scProvQtyProv=_scPoPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+            const _scProvQtyCust=_scPoPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
             const provQty=_scProvQtyProv+_scProvQtyCust;
             const provOver=_scProvQtyCust>stk;
-            const _provTipSc=_scPoPend.map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'custody')==='provisional'?'[仮予約]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+            const _provTipSc=_scPoPend.map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮予約]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
             const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
             const inschQty=incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
             return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮予約 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="custody" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+(inschQty>0?'<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#1a7a5e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;" title="入庫予定を確認">📦 入庫予定 '+inschQty+'本</div>':'')+  '</td>';
@@ -5927,10 +5927,10 @@ window.addEventListener('storageReady', function(){
     filtered.forEach(p=>{
       const sysQty = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
       const _scProvPend = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id));
-      const _scProvQtyProv2 = _scProvPend.filter(po=>(po.type||'custody')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-      const _scProvQty = _scProvPend.filter(po=>(po.type||'custody')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-      const _scProvTip = _scProvPend.filter(po=>(po.type||'custody')==='custody').map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
-      const _scProvTipProv = _scProvPend.filter(po=>(po.type||'custody')==='provisional').map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+      const _scProvQtyProv2 = _scProvPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+      const _scProvQty = _scProvPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+      const _scProvTip = _scProvPend.filter(po=>(po.type||'provisional')==='custody').map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+      const _scProvTipProv = _scProvPend.filter(po=>(po.type||'provisional')==='provisional').map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
       const counted = counts.hasOwnProperty(p.id);
       const actQty = counted ? counts[p.id] : '';
       html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-2);border:1px solid '+(counted?'var(--teal)':'var(--line)')+';border-radius:8px;">';
@@ -7924,7 +7924,7 @@ window.addEventListener('storageReady', function(){
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     tdCols += '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>';
-      if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'custody')==='custody'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _tv = (p.costPrice||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
+      if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _tv = (p.costPrice||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
 
       return '<tr>'+tdCols+'</tr>';
     }).join('');
@@ -7939,7 +7939,7 @@ window.addEventListener('storageReady', function(){
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
-    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'custody')==='custody'&&po.items.some(i=>i.productId===p.id)).reduce((ss,po)=>ss+po.items.filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); return s+(p.costPrice||0)*Math.max(0,stk-_fpq); },0) : 0;
+    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&po.items.some(i=>i.productId===p.id)).reduce((ss,po)=>ss+po.items.filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); return s+(p.costPrice||0)*Math.max(0,stk-_fpq); },0) : 0;
     const totalValFooter = colTotalVal ? `<tfoot><tr><td colspan="100%" style="text-align:right;font-weight:700;padding:5pt;border-top:1pt solid #333;">合計金額：&yen;${totalValSum.toLocaleString('ja-JP')}</td></tr></tfoot>` : '';
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
       <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
@@ -8875,8 +8875,8 @@ window.addEventListener('storageReady', function(){
       if(!el) return;
       const _detListOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       const allEntries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&po.items.some(i=>i.productId===id));
-      const provEntries = allEntries.filter(po=>(po.type||'custody')==='provisional');
-      const custEntries = allEntries.filter(po=>(po.type||'custody')==='custody');
+      const provEntries = allEntries.filter(po=>(po.type||'provisional')==='provisional');
+      const custEntries = allEntries.filter(po=>(po.type||'provisional')==='custody');
       if(hd){ hd.textContent = '🔖 仮出庫リスト'; }
       if(allEntries.length === 0){
         el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">仮出庫なし</div>';
