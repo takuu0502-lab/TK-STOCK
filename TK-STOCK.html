@@ -4746,7 +4746,7 @@ window.addEventListener('storageReady', function(){
                 badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;">'
-                + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+Math.max(0,bStk-provQty)+'</span>'
+                + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
                 + '<div class="gauge-bar"><div class="gauge-fill" style="width:'+bPct+'%;background:'+bColor+';"></div></div>'
                 + (bLow ? '<span class="low-flag">在庫少</span>' : '')
                 + '</div>'
