@@ -4408,7 +4408,7 @@ window.addEventListener('storageReady', function(){
               const bStk = stockForCatalogEntryByBranch(r, brId);
               const _tip = _yearTooltip(brId);
               const _tipAttr = _tip ? ' title="'+_tip+'"' : '';
-              const _tipBadge = _tip ? '<span style="font-size:9px;color:var(--text-3);display:block;white-space:nowrap;">'+_tip+'</span>' : '';
+              const _tipBadge = _tip ? '<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
@@ -4422,7 +4422,7 @@ window.addEventListener('storageReady', function(){
               const _bStk = stockForCatalogEntry(r);
               const _tip = _yearTooltip(null);
               const _tipAttr = _tip ? ' title="'+_tip+'"' : '';
-              const _tipBadge = _tip ? '<span style="font-size:9px;color:var(--text-3);display:block;white-space:nowrap;">'+_tip+'</span>' : '';
+              const _tipBadge = _tip ? '<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
@@ -4447,7 +4447,7 @@ window.addEventListener('storageReady', function(){
         const sell = p.sellPrice || 0;
         const cKey = _chkPrefixManual + p.id;
         const checked = catalogQuoteSelection.has(cKey);
-        const _manYearBadge = p.manufactureYear ? '<span style="font-size:9px;color:var(--text-3);display:block;white-space:nowrap;">'+p.manufactureYear+'年製</span>' : '';
+        const _manYearBadge = p.manufactureYear ? '<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+p.manufactureYear+'年製</span>' : '';
         const stockCell = _catShowMultiCols
           ? _catVisibleBranches.map(brId => {
               const bStk = p.branchStock ? (p.branchStock[brId]||0) : 0;
