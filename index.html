@@ -8396,8 +8396,11 @@ window.addEventListener('storageReady', function(){
   function populateSpecTireSelects(){
     const _branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const isTruck = ['katsuta','iwama'].includes(_branch);
+    // タイヤ幅: 特殊サイズ（全店共通）＋標準サイズ
+    const extraWidths = ['6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00','10','11','12'];
     const wSel = document.getElementById('f_spec_width');
     let wOpts = '<option value=""></option>';
+    extraWidths.forEach(v=>{ wOpts += '<option value="'+v+'">'+v+'</option>'; });
     for(let w=135; w<=355; w+=10){ wOpts += '<option value="'+w+'">'+w+'</option>'; }
     wSel.innerHTML = wOpts;
     const aSel = document.getElementById('f_spec_aspect');
@@ -8411,7 +8414,12 @@ window.addEventListener('storageReady', function(){
         iOpts += '<option value="R'+v+'">'+v+'</option>';
       });
     } else {
-      for(let inch=12; inch<=24; inch++){ iOpts += '<option value="R'+inch+'">'+inch+'</option>'; }
+      // 標準サイズ12〜24 + 22.5（全店共通）
+      const stdInches = [];
+      for(let inch=12; inch<=24; inch++) stdInches.push(inch);
+      if(!stdInches.includes(22.5)) stdInches.push(22.5);
+      stdInches.sort((a,b)=>a-b);
+      stdInches.forEach(v=>{ iOpts += '<option value="R'+v+'">'+v+'</option>'; });
     }
     iSel.innerHTML = iOpts;
     // ロードインデックス (73-168)
