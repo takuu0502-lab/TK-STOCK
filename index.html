@@ -4816,7 +4816,7 @@ window.addEventListener('storageReady', function(){
                 if(isOwn){
                   badges += '<div data-prov-badge="'+p.id+'" data-prov-branch="'+brId+'" data-prov-type="provisional" style="cursor:default;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">🔖 仮出庫 '+provQtyProv+'本</div>';
                 } else {
-                  badges += '<div style="cursor:default;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap;">🔖 仮出庫 '+provQtyProv+'本</div>';
+                  badges += '<div data-prov-badge="'+p.id+'" data-prov-branch="'+brId+'" data-prov-type="provisional" style="cursor:help;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap;">🔖 仮出庫 '+provQtyProv+'本</div>';
                 }
               }
               if(provQtyCust > 0){
@@ -7975,14 +7975,16 @@ window.addEventListener('storageReady', function(){
       const stk = p.branchStock ? (p.branchStock[branchId]||0) : (p.stock||0);
       const totalProv = relPOs.reduce((s,po)=>s+po.items.filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0),0);
       const isOver = totalProv > stk;
-      let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':(badge.dataset.provType==='custody'?'📦 うち預かり':'🔖 うち仮出庫'))+'</span><span style="font-size:11px;font-weight:400;color:var(--text-2);">計 '+totalProv+' 本 / 在庫 '+stk+' 本'+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'本超過</span>':'')+'</span></div>';
+      const _provTypeLabel = badge.dataset.provType==='custody' ? '📦 預かり出庫' : '🔖 仮出庫';
+      let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':_provTypeLabel)+'</span><span style="font-size:11px;font-weight:400;color:var(--text-2);">計 '+totalProv+' 本 / 在庫 '+stk+' 本'+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'本超過</span>':'')+'</span></div>';
       if(relPOs.length > 0){
         html += '<div style="display:grid;grid-template-columns:36px 1fr 1fr auto;gap:4px 8px;padding:4px 0 2px;font-size:10px;font-weight:600;color:var(--text-3);border-bottom:1px solid var(--line);margin-bottom:2px;">'
-          +'<span style="text-align:center;">数量</span><span>お客様</span><span>車種</span><span style="text-align:right;">引渡日</span></div>';
+          +'<span style="text-align:center;">数量</span><span>お客様</span><span>車種</span><span style="text-align:right;">取付予定日</span></div>';
       }
       relPOs.forEach(po=>{
         const qty = po.items.filter(i=>i.productId===productId).reduce((s,i)=>s+i.qty,0);
-        const sd = po.scheduledDate ? po.scheduledDate.replace(/\d{4}-/,'').replace('-','/') : '—';
+        const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
+        const sd = _sdp.length>=3 ? parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日' : (po.scheduledDate||'—');
         html += '<div class="pt-row">'
           +'<span class="pt-qty">'+qty+'本</span>'
           +'<span class="pt-customer">'+(po.customerName?escapeHtml(po.customerName)+' 様':'—')+'</span>'
