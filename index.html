@@ -4833,6 +4833,12 @@ window.addEventListener('storageReady', function(){
             const isWheelAlumSteel = _sharedWheelCat && p.majorId === _sharedWheelCat.id
               && _sharedWheelSubIds.includes(p.subId);
             if(!isTire && !isWheelAlumSteel) return false;
+            // 他支店のカタログ自動登録品（_fromCatalog）で全支店在庫0のものは非表示
+            // （カタログ行と重複するゴースト商品を除去）
+            if(p._fromCatalog || p.catalogKey){
+              const _totalStk = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+              if(_totalStk === 0) return false;
+            }
           }
         }
       }
@@ -4848,6 +4854,14 @@ window.addEventListener('storageReady', function(){
           : p.spec.indexOf(selectedTireAspect) !== -1
       ))) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
+      // _fromCatalog自動登録品で同カタログエントリに手動登録品がある場合は非表示（重複防止）
+      if(p._fromCatalog){
+        const _dupCatEntry = findCatalogEntryForProduct(p);
+        if(_dupCatEntry){
+          const _dupAll = findAllProductsForCatalogEntry(_dupCatEntry);
+          if(_dupAll.some(q => q.id !== p.id && !q._fromCatalog)) return false;
+        }
+      }
       return true;
     });
     renderInventoryFilter(list.length > 0);
