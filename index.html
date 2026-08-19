@@ -4287,6 +4287,8 @@ window.addEventListener('storageReady', function(){
     const useInch   = (opts && opts.inch   !== undefined) ? opts.inch   : selectedTireInch;
     const useModel  = (opts && opts.modelKey !== undefined) ? opts.modelKey : selectedCatalogModelKey;
     const forceTire = !!(opts && opts.targetId); // 見積タブからの呼び出しは常にタイヤモード
+    // 商品一覧タブでは価格表を非表示（タイヤ見積もりタブ専用）
+    if(!forceTire){ wrap.innerHTML = ''; return; }
     if(!forceTire){
       const m = selectedMajor !== null ? majorById(selectedMajor) : null;
       const isTire = m && m.name === 'タイヤ';
