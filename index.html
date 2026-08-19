@@ -4393,7 +4393,7 @@ window.addEventListener('storageReady', function(){
         const checked = catalogQuoteSelection.has(cKey);
         const _catProds = findAllProductsForCatalogEntry(r);
         const _catProd = _catProds[0] || null;
-        const cost = (_catProd && _catProd._fixedCost && _catProd.costPrice) ? _catProd.costPrice : computeCostPrice(r.b, r.m, r.w, r.t);
+        const cost = computeCostPrice(r.b, r.m, r.w, r.t);
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         // 製造年tooltip（在庫がある支店のみ）
         const _yearTooltip = (brId)=>{
