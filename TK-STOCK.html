@@ -8092,13 +8092,15 @@ window.addEventListener('storageReady', function(){
           +'<span style="text-align:center;">数量</span><span>入荷予定日</span><span style="text-align:right;">担当</span></div>';
       }
       entries.slice().sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate)).forEach(s=>{
-        const d = new Date(s.expectedDate+'T00:00:00');
-        const diff = Math.round((d - today())/(1000*60*60*24));
-        const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
-        const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'#1a7a5e';
+        const _isTbd8 = s.expectedDate === '未定';
+        const d = _isTbd8 ? null : new Date(s.expectedDate+'T00:00:00');
+        const diff = _isTbd8 ? null : Math.round((d - today())/(1000*60*60*24));
+        const diffLabel = _isTbd8?'未定':diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
+        const diffColor = _isTbd8?'var(--text-3)':diff<0?'var(--red)':diff===0?'var(--amber)':'#1a7a5e';
+        const _edDisp = _isTbd8 ? '未定' : s.expectedDate.replace(/\d{4}-/,'').replace('-','/');
         html += '<div class="it-row">'
           +'<span class="it-qty">'+s.qty+'本</span>'
-          +'<div><div class="it-date">'+s.expectedDate.replace(/\d{4}-/,'').replace('-','/')+'</div>'
+          +'<div><div class="it-date">'+_edDisp+'</div>'
           +'<div style="font-size:10px;font-weight:700;color:'+diffColor+';">'+diffLabel+'</div></div>'
           +'<span class="it-by">'+escapeHtml(s.createdBy||'')+'</span>'
           +'</div>';
@@ -8988,8 +8990,9 @@ window.addEventListener('storageReady', function(){
         const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
         const _sdStr = _sdp.length>=3 ? _sdp[0]+'年'+parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日 引き渡し予定' : (po.scheduledDate||'—');
         const _today2 = new Date(); _today2.setHours(0,0,0,0);
-        const _dd = po.scheduledDate ? Math.round((new Date(po.scheduledDate+'T00:00:00')-_today2)/(1000*60*60*24)) : null;
-        const _ddLabel = _dd===null?'':_dd===0?'今日':_dd>0?_dd+'日後':Math.abs(_dd)+'日超過';
+        const _isTbdDate = po.scheduledDate === '未定';
+        const _dd = (!po.scheduledDate||_isTbdDate) ? null : Math.round((new Date(po.scheduledDate+'T00:00:00')-_today2)/(1000*60*60*24));
+        const _ddLabel = _isTbdDate?'':_dd===null?'':_dd===0?'今日':_dd>0?_dd+'日後':Math.abs(_dd)+'日超過';
         const _ddColor = _dd===null?'':_dd<0?'var(--red)':_dd===0?'var(--amber)':'#b36a00';
         const icon = isCustody ? '📦' : '🔖';
         const editAttr = isCustody ? 'data-cust-edit' : 'data-prov-edit';
@@ -9103,12 +9106,13 @@ window.addEventListener('storageReady', function(){
       }
       entries.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
       el.innerHTML = entries.map(s=>{
-        const d = new Date(s.expectedDate+'T00:00:00');
+        const _isTbdEd = s.expectedDate === '未定';
+        const d = _isTbdEd ? null : new Date(s.expectedDate+'T00:00:00');
         const today = new Date(); today.setHours(0,0,0,0);
-        const diff = Math.round((d-today)/(1000*60*60*24));
-        const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
-        const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
-        const _edp=s.expectedDate.split('-'); const _edStr=_edp[0]+'年'+parseInt(_edp[1])+'月'+parseInt(_edp[2])+'日入庫予定';
+        const diff = _isTbdEd ? null : Math.round((d-today)/(1000*60*60*24));
+        const diffLabel = _isTbdEd?'未定':diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
+        const diffColor = _isTbdEd?'var(--text-3)':diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
+        const _edStr = _isTbdEd ? '未定 入庫予定' : (()=>{ const _edp=s.expectedDate.split('-'); return _edp[0]+'年'+parseInt(_edp[1])+'月'+parseInt(_edp[2])+'日入庫予定'; })();
         return '<div style="padding:10px 12px;background:rgba(26,122,94,0.07);border:1px solid var(--teal);border-radius:8px;margin-bottom:8px;">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
           +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 '+_edStr+'</span>'
