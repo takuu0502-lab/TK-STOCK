@@ -4386,13 +4386,12 @@ window.addEventListener('storageReady', function(){
         const _catProd = _catProds[0] || null;
         const cost = (_catProd && _catProd._fixedCost && _catProd.costPrice) ? _catProd.costPrice : computeCostPrice(r.b, r.m, r.w, r.t);
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-        // 製造年ラベル（複数商品ある場合に年別内訳を表示）
+        // 製造年ラベル（在庫がある支店のセルにのみ表示）
         const _yearBreakdown = (brId)=>{
-          if(_catProds.length <= 1) return '';
           return _catProds.filter(cp=>cp.manufactureYear).map(cp=>{
             const ys = brId ? (cp.branchStock?cp.branchStock[brId]||0:0) : getStock(cp);
             if(!ys) return '';
-            return '<div style="font-size:10px;color:var(--text-3);white-space:nowrap;">'+cp.manufactureYear+'年製:'+ys+'本</div>';
+            return '<div style="font-size:10px;color:var(--text-3);white-space:nowrap;">'+cp.manufactureYear+'年製</div>';
           }).join('');
         };
         const stockCell = _catShowMultiCols
@@ -4421,7 +4420,7 @@ window.addEventListener('storageReady', function(){
         return '<tr data-catalog-idx="'+i+'">'
           + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk="'+i+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
           + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-catalog-click="'+i+'">'+(_catProd && _catProd.name ? escapeHtml(cleanName(_catProd.name)) : (r.b===r.m ? escapeHtml(r.b) : escapeHtml(r.b)+' '+escapeHtml(r.m)))+'</td>'
-          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+(_catProds.filter(cp=>cp.manufactureYear).map(cp=>cp.manufactureYear+'年製').filter((v,i,a)=>a.indexOf(v)===i).map(y=>'<span style="font-family:var(--font-sans);font-size:10px;color:var(--teal);margin-left:4px;font-weight:600;">'+y+'</span>').join(''))+'</td>'
+          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
           + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b==='SEIBERLING'||r.b==='TOPRUN'||/^LUFT/i.test(r.b) ? '\u2014' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
           + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '\u2014')+'</td>'
           + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(cost!==null ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</td>' : '')
