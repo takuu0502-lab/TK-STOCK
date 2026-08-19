@@ -8926,7 +8926,7 @@ window.addEventListener('storageReady', function(){
           const _dd = po.scheduledDate ? Math.round((new Date(po.scheduledDate+'T00:00:00')-_today2)/(1000*60*60*24)) : null;
           const _ddLabel = _dd===null?'':_dd===0?'今日':_dd>0?_dd+'日後':Math.abs(_dd)+'日超過';
           const _ddColor = _dd===null?'':_dd<0?'var(--red)':_dd===0?'var(--amber)':'#b36a00';
-          return '<div style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;">'
+          return '<div data-jump-prov-id="'+po.id+'" style="padding:10px 12px;background:rgba(232,160,32,0.07);border:1px solid var(--amber);border-radius:8px;margin-bottom:8px;cursor:pointer;" title="出庫タブで確認する">'
             +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
             +'<span style="font-size:13px;font-weight:700;color:var(--amber);">📦 '+_sdStr+'</span>'
             +'<span style="font-size:11px;font-weight:600;color:'+_ddColor+';">'+_ddLabel+'</span>'
