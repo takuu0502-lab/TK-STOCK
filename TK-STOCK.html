@@ -8730,6 +8730,8 @@ window.addEventListener('storageReady', function(){
     populateSubSelect(p.majorId, p.subId);
     populateSubSubSelect(p.majorId, p.subId, p.subSubId || null);
     toggleTireNameField();
+    populateTireModelSelect();
+    populateSpecTireSelects();
     document.getElementById('f_spec').value = p.spec || '';
     prefillSpecTireSelects(p.spec || '');
     // ホイールスペック復元
