@@ -4128,7 +4128,8 @@ window.addEventListener('storageReady', function(){
     // catalogKey（商品登録時に保存したキー）で優先照合 → 商品名変更後も追跡できる
     const cKey = r.b+'||'+r.m+'||'+r.s;
     if(p.catalogKey && p.catalogKey === cKey) return true;
-    // フォールバック：スペック＋名前の部分一致
+    // フォールバックは _fromCatalog フラグがある商品のみ（手動登録品は別行表示）
+    if(!p._fromCatalog) return false;
     if(!p.spec) return false;
     if(!_specMatchesCatalog(p.spec, r.s)) return false;
     return _nameMatchesCatalog(p.name, r.b, r.m);
