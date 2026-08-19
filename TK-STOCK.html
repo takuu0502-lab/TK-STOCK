@@ -209,14 +209,14 @@
   .spec-step-tabs{display:flex;gap:6px;flex-wrap:wrap;}
   #specSelect{min-width:200px;}
   /* 商品検索タイヤサイズ（旧レイアウト） */
-  .tire-size-row{display:flex;align-items:flex-end;gap:0;flex-wrap:wrap;width:100%;}
-  .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:1;min-width:70px;}
-  .tire-size-col select{width:100%;font-size:16px;font-weight:600;padding:0 4px;border-radius:0;text-align:center;height:40px;box-sizing:border-box;}
-  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;}
+  .tire-size-row{display:inline-flex;align-items:flex-end;gap:0;flex-wrap:wrap;max-width:100%;}
+  .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:none;}
+  .tire-size-col select{width:85px;font-size:15px;font-weight:600;padding:0 2px;border-radius:0;text-align:center;height:40px;box-sizing:border-box;}
+  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;width:90px;}
   .tire-size-col label{font-size:11px;color:var(--text-3);font-weight:600;letter-spacing:0.3px;display:block;text-align:center;width:100%;}
   .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-2);font-size:18px;background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:0 4px;height:40px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;flex:none;}
   .tire-size-li-wrap{display:flex;align-items:center;gap:4px;width:100%;}
-  .tire-size-li-wrap select{flex:1;font-size:16px;font-weight:600;height:40px;border-radius:0;text-align:center;box-sizing:border-box;}
+  .tire-size-li-wrap select{flex:1;font-size:15px;font-weight:600;height:40px;border-radius:0;text-align:center;box-sizing:border-box;min-width:48px;}
   .tire-size-li-wrap select:last-child{border-radius:0 6px 6px 0;}
   .tire-size-li-sep{font-weight:700;color:var(--text-3);flex:none;}
   /* 見積もりタブ タイヤサイズセレクター（新デザイン） */
@@ -1519,7 +1519,7 @@
           <select id="f_spec_inch"><option value="">-</option></select>
         </div>
         <div style="width:12px;align-self:flex-end;height:38px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-1);flex:none;"></div>
-        <div class="tire-size-col" style="flex:1.6;min-width:110px;">
+        <div class="tire-size-col" style="width:130px;">
           <label>ロードインデックス</label>
           <div class="tire-size-li-wrap">
             <select id="f_spec_li1"><option value="">-</option></select>
