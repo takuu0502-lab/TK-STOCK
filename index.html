@@ -8438,8 +8438,9 @@ window.addEventListener('storageReady', function(){
       stdInches.forEach(v=>{ iOpts += '<option value="R'+v+'">'+v+'</option>'; });
     }
     iSel.innerHTML = iOpts;
-    // ロードインデックス (73-168)
+    // ロードインデックス (6,8,14,16 + 73-168)
     let liOpts = '<option value="">-</option>';
+    [6,8,14,16].forEach(v=>{ liOpts += '<option value="'+v+'">'+v+'</option>'; });
     for(let li=73; li<=168; li++){ liOpts += '<option value="'+li+'">'+li+'</option>'; }
     document.getElementById('f_spec_li1').innerHTML = liOpts;
     document.getElementById('f_spec_li2').innerHTML = liOpts;
