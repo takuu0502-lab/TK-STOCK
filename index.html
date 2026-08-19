@@ -9024,7 +9024,7 @@ window.addEventListener('storageReady', function(){
           +'<button class="btn btn-ghost btn-sm" data-insch-delete="'+s.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);">削除</button>'
           +'</div>'
           +'</div>'
-          +(s.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(26,122,94,0.1);border-radius:6px;font-size:12px;color:#1a7a5e;font-weight:600;">👤 '+escapeHtml(s.customerName)+(s.carName?' ／ 車種：'+escapeHtml(s.carName):'')+(s.provScheduledDate?' ／ 引渡予定：'+s.provScheduledDate:'')+'分</div>':'')
+          +(s.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(26,122,94,0.1);border-radius:6px;font-size:12px;color:#1a7a5e;font-weight:600;">👤 '+escapeHtml(s.customerName)+(s.carName?' ／ 車種：'+escapeHtml(s.carName):'')+(s.provScheduledDate?(()=>{const _pp=s.provScheduledDate.split('-');return ' ／ 引渡予定：'+(_pp.length>=3?_pp[0]+'年'+parseInt(_pp[1])+'月'+parseInt(_pp[2])+'日':s.provScheduledDate);})():'')+'</div>':'')
           +'</div>';
       }).join('');
 
@@ -10242,7 +10242,7 @@ window.addEventListener('storageReady', function(){
         +'📅 入荷予定日: <strong>'+s.expectedDate+'</strong>'
         +'</div>'
         +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+escapeHtml(s.createdBy||'—')+'</div>'
-        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:3px;">👤 '+escapeHtml(s.customerName)+(s.carName?' / '+escapeHtml(s.carName):'')+(s.provScheduledDate?' 引渡:'+s.provScheduledDate:'')+'</div>':'')
+        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:3px;">👤 '+escapeHtml(s.customerName)+(s.carName?' / '+escapeHtml(s.carName):'')+(s.provScheduledDate?(()=>{const _pp=s.provScheduledDate.split('-');return ' 引渡:'+(_pp.length>=3?_pp[0]+'年'+parseInt(_pp[1])+'月'+parseInt(_pp[2])+'日':s.provScheduledDate);})():'')+'</div>':'')
         +'</div>'
         +'<span style="font-size:14px;color:'+diffColor+';font-weight:700;flex-shrink:0;">+'+s.qty+'本</span>'
         +'</summary>'
@@ -10250,7 +10250,7 @@ window.addEventListener('storageReady', function(){
         +'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:10px;">'
         +'<div>'
         +'<div style="font-size:14px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+'</div>'
-        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:4px;padding:6px 8px;background:rgba(232,160,32,0.1);border-radius:6px;">👤 取引先: '+escapeHtml(s.customerName)+(s.carName?' &nbsp;|&nbsp; 車種: '+escapeHtml(s.carName):'')+(s.provScheduledDate?' &nbsp;|&nbsp; 引渡予定: '+s.provScheduledDate:'')+'</div>':'')
+        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:4px;padding:6px 8px;background:rgba(232,160,32,0.1);border-radius:6px;">👤 取引先: '+escapeHtml(s.customerName)+(s.carName?' &nbsp;|&nbsp; 車種: '+escapeHtml(s.carName):'')+(s.provScheduledDate?(()=>{const _pp=s.provScheduledDate.split('-');return ' &nbsp;|&nbsp; 引渡予定: '+(_pp.length>=3?_pp[0]+'年'+parseInt(_pp[1])+'月'+parseInt(_pp[2])+'日':s.provScheduledDate);})():'')+'</div>':'')
         +'<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(s.brand?escapeHtml(s.brand)+' ':'')+(s.spec?escapeHtml(s.spec):'')+'</div>'
         +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">現在庫: <strong>'+stk+'本</strong>　入荷後: <strong style="color:var(--teal);">'+(stk==='?'?'?':stk+s.qty)+'本</strong></div>'
         +'</div>'
