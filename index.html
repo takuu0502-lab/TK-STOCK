@@ -1538,6 +1538,13 @@
       </div>
     </div>
     <div class="field">
+      <label>製造年</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" id="f_mfyear" min="2000" max="2099" placeholder="例) 2024" style="width:110px;">
+        <span style="font-size:13px;color:var(--text-3);">年製</span>
+      </div>
+    </div>
+    <div class="field">
       <label>保管場所</label>
       <div style="display:flex;gap:6px;align-items:center;">
         <select id="f_location" style="flex:1;"><option value="">（未設定）</option></select>
@@ -1579,6 +1586,17 @@
       <button class="btn btn-ghost" id="modalCancel">キャンセル</button>
       <button class="btn btn-red" id="modalDelete" style="display:none;">削除</button>
       <button class="btn btn-amber" id="modalSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="barcodeSelectModal">
+  <div class="modal" style="max-width:380px;">
+    <h3 style="margin-top:0;font-size:16px;">🔍 商品を選択してください</h3>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:14px;">同じJANコードの商品が複数登録されています。</p>
+    <div id="barcodeSelectList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="barcodeSelectCancel">キャンセル</button>
     </div>
   </div>
 </div>
@@ -3362,6 +3380,39 @@ window.addEventListener('storageReady', function(){
       || products.find(p => (p.barcode||'').trim().toLowerCase() === c)
       || products.find(p => (p.id||'').trim().toLowerCase() === c);
   }
+  function findAllByBarcode(code){
+    const c = code.trim().toLowerCase();
+    const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const all = products.filter(p => (p.barcode||'').trim().toLowerCase() === c || (p.id||'').trim().toLowerCase() === c);
+    // 自店舗を先頭に
+    return all.sort((a,b)=>{
+      const aOwn = (a.branchId||'taniyabe') === ownBranch ? 0 : 1;
+      const bOwn = (b.branchId||'taniyabe') === ownBranch ? 0 : 1;
+      return aOwn - bOwn;
+    });
+  }
+  function showBarcodeSelectModal(candidates){
+    return new Promise(resolve=>{
+      const overlay = document.getElementById('barcodeSelectModal');
+      const list = document.getElementById('barcodeSelectList');
+      list.innerHTML = candidates.map((p,i)=>{
+        const year = p.manufactureYear ? p.manufactureYear+'年製' : '';
+        const sub = [p.brand||'', p.spec||'', year].filter(Boolean).join('　');
+        const stk = getStock(p);
+        return '<button type="button" data-pick-idx="'+i+'" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg-2);cursor:pointer;transition:background .15s;">'
+          +'<div style="font-size:14px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+          +(sub?'<div style="font-size:12px;color:var(--text-2);margin-top:3px;">'+escapeHtml(sub)+'</div>':'')
+          +'<div style="font-size:12px;color:'+(stk>0?'var(--teal)':'var(--red)')+';margin-top:3px;font-weight:600;">在庫: '+stk+'本</div>'
+          +'</button>';
+      }).join('');
+      overlay.classList.add('show');
+      function cleanup(result){ overlay.classList.remove('show'); resolve(result); }
+      list.querySelectorAll('[data-pick-idx]').forEach(btn=>{
+        btn.addEventListener('click', ()=>cleanup(candidates[parseInt(btn.dataset.pickIdx)]));
+      });
+      document.getElementById('barcodeSelectCancel').onclick = ()=>cleanup(null);
+    });
+  }
   function majorById(id){ return categories.find(c=>c.id===id); }
   function subById(majorId, subId){
     const m = majorById(majorId);
@@ -4829,7 +4880,7 @@ window.addEventListener('storageReady', function(){
               +'</td>';
           })()
           : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
-          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>')
+          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+(p.manufactureYear?'<span style="font-size:10px;color:var(--teal);margin-left:4px;font-weight:600;">'+p.manufactureYear+'年製</span>':'')+'</td>')
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
           if(_showMultiCols){
@@ -6064,11 +6115,16 @@ window.addEventListener('storageReady', function(){
     });
   }
 
-  function _handleStockcountBarcode(code){
+  async function _handleStockcountBarcode(code){
     if(!code || !currentStockcountDraft) return;
     const _br = getOperationBranch();
-    // バーコードで商品を検索
-    let p = findByBarcode(code);
+    // バーコードで商品を検索（複数ヒット時は選択画面）
+    const _scAllMatches = findAllByBarcode(code);
+    let p = _scAllMatches.length === 1 ? _scAllMatches[0] : null;
+    if(_scAllMatches.length > 1){
+      p = await showBarcodeSelectModal(_scAllMatches);
+      if(!p) return;
+    }
     if(!p){
       // JAN辞書から照合
       if(/^\d{13}$/.test(code)){
@@ -8734,6 +8790,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_cost_fixed').checked = false;
     document.getElementById('f_sell_fixed').checked = false;
     document.getElementById('f_memo').value = '';
+    document.getElementById('f_mfyear').value = '';
     document.getElementById('f_type_stock').checked = true;
     document.getElementById('f_order_customer').value = '';
     document.getElementById('f_order_car').value = '';
@@ -8784,6 +8841,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('f_memo').value = p.memo || '';
+    document.getElementById('f_mfyear').value = p.manufactureYear || '';
     const _pType = p.productType || 'stock';
     document.getElementById(_pType === 'order' ? 'f_type_order' : 'f_type_stock').checked = true;
     document.getElementById('f_order_customer').value = p.orderCustomer || '';
@@ -8877,6 +8935,7 @@ window.addEventListener('storageReady', function(){
       + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
       + (p.supplierId && suppliers.find(s=>s.id===p.supplierId) ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">仕入先：'+escapeHtml(suppliers.find(s=>s.id===p.supplierId).name)+'</div>' : '')
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
+      + (p.manufactureYear ? '<div style="font-size:13px;color:var(--teal);margin-top:4px;font-weight:600;">🗓 '+p.manufactureYear+'年製</div>' : '')
       + (()=>{
           const _dm = majorById(p.majorId);
           const _isWheelDetail = _dm && _dm.name === 'ホイール';
@@ -9480,6 +9539,7 @@ window.addEventListener('storageReady', function(){
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const memo = document.getElementById('f_memo').value.trim();
+    const manufactureYear = parseInt(document.getElementById('f_mfyear').value||'0',10)||null;
     // ホイールスペック
     const _wheelMajor = majorById(majorId);
     const _isWheel = _wheelMajor && _wheelMajor.name === 'ホイール';
@@ -9506,11 +9566,11 @@ window.addEventListener('storageReady', function(){
       return;
     }
     if(barcode){
-      const _myBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-      const dup = products.find(p => p.barcode === barcode && p.id !== editingId);
-      if(dup){
-        msgEl.innerHTML = '<div class="msg msg-error">この商品コードは既に「'+escapeHtml(dup.name)+'」（'+escapeHtml(branchName(dup.branchId||'taniyabe'))+'）に登録されています。</div>';
-        return;
+      const dups = products.filter(p => p.barcode === barcode && p.id !== editingId);
+      if(dups.length > 0){
+        const dupNames = dups.map(d=>escapeHtml(d.name)+(d.manufactureYear?' ('+d.manufactureYear+'年製)':'')).join('、');
+        const ok = await showConfirm('同じJANコードが既に登録されています。\n\n登録済み：'+dupNames.replace(/<[^>]*>/g,'')+'\n\n製造年違いなどの場合は重複登録できます。\nそれでも登録しますか？');
+        if(!ok) return;
       }
     }
     if(editingId){
@@ -9536,12 +9596,12 @@ window.addEventListener('storageReady', function(){
       const _saveBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       if(!p.branchLocation) p.branchLocation = {};
       p.branchLocation[_saveBranch] = locationId;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
-      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
+      products.push({id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()});
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
@@ -9632,14 +9692,19 @@ window.addEventListener('storageReady', function(){
     const resultEl = document.getElementById(kind+'Result');
     updateTransactionBranchBanner(kind);
 
-    function doLookup(fromScan){
+    async function doLookup(fromScan){
       // AIM識別子を除去（例: ]E0, ]Q0, ]C0 など — スキャナーが付加するプレフィックス）
       const code = barcodeInput.value.trim().toLowerCase().replace(/^\].{1,2}/, '');
       barcodeInput.value = ''; // 読み取り直後にクリア
       resultEl.innerHTML = '';
       if(!code) return;
       const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-      let p = findByBarcode(code);
+      let _allMatches = findAllByBarcode(code);
+      let p = _allMatches.length === 1 ? _allMatches[0] : (_allMatches.length > 1 ? null : null);
+      if(_allMatches.length > 1){
+        p = await showBarcodeSelectModal(_allMatches);
+        if(!p){ setTimeout(()=>{ barcodeInput.focus(); }, 50); return; }
+      }
       // バーコード未登録でもBS_JAN_LOOKUPで照合して登録済み商品を探す
       if(!p && /^\d{13}$/.test(code)){
         const bsEntry = ALL_JAN_LOOKUP.find(e=>e.j===code);
