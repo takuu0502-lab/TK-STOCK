@@ -1752,7 +1752,10 @@
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
-        <input type="date" id="prov_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <input type="date" id="prov_date" style="flex:1;box-sizing:border-box;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="prov_date_tbd" style="width:16px;height:16px;cursor:pointer;">未定</label>
+        </div>
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">車種名</label>
@@ -1765,7 +1768,10 @@
         </label>
         <div id="prov_inbound_wrap" style="display:none;margin-top:10px;">
           <label style="font-size:13px;font-weight:600;">入庫予定日 <span style="color:var(--red);">*</span></label>
-          <input type="date" id="prov_inbound_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input type="date" id="prov_inbound_date" style="flex:1;box-sizing:border-box;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="prov_inbound_date_tbd" style="width:16px;height:16px;cursor:pointer;">未定</label>
+          </div>
           <div style="font-size:11px;color:var(--text-3);margin-top:4px;">仮出庫の商品数と同数で入庫予定が自動登録されます。</div>
         </div>
       </div>
@@ -1791,7 +1797,10 @@
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
-        <input type="date" id="provEdit_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <input type="date" id="provEdit_date" style="flex:1;box-sizing:border-box;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="provEdit_date_tbd" style="width:16px;height:16px;cursor:pointer;">未定</label>
+        </div>
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">車種名</label>
@@ -3449,7 +3458,18 @@ window.addEventListener('storageReady', function(){
     return new Promise((resolve)=>{
       const overlay = document.getElementById('provisionalEditModal');
       document.getElementById('provEdit_customer').value = entry.customerName || '';
-      document.getElementById('provEdit_date').value = entry.scheduledDate || '';
+      const _editDateTbd = document.getElementById('provEdit_date_tbd');
+      const _editDateInput = document.getElementById('provEdit_date');
+      if(entry.scheduledDate === '未定'){
+        _editDateTbd.checked = true;
+        _editDateInput.value = '';
+        _editDateInput.disabled = true;
+      } else {
+        _editDateTbd.checked = false;
+        _editDateInput.value = entry.scheduledDate || '';
+        _editDateInput.disabled = false;
+      }
+      _editDateTbd.onchange = function(){ _editDateInput.disabled = _editDateTbd.checked; if(_editDateTbd.checked) _editDateInput.value=''; };
       document.getElementById('provEdit_car').value = entry.carName || '';
       const itemsEl = document.getElementById('provEdit_items');
       itemsEl.innerHTML = entry.items.map((item, i)=>{
@@ -3490,11 +3510,11 @@ window.addEventListener('storageReady', function(){
       }
       function onOk(){
         const name = document.getElementById('provEdit_customer').value.trim();
-        const date = document.getElementById('provEdit_date').value;
+        const date = _editDateTbd.checked ? '未定' : _editDateInput.value;
         const car  = document.getElementById('provEdit_car').value.trim();
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_customer').focus(); return; }
-        if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_date').focus(); return; }
+        if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; _editDateInput.focus(); return; }
         const qtys = entry.items.map((_,i)=> Math.max(1, parseInt(document.getElementById('provEdit_qty_'+i).value||'1',10)));
         cleanup({ customerName:name, scheduledDate:date, carName:car, qtys });
       }
@@ -3523,10 +3543,14 @@ window.addEventListener('storageReady', function(){
       document.getElementById('prov_type_provisional').checked = true;
       customerInput.value = '';
       dateInput.value = '';
+      document.getElementById('prov_date_tbd').checked = false;
+      dateInput.disabled = false;
       carInput.value = '';
       inboundCheck.checked = false;
       inboundWrap.style.display = 'none';
       inboundDateInput.value = '';
+      document.getElementById('prov_inbound_date_tbd').checked = false;
+      inboundDateInput.disabled = false;
       errorEl.style.display = 'none';
       errorEl.textContent = '';
       function applyType(type){
@@ -3570,21 +3594,29 @@ window.addEventListener('storageReady', function(){
       setTimeout(()=>{ customerInput.focus(); }, 100);
       function onCheckChange(){ inboundWrap.style.display = inboundCheck.checked ? 'block' : 'none'; }
       inboundCheck.addEventListener('change', onCheckChange);
+      const dateTbd = document.getElementById('prov_date_tbd');
+      const inboundDateTbd = document.getElementById('prov_inbound_date_tbd');
+      function onDateTbdChange(){ dateInput.disabled = dateTbd.checked; if(dateTbd.checked) dateInput.value=''; }
+      function onInboundDateTbdChange(){ inboundDateInput.disabled = inboundDateTbd.checked; if(inboundDateTbd.checked) inboundDateInput.value=''; }
+      dateTbd.addEventListener('change', onDateTbdChange);
+      inboundDateTbd.addEventListener('change', onInboundDateTbdChange);
       const okBtn = document.getElementById('provFormOkBtn');
       const cancelBtn = document.getElementById('provFormCancelBtn');
       function cleanup(result){
         overlay.classList.remove('show');
         inboundCheck.removeEventListener('change', onCheckChange);
+        dateTbd.removeEventListener('change', onDateTbdChange);
+        inboundDateTbd.removeEventListener('change', onInboundDateTbdChange);
         okBtn.removeEventListener('click', onOk);
         cancelBtn.removeEventListener('click', onCancel);
         resolve(result);
       }
       function onOk(){
         const name = customerInput.value.trim();
-        const date = dateInput.value;
+        const date = dateTbd.checked ? '未定' : dateInput.value;
         const car = carInput.value.trim();
         const useInbound = inboundCheck.checked;
-        const inboundDate = inboundDateInput.value;
+        const inboundDate = inboundDateTbd.checked ? '未定' : inboundDateInput.value;
         const type = document.querySelector('input[name="prov_type"]:checked').value;
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent=(type==='custody'?'取引先名':'お客様名')+'を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
