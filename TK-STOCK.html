@@ -2596,6 +2596,31 @@ window.addEventListener('storageReady', function(){
     return Math.round(base * (1 - pct/100));
   }
 
+  // 支店別固定仕入れ価格ヘルパー
+  // p._branchFixedCost: {taniyabe: 6000, katsuta: null, ...} のような形で保存
+  function getBranchFixedCost(p, branchId){
+    if(p._branchFixedCost && p._branchFixedCost[branchId] != null && p._branchFixedCost[branchId] > 0){
+      return p._branchFixedCost[branchId];
+    }
+    // 後方互換：旧 _fixedCost フラグがある場合はその価格を全支店共通として使用
+    if(p._fixedCost && p.costPrice) return p.costPrice;
+    return null;
+  }
+  function hasBranchFixedCost(p, branchId){
+    return (p._branchFixedCost && p._branchFixedCost[branchId] != null && p._branchFixedCost[branchId] > 0) ||
+           (!!(p._fixedCost && p.costPrice));
+  }
+  function getEffectiveCostForBranch(p, branchId){
+    const fixed = getBranchFixedCost(p, branchId);
+    if(fixed !== null) return fixed;
+    const catEntry = findCatalogEntryForProduct(p);
+    if(catEntry){
+      const computed = computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t);
+      if(computed !== null) return computed;
+    }
+    return p.costPrice || 0;
+  }
+
   let expandedCostBrandModels = new Set();
 
   function updateCostRuleDebug(){
@@ -4394,12 +4419,11 @@ window.addEventListener('storageReady', function(){
         const _catProds = findAllProductsForCatalogEntry(r);
         const _catProd = _catProds[0] || null;
         let cost = computeCostPrice(r.b, r.m, r.w, r.t);
-        // 自支店に在庫があり固定仕入れ価格が設定された商品がある場合はその価格を優先表示
-        const _ownFixedProd = _catProds.find(cp => cp._fixedCost && cp.costPrice && (
-          (cp.branchId||'taniyabe') === _catOwnBranchId ||
-          (cp.branchStock && (cp.branchStock[_catOwnBranchId]||0) > 0)
-        ));
-        if(_ownFixedProd) cost = _ownFixedProd.costPrice;
+        // 自支店の支店別固定仕入れ価格を優先表示
+        for(const _cp of _catProds){
+          const _bfc = getBranchFixedCost(_cp, _catOwnBranchId);
+          if(_bfc !== null){ cost = _bfc; break; }
+        }
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         // 製造年tooltip（在庫がある支店のみ）
         const _yearTooltip = (brId)=>{
@@ -4449,7 +4473,7 @@ window.addEventListener('storageReady', function(){
           + stockCell + '</tr>';
       } else {
         const p=item.p, j=item.origIdx; _manI++;
-        const cost = p.costPrice || 0;
+        const cost = getBranchFixedCost(p, _catOwnBranchId) ?? (p.costPrice || 0);
         const sell = p.sellPrice || 0;
         const cKey = _chkPrefixManual + p.id;
         const checked = catalogQuoteSelection.has(cKey);
@@ -4634,8 +4658,10 @@ window.addEventListener('storageReady', function(){
       const cKey = chkPrefix + p.id;
       const checked = catalogQuoteSelection.has(cKey);
       const sell = p.sellPrice || 0;
-      // 手入力の仕入れ原価を優先、未設定時のみカタログから自動計算
-      let cost = p.costPrice || 0;
+      // 支店別固定仕入れ価格を優先、未設定時は登録価格またはカタログ計算
+      const _manSecBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+      const _manBrFixed = getBranchFixedCost(p, _manSecBranch);
+      let cost = _manBrFixed !== null ? _manBrFixed : (p.costPrice || 0);
       if(!cost){
         const catEntry = findCatalogEntryForProduct(p);
         if(catEntry){ const computed = computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t); if(computed !== null) cost = computed; }
@@ -8902,14 +8928,16 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_wheel_color').value  = ws.color  || '';
     document.getElementById('f_stock').value = getStock(p);
     document.getElementById('f_minstock').value = p.minStock;
-    // 固定フラグがある場合はその価格を、ない場合はカタログ計算価格（なければ登録価格）を表示
+    // 支店別固定仕入れ価格：自支店の固定価格があればそれを、なければ計算価格を表示
+    const _editBranch2 = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _editBranchFixed = getBranchFixedCost(p, _editBranch2);
     const _editCatEntry = findCatalogEntryForProduct(p);
-    const _editEffCost = (p._fixedCost && p.costPrice)
-      ? p.costPrice
-      : (_editCatEntry ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? (p.costPrice || 0)) : (p.costPrice || 0));
-    document.getElementById('f_cost').value = _editEffCost || '';
+    const _editComputedCost = _editCatEntry
+      ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? (p.costPrice || 0))
+      : (p.costPrice || 0);
+    document.getElementById('f_cost').value = (_editBranchFixed !== null ? _editBranchFixed : _editComputedCost) || '';
     document.getElementById('f_price').value = p.sellPrice || '';
-    document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
+    document.getElementById('f_cost_fixed').checked = hasBranchFixedCost(p, _editBranch2);
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('f_memo').value = p.memo || '';
     document.getElementById('f_mfyear').value = p.manufactureYear || '';
@@ -8963,10 +8991,12 @@ window.addEventListener('storageReady', function(){
     const catalogEntry = findCatalogEntryForProduct(p);
     let cost = 0;
     let costIsAuto = false;
+    const _detBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     if(catalogEntry){
-      // カタログ商品：固定フラグがある場合のみ登録価格を使用、それ以外は価格調整ルールで計算
-      if(p._fixedCost && p.costPrice){
-        cost = p.costPrice;
+      // カタログ商品：支店別固定価格 → 計算価格の順で使用
+      const _branchFixed = getBranchFixedCost(p, _detBranch);
+      if(_branchFixed !== null){
+        cost = _branchFixed;
       } else {
         const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
         if(computed !== null){ cost = computed; costIsAuto = true; }
@@ -9702,12 +9732,23 @@ window.addEventListener('storageReady', function(){
       const _saveBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       if(!p.branchLocation) p.branchLocation = {};
       p.branchLocation[_saveBranch] = locationId;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear});
+      // 支店別固定仕入れ価格を保存
+      if(!p._branchFixedCost) p._branchFixedCost = {};
+      if(_fixedCost && costPrice > 0){
+        p._branchFixedCost[_saveBranch] = costPrice;
+      } else {
+        p._branchFixedCost[_saveBranch] = null; // この支店の固定を解除
+      }
+      // 後方互換フラグも更新（全支店に _branchFixedCost がある場合のみ _fixedCost をfalseに）
+      const _anyBranchFixed = Object.values(p._branchFixedCost).some(v => v != null && v > 0);
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear});
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const initBranchFixedCost = {};
+      if(_fixedCost && costPrice > 0) initBranchFixedCost[newBranchId] = costPrice;
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       products.push(_newProd);
