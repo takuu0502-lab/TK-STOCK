@@ -8690,10 +8690,10 @@ window.addEventListener('storageReady', function(){
           const _detOwnStk = p.branchStock ? (p.branchStock[_detOwnBranch]||0) : (p.stock||0);
           const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
           const provOver = provQty > _detOwnStk;
-          const _provTipDet=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===_detPid)).map(po=>{ const _q=po.items.filter(i=>i.productId===_detPid).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+          const _provTipDet=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id)).map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
           return '<div class="detail-stats">'
             + '<div class="detail-stat"><div class="detail-stat-label">現在庫数（自店舗）</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-            + '<div class="detail-stat-value">'+Math.max(0,_detOwnStk-provQty)+'</div>'
+            + '<div class="detail-stat-value">'+_detOwnStk+'</div>'
             + (provQty>0?'<div style="display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'var(--amber)')+';color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;" title="'+_provTipDet+'">'+(provOver?'⚠️':'🔖')+' うち預かり '+provQty+'本'+(provOver?' (在庫超過)':'')+' </div>':'')
             + '</div></div>'
             + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
