@@ -6953,18 +6953,23 @@ window.addEventListener('storageReady', function(){
     // カタログ連動商品の一括削除
     document.getElementById('deleteCatalogLinkedBtn').addEventListener('click', async ()=>{
       const msgEl = document.getElementById('deleteCatalogLinkedMsg');
-      const targets = products.filter(p => p.catalogKey || p._fromCatalog);
+      // カタログ連動 OR カタログエントリと一致する商品（客注品は除く）
+      const targets = products.filter(p => {
+        if(p.productType === 'order') return false;
+        if(p.catalogKey || p._fromCatalog) return true;
+        return findCatalogEntryForProduct(p) !== null;
+      });
       if(targets.length === 0){
-        msgEl.innerHTML = '<div class="msg msg-ok">削除対象のカタログ連動商品はありません。</div>';
+        msgEl.innerHTML = '<div class="msg msg-ok">削除対象の商品はありません。</div>';
         return;
       }
-      const ok = await showConfirm('カタログと連動している商品を ' + targets.length + ' 件削除します。\n\n※在庫データも全て削除されます。\nよろしいですか？');
+      const ok = await showConfirm('カタログと一致するタイヤ商品を ' + targets.length + ' 件削除します。\n\n※在庫データも全て削除されます。\n※客注品は除外されます。\nよろしいですか？');
       if(!ok) return;
       const targetIds = new Set(targets.map(p=>p.id));
       products = products.filter(p => !targetIds.has(p.id));
       await saveProducts();
       renderProductTable();
-      msgEl.innerHTML = '<div class="msg msg-ok">✅ ' + targets.length + ' 件のカタログ連動商品を削除しました。</div>';
+      msgEl.innerHTML = '<div class="msg msg-ok">✅ ' + targets.length + ' 件を削除しました。</div>';
     });
 
     // 商品一括インポート
