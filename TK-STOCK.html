@@ -6323,8 +6323,10 @@ window.addEventListener('storageReady', function(){
   async function _handleStockcountBarcode(code){
     if(!code || !currentStockcountDraft) return;
     const _br = getOperationBranch();
-    // バーコードで商品を検索（複数ヒット時は選択画面）
-    const _scAllMatches = findAllByBarcode(code);
+    // バーコードで商品を検索（複数ヒット時は選択画面）。自店舗商品を優先して絞り込む
+    let _scAllMatches = findAllByBarcode(code);
+    const _scOwnMatches = _scAllMatches.filter(p => (p.branchId||'taniyabe') === _br);
+    if(_scOwnMatches.length > 0) _scAllMatches = _scOwnMatches;
     let p = _scAllMatches.length === 1 ? _scAllMatches[0] : null;
     if(_scAllMatches.length > 1){
       p = await showBarcodeSelectModal(_scAllMatches);
@@ -9989,6 +9991,9 @@ window.addEventListener('storageReady', function(){
       if(!code) return;
       const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
       let _allMatches = findAllByBarcode(code);
+      // 入庫・出庫は自店舗商品のみ操作対象。他支店に同一JANが存在しても自店舗分だけに絞る
+      const _ownMatches = _allMatches.filter(p => (p.branchId||'taniyabe') === _scanBranch);
+      if(_ownMatches.length > 0) _allMatches = _ownMatches;
       let p = _allMatches.length === 1 ? _allMatches[0] : (_allMatches.length > 1 ? null : null);
       if(_allMatches.length > 1){
         p = await showBarcodeSelectModal(_allMatches);
