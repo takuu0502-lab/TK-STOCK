@@ -7461,7 +7461,7 @@ window.addEventListener('storageReady', function(){
       btn.disabled = true;
       await new Promise(r=>setTimeout(r,80));
       let changed = 0;
-      let _noSizeMatch = 0, _lowScore = 0;
+      let _noSizeMatch = 0, _lowScore = 0, _lowScoreDetails = [];
       for(const p of products){
         if(p.barcode) continue;
         if(p._suppressAutoJan) continue;
@@ -7476,17 +7476,24 @@ window.addEventListener('storageReady', function(){
           score: Math.max(scoreModelMatch(p.name||'', e.m), scoreModelMatch(shortName, e.m))
         })).sort((a,b)=>b.score-a.score);
         const best = scored[0];
-        // サイズが一致しJANが1件のみの場合は無条件で紐づけ、複数ある場合はスコア0.7以上
-        const threshold = sizeMatches.length === 1 ? 0 : 0.7;
-        if(best && best.score >= threshold){
+        const second = scored[1];
+        // サイズが一致しJANが1件のみの場合は無条件で紐づけ
+        // 複数ある場合: スコア0.5以上、かつ2位の2倍以上なら採用
+        const threshold = sizeMatches.length === 1 ? 0 : 0.5;
+        const isDistinct = !second || best.score >= second.score * 1.5;
+        if(best && best.score >= threshold && isDistinct){
           p.barcode = best.j;
           if(!p.partno) p.partno = best.p;
           p.updatedAt = Date.now();
           changed++;
-        } else { _lowScore++; }
+        } else {
+          _lowScore++;
+          _lowScoreDetails.push({name: p.name||'', spec: p.spec||'', bestScore: best ? best.score.toFixed(2) : '-', bestModel: best ? best.m : '-', secondScore: second ? second.score.toFixed(2) : '-'});
+        }
       }
       if(!changed){
-        msgEl.innerHTML = '<div class="msg msg-error">紐づけできる商品がありませんでした。<br>JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定: '+_noBarcode+'件 / サイズ不一致: '+_noSizeMatch+'件 / スコア不足: '+_lowScore+'件</div>';
+        const detailHtml = _lowScoreDetails.slice(0,5).map(d=>`<tr><td>${d.name}</td><td>${d.spec}</td><td>${d.bestModel}</td><td>${d.bestScore}</td><td>${d.secondScore}</td></tr>`).join('');
+        msgEl.innerHTML = '<div class="msg msg-error">紐づけできる商品がありませんでした。<br>JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定: '+_noBarcode+'件 / サイズ不一致: '+_noSizeMatch+'件 / スコア不足: '+_lowScore+'件<br>'+(detailHtml?'<small><table style="font-size:11px;margin-top:4px;width:100%"><tr><th>商品名</th><th>サイズ</th><th>最有力モデル</th><th>スコア</th><th>2位</th></tr>'+detailHtml+'</table></small>':'')+'</div>';
         btn.disabled = false;
         return;
       }
