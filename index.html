@@ -1288,6 +1288,7 @@
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-amber" id="openJanMatchBtn">🔍 JANコードを自動照合する</button>
       <button class="btn btn-teal" id="janBulkAutoSaveBtn">⚡ 一括自動設定（確認なし）</button>
+      <button class="btn btn-ghost btn-sm" id="janResetSuppressBtn" style="font-size:11.5px;">🔄 抑制フラグをリセット</button>
     </div>
     <div id="janMatchMsg" style="margin-top:10px;font-size:13px;"></div>
 
@@ -2305,6 +2306,8 @@ window.addEventListener('storageReady', function(){
     const _baseKeys = new Set(importedJanItems.map(e=>e.m+'||'+e.s));
     const _filteredBase = ALL_JAN_LOOKUP.filter(e=>!_baseKeys.has(e.m+'||'+e.s));
     ALL_JAN_LOOKUP = [..._filteredBase, ...importedJanItems];
+    // UI更新（ロード完了後に表示を反映）
+    if(typeof window._renderImportedJanPreview === 'function') window._renderImportedJanPreview();
   }
   async function saveImportedJanItems(){
     try{ await window.storage.set('importedJanItems', JSON.stringify(importedJanItems), SHARED); }
@@ -6961,7 +6964,7 @@ window.addEventListener('storageReady', function(){
     });
 
     // JANコード取込
-    function renderImportedJanPreview(){
+    window._renderImportedJanPreview = function renderImportedJanPreview(){
       const wrap = document.getElementById('importedJanPreview');
       if(!wrap) return;
       if(!importedJanItems.length){ wrap.innerHTML = '<p style="font-size:12.5px;color:var(--text-3);">取込済みのJANコードはありません。</p>'; return; }
@@ -7470,6 +7473,20 @@ window.addEventListener('storageReady', function(){
         document.getElementById('labelSettingMsg').textContent='⚠️ 保存失敗: '+e.message;
       }
       btn.disabled = false;
+    });
+
+    // 抑制フラグリセット
+    document.getElementById('janResetSuppressBtn').addEventListener('click', async ()=>{
+      const msgEl = document.getElementById('janMatchMsg');
+      const suppressed = products.filter(p=>p._suppressAutoJan);
+      if(!suppressed.length){ msgEl.innerHTML = '<div class="msg">抑制済みの商品はありません。</div>'; return; }
+      suppressed.forEach(p=>{ delete p._suppressAutoJan; p.updatedAt = Date.now(); });
+      try{
+        await saveProducts();
+        msgEl.innerHTML = '<div class="msg msg-ok">✅ '+suppressed.length+'件の抑制フラグをリセットしました。再度「⚡ 一括自動設定」を実行してください。</div>';
+      }catch(e){
+        msgEl.innerHTML = '<div class="msg msg-error">⚠️ 保存失敗: '+e.message+'</div>';
+      }
     });
 
     // JANコード自動照合
