@@ -2348,8 +2348,36 @@ window.addEventListener('storageReady', function(){
     if(!importedItems.length) return DISTINCT_BRANDS;
     return Array.from(new Set(getCatalog().map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
   }
+  // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
+  const _BS_BRAND_LOOKUP = [
+    [['GR-X','GRV'],'REGNO'],
+    [['RE-71','RE-12','RE-10','RE-11','RE050','S007','Adrenalin','SPORT','S001'],'POTENZA'],
+    [['ECOPIA','NH200','EP5','EP1','EP0','R710','M812','R214','R201'],'ECOPIA'],
+    [['NEWNO'],'NEWNO'],
+    [['NEXTRY'],'NEXTRY'],
+    [['ALENZA','LX200','LX100'],'ALENZA'],
+    [['DUELER','H/P SPORT','H/L','A/T','M/T'],'DUELER'],
+    [['DURAVIS','R670','R207','R202','R205','G640','M804','M807','G590','G557','V600','610V','604V','650V','651V','VLCP'],'DURAVIS'],
+    [['FINESSA','HB01'],'FINESSA'],
+    [['Playz','PX-','PZ-'],'Playz'],
+    [['TURANZA','T005','T001','ER33','ER300','T002'],'TURANZA'],
+    [['SNEAKER','SNK','Sneaker'],'SNEAKER'],
+    [['―'],'―'],
+  ];
+  function _normalizeBsBrand(m){
+    if(!m) return 'ブリヂストン';
+    for(const [keys, brand] of _BS_BRAND_LOOKUP){
+      if(keys.some(k=>m.includes(k))) return brand;
+    }
+    return 'ブリヂストン';
+  }
   function rebuildImportedItems(){
-    importedItems = importedCatalogs.flatMap(c=>c.items||[]);
+    importedItems = importedCatalogs.flatMap(c=>c.items||[]).map(item=>{
+      if(!item.b || item.b==='ブリヂストン'){
+        return Object.assign({}, item, {b: _normalizeBsBrand(item.m||'')});
+      }
+      return item;
+    });
   }
   async function loadImportedCatalogs(){
     try{
@@ -12320,7 +12348,45 @@ window.addEventListener('storageReady', function(){
         }
 
         // ── ブリヂストンA表専用パーサー（全シート対応）──
-        function parseBridgestone(wb){
+        // モデル名→ブランド名のフォールバックテーブル（XLSX.jsのブランド行検出が失敗した場合に使用）
+  const _BS_MODEL_BRAND = {
+    'GR-XⅢ':'REGNO','GR-XⅢ TYPE RV':'REGNO','GR-XⅡ':'REGNO','GRVⅡ':'REGNO',
+    'RE-71RZ':'POTENZA','RE-71RS':'POTENZA','RE-12D TYPE A':'POTENZA','RE-10D':'POTENZA','RE-11S':'POTENZA',
+    'S007A':'POTENZA','S007(OE)':'POTENZA','Adrenalin RE005':'POTENZA','Adrenalin RE004':'POTENZA',
+    'SPORT':'POTENZA','SPORT(OE)':'POTENZA','RE050A（RFT）':'POTENZA','RE050A(OE)':'POTENZA',
+    'S001（RFT）':'POTENZA','S001(OE)':'POTENZA','S001L(OE)':'POTENZA',
+    'NH200':'ECOPIA','NH200C':'ECOPIA','EP510(OE)':'ECOPIA','EP500 ologic(OE)':'ECOPIA','EP150(OE)':'ECOPIA',
+    'NEWNO':'NEWNO','NEXTRY':'NEXTRY',
+    '001':'ALENZA','LX200':'ALENZA','LX100':'ALENZA','001(OE)':'ALENZA','ALENZA（RFT）':'ALENZA',
+    'H/P SPORT':'DUELER','H/P SPORT（RFT）':'DUELER','H/L850':'DUELER',
+    'A/T002':'DUELER','A/T002（RFT）':'DUELER','A/T693Ⅲ':'DUELER','M/T674':'DUELER',
+    'HB01':'FINESSA',
+    'PX-RVⅡ':'Playz','PX-RV':'Playz','PX-C':'Playz','PZ-X':'Playz','PZ-1':'Playz',
+    'A)SNK2 B)Sneaker':'SNEAKER',
+    'T005（RFT）':'TURANZA','T005(OE)':'TURANZA','T001（RFT）':'TURANZA','T001(OE)':'TURANZA',
+    'TURANZA 6(OE)':'TURANZA','TURANZA ECO(OE)':'TURANZA','ER33(OE)':'TURANZA','ER300(OE)':'TURANZA',
+  };
+  function _getBsBrand(modelName, brandMapVal){
+    if(brandMapVal && brandMapVal !== 'ブリヂストン') return brandMapVal;
+    if(_BS_MODEL_BRAND[modelName]) return _BS_MODEL_BRAND[modelName];
+    // 部分一致フォールバック
+    const m = modelName;
+    if(m.includes('GR-X') || m.includes('GRV')) return 'REGNO';
+    if(m.includes('POTENZA') || m.includes('RE-') || m.includes('S007') || m.includes('Adrenalin')) return 'POTENZA';
+    if(m.includes('ECOPIA') || m.includes('NH') || m.includes('EP')) return 'ECOPIA';
+    if(m.includes('NEWNO')) return 'NEWNO';
+    if(m.includes('NEXTRY')) return 'NEXTRY';
+    if(m.includes('ALENZA')) return 'ALENZA';
+    if(m.includes('DUELER')) return 'DUELER';
+    if(m.includes('DURAVIS')) return 'DURAVIS';
+    if(m.includes('FINESSA') || m.includes('HB')) return 'FINESSA';
+    if(m.includes('Playz') || m.includes('PX-') || m.includes('PZ-')) return 'Playz';
+    if(m.includes('TURANZA')) return 'TURANZA';
+    if(m.includes('SNEAKER') || m.includes('SNK') || m.includes('Sneaker')) return 'SNEAKER';
+    return 'ブリヂストン';
+  }
+
+  function parseBridgestone(wb){
           const items = [];
           for(const sn of wb.SheetNames){
             if(!sn.startsWith('P_')) continue;
@@ -12379,7 +12445,7 @@ window.addEventListener('storageReady', function(){
                   if(nextRow[ci]==='メ希' && typeof nextRow[ci+1]==='number'){
                     msrp = Math.round(nextRow[ci+1]);
                   }
-                  const brand = brandMap[ci] || 'ブリヂストン';
+                  const brand = _getBsBrand(modelName, brandMap[ci]);
                   items.push({s:size, m:modelName, b:brand, w:Math.round(priceV), t:msrp});
                 }
               }
