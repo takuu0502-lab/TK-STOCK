@@ -4930,8 +4930,8 @@ window.addEventListener('storageReady', function(){
               && _sharedWheelSubIds.includes(p.subId);
             if(!isTire && !isWheelAlumSteel) return false;
             // 他支店のカタログ自動登録品（_fromCatalog）で全支店在庫0のものは非表示
-            // （カタログ行と重複するゴースト商品を除去）
-            if(p._fromCatalog || p.catalogKey){
+            // （カタログ行と重複するゴースト商品を除去）ただしキーワード検索中は表示して削除可能にする
+            if((p._fromCatalog || p.catalogKey) && !keywordFilter){
               const _totalStk = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
               if(_totalStk === 0) return false;
             }
@@ -4973,8 +4973,10 @@ window.addEventListener('storageReady', function(){
       // その他 → 自店舗在庫のみで判定
       return p.branchStock ? (p.branchStock[_stockFilterBranch] || 0) : (p.stock || 0);
     };
-    let filteredList = (stockOnlyFilter && !recentFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
-    if(ownStockOnlyFilter){
+    // キーワード検索中は在庫フィルターをスキップ（0在庫の重複商品を検索・削除できるようにする）
+    const _skipStockFilter = !!(keywordFilter && keywordFilter.trim());
+    let filteredList = (stockOnlyFilter && !recentFilter && !_skipStockFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
+    if(ownStockOnlyFilter && !_skipStockFilter){
       const _ownBrId = (currentUser && currentUser.branchId) || 'taniyabe';
       filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBrId]||0) : (p.stock||0)) > 0);
     }
