@@ -6905,12 +6905,20 @@ window.addEventListener('storageReady', function(){
             + (p.catalogKey?'<span style="margin-left:6px;font-size:10px;background:#e0f0ff;color:#1a5aaa;padding:1px 5px;border-radius:4px;">カタログ紐付</span>':'')
             + '</div>'
             + '</div>'
+            + '<button class="btn btn-ghost btn-sm" style="font-size:11px;white-space:nowrap;margin-right:4px;" data-dup-edit="'+escapeHtml(p.id)+'">編集</button>'
             + '<button class="btn btn-red btn-sm" style="font-size:11px;white-space:nowrap;" data-dup-del="'+escapeHtml(p.id)+'">削除</button>'
             + '</div>';
         });
         html += '</div>';
       });
       resultEl.innerHTML = html;
+      // 編集ボタンのイベント
+      resultEl.querySelectorAll('[data-dup-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const pid = btn.dataset.dupEdit;
+          openEditModal(pid);
+        });
+      });
       // 削除ボタンのイベント
       resultEl.querySelectorAll('[data-dup-del]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
