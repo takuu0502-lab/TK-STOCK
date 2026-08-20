@@ -12205,7 +12205,15 @@ window.addEventListener('storageReady', function(){
               }
             }
           }
-          return items;
+          // 同一銘柄+サイズの重複を除去（複数シートで同じサイズが登録されている場合、A表価格が高い方を優先）
+          const dedupMap = {};
+          for(const item of items){
+            const key = item.b+'||'+item.m+'||'+item.s;
+            if(!dedupMap[key] || item.w > dedupMap[key].w){
+              dedupMap[key] = item;
+            }
+          }
+          return Object.values(dedupMap);
         }
 
         let items = [];
