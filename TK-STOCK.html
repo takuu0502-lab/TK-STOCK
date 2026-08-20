@@ -9292,13 +9292,18 @@ window.addEventListener('storageReady', function(){
       const pSize = normSpecSize(p.spec);
       if(pSize){
         const sizeMatches = ALL_JAN_LOOKUP.filter(e=>e.s===pSize);
-        const scored = sizeMatches.map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
+        const shortName = (p.name||'').replace(/\d+[/\\]\d+R\d+[A-Z0-9]*/gi,'').replace(/\s+/g,' ').trim();
+        const scored = sizeMatches.map(e=>({...e, score: Math.max(scoreModelMatch(p.name||'', e.m), scoreModelMatch(shortName, e.m))}))
           .sort((a,b)=>b.score-a.score);
-        if(scored.length>0 && scored[0].score>=0.9){
-          const best = scored[0];
+        const best = scored[0];
+        const second = scored[1];
+        const threshold = sizeMatches.length === 1 ? 0 : 0.5;
+        const isDistinct = !second || best.m === second.m || best.score > second.score + 0.1;
+        if(best && best.score >= threshold && isDistinct){
           document.getElementById('f_barcode').value = best.j;
           if(!p.partno) document.getElementById('f_partno').value = best.p;
-          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表からJAN候補を自動入力しました：<b>'+escapeHtml((best.b ? best.b+' ' : '')+best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">※ 内容を確認して「保存」してください。不要な場合はJANコード欄を空白にして保存すると次回から自動入力されません。</span></div>';
+          const confidence = best.score >= 0.9 ? '高' : best.score >= 0.7 ? '中' : '低';
+          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 JANデータベースから候補を自動入力しました（一致度: '+confidence+'）：<b>'+escapeHtml((best.b ? best.b+' ' : '')+best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">※ 内容を確認して「保存」してください。不要な場合はJANコード欄を空白にして保存すると次回から自動入力されません。</span></div>';
         }
       }
     }
@@ -12325,61 +12330,70 @@ window.addEventListener('storageReady', function(){
             if(!sn.startsWith('P_')) continue;
             const ws = wb.Sheets[sn];
             const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-            // ブランド行（REGNO・POTENZA等）を検出してcolIdx→ブランド名のマップを作成
-            const brandMap = {}; // colIdx -> brandName
-            let modelRowIdx = -1;
-            const modelMap = {}; // colIdx -> modelName
-            for(let ri=0; ri<Math.min(15, rows.length); ri++){
+            // シート全体を走査して複数ヘッダーセクション（65/70/80シリーズ等）に対応
+            // セクションリスト: [{brandMap, modelMap, startRow}]
+            const sections = [];
+            let _curBrandMap = {};
+            let _pendingBrandMap = null;
+            for(let ri=0; ri<rows.length; ri++){
               const row = rows[ri];
               if(!row) continue;
-              // 行内を全検索してブランド行・商品名行を判定（列位置に依存しない）
               const _brandIdx = row.findIndex(v=>v==='ブランド');
               const _modelIdx = row.findIndex(v=>v==='商品名');
-              // ブランド行
               if(_brandIdx >= 0){
+                // ブランド行を検出したら一時保存
+                _pendingBrandMap = {};
                 let currentBrand = '';
                 for(let ci=_brandIdx+1; ci<row.length; ci++){
                   const v = row[ci];
                   if(typeof v==='string' && v.trim()) currentBrand = v.trim();
-                  if(currentBrand) brandMap[ci] = currentBrand;
+                  if(currentBrand) _pendingBrandMap[ci] = currentBrand;
                 }
               }
-              // 商品名行（モデルヘッダー）
               if(_modelIdx >= 0){
-                modelRowIdx = ri;
+                // 商品名行を検出したら新しいセクション開始
+                const mMap = {};
                 for(let ci=_modelIdx+1; ci<row.length; ci++){
                   const v = row[ci];
                   if(typeof v==='string' && v.trim() && v.trim()!=='メ希'){
-                    modelMap[ci] = v.trim();
+                    mMap[ci] = v.trim();
                   }
                 }
-                break;
+                if(Object.keys(mMap).length > 0){
+                  sections.push({
+                    brandMap: _pendingBrandMap || _curBrandMap,
+                    modelMap: mMap,
+                    startRow: ri+1
+                  });
+                  if(_pendingBrandMap) _curBrandMap = _pendingBrandMap;
+                  _pendingBrandMap = null;
+                }
               }
             }
-            if(modelRowIdx<0 || Object.keys(modelMap).length===0) continue;
-            // データ行をスキャン
-            for(let ri=modelRowIdx+1; ri<rows.length; ri++){
-              const row = rows[ri];
-              if(!row) continue;
-              // 列2からタイヤサイズ抽出
-              const sv = String(row[2]||'');
-              const sm = sv.match(/(\d+\/\d+R\d+[A-Z0-9]*)/);
-              if(!sm) continue;
-              const size = sm[1];
-              // 次の行（メ希行）を先読み
-              const nextRow = rows[ri+1] || [];
-              // 各モデル列の次の列から卸価格を取得
-              for(const [ciStr, modelName] of Object.entries(modelMap)){
-                const ci = parseInt(ciStr);
-                const priceV = row[ci+1];
-                if(typeof priceV==='number' && priceV>=1000 && priceV<=500000){
-                  // メ希行から希望小売価格を取得
-                  let msrp = null;
-                  if(nextRow[ci]==='メ希' && typeof nextRow[ci+1]==='number'){
-                    msrp = Math.round(nextRow[ci+1]);
+            if(sections.length === 0) continue;
+            // 各セクションのデータ行を処理
+            for(let si=0; si<sections.length; si++){
+              const {brandMap, modelMap, startRow} = sections[si];
+              const endRow = si+1 < sections.length ? sections[si+1].startRow - 2 : rows.length;
+              for(let ri=startRow; ri<endRow; ri++){
+                const row = rows[ri];
+                if(!row) continue;
+                const sv = String(row[2]||'');
+                const sm = sv.match(/(\d+\/\d+R\d+[A-Z0-9]*)/);
+                if(!sm) continue;
+                const size = sm[1];
+                const nextRow = rows[ri+1] || [];
+                for(const [ciStr, modelName] of Object.entries(modelMap)){
+                  const ci = parseInt(ciStr);
+                  const priceV = row[ci+1];
+                  if(typeof priceV==='number' && priceV>=1000 && priceV<=500000){
+                    let msrp = null;
+                    if(nextRow[ci]==='メ希' && typeof nextRow[ci+1]==='number'){
+                      msrp = Math.round(nextRow[ci+1]);
+                    }
+                    const brand = _getBsBrand(modelName, brandMap[ci]);
+                    items.push({s:size, m:modelName, b:brand, w:Math.round(priceV), t:msrp});
                   }
-                  const brand = _getBsBrand(modelName, brandMap[ci]);
-                  items.push({s:size, m:modelName, b:brand, w:Math.round(priceV), t:msrp});
                 }
               }
             }
