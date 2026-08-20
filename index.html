@@ -7008,19 +7008,57 @@ window.addEventListener('storageReady', function(){
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
           const items = [];
-          for(const row of rows){
+          // ヘッダー行からカラム位置を自動検出
+          let partnoCol=-1, brandCol=-1, modelCol=-1, sizeCol=-1, janCol=-1;
+          let dataStartRow = 0;
+          for(let ri=0; ri<Math.min(5, rows.length); ri++){
+            const row = rows[ri];
             if(!row) continue;
-            const partno = String(row[2]||'').trim();
-            const brand  = String(row[3]||'').trim();
-            const model  = String(row[4]||'').trim();
-            const sizeRaw= String(row[5]||'').trim();
-            const janRaw = row[9];
-            if(!brand || !model || !sizeRaw || !janRaw) continue;
+            for(let ci=0; ci<row.length; ci++){
+              const v = String(row[ci]||'').trim();
+              if(v==='品番' || v==='品番コード') partnoCol=ci;
+              else if(v==='銘柄' || v==='ブランド') brandCol=ci;
+              else if(v==='サイズ' || v==='タイヤサイズ') sizeCol=ci;
+              else if(v==='JANコード' || v==='JAN' || v==='JAN CODE') janCol=ci;
+            }
+            if(janCol>=0 && sizeCol>=0){ dataStartRow=ri+1; break; }
+          }
+          // ヘッダー検出できた場合はそれを使用、できない場合は旧フォーマット固定列
+          const useHeader = janCol>=0 && sizeCol>=0;
+          for(let ri=dataStartRow; ri<rows.length; ri++){
+            const row = rows[ri];
+            if(!row) continue;
+            let partno, brand, model, sizeRaw, janRaw;
+            if(useHeader){
+              partno  = partnoCol>=0 ? String(row[partnoCol]||'').trim() : '';
+              brand   = brandCol>=0  ? String(row[brandCol]||'').trim()  : 'ブリヂストン';
+              sizeRaw = String(row[sizeCol]||'').trim();
+              janRaw  = row[janCol];
+              // モデル列: brandColの次の列で文字列のものを探す
+              if(modelCol<0 && brandCol>=0){
+                for(let c=brandCol+1; c<row.length; c++){
+                  if(typeof row[c]==='string' && row[c].trim() && c!==sizeCol && c!==janCol){ modelCol=c; break; }
+                }
+              }
+              model = modelCol>=0 ? String(row[modelCol]||'').trim() : '';
+              // モデルがなければ銘柄をモデルとして使用
+              if(!model) model = brand;
+            } else {
+              // 旧フォーマット
+              partno  = String(row[2]||'').trim();
+              brand   = String(row[3]||'').trim();
+              model   = String(row[4]||'').trim();
+              sizeRaw = String(row[5]||'').trim();
+              janRaw  = row[9];
+            }
+            if(!sizeRaw || !janRaw) continue;
             const sm = sizeRaw.replace(/\s+R/, 'R').match(/(\d+(?:\/\d+)?R\d+[A-Z0-9]*)/);
             if(!sm) continue;
             const size = sm[1];
-            const jan  = String(Math.round(janRaw));
-            if(jan.length < 8) continue;
+            const jan  = String(Math.round(Number(janRaw)));
+            if(jan.length < 8 || jan==='NaN') continue;
+            if(!brand) continue;
+            if(!model) model = brand;
             items.push({b:brand, m:model, s:size, j:jan, p:partno});
           }
           _parsedJanData = items;
