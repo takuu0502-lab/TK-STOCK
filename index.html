@@ -1538,10 +1538,11 @@
       </div>
     </div>
     <div class="field">
-      <label>製造年</label>
+      <label>製造年（自店舗）</label>
       <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" id="f_mfyear" min="2000" max="2099" placeholder="例) 2024" style="width:110px;">
+        <input type="number" id="f_mfyear" min="2000" max="2099" placeholder="例) 2025" style="width:110px;">
         <span style="font-size:13px;color:var(--text-3);">年製</span>
+        <span style="font-size:11px;color:var(--text-3);">※支店ごとに個別設定</span>
       </div>
     </div>
     <div class="field">
@@ -2596,6 +2597,16 @@ window.addEventListener('storageReady', function(){
     return Math.round(base * (1 - pct/100));
   }
 
+  // 支店別製造年ヘルパー
+  // p._branchManufactureYear: {taniyabe: 2026, katsuta: 2025, ...} のような形で保存
+  function getBranchManufactureYear(p, branchId){
+    if(p._branchManufactureYear && p._branchManufactureYear[branchId] != null){
+      return p._branchManufactureYear[branchId];
+    }
+    // 後方互換：旧 manufactureYear フィールドがある場合は全支店共通として使用
+    return p.manufactureYear || null;
+  }
+
   // 支店別固定仕入れ価格ヘルパー
   // p._branchFixedCost: {taniyabe: 6000, katsuta: null, ...} のような形で保存
   function getBranchFixedCost(p, branchId){
@@ -3434,7 +3445,9 @@ window.addEventListener('storageReady', function(){
       const overlay = document.getElementById('barcodeSelectModal');
       const list = document.getElementById('barcodeSelectList');
       list.innerHTML = candidates.map((p,i)=>{
-        const year = p.manufactureYear ? p.manufactureYear+'年製' : '';
+        const _scanBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+        const _scanMfYear = getBranchManufactureYear(p, _scanBranch);
+        const year = _scanMfYear ? _scanMfYear+'年製' : '';
         const sub = [p.brand||'', p.spec||'', year].filter(Boolean).join('　');
         const stk = getStock(p);
         return '<button type="button" data-pick-idx="'+i+'" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg-2);cursor:pointer;transition:background .15s;">'
@@ -4154,7 +4167,8 @@ window.addEventListener('storageReady', function(){
     const cKey = r.b+'||'+r.m+'||'+r.s;
     if(p.catalogKey && p.catalogKey === cKey) return true;
     // _fromCatalogなし＋製造年あり → 年別手動商品として別行表示
-    if(!p._fromCatalog && p.manufactureYear) return false;
+    const _hasMfYear = p.manufactureYear || (p._branchManufactureYear && Object.values(p._branchManufactureYear).some(v=>v));
+    if(!p._fromCatalog && _hasMfYear) return false;
     // フォールバック：スペック＋名前の部分一致
     if(!p.spec) return false;
     if(!_specMatchesCatalog(p.spec, r.s)) return false;
@@ -4435,14 +4449,18 @@ window.addEventListener('storageReady', function(){
         const checked = catalogQuoteSelection.has(cKey);
         const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t);
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-        const _yearBadgeInline = cp.manufactureYear ? '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:9px;font-weight:600;padding:1px 5px;border-radius:6px;white-space:nowrap;">🗓 '+cp.manufactureYear+'年製</div>' : '';
+        const _yearBadgeForBranch = (brId) => {
+          const _yr = getBranchManufactureYear(cp, brId);
+          return _yr ? '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:9px;font-weight:600;padding:1px 5px;border-radius:6px;white-space:nowrap;">🗓 '+_yr+'年製</div>' : '';
+        };
         const _nameCell = escapeHtml(cleanName(cp.name));
         const stockCell = _catShowMultiCols
           ? _catVisibleBranches.map(brId=>{
               const bStk = cp.branchStock ? (cp.branchStock[brId]||0) : 0;
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
               const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+po.items.filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
-              let _extra = (bStk > 0 && cp.manufactureYear) ? _yearBadgeInline : '';
+              const _brYearBadge = _yearBadgeForBranch(brId);
+              let _extra = (bStk > 0 && _brYearBadge) ? _brYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
               if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
@@ -4451,7 +4469,8 @@ window.addEventListener('storageReady', function(){
               const _bStk = cp.branchStock ? (cp.branchStock[_catOwnBranchId]||0) : 0;
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
               const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+po.items.filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
-              let _extra = (_bStk > 0 && cp.manufactureYear) ? _yearBadgeInline : '';
+              const _ownYearBadge = _yearBadgeForBranch(_catOwnBranchId);
+              let _extra = (_bStk > 0 && _ownYearBadge) ? _ownYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
               if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+_bStk+'</span>'+_extra+'</td>';
@@ -4478,12 +4497,13 @@ window.addEventListener('storageReady', function(){
           if(_bfc !== null){ cost = _bfc; break; }
         }
         const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-        // 製造年tooltip（在庫がある支店のみ）
+        // 製造年tooltip（在庫がある支店のみ、支店別製造年を使用）
         const _yearTooltip = (brId)=>{
-          const years = _catProds.filter(cp=>cp.manufactureYear).filter(cp=>{
+          const _tipBrId = brId || _catOwnBranchId;
+          const years = _catProds.filter(cp=>{
             const ys = brId ? (cp.branchStock?cp.branchStock[brId]||0:0) : getStock(cp);
-            return ys > 0;
-          }).map(cp=>cp.manufactureYear+'年製');
+            return ys > 0 && getBranchManufactureYear(cp, _tipBrId) != null;
+          }).map(cp=>getBranchManufactureYear(cp, _tipBrId)+'年製');
           return years.length ? years.join(' / ') : '';
         };
         const stockCell = _catShowMultiCols
@@ -4530,13 +4550,14 @@ window.addEventListener('storageReady', function(){
         const sell = p.sellPrice || 0;
         const cKey = _chkPrefixManual + p.id;
         const checked = catalogQuoteSelection.has(cKey);
-        const _manYearBadge = p.manufactureYear ? '<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+p.manufactureYear+'年製</span>' : '';
+        const _manYearBadgeForBranch = (brId)=>{ const _yr=getBranchManufactureYear(p,brId); return _yr?'<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_yr+'年製</span>':''; };
         const stockCell = _catShowMultiCols
           ? _catVisibleBranches.map(brId => {
               const bStk = p.branchStock ? (p.branchStock[brId]||0) : 0;
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
               const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-              let _extra = (bStk>0 && p.manufactureYear) ? _manYearBadge : '';
+              const _manBrYearBadge = _manYearBadgeForBranch(brId);
+              let _extra = (bStk>0 && _manBrYearBadge) ? _manBrYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
               if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
@@ -4545,7 +4566,8 @@ window.addEventListener('storageReady', function(){
               const _bStk = getStock(p);
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
               const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-              let _extra = (_bStk>0 && p.manufactureYear) ? _manYearBadge : '';
+              const _manOwnYearBadge = _manYearBadgeForBranch(_catOwnBranchId);
+              let _extra = (_bStk>0 && _manOwnYearBadge) ? _manOwnYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
               if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+'</td>';
@@ -5058,7 +5080,7 @@ window.addEventListener('storageReady', function(){
               +'</td>';
           })()
           : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
-          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+(p.manufactureYear?'<span style="font-size:10px;color:var(--teal);margin-left:4px;font-weight:600;">'+p.manufactureYear+'年製</span>':'')+'</td>')
+          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+(()=>{ const _ownMfYr=getBranchManufactureYear(p,_ownBranchId); return _ownMfYr?'<span style="font-size:10px;color:var(--teal);margin-left:4px;font-weight:600;">'+_ownMfYr+'年製</span>':''; })()+'</td>')
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
           if(_showMultiCols){
@@ -5113,9 +5135,10 @@ window.addEventListener('storageReady', function(){
               if(isOwn && p.customerOrders && p.customerOrders.length > 0){
                 badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
-              // 製造年バッジ：在庫がある支店列に表示
-              if(bStk > 0 && p.manufactureYear){
-                badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+p.manufactureYear+'年製</div>';
+              // 製造年バッジ：在庫がある支店列に表示（支店別製造年を使用）
+              const _brMfYear = getBranchManufactureYear(p, brId);
+              if(bStk > 0 && _brMfYear){
+                badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
@@ -9032,7 +9055,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_cost_fixed').checked = hasBranchFixedCost(p, _editBranch2);
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('f_memo').value = p.memo || '';
-    document.getElementById('f_mfyear').value = p.manufactureYear || '';
+    const _mfEditBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    document.getElementById('f_mfyear').value = getBranchManufactureYear(p, _mfEditBranch) || '';
     const _pType = p.productType || 'stock';
     document.getElementById(_pType === 'order' ? 'f_type_order' : 'f_type_stock').checked = true;
     document.getElementById('f_order_customer').value = p.orderCustomer || '';
@@ -9128,7 +9152,7 @@ window.addEventListener('storageReady', function(){
       + (p.partno ? '<div style="font-size:13px;color:var(--text-2);margin-top:3px;font-family:var(--font-mono);">'+escapeHtml(p.partno)+'</div>' : '')
       + (p.supplierId && suppliers.find(s=>s.id===p.supplierId) ? '<div style="font-size:12px;color:var(--text-3);margin-top:4px;">仕入先：'+escapeHtml(suppliers.find(s=>s.id===p.supplierId).name)+'</div>' : '')
       + (p.spec ? '<div class="detail-size">'+escapeHtml(p.spec)+'</div>' : '')
-      + (p.manufactureYear ? '<div style="font-size:13px;color:var(--teal);margin-top:4px;font-weight:600;">🗓 '+p.manufactureYear+'年製</div>' : '')
+      + (()=>{ const _detMfYear=getBranchManufactureYear(p,_detBranch); return _detMfYear?'<div style="font-size:13px;color:var(--teal);margin-top:4px;font-weight:600;">🗓 '+_detMfYear+'年製</div>':''; })()
       + (()=>{
           const _dm = majorById(p.majorId);
           const _isWheelDetail = _dm && _dm.name === 'ホイール';
@@ -9797,7 +9821,8 @@ window.addEventListener('storageReady', function(){
     if(barcode){
       const dups = products.filter(p => p.barcode === barcode && p.id !== editingId);
       if(dups.length > 0){
-        const dupNames = dups.map(d=>escapeHtml(d.name)+(d.manufactureYear?' ('+d.manufactureYear+'年製)':'')).join('、');
+        const _dupBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+        const dupNames = dups.map(d=>{ const _dy=getBranchManufactureYear(d,_dupBranch); return escapeHtml(d.name)+(_dy?' ('+_dy+'年製)':''); }).join('、');
         const ok = await showConfirm('同じJANコードが既に登録されています。\n\n登録済み：'+dupNames.replace(/<[^>]*>/g,'')+'\n\n製造年違いなどの場合は重複登録できます。\nそれでも登録しますか？');
         if(!ok) return;
       }
@@ -9834,7 +9859,10 @@ window.addEventListener('storageReady', function(){
       }
       // 後方互換フラグも更新（全支店に _branchFixedCost がある場合のみ _fixedCost をfalseに）
       const _anyBranchFixed = Object.values(p._branchFixedCost).some(v => v != null && v > 0);
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear});
+      // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
+      if(!p._branchManufactureYear) p._branchManufactureYear = {};
+      p._branchManufactureYear[_saveBranch] = manufactureYear || null;
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク（見積タブとの価格連動に必要）
       if(!p.catalogKey){
         const _autoCatEntry = findCatalogEntryForProduct(p);
@@ -9846,7 +9874,9 @@ window.addEventListener('storageReady', function(){
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
       const initBranchFixedCost = {};
       if(_fixedCost && costPrice > 0) initBranchFixedCost[newBranchId] = costPrice;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const initBranchManufactureYear = {};
+      if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
