@@ -1292,6 +1292,12 @@
     <div id="janMatchMsg" style="margin-top:10px;font-size:13px;"></div>
 
     <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">🔍 重複商品管理</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">同じJANコードで複数登録されている商品を一覧表示します。不要な重複を削除できます。</p>
+    <button class="btn btn-ghost btn-sm" id="showDuplicatesBtn">🔍 重複商品を確認する</button>
+    <div id="duplicatesResult" style="margin-top:12px;"></div>
+
+    <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">📦 商品一括インポート</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">メーカー価格表のデータをまとめて商品登録します。カテゴリを選択して一括登録できます。</p>
     <div id="bulkImportBtnWrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
@@ -6865,6 +6871,63 @@ window.addEventListener('storageReady', function(){
     });
     // 価格調整タブのボタン
     document.getElementById('addLocationMasterBtn').addEventListener('click', openLocationMasterModal);
+
+    // 重複商品管理
+    document.getElementById('showDuplicatesBtn').addEventListener('click', ()=>{
+      const resultEl = document.getElementById('duplicatesResult');
+      // JANコードが同一の商品グループを抽出（JANなしはIDで重複チェック対象外）
+      const byBarcode = {};
+      products.forEach(p=>{
+        const key = (p.barcode||'').trim();
+        if(!key) return;
+        if(!byBarcode[key]) byBarcode[key] = [];
+        byBarcode[key].push(p);
+      });
+      const dupGroups = Object.entries(byBarcode).filter(([,arr])=>arr.length>1);
+      if(dupGroups.length === 0){
+        resultEl.innerHTML = '<div style="padding:12px;background:var(--teal-light);border-radius:8px;color:var(--teal);font-size:13px;font-weight:600;">✅ 重複しているJANコードの商品はありません</div>';
+        return;
+      }
+      let html = '<div style="font-size:13px;color:var(--text-2);margin-bottom:10px;">'+dupGroups.length+'件のJANコードで重複が見つかりました。不要な商品を削除してください。</div>';
+      dupGroups.forEach(([barcode, arr])=>{
+        html += '<div style="background:var(--bg-2,#f5f3f0);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px;">';
+        html += '<div style="font-size:11px;color:var(--text-3);font-family:monospace;margin-bottom:8px;">JAN: '+escapeHtml(barcode)+'</div>';
+        arr.forEach(p=>{
+          const _br = p.branchId||'taniyabe';
+          const _stk = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+          const _ownStk = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:white;border-radius:7px;margin-bottom:6px;">'
+            + '<div style="flex:1;">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+            + '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'
+            + 'ブランド: '+escapeHtml(p.brand||'—')+' ／ 規格: '+escapeHtml(p.spec||'—')+' ／ 登録支店: '+escapeHtml(branchName(_br))
+            + ' ／ 全支店在庫合計: '+_stk+'本（'+escapeHtml(branchName(_br))+': '+_ownStk+'本）'
+            + (p.catalogKey?'<span style="margin-left:6px;font-size:10px;background:#e0f0ff;color:#1a5aaa;padding:1px 5px;border-radius:4px;">カタログ紐付</span>':'')
+            + '</div>'
+            + '</div>'
+            + '<button class="btn btn-red btn-sm" style="font-size:11px;white-space:nowrap;" data-dup-del="'+escapeHtml(p.id)+'">削除</button>'
+            + '</div>';
+        });
+        html += '</div>';
+      });
+      resultEl.innerHTML = html;
+      // 削除ボタンのイベント
+      resultEl.querySelectorAll('[data-dup-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const pid = btn.dataset.dupDel;
+          const p = products.find(x=>x.id===pid);
+          if(!p) return;
+          const ok = await showConfirm('「'+cleanName(p.name)+'」（'+branchName(p.branchId||'taniyabe')+'）を削除しますか？\nこの操作は取り消せません。');
+          if(!ok) return;
+          const idx = products.findIndex(x=>x.id===pid);
+          if(idx>=0) products.splice(idx,1);
+          await saveProducts();
+          try{ renderProductTable(); }catch(e){}
+          // ボタン再クリックで一覧更新
+          document.getElementById('showDuplicatesBtn').click();
+        });
+      });
+    });
 
     // 商品一括インポート
     renderBulkImportBtns();
