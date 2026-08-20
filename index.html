@@ -7463,10 +7463,18 @@ window.addEventListener('storageReady', function(){
         if(p._suppressAutoJan) continue;
         const pSize = normSpecSize(p.spec||'');
         if(!pSize) continue;
-        const best = ALL_JAN_LOOKUP.filter(e=>e.s===pSize)
-          .map(e=>({...e, score: scoreModelMatch(p.name||'', e.m)}))
-          .sort((a,b)=>b.score-a.score)[0];
-        if(best && best.score>=0.9){
+        const sizeMatches = ALL_JAN_LOOKUP.filter(e=>e.s===pSize);
+        if(!sizeMatches.length) continue;
+        // モデル名でスコアリング（商品名から銘柄・サイズ部分を除いた短い名前も試みる）
+        const shortName = (p.name||'').replace(/\d+[/\\]\d+R\d+[A-Z0-9]*/gi,'').replace(/\s+/g,' ').trim();
+        const scored = sizeMatches.map(e=>({
+          ...e,
+          score: Math.max(scoreModelMatch(p.name||'', e.m), scoreModelMatch(shortName, e.m))
+        })).sort((a,b)=>b.score-a.score);
+        const best = scored[0];
+        // サイズが一致しJANが1件のみの場合は無条件で紐づけ、複数ある場合はスコア0.7以上
+        const threshold = sizeMatches.length === 1 ? 0 : 0.7;
+        if(best && best.score >= threshold){
           p.barcode = best.j;
           if(!p.partno) p.partno = best.p;
           p.updatedAt = Date.now();
