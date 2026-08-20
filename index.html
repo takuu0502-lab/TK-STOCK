@@ -7454,20 +7454,21 @@ window.addEventListener('storageReady', function(){
         msgEl.innerHTML = '<div class="msg msg-error">JANデータベースが空です。先に「JANコードを取込む（Excel）」から銘柄ごとのJANコードファイルをインポートしてください。</div>';
         return;
       }
-      // デバッグ情報を一時表示
+      const _totalProducts = products.length;
+      const _withBarcode = products.filter(p=>p.barcode).length;
       const _noBarcode = products.filter(p=>!p.barcode && !p._suppressAutoJan && normSpecSize(p.spec||'')).length;
-      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中... (JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定商品: '+_noBarcode+'件)</div>';
+      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中... (JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定商品: '+_noBarcode+'件 / 設定済み: '+_withBarcode+'件)</div>';
       btn.disabled = true;
-      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中...</div>';
-      await new Promise(r=>setTimeout(r,50));
+      await new Promise(r=>setTimeout(r,80));
       let changed = 0;
+      let _noSizeMatch = 0, _lowScore = 0;
       for(const p of products){
         if(p.barcode) continue;
         if(p._suppressAutoJan) continue;
         const pSize = normSpecSize(p.spec||'');
         if(!pSize) continue;
         const sizeMatches = ALL_JAN_LOOKUP.filter(e=>e.s===pSize);
-        if(!sizeMatches.length) continue;
+        if(!sizeMatches.length){ _noSizeMatch++; continue; }
         // モデル名でスコアリング（商品名から銘柄・サイズ部分を除いた短い名前も試みる）
         const shortName = (p.name||'').replace(/\d+[/\\]\d+R\d+[A-Z0-9]*/gi,'').replace(/\s+/g,' ').trim();
         const scored = sizeMatches.map(e=>({
@@ -7482,10 +7483,10 @@ window.addEventListener('storageReady', function(){
           if(!p.partno) p.partno = best.p;
           p.updatedAt = Date.now();
           changed++;
-        }
+        } else { _lowScore++; }
       }
       if(!changed){
-        msgEl.innerHTML = '<div class="msg msg-error">紐づけできる商品がありませんでした（JANデータベースと一致なし、またはすでに全商品に設定済み）。</div>';
+        msgEl.innerHTML = '<div class="msg msg-error">紐づけできる商品がありませんでした。<br>JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定: '+_noBarcode+'件 / サイズ不一致: '+_noSizeMatch+'件 / スコア不足: '+_lowScore+'件</div>';
         btn.disabled = false;
         return;
       }
