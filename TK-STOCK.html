@@ -6953,11 +6953,18 @@ window.addEventListener('storageReady', function(){
     // カタログ連動商品の一括削除
     document.getElementById('deleteCatalogLinkedBtn').addEventListener('click', async ()=>{
       const msgEl = document.getElementById('deleteCatalogLinkedMsg');
-      // カタログ連動 OR カタログエントリと一致する商品（客注品は除く）
+      // カタログエントリから逆引き ＋ タイヤサイズを持つ商品も対象に（製造年あり商品も含む）
+      const _catalog = getCatalog();
+      const _matchedIds = new Set();
+      _catalog.forEach(r => {
+        findAllProductsForCatalogEntry(r).forEach(p => _matchedIds.add(p.id));
+      });
+      const _tireSizeRe = /^\d+[\/R]\d+/;
       const targets = products.filter(p => {
         if(p.productType === 'order') return false;
-        if(p.catalogKey || p._fromCatalog) return true;
-        return findCatalogEntryForProduct(p) !== null;
+        if(p.catalogKey || p._fromCatalog || _matchedIds.has(p.id)) return true;
+        // タイヤサイズ形式のspecを持つ商品も対象（製造年設定済みの在庫商品を含む）
+        return p.spec && _tireSizeRe.test(p.spec.trim());
       });
       if(targets.length === 0){
         msgEl.innerHTML = '<div class="msg msg-ok">削除対象の商品はありません。</div>';
