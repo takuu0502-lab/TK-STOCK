@@ -2823,9 +2823,15 @@ window.addEventListener('storageReady', function(){
     });
     allCostRules[pricingActiveBranch].byBrand = byBrand;
     allCostRules[pricingActiveBranch].byModel = byModel;
+    // 全支店に同じ設定を同期
+    BRANCHES.forEach(b=>{
+      if(b.id !== pricingActiveBranch){
+        allCostRules[b.id] = JSON.parse(JSON.stringify(allCostRules[pricingActiveBranch]));
+      }
+    });
     await saveCostRules();
     updateCurrentCostRules();
-    showToast('【'+branchName(pricingActiveBranch)+'】仕入れ価格の設定を保存しました。');
+    showToast('仕入れ価格の設定を全店舗に保存しました。');
     updateCostRuleDebug();
     renderPriceCatalog();
   });
