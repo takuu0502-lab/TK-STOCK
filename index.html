@@ -4410,9 +4410,62 @@ window.addEventListener('storageReady', function(){
         return na.localeCompare(nb,'ja') || sa.localeCompare(sb,'ja');
       });
     }
+    // 複数商品が紐付くカタログ行を個別行に展開（複製品などを別行表示）
+    const _expandedItems = [];
+    for(const item of allTireItems){
+      if(item.type === 'catalog'){
+        const _eps = findAllProductsForCatalogEntry(item.r);
+        if(_eps.length > 1){
+          // 複数商品：各商品を個別行として展開
+          _eps.forEach(cp => _expandedItems.push({type:'catalog_prod', r:item.r, origIdx:item.origIdx, cp}));
+        } else {
+          _expandedItems.push(item);
+        }
+      } else {
+        _expandedItems.push(item);
+      }
+    }
+
     let _catI=0, _manI=0;
-    const rows = allTireItems.map(item=>{
-      if(item.type==='catalog'){
+    const rows = _expandedItems.map(item=>{
+      if(item.type==='catalog_prod'){
+        // 複数商品展開行：個別商品1件を独立行として表示
+        const r=item.r, i=item.origIdx, cp=item.cp; _catI++;
+        const cKey = r.b+'||'+r.m+'||'+r.s+'||'+cp.id; // idも含めてユニーク化
+        const checked = catalogQuoteSelection.has(cKey);
+        const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t);
+        const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+        const _yearBadge = cp.manufactureYear ? '<span style="font-size:9px;display:inline-block;margin-left:4px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;">'+cp.manufactureYear+'年製</span>' : '';
+        const _nameCell = escapeHtml(cleanName(cp.name)) + _yearBadge;
+        const stockCell = _catShowMultiCols
+          ? _catVisibleBranches.map(brId=>{
+              const bStk = cp.branchStock ? (cp.branchStock[brId]||0) : 0;
+              const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+po.items.filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
+              let _extra = '';
+              if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
+              if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+              return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
+            }).join('')
+          : (()=>{
+              const _bStk = cp.branchStock ? (cp.branchStock[_catOwnBranchId]||0) : 0;
+              const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+po.items.filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
+              let _extra = '';
+              if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
+              if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+              return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+_bStk+'</span>'+_extra+'</td>';
+            })();
+        return '<tr data-catalog-idx="'+i+'" style="border-left:3px solid var(--teal);">'
+          + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk-prod="'+escapeHtml(cp.id)+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
+          + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(cp.id)+'">'+_nameCell+'</td>'
+          + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(r.s)+'</td>'
+          + (showCost ? '<td class="price-num" style="color:var(--text-2);">'+(r.b==='SEIBERLING'||r.b==='TOPRUN'||/^LUFT/i.test(r.b) ? '—' : r.w.toLocaleString('ja-JP'))+'</td>' : '')
+          + '<td class="price-num" style="color:var(--text-2);">'+(r.t ? r.t.toLocaleString('ja-JP') : '—')+'</td>'
+          + (showCost ? '<td class="price-num" style="color:var(--teal);">'+(_indivCost!==null ? '¥'+_indivCost.toLocaleString('ja-JP') : '—')+'</td>' : '')
+          + '<td class="price-num" style="color:var(--amber);">'+(sell!==null ? '¥'+sell.toLocaleString('ja-JP') : '—')+'</td>'
+          + stockCell + '</tr>';
+      } else if(item.type==='catalog'){
         const r=item.r, i=item.origIdx; _catI++;
         const cKey = r.b+'||'+r.m+'||'+r.s;
         const checked = catalogQuoteSelection.has(cKey);
@@ -4550,6 +4603,27 @@ window.addEventListener('storageReady', function(){
       td.addEventListener('click', ()=> openProductDetail(td.dataset.manualDetail));
     });
     if(forceTire){
+      // 複数商品展開行のチェックボックス（catalog_prod行）
+      wrap.querySelectorAll('[data-catalog-chk-prod]').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const _cpId = cb.dataset.catalogChkProd;
+          const _cpObj = products.find(p=>p.id===_cpId);
+          if(!_cpObj) return;
+          const _catEnt = findCatalogEntryForProduct(_cpObj);
+          const cKey = (_catEnt ? _catEnt.b+'||'+_catEnt.m+'||'+_catEnt.s : _cpId) + '||' + _cpId;
+          if(cb.checked){
+            catalogQuoteSelection.set(cKey, {
+              b: _cpObj.brand||(_catEnt?_catEnt.b:''), m: _cpObj.name, s: _cpObj.spec,
+              w: _cpObj.costPrice||0, t: _catEnt?_catEnt.t:null,
+              _productId: _cpId, _sellPrice: _cpObj.sellPrice||0
+            });
+          } else {
+            catalogQuoteSelection.delete(cKey);
+          }
+          renderPriceCatalog(opts);
+          renderEstSelectionBar();
+        });
+      });
       wrap.querySelectorAll('[data-manual-chk]').forEach(cb=>{
         cb.addEventListener('change', ()=>{
           const p = manualMatched[Number(cb.dataset.manualChk)];
