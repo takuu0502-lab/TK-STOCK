@@ -225,6 +225,7 @@
     <div class="nav-group"><a href="#history">入出庫履歴</a></div>
     <div class="nav-group"><a href="#stockcount">棚卸し</a></div>
     <div class="nav-group"><a href="#newproduct">新規商品登録</a></div>
+    <div class="nav-group"><a href="#outlet">アウトレット品管理</a></div>
     <div class="nav-group"><a href="#location">保管場所管理</a></div>
     <div class="nav-group"><a href="#scan">バーコードスキャン</a></div>
     <div class="nav-group"><a href="#catalog">ホイールカタログ管理</a></div>
@@ -371,11 +372,13 @@
           <tr><td><span style="background:#e8a020;color:#fff;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;">🔖 仮出庫 ○本</span></td><td>取り置き中の本数（マウスを乗せると詳細表示）</td></tr>
           <tr><td><span style="background:#c0392b;color:#fff;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;">⚠️ 在庫超過</span></td><td>仮出庫の数が在庫を上回っている</td></tr>
           <tr><td><span style="background:var(--amber-light);color:#c87d2a;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;">客注品</span></td><td>特定のお客様向けに登録された商品</td></tr>
+          <tr><td><span style="background:#e0f5f0;color:#1a7a5e;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;">🗓 ○○年製</span></td><td>製造年が登録されているタイヤに表示される年式バッジ（在庫がある支店列にのみ表示）</td></tr>
+          <tr><td><span style="background:#e8f4f0;color:#1a7a5e;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;">📦 入庫予定 ○本</span></td><td>入庫スケジュールが登録されている本数</td></tr>
         </table>
 
         <div class="callout callout-teal" style="margin-top: 14px;">
           <span class="callout-icon">💡</span>
-          <p>タイヤ・ホイールカテゴリでは、他店の在庫数も右側の列で確認できます。フィルター行の <span class="ui-label">📍 保管場所管理</span> ボタンから自店舗の保管場所を登録・並び替えできます。</p>
+          <p>タイヤ・ホイールカテゴリでは、他店の在庫数も右側の列で確認できます。<strong>🗓 ○○年製</strong>バッジは在庫がある支店の列にのみ表示されるため、他店の製造年もひとめで確認できます。フィルター行の <span class="ui-label">📍 保管場所管理</span> ボタンから自店舗の保管場所を登録・並び替えできます。</p>
         </div>
       </div>
     </section>
@@ -627,6 +630,25 @@
         </div>
 
         <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:10px;">🗓 タイヤ見積での製造年・複数商品の表示</h3>
+        <p style="font-size:13.5px; margin-bottom:12px;">同一銘柄・同サイズで製造年が異なる商品（例：2023年製と2025年製）を複製で別々に登録している場合、タイヤ見積の一覧でそれぞれの行が個別に表示されます。</p>
+        <table class="def-table">
+          <tr><th>表示</th><th>内容</th></tr>
+          <tr><td>行の左側の緑ライン</td><td>同一カタログエントリに複数商品が紐付いていることを示す（複製商品など）</td></tr>
+          <tr><td>商品名（アンバー・下線付き）</td><td>クリックすると商品詳細を表示。各行が個別の登録商品に対応している</td></tr>
+          <tr><td><span style="background:#e0f5f0;color:#1a7a5e;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;">🗓 ○○年製</span></td><td>在庫がある支店の列に製造年バッジが表示される</td></tr>
+          <tr><td>在庫数（各支店列）</td><td>その行の個別商品の支店別在庫数が表示される</td></tr>
+        </table>
+        <div class="callout callout-teal" style="margin-top:12px;">
+          <span class="callout-icon">💡</span>
+          <p>複製商品を見積に追加する際はチェックボックスで各行を個別に選択できます。製造年・在庫状況を確認しながら適切なものを選んでください。</p>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:10px;">💴 仕入れ価格の連動（在庫一覧 ↔ タイヤ見積）</h3>
+        <p style="font-size:13.5px;">在庫一覧の商品詳細で仕入れ価格を変更して保存すると、タイヤ見積の価格表にも自動で反映されます。逆に価格調整タブで変更した場合も同様です。価格の確認漏れを防ぐためにどちらかで変更すれば十分です。</p>
+
+        <hr class="divider">
         <h3 style="font-size:14px; margin-bottom:10px;">🔧 工賃プリセット一覧</h3>
         <table class="def-table">
           <tr><th>作業名</th><th>単位</th><th>数量の選択肢</th></tr>
@@ -794,11 +816,21 @@
             <div class="step-num">3</div>
             <div class="step-content">
               <strong>商品情報を入力</strong>
-              <p>JANコード・ブランド・商品名・規格・仕入れ原価・販売価格などを入力します。保管場所は登録済みの場所からプルダウンで選択できます。</p>
+              <p>JANコード・ブランド・商品名・規格・仕入れ原価・販売価格などを入力します。<br>
+              <strong>製造年</strong>欄に西暦4桁を入力すると（例：2025）、在庫一覧・タイヤ見積の在庫数横に「🗓 ○○年製」バッジが表示されます。<br>
+              保管場所は登録済みの場所からプルダウンで選択できます。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>支店別の固定仕入れ価格を設定する（任意）</strong>
+              <p>商品詳細の「支店別 固定仕入れ価格」欄では、支店ごとに異なる仕入れ価格を設定できます。<br>
+              例えば勝田仕入れの商品を勝田のみ別単価にしたい場合などに使います。設定した価格はタイヤ見積の仕入れ価格欄にも自動で反映されます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
             <div class="step-content">
               <strong>「保存」を押す</strong>
               <p><span class="ui-label">保存</span> ボタンで自店舗の在庫に登録されます。他店舗には影響しません。</p>
@@ -809,6 +841,117 @@
         <div class="callout callout-teal">
           <span class="callout-icon">💡</span>
           <p>JANコードを入力して <span class="ui-label">JAN検索</span> を押すと、ブリヂストン価格表から商品情報を自動入力できます。</p>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">📋 商品の複製（コピー登録）</h3>
+        <p style="font-size:13.5px; margin-bottom:12px;">既存商品の詳細モーダル下部にある <span class="ui-label">複製して登録</span> ボタンを使うと、その商品の情報をコピーして新しい商品として登録できます。製造年が異なるアウトレット品の管理などに便利です。</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>複製したい商品の詳細を開く</strong>
+              <p>商品一覧で対象商品の商品名をクリックして詳細モーダルを開きます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>「複製して登録」ボタンを押す</strong>
+              <p>モーダル下部の <span class="ui-label">複製して登録</span> ボタンを押します。元の商品と同じ情報で新規登録フォームが開きます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>必要な情報を変更して保存</strong>
+              <p>製造年・仕入れ価格・在庫数など変更が必要な項目を修正し、<span class="ui-label">保存</span> を押します。</p>
+            </div>
+          </div>
+        </div>
+        <div class="callout callout-amber">
+          <span class="callout-icon">⚠️</span>
+          <p>複製した商品は元の商品と<strong>別の商品</strong>として登録されます。在庫数・製造年・仕入れ価格はそれぞれ独立して管理されます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- アウトレット品・製造年別管理 -->
+    <section class="section" id="outlet">
+      <div class="section-header">
+        <div class="section-icon icon-amber">🏷️</div>
+        <div>
+          <h2>アウトレット品・製造年別管理</h2>
+          <div class="section-desc">製造年が異なるタイヤを複製で別管理する方法</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <p>同一銘柄・同サイズで製造年が異なるタイヤ（例：通常品の2025年製と旧在庫の2023年製）は、<strong>複製機能</strong>を使って別々の商品として登録・管理します。</p>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">📌 基本的な考え方</h3>
+        <table class="def-table">
+          <tr><th>項目</th><th>説明</th></tr>
+          <tr><td>通常品（最新製造年）</td><td>既存の商品登録をそのまま使用。製造年フィールドには最新年を入力</td></tr>
+          <tr><td>アウトレット品（旧製造年）</td><td>通常品を「複製して登録」→ 製造年・仕入れ価格を変更して別商品として保存</td></tr>
+          <tr><td>在庫の確認</td><td>両方の商品が在庫一覧に表示され、製造年バッジ（🗓）で区別できる</td></tr>
+          <tr><td>見積での選択</td><td>タイヤ見積の一覧で2行として表示され、どちらを使うかチェックボックスで選択</td></tr>
+        </table>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">🔄 アウトレット品の登録フロー</h3>
+        <div class="flow">
+          <div class="flow-box">通常品の詳細を開く</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">「複製して登録」</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">製造年・価格を変更</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box amber">保存</div>
+        </div>
+
+        <hr class="divider">
+        <h3 style="font-size:14px; margin-bottom:12px;">✅ 具体的な操作例</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>既存のREGNO GR-XⅢ 215/60R17（2025年製）の詳細を開く</strong>
+              <p>商品一覧でタイヤカテゴリを選択し、対象商品の商品名をクリックして詳細モーダルを開きます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>「複製して登録」を押す</strong>
+              <p>モーダル下部の <span class="ui-label">複製して登録</span> ボタンをクリック。同じ商品情報で新規フォームが開きます。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>製造年・仕入れ価格を変更する</strong>
+              <p>「製造年」欄を <strong>2023</strong> に変更。アウトレット価格に合わせて仕入れ価格も変更します。<br>
+              支店別固定仕入れ価格が必要であれば各支店欄も設定します。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>在庫数を設定して保存</strong>
+              <p>勝田に4本ある場合は「勝田」の在庫数欄に4を入力し、<span class="ui-label">保存</span> を押します。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout-teal" style="margin-top:16px;">
+          <span class="callout-icon">💡</span>
+          <p>登録後、谷田部店のアカウントでタイヤ見積を開くと、REGNO GR-XⅢ 215/60R17 が2行（2025年製・2023年製）で表示されます。各行の「勝田」列に在庫数と <strong>🗓 ○○年製</strong> バッジが表示されるので、お客様に製造年を案内しながら見積商品を選択できます。</p>
+        </div>
+
+        <div class="callout callout-amber" style="margin-top:10px;">
+          <span class="callout-icon">⚠️</span>
+          <p>複製商品は元の商品と<strong>在庫・価格が独立</strong>しています。アウトレット品の在庫が売れたら該当商品の出庫処理を行ってください。在庫が0になっても商品は削除されないので、不要になったら管理者が削除してください。</p>
         </div>
       </div>
     </section>
@@ -1013,7 +1156,19 @@
           </tr>
           <tr>
             <td>見積書に商品が表示されない</td>
-            <td>タイヤサイズの選択が正しいか確認してください。在庫にない商品はカタログから選択できます。</td>
+            <td>タイヤサイズの選択が正しいか確認してください。在庫にない商品はカタログから選択できます。複製して登録した商品の場合、元の商品と同じブランド・サイズでないと一覧に出ないことがあります（ブランド・規格が正確に一致しているか確認してください）。</td>
+          </tr>
+          <tr>
+            <td>複製した商品が見積一覧に表示されない</td>
+            <td>複製商品は同一銘柄・同サイズで紐付けられます。商品詳細のブランド・規格が元の商品と完全に一致しているか確認してください。一致している場合は商品を開いて保存し直すと反映されることがあります。</td>
+          </tr>
+          <tr>
+            <td>製造年バッジ（🗓）が表示されない</td>
+            <td>商品詳細の「製造年」欄に西暦4桁（例：2025）が入力されているか確認してください。また、製造年バッジは在庫数が1本以上の支店列にのみ表示されます。</td>
+          </tr>
+          <tr>
+            <td>在庫一覧で価格を変更してもタイヤ見積に反映されない</td>
+            <td>商品詳細で価格を変更した後は <span class="ui-label">保存</span> ボタンを必ず押してください。保存後にタイヤ見積タブへ切り替えると最新価格が表示されます。</td>
           </tr>
           <tr>
             <td>保存した見積が見つからない</td>
