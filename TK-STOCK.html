@@ -7451,9 +7451,12 @@ window.addEventListener('storageReady', function(){
       const msgEl = document.getElementById('janMatchMsg');
       const btn = document.getElementById('janBulkAutoSaveBtn');
       if(!ALL_JAN_LOOKUP || !ALL_JAN_LOOKUP.length){
-        msgEl.innerHTML = '<div class="msg msg-error">JANデータベースが空です。先にJANコードExcelを取込んでください。</div>';
+        msgEl.innerHTML = '<div class="msg msg-error">JANデータベースが空です。先に「JANコードを取込む（Excel）」から銘柄ごとのJANコードファイルをインポートしてください。</div>';
         return;
       }
+      // デバッグ情報を一時表示
+      const _noBarcode = products.filter(p=>!p.barcode && !p._suppressAutoJan && normSpecSize(p.spec||'')).length;
+      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中... (JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定商品: '+_noBarcode+'件)</div>';
       btn.disabled = true;
       msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中...</div>';
       await new Promise(r=>setTimeout(r,50));
