@@ -1291,6 +1291,13 @@
     </div>
     <div id="janMatchMsg" style="margin-top:10px;font-size:13px;"></div>
 
+
+    <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">📦 JANコードデータベース</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">銘柄ごとのJANコードExcelを取り込みます。スキャン時の自動認識や商品登録時のJAN自動入力に使用されます。</p>
+    <div id="importedJanPreview" style="margin-bottom:12px;"></div>
+    <button class="btn btn-ghost btn-sm" id="openImportJanBtn">📦 JANコードを取込む（Excel）</button>
+
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🔍 重複商品管理</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">同じJANコードで複数登録されている商品を一覧表示します。不要な重複を削除できます。</p>
@@ -1966,6 +1973,24 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="importJanModal">
+  <div class="modal" style="max-width:520px;">
+    <h3>📦 JANコード取込（Excel）</h3>
+    <p style="font-size:12.5px;color:var(--text-2);margin:0 0 16px;">銘柄ごとのJANコードExcelを選択してください。同一銘柄は上書きされます。</p>
+    <div id="importedJanList" style="margin-bottom:12px;"></div>
+    <div class="field">
+      <label style="font-size:12px;font-weight:700;color:var(--text-3);">Excelファイル</label>
+      <input type="file" id="janFileInput" accept=".xlsx,.xls" style="margin-top:6px;">
+    </div>
+    <div id="janImportPreview" style="margin-top:8px;"></div>
+    <div id="janImportMsg" style="margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="janImportCancelBtn">キャンセル</button>
+      <button class="btn btn-amber" id="janImportExecBtn" disabled>取込む</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="importCatalogModal">
   <div class="modal" style="max-width:560px;">
     <h3>価格表取込（Excel）</h3>
@@ -2160,7 +2185,8 @@ window.addEventListener('storageReady', function(){
     {j:'4961914458478',s:'235/50R18',m:'LUFT RVⅡ',b:'BRIDGESTONE',p:'PSR05807'},
   ];
   // 全JANルックアップ（BS + SL201 + SL101 + LUFT RV2）
-  const ALL_JAN_LOOKUP = [...BS_JAN_LOOKUP, ...SL201_JAN_LOOKUP, ...SL101_JAN_LOOKUP, ...LUFT_RV2_JAN_LOOKUP];
+  let ALL_JAN_LOOKUP = [...BS_JAN_LOOKUP, ...SL201_JAN_LOOKUP, ...SL101_JAN_LOOKUP, ...LUFT_RV2_JAN_LOOKUP];
+  let importedJanItems = []; // Firebase取込JANコード
 
   function normSpecSize(spec){
     if(!spec) return '';
@@ -2335,6 +2361,21 @@ window.addEventListener('storageReady', function(){
   async function saveImportedCatalogs(){
     try{ await window.storage.set('importedCatalogs', JSON.stringify(importedCatalogs), SHARED); }
     catch(e){ console.error('save importedCatalogs failed', e); }
+  }
+
+  async function loadImportedJanItems(){
+    try{
+      const r = await window.storage.get('importedJanItems', SHARED);
+      importedJanItems = r ? JSON.parse(r.value) : [];
+    }catch(e){ importedJanItems = []; }
+    // ALL_JAN_LOOKUPにマージ（重複は取込データ優先）
+    const _baseKeys = new Set(importedJanItems.map(e=>e.m+'||'+e.s));
+    const _filteredBase = ALL_JAN_LOOKUP.filter(e=>!_baseKeys.has(e.m+'||'+e.s));
+    ALL_JAN_LOOKUP = [..._filteredBase, ...importedJanItems];
+  }
+  async function saveImportedJanItems(){
+    try{ await window.storage.set('importedJanItems', JSON.stringify(importedJanItems), SHARED); }
+    catch(e){ console.error('save importedJanItems failed', e); }
   }
 
   function defaultPriceRules(){
@@ -3027,6 +3068,7 @@ window.addEventListener('storageReady', function(){
     await loadCostRules();
     await loadExternalPriceRules();
     await loadImportedCatalogs();
+    await loadImportedJanItems();
     await loadLabelSettings();
     await loadCatalogVisibility();
     try{
@@ -6977,6 +7019,106 @@ window.addEventListener('storageReady', function(){
       await saveProducts();
       renderProductTable();
       msgEl.innerHTML = '<div class="msg msg-ok">✅ ' + targets.length + ' 件を削除しました。</div>';
+    });
+
+    // JANコード取込
+    function renderImportedJanPreview(){
+      const wrap = document.getElementById('importedJanPreview');
+      if(!wrap) return;
+      if(!importedJanItems.length){ wrap.innerHTML = '<p style="font-size:12.5px;color:var(--text-3);">取込済みのJANコードはありません。</p>'; return; }
+      const brands = {};
+      importedJanItems.forEach(e=>{ brands[e.b||e.m] = (brands[e.b||e.m]||0)+1; });
+      wrap.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+        + Object.entries(brands).map(([b,cnt])=>'<span style="font-size:12px;padding:3px 10px;background:var(--teal-dim);color:var(--teal);border-radius:99px;">'+escapeHtml(b)+' ('+cnt+'件)</span>').join('')
+        + '</div>';
+    }
+    renderImportedJanPreview();
+
+    document.getElementById('openImportJanBtn').addEventListener('click', ()=>{
+      document.getElementById('janFileInput').value = '';
+      document.getElementById('janImportPreview').innerHTML = '';
+      document.getElementById('janImportMsg').innerHTML = '';
+      document.getElementById('janImportExecBtn').disabled = true;
+      // 取込済みリスト表示
+      const listEl = document.getElementById('importedJanList');
+      if(importedJanItems.length){
+        const brands = {};
+        importedJanItems.forEach(e=>{ brands[e.b||e.m] = (brands[e.b||e.m]||0)+1; });
+        listEl.innerHTML = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">取込済み：</div>'
+          + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">'
+          + Object.entries(brands).map(([b,cnt])=>'<span style="font-size:12px;padding:3px 10px;background:var(--teal-dim);color:var(--teal);border-radius:99px;">'+escapeHtml(b)+' ('+cnt+'件)</span>').join('')
+          + '</div>';
+      } else { listEl.innerHTML = ''; }
+      document.getElementById('importJanModal').classList.add('show');
+    });
+    document.getElementById('janImportCancelBtn').addEventListener('click', ()=>{
+      document.getElementById('importJanModal').classList.remove('show');
+    });
+
+    let _parsedJanData = [];
+    document.getElementById('janFileInput').addEventListener('change', function(){
+      const file = this.files[0];
+      if(!file) return;
+      document.getElementById('janImportPreview').innerHTML = '読み込み中...';
+      document.getElementById('janImportExecBtn').disabled = true;
+      _parsedJanData = [];
+      const reader = new FileReader();
+      reader.onload = function(e){
+        try{
+          const wb = XLSX.read(e.target.result, {type:'array'});
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+          const items = [];
+          for(const row of rows){
+            if(!row) continue;
+            const partno = String(row[2]||'').trim();
+            const brand  = String(row[3]||'').trim();
+            const model  = String(row[4]||'').trim();
+            const sizeRaw= String(row[5]||'').trim();
+            const janRaw = row[9];
+            if(!brand || !model || !sizeRaw || !janRaw) continue;
+            const sm = sizeRaw.match(/(\d+\/\d+R\d+[A-Z0-9]*)/);
+            if(!sm) continue;
+            const size = sm[1];
+            const jan  = String(Math.round(janRaw));
+            if(jan.length < 8) continue;
+            items.push({b:brand, m:model, s:size, j:jan, p:partno});
+          }
+          _parsedJanData = items;
+          if(items.length > 0){
+            const brands = {};
+            items.forEach(e=>{ brands[e.b] = (brands[e.b]||0)+1; });
+            document.getElementById('janImportPreview').innerHTML =
+              '<div class="msg msg-ok">'+items.length+'件のJANコードを検出しました。<br>'
+              + Object.entries(brands).map(([b,cnt])=>escapeHtml(b)+': '+cnt+'件').join(' / ')
+              + '</div>';
+            document.getElementById('janImportExecBtn').disabled = false;
+          } else {
+            document.getElementById('janImportPreview').innerHTML = '<div class="msg msg-error">JANコードを検出できませんでした。列構成を確認してください。</div>';
+          }
+        }catch(err){
+          document.getElementById('janImportPreview').innerHTML = '<div class="msg msg-error">読み込みエラー: '+escapeHtml(err.message)+'</div>';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    document.getElementById('janImportExecBtn').addEventListener('click', async ()=>{
+      const msgEl = document.getElementById('janImportMsg');
+      if(!_parsedJanData.length) return;
+      // 同一銘柄+モデルの既存データを置換
+      const newBrands = new Set(_parsedJanData.map(e=>e.b+'||'+e.m));
+      const filtered = importedJanItems.filter(e=>!newBrands.has(e.b+'||'+e.m));
+      importedJanItems = [...filtered, ..._parsedJanData];
+      // ALL_JAN_LOOKUPを更新
+      const _baseKeys = new Set(importedJanItems.map(e=>e.m+'||'+e.s));
+      const _filteredBase = [...BS_JAN_LOOKUP, ...SL201_JAN_LOOKUP, ...SL101_JAN_LOOKUP, ...LUFT_RV2_JAN_LOOKUP].filter(e=>!_baseKeys.has(e.m+'||'+e.s));
+      ALL_JAN_LOOKUP = [..._filteredBase, ...importedJanItems];
+      await saveImportedJanItems();
+      renderImportedJanPreview();
+      msgEl.innerHTML = '<div class="msg msg-ok">✅ '+_parsedJanData.length+'件を取込みました。</div>';
+      document.getElementById('janImportExecBtn').disabled = true;
+      setTimeout(()=>{ document.getElementById('importJanModal').classList.remove('show'); }, 1200);
     });
 
     // 商品一括インポート
