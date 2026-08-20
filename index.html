@@ -7478,9 +7478,9 @@ window.addEventListener('storageReady', function(){
         const best = scored[0];
         const second = scored[1];
         // サイズが一致しJANが1件のみの場合は無条件で紐づけ
-        // 複数ある場合: スコア0.5以上、かつ2位の2倍以上なら採用
+        // 複数ある場合: スコア0.5以上、かつ2位と同モデルまたはスコアが明確に上なら採用
         const threshold = sizeMatches.length === 1 ? 0 : 0.5;
-        const isDistinct = !second || best.score >= second.score * 1.5;
+        const isDistinct = !second || best.m === second.m || best.score > second.score + 0.1;
         if(best && best.score >= threshold && isDistinct){
           p.barcode = best.j;
           if(!p.partno) p.partno = best.p;
