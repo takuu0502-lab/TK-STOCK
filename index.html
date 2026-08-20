@@ -7450,12 +7450,17 @@ window.addEventListener('storageReady', function(){
     document.getElementById('janBulkAutoSaveBtn').addEventListener('click', async ()=>{
       const msgEl = document.getElementById('janMatchMsg');
       const btn = document.getElementById('janBulkAutoSaveBtn');
+      if(!ALL_JAN_LOOKUP || !ALL_JAN_LOOKUP.length){
+        msgEl.innerHTML = '<div class="msg msg-error">JANデータベースが空です。先にJANコードExcelを取込んでください。</div>';
+        return;
+      }
       btn.disabled = true;
-      msgEl.style.color = 'var(--text-2)';
-      msgEl.textContent = '処理中...';
+      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中...</div>';
+      await new Promise(r=>setTimeout(r,50));
       let changed = 0;
       for(const p of products){
         if(p.barcode) continue;
+        if(p._suppressAutoJan) continue;
         const pSize = normSpecSize(p.spec||'');
         if(!pSize) continue;
         const best = ALL_JAN_LOOKUP.filter(e=>e.s===pSize)
@@ -7469,18 +7474,16 @@ window.addEventListener('storageReady', function(){
         }
       }
       if(!changed){
-        msgEl.style.color = 'var(--text-2)';
-        msgEl.textContent = '自動設定できる商品がありませんでした（スコア0.5以上の候補なし）';
+        msgEl.innerHTML = '<div class="msg msg-error">紐づけできる商品がありませんでした（JANデータベースと一致なし、またはすでに全商品に設定済み）。</div>';
         btn.disabled = false;
         return;
       }
       try{
         await saveProducts();
-        msgEl.style.color = 'var(--teal)';
-        msgEl.textContent = '✅ '+changed+'件にJANコードを自動設定・保存しました';
+        msgEl.innerHTML = '<div class="msg msg-ok">✅ '+changed+'件にJANコードを自動設定・保存しました。</div>';
+        showToast('JANコードを'+changed+'件に一括設定しました');
       }catch(e){
-        msgEl.style.color = 'var(--red)';
-        msgEl.textContent = '⚠️ 保存失敗: '+e.message;
+        msgEl.innerHTML = '<div class="msg msg-error">⚠️ 保存失敗: '+e.message+'</div>';
       }
       btn.disabled = false;
     });
