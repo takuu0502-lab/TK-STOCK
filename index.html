@@ -12333,20 +12333,22 @@ window.addEventListener('storageReady', function(){
             for(let ri=0; ri<Math.min(15, rows.length); ri++){
               const row = rows[ri];
               if(!row) continue;
-              const col2 = String(row[2]||'').trim();
+              // 行内を全検索してブランド行・商品名行を判定（列位置に依存しない）
+              const _brandIdx = row.findIndex(v=>v==='ブランド');
+              const _modelIdx = row.findIndex(v=>v==='商品名');
               // ブランド行
-              if(col2 === 'ブランド'){
+              if(_brandIdx >= 0){
                 let currentBrand = '';
-                for(let ci=3; ci<row.length; ci++){
+                for(let ci=_brandIdx+1; ci<row.length; ci++){
                   const v = row[ci];
                   if(typeof v==='string' && v.trim()) currentBrand = v.trim();
                   if(currentBrand) brandMap[ci] = currentBrand;
                 }
               }
               // 商品名行（モデルヘッダー）
-              if(col2 === '商品名'){
+              if(_modelIdx >= 0){
                 modelRowIdx = ri;
-                for(let ci=3; ci<row.length; ci++){
+                for(let ci=_modelIdx+1; ci<row.length; ci++){
                   const v = row[ci];
                   if(typeof v==='string' && v.trim() && v.trim()!=='メ希'){
                     modelMap[ci] = v.trim();
