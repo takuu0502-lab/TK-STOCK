@@ -1297,6 +1297,13 @@
     <button class="btn btn-ghost btn-sm" id="showDuplicatesBtn">🔍 重複商品を確認する</button>
     <div id="duplicatesResult" style="margin-top:12px;"></div>
 
+    <div style="margin-top:20px;padding:14px 16px;background:var(--red-dim);border:1px solid var(--red);border-radius:8px;">
+      <div style="font-weight:600;color:var(--red);margin-bottom:6px;">⚠️ カタログ連動商品の一括削除</div>
+      <p style="font-size:12.5px;color:var(--text-2);margin:0 0 10px;line-height:1.7;">価格表と連動しているカタログ登録商品（在庫一覧のタイヤ見積カタログ行として表示されているもの）を全て削除します。在庫を数え直す際にご利用ください。</p>
+      <button class="btn btn-sm" style="background:var(--red);color:#fff;" id="deleteCatalogLinkedBtn">🗑 カタログ連動商品を全て削除する</button>
+      <div id="deleteCatalogLinkedMsg" style="margin-top:8px;"></div>
+    </div>
+
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">📦 商品一括インポート</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">メーカー価格表のデータをまとめて商品登録します。カテゴリを選択して一括登録できます。</p>
@@ -6941,6 +6948,23 @@ window.addEventListener('storageReady', function(){
           document.getElementById('showDuplicatesBtn').click();
         });
       });
+    });
+
+    // カタログ連動商品の一括削除
+    document.getElementById('deleteCatalogLinkedBtn').addEventListener('click', async ()=>{
+      const msgEl = document.getElementById('deleteCatalogLinkedMsg');
+      const targets = products.filter(p => p.catalogKey || p._fromCatalog);
+      if(targets.length === 0){
+        msgEl.innerHTML = '<div class="msg msg-ok">削除対象のカタログ連動商品はありません。</div>';
+        return;
+      }
+      const ok = await showConfirm('カタログと連動している商品を ' + targets.length + ' 件削除します。\n\n※在庫データも全て削除されます。\nよろしいですか？');
+      if(!ok) return;
+      const targetIds = new Set(targets.map(p=>p.id));
+      products = products.filter(p => !targetIds.has(p.id));
+      await saveProducts();
+      renderProductTable();
+      msgEl.innerHTML = '<div class="msg msg-ok">✅ ' + targets.length + ' 件のカタログ連動商品を削除しました。</div>';
     });
 
     // 商品一括インポート
