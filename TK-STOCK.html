@@ -9668,6 +9668,7 @@ window.addEventListener('storageReady', function(){
 
 
   document.getElementById('modalSave').addEventListener('click', async ()=>{
+    try {
     const barcode = document.getElementById('f_barcode').value.trim().toLowerCase();
     const brand = document.getElementById('f_brand').value.trim();
     const partno = document.getElementById('f_partno').value.trim();
@@ -9756,6 +9757,11 @@ window.addEventListener('storageReady', function(){
       // 後方互換フラグも更新（全支店に _branchFixedCost がある場合のみ _fixedCost をfalseに）
       const _anyBranchFixed = Object.values(p._branchFixedCost).some(v => v != null && v > 0);
       Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear});
+      // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク（見積タブとの価格連動に必要）
+      if(!p.catalogKey){
+        const _autoCatEntry = findCatalogEntryForProduct(p);
+        if(_autoCatEntry) p.catalogKey = _autoCatEntry.b+'||'+_autoCatEntry.m+'||'+_autoCatEntry.s;
+      }
     } else {
       const newBranchId = (currentUser && currentUser.branchId) ? currentUser.branchId : 'taniyabe';
       const initBranchStock={}; BRANCHES.forEach(b=>{ initBranchStock[b.id]=b.id===newBranchId?stock:0; });
@@ -9765,6 +9771,11 @@ window.addEventListener('storageReady', function(){
       const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
+      // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
+      if(!_newProd.catalogKey){
+        const _autoNewCatEntry = findCatalogEntryForProduct(_newProd);
+        if(_autoNewCatEntry) _newProd.catalogKey = _autoNewCatEntry.b+'||'+_autoNewCatEntry.m+'||'+_autoNewCatEntry.s;
+      }
       products.push(_newProd);
     }
     // JANコード辞書に自動保存
@@ -9772,15 +9783,15 @@ window.addEventListener('storageReady', function(){
       await saveToJanDict(barcode, {name, brand, partno, spec, majorId, subId});
     }
     await saveProducts();
-    try {
-      renderCatTree();
-      renderProductTable();
-      // 見積タブのカタログも再描画して仕入れ価格等を最新化
-      if(window._lastEstOpts) renderPriceCatalog(window._lastEstOpts);
-      if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
-      if(window._lastEstRearOpts) renderPriceCatalog(window._lastEstRearOpts);
-    } catch(e){ console.error('render after save error:', e); }
+    // 各描画を独立したtry/catchで実行（一つが失敗しても他の再描画をスキップしない）
+    try { renderCatTree(); } catch(e){ console.error('renderCatTree error:', e); }
+    try { renderProductTable(); } catch(e){ console.error('renderProductTable error:', e); }
+    // 見積タブのカタログも再描画して仕入れ価格等を最新化
+    try { if(window._lastEstOpts) renderPriceCatalog(window._lastEstOpts); } catch(e){ console.error('renderPriceCatalog(est) error:', e); }
+    try { if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts); } catch(e){ console.error('renderPriceCatalog(front) error:', e); }
+    try { if(window._lastEstRearOpts) renderPriceCatalog(window._lastEstRearOpts); } catch(e){ console.error('renderPriceCatalog(rear) error:', e); }
     closeModal();
+    } catch(e){ console.error('save error:', e); closeModal(); }
   });
 
   document.getElementById('modalDelete').addEventListener('click', async ()=>{
