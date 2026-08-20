@@ -12464,10 +12464,56 @@ window.addEventListener('storageReady', function(){
 
         let items = [];
         let isBs = isBridgestoneFormat(wb);
+        let _isSeiber = false;
+
+        // SEIBERLINGフォーマット判定
+        function isSeiberlingFormat(wb){
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          if(!ws) return false;
+          const r0 = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, range:{s:{r:0,c:0},e:{r:2,c:5}}});
+          return (r0||[]).some(row=>(row||[]).some(c=>typeof c==='string' && c.includes('SEIBERLING')));
+        }
+        // SEIBERLINGパーサー（左右2列・2行1エントリ構造）
+        function parseSeiberling(wb){
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+          const result = [];
+          const SIZE_RE = /(\d+\/\d+R\d+[A-Z0-9]*)/;
+          // サイズパターンが見つかった行をキーに、次の行から価格を取得
+          let ri = 5;
+          while(ri < rows.length - 1){
+            const r0 = rows[ri] || [];
+            const lm = SIZE_RE.exec(String(r0[2]||''));
+            const rm = SIZE_RE.exec(String(r0[8]||''));
+            if(lm || rm){
+              const r1 = rows[ri+1] || [];
+              if(lm){
+                const lp = (typeof r1[4]==='number') ? r1[4] : null;
+                if(lp && lp>=1000 && lp<=200000) result.push({s:lm[1], m:'SL201', b:'SEIBERLING', w:Math.round(lp), t:null});
+              }
+              if(rm){
+                const rp1 = (typeof r1[10]==='number') ? r1[10] : null;
+                if(rp1 && rp1>=1000 && rp1<=200000) result.push({s:rm[1], m:'SL201', b:'SEIBERLING', w:Math.round(rp1), t:null});
+                const rp2 = (typeof r1[12]==='number') ? r1[12] : null;
+                if(rp2 && rp2>=1000 && rp2<=200000) result.push({s:rm[1], m:'SL101', b:'SEIBERLING', w:Math.round(rp2), t:null});
+              }
+              ri += 2;
+            } else {
+              ri += 1;
+            }
+          }
+          // 重複除去（サイズ+銘柄）
+          const dedup = {};
+          for(const it of result){ const k=it.m+'||'+it.s; if(!dedup[k]) dedup[k]=it; }
+          return Object.values(dedup);
+        }
 
         if(isBs){
           items = parseBridgestone(wb);
           document.getElementById('importBrandName').value = 'ブリヂストン';
+        } else if((_isSeiber = isSeiberlingFormat(wb))){
+          items = parseSeiberling(wb);
+          document.getElementById('importBrandName').value = 'SEIBERLING';
         } else {
           // 汎用パーサー（既存ロジック）
           const ws = wb.Sheets[wb.SheetNames[0]];
@@ -12538,7 +12584,9 @@ window.addEventListener('storageReady', function(){
           document.getElementById('importExecBtn').disabled = false;
         } else {
           // デバッグ: 最初の5行を表示してユーザーに確認させる
-          const debugRows = rows.filter(r=>r&&r.some(c=>c!==null)).slice(0,5);
+          const _dbgWs = wb.Sheets[wb.SheetNames[0]];
+          const _dbgRows = _dbgWs ? XLSX.utils.sheet_to_json(_dbgWs, {header:1, defval:null}) : [];
+          const debugRows = _dbgRows.filter(r=>r&&r.some(c=>c!==null)).slice(0,5);
           const debugHtml = debugRows.length > 0
             ? '<details style="margin-top:8px;font-size:11px;"><summary style="cursor:pointer;color:var(--text-2);">ファイル内容を確認（最初の5行）</summary>'
               + '<div style="overflow-x:auto;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:4px;margin-top:4px;">'
