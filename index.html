@@ -7016,7 +7016,7 @@ window.addEventListener('storageReady', function(){
             const sizeRaw= String(row[5]||'').trim();
             const janRaw = row[9];
             if(!brand || !model || !sizeRaw || !janRaw) continue;
-            const sm = sizeRaw.replace(/\s+R/, 'R').match(/(\d+\/\d+R\d+[A-Z0-9]*)/);
+            const sm = sizeRaw.replace(/\s+R/, 'R').match(/(\d+(?:\/\d+)?R\d+[A-Z0-9]*)/);
             if(!sm) continue;
             const size = sm[1];
             const jan  = String(Math.round(janRaw));
