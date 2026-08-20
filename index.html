@@ -1297,6 +1297,8 @@
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">銘柄ごとのJANコードExcelを取り込みます。スキャン時の自動認識や商品登録時のJAN自動入力に使用されます。</p>
     <div id="importedJanPreview" style="margin-bottom:12px;"></div>
     <button class="btn btn-ghost btn-sm" id="openImportJanBtn">📦 JANコードを取込む（Excel）</button>
+    <button class="btn btn-ghost btn-sm" id="bulkApplyJanBtn" style="margin-left:8px;">🔗 JANコードを一括紐づけ</button>
+    <div id="bulkApplyJanMsg" style="margin-top:8px;"></div>
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🔍 重複商品管理</div>
@@ -6972,7 +6974,54 @@ window.addEventListener('storageReady', function(){
     }
     renderImportedJanPreview();
 
-    document.getElementById('openImportJanBtn').addEventListener('click', ()=>{
+    document.getElementById('bulkApplyJanBtn').addEventListener('click', async ()=>{
+    const msgEl = document.getElementById('bulkApplyJanMsg');
+    if(!ALL_JAN_LOOKUP.length){ msgEl.innerHTML='<div class="msg msg-error">JANデータベースが空です。先にJANコードを取込んでください。</div>'; return; }
+    // 全商品を照合
+    const targets = [];
+    for(const p of products){
+      if(p.productType==='order') continue;
+      if(p.barcode) continue; // 既にJANあり
+      if(p._suppressAutoJan) continue; // 手動で空白保存済み
+      if(!p.spec) continue;
+      const pSize = normSpecSize(p.spec);
+      if(!pSize) continue;
+      const sizeMatches = ALL_JAN_LOOKUP.filter(e=>e.s===pSize);
+      const scored = sizeMatches.map(e=>({...e, score:scoreModelMatch(p.name||'',e.m)})).sort((a,b)=>b.score-a.score);
+      if(scored.length>0 && scored[0].score>=0.9){
+        targets.push({product:p, jan:scored[0]});
+      }
+    }
+    if(!targets.length){ msgEl.innerHTML='<div class="msg msg-ok">紐づけ対象の商品がありません（既に全商品にJANコードが設定されているか、一致するデータがありません）。</div>'; return; }
+    // 確認プレビュー
+    const previewHtml = '<div class="msg msg-ok">'+targets.length+'件の商品に紐づけできます。</div>'
+      +'<div style="margin:8px 0;max-height:180px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:var(--bg-1);">'
+      +'<th style="padding:5px 8px;text-align:left;">商品名</th><th style="padding:5px 8px;text-align:left;">サイズ</th><th style="padding:5px 8px;text-align:left;">JANコード</th></tr>'
+      +targets.slice(0,30).map(t=>'<tr style="border-top:1px solid var(--line-soft);">'
+        +'<td style="padding:4px 8px;">'+escapeHtml(t.product.name||'')+'</td>'
+        +'<td style="padding:4px 8px;">'+escapeHtml(normSpecSize(t.product.spec)||'')+'</td>'
+        +'<td style="padding:4px 8px;font-family:var(--font-mono);">'+escapeHtml(t.jan.j)+'</td>'
+        +'</tr>').join('')
+      +(targets.length>30?'<tr><td colspan="3" style="padding:4px 8px;color:var(--text-3);">... 他 '+(targets.length-30)+' 件</td></tr>':'')
+      +'</table></div>'
+      +'<button class="btn btn-amber btn-sm" id="bulkApplyJanExecBtn">✅ 一括紐づけを実行する</button>';
+    msgEl.innerHTML = previewHtml;
+    document.getElementById('bulkApplyJanExecBtn').addEventListener('click', async ()=>{
+      let count = 0;
+      for(const {product, jan} of targets){
+        product.barcode = jan.j;
+        if(!product.partno) product.partno = jan.p;
+        product._suppressAutoJan = false;
+        await saveProduct(product);
+        count++;
+      }
+      msgEl.innerHTML = '<div class="msg msg-ok">✅ '+count+'件のJANコードを紐づけしました。</div>';
+      renderProducts();
+    });
+  });
+
+  document.getElementById('openImportJanBtn').addEventListener('click', ()=>{
       document.getElementById('janFileInput').value = '';
       document.getElementById('janImportPreview').innerHTML = '';
       document.getElementById('janImportMsg').innerHTML = '';
@@ -9275,7 +9324,7 @@ window.addEventListener('storageReady', function(){
           const best = scored[0];
           document.getElementById('f_barcode').value = best.j;
           if(!p.partno) document.getElementById('f_partno').value = best.p;
-          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表からJAN候補を自動入力しました：<b>'+escapeHtml(best.b+' '+best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">※ 内容を確認して「保存」してください。不要な場合はJANコード欄を空白にして保存すると次回から自動入力されません。</span></div>';
+          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表からJAN候補を自動入力しました：<b>'+escapeHtml((best.b ? best.b+' ' : '')+best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">※ 内容を確認して「保存」してください。不要な場合はJANコード欄を空白にして保存すると次回から自動入力されません。</span></div>';
         }
       }
     }
