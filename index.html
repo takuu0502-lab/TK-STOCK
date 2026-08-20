@@ -9142,8 +9142,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('janLookupMsg').innerHTML = '';
     document.getElementById('modalDelete').style.display = 'inline-block';
     modal.classList.add('show');
-    // バーコード未設定の場合、JANルックアップから自動補完して即保存
-    if(!p.barcode && p.spec){
+    // バーコード未設定かつ自動付与抑制フラグがない場合、JANルックアップから候補を提案（即時保存しない）
+    if(!p.barcode && !p._suppressAutoJan && p.spec){
       const pSize = normSpecSize(p.spec);
       if(pSize){
         const sizeMatches = ALL_JAN_LOOKUP.filter(e=>e.s===pSize);
@@ -9153,17 +9153,7 @@ window.addEventListener('storageReady', function(){
           const best = scored[0];
           document.getElementById('f_barcode').value = best.j;
           if(!p.partno) document.getElementById('f_partno').value = best.p;
-          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 JANコードを自動設定しました：<b>'+escapeHtml(best.b+' '+best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">保存中...</span></div>';
-          // 即時保存
-          p.barcode = best.j;
-          if(!p.partno) p.partno = best.p;
-          p.updatedAt = Date.now();
-          saveProducts().then(()=>{
-            document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表からJANコードを自動設定しました：<b>'+escapeHtml(best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">✅ 自動保存しました</span></div>';
-          }).catch(()=>{
-            p.barcode = ''; // ロールバック
-            document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-error">⚠️ 自動保存に失敗しました。保存ボタンで再試行してください。</div>';
-          });
+          document.getElementById('janLookupMsg').innerHTML = '<div class="msg msg-ok">📗 ブリヂストン価格表からJAN候補を自動入力しました：<b>'+escapeHtml(best.b+' '+best.m)+'</b><br><span style="font-size:11px;opacity:0.8;">※ 内容を確認して「保存」してください。不要な場合はJANコード欄を空白にして保存すると次回から自動入力されません。</span></div>';
         }
       }
     }
@@ -9938,6 +9928,12 @@ window.addEventListener('storageReady', function(){
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
       Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
+      if(!barcode) {
+        p._suppressAutoJan = true;
+      } else {
+        p._suppressAutoJan = false;
+      }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク（見積タブとの価格連動に必要）
       if(!p.catalogKey){
         const _autoCatEntry = findCatalogEntryForProduct(p);
