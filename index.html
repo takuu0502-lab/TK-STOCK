@@ -7494,8 +7494,10 @@ window.addEventListener('storageReady', function(){
       }
       const _totalProducts = products.length;
       const _withBarcode = products.filter(p=>p.barcode).length;
+      const _suppressed = products.filter(p=>!p.barcode && p._suppressAutoJan).length;
+      const _noSpec = products.filter(p=>!p.barcode && !p._suppressAutoJan && !normSpecSize(p.spec||'')).length;
       const _noBarcode = products.filter(p=>!p.barcode && !p._suppressAutoJan && normSpecSize(p.spec||'')).length;
-      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中... (JANデータ: '+ALL_JAN_LOOKUP.length+'件 / バーコード未設定商品: '+_noBarcode+'件 / 設定済み: '+_withBarcode+'件)</div>';
+      msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">⏳ 処理中...<br>JANデータ: '+ALL_JAN_LOOKUP.length+'件 / 設定済み: '+_withBarcode+'件 / 未設定(対象): '+_noBarcode+'件 / 抑制済み: '+_suppressed+'件 / サイズなし: '+_noSpec+'件</div>';
       btn.disabled = true;
       await new Promise(r=>setTimeout(r,80));
       let changed = 0;
