@@ -12279,11 +12279,14 @@ window.addEventListener('storageReady', function(){
     const _inputStyle = 'width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:12.5px;box-sizing:border-box;';
     // ブランドの商品一覧ヘルパー
     const brandProds = b => products.filter(p=>p.brand===b && (!_tireCatId||p.majorId===_tireCatId));
-    // モデルの商品一覧ヘルパー（catalogKeyで照合、なければ名前にモデルが含まれるか）
+    // モデルの商品一覧ヘルパー（catalogKeyで照合、なければ厳密な単語境界マッチ）
     const modelProds = (b, m) => products.filter(p=>{
       if(p.brand!==b || (_tireCatId&&p.majorId!==_tireCatId)) return false;
-      if(p.catalogKey && p.catalogKey.startsWith(b+'||'+m+'||')) return true;
-      return (p.name||'').includes(m);
+      // catalogKeyがある場合は厳密一致（"001"と"001(OE)"を区別）
+      if(p.catalogKey) return p.catalogKey.startsWith(b+'||'+m+'||');
+      // フォールバック: 名前の中でモデルが単語として存在するか（スペース・記号・末尾で区切られている）
+      const escaped = m.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      return new RegExp('(?:^|[\\s　])'+escaped+'(?=[\\s　/（(]|$)').test(p.name||'');
     });
     let html = '';
     brands.forEach(brand=>{
