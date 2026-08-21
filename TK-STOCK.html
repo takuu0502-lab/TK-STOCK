@@ -12636,7 +12636,7 @@ window.addEventListener('storageReady', function(){
                 const row = rows[ri];
                 if(!row) continue;
                 const sv = String(row[2]||'');
-                const sm = sv.replace(/\s+/g,' ').match(/(\d+(?:\/\d+)?R\d+(?:\s*\d+PR)?(?:\s*[A-Z][A-Z0-9]*)?)/);
+                const sm = sv.replace(/\s+/g,' ').match(/(\d+(?:\/\d+)?R\d+(?:\s*\d+PR)?(?:\s*\d+(?:\/\d+)?[A-Z])?)/);
                 if(!sm) continue;
                 const size = sm[1].trim();
                 const nextRow = rows[ri+1] || [];
