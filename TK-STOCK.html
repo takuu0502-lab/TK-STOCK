@@ -4387,7 +4387,7 @@ window.addEventListener('storageReady', function(){
     let matches = getCatalog().filter(r => {
       if(forceTire && !isItemVisible(r)) return false;
       if(query) return r.s.indexOf(query) !== -1;
-      // 扁平率未指定: フィールド個別チェック
+      // 扁平率未指定: フィールド個別チェック（165R13 も 165/70R13 も表示）
       if(useWidth && r.s.indexOf(useWidth) === -1) return false;
       if(useInch  && r.s.indexOf(useInch)  === -1) return false;
       if(useAspect === 'NOASPECT' && /\//.test(r.s)) return false;
@@ -4397,7 +4397,7 @@ window.addEventListener('storageReady', function(){
       const [fb, fm] = useModel.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
     }
-    const queryLabel = query || ((useWidth||'')+(useInch ? 'R'+useInch : '')) || (useModel ? useModel.replace('||',' ') : '');
+    const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
     // 自社登録タイヤを取得（統合表示用）
     const _tireCatM = categories.find(c => c.name === 'タイヤ');
     const manualMatched = (_tireCatM && (useWidth || useInch)) ? products.filter(p => {
