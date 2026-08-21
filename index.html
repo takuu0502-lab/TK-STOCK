@@ -12293,7 +12293,7 @@ window.addEventListener('storageReady', function(){
       const prods = brandProds(brand);
       const isOpen = _expandedUrlBrands.has(brand);
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
-      const brandUrlExisting = prods.map(p=>p.url||'').find(u=>u)||'';
+      const brandUrlExisting = ''; // 自動表示しない（全銘柄一括設定専用欄）
       const brandUrlCount = prods.filter(p=>p.url).length;
       html += '<div style="border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden;">'
         // ブランド行
