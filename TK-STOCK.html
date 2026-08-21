@@ -7133,7 +7133,7 @@ window.addEventListener('storageReady', function(){
       const _filteredBase = [...BS_JAN_LOOKUP, ...SL201_JAN_LOOKUP, ...SL101_JAN_LOOKUP, ...LUFT_RV2_JAN_LOOKUP].filter(e=>!_baseKeys.has(e.m+'||'+e.s));
       ALL_JAN_LOOKUP = [..._filteredBase, ...importedJanItems];
       await saveImportedJanItems();
-      renderImportedJanPreview();
+      if(typeof window._renderImportedJanPreview === 'function') window._renderImportedJanPreview();
       msgEl.innerHTML = '<div class="msg msg-ok">✅ '+_parsedJanData.length+'件を取込みました。</div>';
       document.getElementById('janImportExecBtn').disabled = true;
       setTimeout(()=>{ document.getElementById('importJanModal').classList.remove('show'); }, 1200);
