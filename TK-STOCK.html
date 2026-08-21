@@ -12268,9 +12268,12 @@ window.addEventListener('storageReady', function(){
   window.renderBulkUrlTable = function renderBulkUrlTable(){
     const wrap = document.getElementById('bulkUrlTable');
     if(!wrap) return;
+    // タイヤカテゴリのみ対象
+    const _tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
+    const tireProducts = _tireCatId ? products.filter(p=>p.majorId===_tireCatId) : products;
     // ブランド→商品一覧を集計
     const brandMap = {};
-    products.forEach(p=>{
+    tireProducts.forEach(p=>{
       const b = (p.brand||'（ブランドなし）').trim();
       if(!brandMap[b]) brandMap[b] = [];
       brandMap[b].push(p);
