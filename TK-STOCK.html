@@ -12463,9 +12463,10 @@ window.addEventListener('storageReady', function(){
     _handyBc.addEventListener('input', function(){
       clearTimeout(_handyScanTimer);
       const el = this;
+      // スキャナーは30ms以内に入力完了 → 100ms後に発火（連続スキャンでも安全）
       _handyScanTimer = setTimeout(()=>{
         if((el.value||'').trim().length >= 8) _handyLookup(el);
-      }, 500);
+      }, 100);
     });
     // 検索ボタン（手動フォールバック）
     const _handySearchBtn = document.getElementById('handySearchBtn');
