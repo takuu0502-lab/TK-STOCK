@@ -1077,8 +1077,11 @@
     <!-- ハンディモード（入庫タブ内） -->
     <div id="handyWrap" style="display:none;background:var(--bg-2);border-radius:14px;padding:16px;margin-bottom:18px;max-width:480px;">
       <div style="font-size:12px;font-weight:700;color:var(--text-3);text-align:center;letter-spacing:1px;margin-bottom:12px;">📱 ハンディ入出庫モード</div>
-      <input type="text" id="handyBarcode" placeholder="バーコードをスキャン または 入力" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="none"
-        style="width:100%;box-sizing:border-box;font-size:20px;padding:14px 12px;border:2px solid var(--amber);border-radius:12px;background:var(--bg-1);color:var(--text-1);text-align:center;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input type="text" id="handyBarcode" placeholder="バーコードをスキャン または 入力" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="none"
+          style="flex:1;min-width:0;box-sizing:border-box;font-size:20px;padding:14px 12px;border:2px solid var(--amber);border-radius:12px;background:var(--bg-1);color:var(--text-1);text-align:center;">
+        <button id="handySearchBtn" type="button" style="flex-shrink:0;padding:0 16px;border-radius:12px;border:none;background:var(--amber);color:#fff;font-size:15px;font-weight:700;cursor:pointer;">検索</button>
+      </div>
       <div id="handyProductArea" style="display:none;background:var(--bg-1);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div id="handyProductName" style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:2px;"></div>
         <div id="handyProductSpec" style="font-size:14px;color:var(--text-2);margin-bottom:10px;"></div>
@@ -12416,7 +12419,6 @@ window.addEventListener('storageReady', function(){
     });
 
     // バーコード入力（スキャナー対応）
-    let _handyScanTimer = null;
     let _handyLookupLock = false; // 二重発火防止ロック
     function _handyLookup(inputEl){
       if(_handyLookupLock) return;
@@ -12424,9 +12426,8 @@ window.addEventListener('storageReady', function(){
       if(!raw) return;
       // 入力値を即クリア（二重スキャン防止）
       inputEl.value = '';
-      clearTimeout(_handyScanTimer);
       _handyLookupLock = true;
-      setTimeout(()=>{ _handyLookupLock = false; }, 600);
+      setTimeout(()=>{ _handyLookupLock = false; }, 250);
 
       const code = raw;
       // 既存のfindAllByBarcode関数を使用（大文字小文字・店舗優先対応）
@@ -12449,23 +12450,17 @@ window.addEventListener('storageReady', function(){
     }
     const _handyBc = document.getElementById('handyBarcode');
     _handyBc.setAttribute('autocomplete','off');
-    // Enter / Go / 改行 キーで即検索（keydownのみ: keyupとの二重発火を避ける）
+    // Enter / Go キーで即検索（keydownのみ）
     _handyBc.addEventListener('keydown', function(e){
-      if(e.key==='Enter'||e.key==='Go'||e.key==='\n'||e.keyCode===13){ e.preventDefault(); _handyLookup(this); }
+      if(e.key==='Enter'||e.key==='Go'||e.keyCode===13){ e.preventDefault(); _handyLookup(this); }
     });
     // スキャナーが改行をvalueに含めてchangeを発火する場合
     _handyBc.addEventListener('change', function(){
       if((this.value||'').match(/[\r\n]/)) { _handyLookup(this); }
     });
-    // input イベント: 300ms間入力がなく8文字以上なら自動検索
-    _handyBc.addEventListener('input', function(){
-      clearTimeout(_handyScanTimer);
-      const el = this;
-      _handyScanTimer = setTimeout(()=>{
-        if((el.value||'').match(/[\r\n]/)) { _handyLookup(el); return; }
-        if((el.value||'').trim().length >= 8) _handyLookup(el);
-      }, 300);
-    });
+    // 検索ボタン（Enterが来ない場合の手動フォールバック）
+    const _handySearchBtn = document.getElementById('handySearchBtn');
+    if(_handySearchBtn) _handySearchBtn.addEventListener('click', ()=> _handyLookup(_handyBc));
 
     document.getElementById('handyMinus').addEventListener('click', ()=>{
       const el = document.getElementById('handyQty');
