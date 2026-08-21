@@ -12419,17 +12419,23 @@ window.addEventListener('storageReady', function(){
       _handyLookupLock = true;
       setTimeout(()=>{ _handyLookupLock = false; }, 600);
 
-      const code = raw.toLowerCase();
-      let p = products.find(x=>x.barcode===code);
-      if(!p){
-        const kw = code.toUpperCase();
-        p = products.find(x=>(x.name||'').toUpperCase().includes(kw)||(x.spec||'').toUpperCase().includes(kw));
-      }
-      if(p){
-        _handyShowProduct(p);
+      const code = raw;
+      // 既存のfindAllByBarcode関数を使用（大文字小文字・店舗優先対応）
+      const candidates = findAllByBarcode(code);
+      if(candidates.length === 1){
+        _handyShowProduct(candidates[0]);
+      } else if(candidates.length > 1){
+        showBarcodeSelectModal(candidates).then(p=>{ if(p) _handyShowProduct(p); });
       } else {
-        document.getElementById('handyMsg').innerHTML = '<div style="color:var(--red);font-size:14px;">商品が見つかりません: '+escapeHtml(code)+'</div>';
-        inputEl.style.borderColor = 'var(--red)';
+        // バーコードで見つからなければ名前/サイズで検索
+        const kw = code.toUpperCase();
+        const p = products.find(x=>(x.name||'').toUpperCase().includes(kw)||(x.spec||'').toUpperCase().includes(kw));
+        if(p){
+          _handyShowProduct(p);
+        } else {
+          document.getElementById('handyMsg').innerHTML = '<div style="color:var(--red);font-size:14px;">商品が見つかりません: '+escapeHtml(code)+'</div>';
+          inputEl.style.borderColor = 'var(--red)';
+        }
       }
     }
     const _handyBc = document.getElementById('handyBarcode');
