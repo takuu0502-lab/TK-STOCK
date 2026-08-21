@@ -2114,10 +2114,11 @@ window.addEventListener('storageReady', function(){
 
   function normSpecSize(spec){
     if(!spec) return '';
-    const s = spec.toUpperCase().replace(/\s+/g,'');
-    const m = s.match(/(\d+(?:\/\d+)?R\d{2})/);
+    const s = spec.toUpperCase().replace(/\s+/g,' ').trim();
+    // 扁平率あり（例: 165/70R13, 165/70R13 6PR）
+    const m = s.match(/(\d+\/\d+R\d{2})/);
     if(m) return m[1];
-    // 扁平率なし（例: 145R12）
+    // 扁平率なし（例: 165R13, 165R13 6PR）— PRは除いた基本サイズを返す
     const m2 = s.match(/(\d{3,4}R\d{2})/);
     return m2 ? m2[1] : '';
   }
@@ -12632,9 +12633,9 @@ window.addEventListener('storageReady', function(){
                 const row = rows[ri];
                 if(!row) continue;
                 const sv = String(row[2]||'');
-                const sm = sv.match(/(\d+(?:\/\d+)?R\d+[A-Z0-9]*)/);
+                const sm = sv.replace(/\s+/g,' ').match(/(\d+(?:\/\d+)?R\d+(?:\s*\d+PR)?(?:\s*[A-Z][A-Z0-9]*)?)/);
                 if(!sm) continue;
-                const size = sm[1];
+                const size = sm[1].trim();
                 const nextRow = rows[ri+1] || [];
                 for(const [ciStr, modelName] of Object.entries(modelMap)){
                   const ci = parseInt(ciStr);
