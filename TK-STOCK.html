@@ -4388,10 +4388,10 @@ window.addEventListener('storageReady', function(){
     let matches = getCatalog().filter(r => {
       if(forceTire && !isItemVisible(r)) return false;
       if(query) return r.s.indexOf(query) !== -1;
-      // 扁平率未指定: フィールド個別チェック（165R13 も 165/70R13 も表示）
+      // 扁平率未指定: 扁平率なしサイズのみ（165R13系）
       if(useWidth && r.s.indexOf(useWidth) === -1) return false;
       if(useInch  && r.s.indexOf(useInch)  === -1) return false;
-      if(useAspect === 'NOASPECT' && /\//.test(r.s)) return false;
+      if(/\//.test(r.s)) return false; // スラッシュあり（165/70R13等）は除外
       return !!(useWidth || useInch);
     });
     if(useModel){
@@ -4407,7 +4407,8 @@ window.addEventListener('storageReady', function(){
       if(useWidth && p.spec.indexOf(useWidth) === -1) return false;
       if(useInch  && p.spec.indexOf(useInch)  === -1) return false;
       if(useAspect && useAspect !== 'NOASPECT' && p.spec.indexOf(useAspect) === -1) return false;
-      if(useAspect === 'NOASPECT' && !/^\d+R\d+/.test(p.spec)) return false;
+      if(useAspect === 'NOASPECT' && /\//.test(p.spec)) return false;
+      if(!useAspect && useWidth && useInch && /\//.test(p.spec)) return false; // 扁平率空欄時はスラッシュなしのみ
       if(findCatalogEntryForProduct(p)) return false;
       return true;
     }) : [];
@@ -4769,7 +4770,8 @@ window.addEventListener('storageReady', function(){
       if(useWidth && spec.indexOf(useWidth) === -1) return false;
       if(useInch  && spec.indexOf(useInch)  === -1) return false;
       if(useAspect && useAspect !== 'NOASPECT' && spec.indexOf(useAspect) === -1) return false;
-      if(useAspect === 'NOASPECT' && !/^\d+R\d+/.test(spec)) return false;
+      if(useAspect === 'NOASPECT' && /\//.test(spec)) return false;
+      if(!useAspect && useWidth && useInch && /\//.test(spec)) return false; // 扁平率空欄時はスラッシュなしのみ
       // カタログ由来の商品（価格表から自動登録）は除外
       if(p._fromCatalog) return false;
       // 既存データ対応：カタログエントリと名前・サイズが一致する場合も除外
@@ -4979,10 +4981,11 @@ window.addEventListener('storageReady', function(){
       if(selectedTireWidth !== null && !(p.spec && p.spec.indexOf(selectedTireWidth) !== -1)) return false;
       if(selectedTireAspect !== null && !(p.spec && (
         selectedTireAspect === 'NOASPECT'
-          // 扁平率なし専用フィルター: 幅の直後にRが来るサイズのみ
-          ? /^\d+R\d+/.test(p.spec)
+          ? !/\//.test(p.spec)
           : p.spec.indexOf(selectedTireAspect) !== -1
       ))) return false;
+      // 扁平率未指定で幅・インチ両方指定の場合はスラッシュなしサイズのみ
+      if(selectedTireAspect === null && selectedTireWidth !== null && selectedTireInch !== null && p.spec && /\//.test(p.spec)) return false;
       if(selectedTireInch !== null && !(p.spec && p.spec.indexOf(selectedTireInch) !== -1)) return false;
       if(selectedCatalogModelKey){
         const [_ckB, _ckM] = selectedCatalogModelKey.split('||');
