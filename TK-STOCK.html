@@ -12336,6 +12336,7 @@ window.addEventListener('storageReady', function(){
     }
 
     function _handyShowProduct(p){
+      const isSame = _handyProduct && _handyProduct.id === p.id;
       _handyProduct = p;
       const branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       const stk = p.branchStock ? (p.branchStock[branch]||0) : (p.stock||0);
@@ -12345,7 +12346,15 @@ window.addEventListener('storageReady', function(){
       document.getElementById('handyMinStock').textContent = (p.minStock||0) + '本';
       document.getElementById('handyProductArea').style.display = 'block';
       document.getElementById('handyActionArea').style.display = 'block';
-      document.getElementById('handyMsg').innerHTML = '';
+      // 同じ商品を連続スキャン → 数量を+1
+      const qtyEl = document.getElementById('handyQty');
+      if(isSame){
+        qtyEl.value = (parseInt(qtyEl.value)||1) + 1;
+        document.getElementById('handyMsg').innerHTML = '<div style="color:var(--teal);font-size:13px;">✅ 数量: '+qtyEl.value+'本</div>';
+      } else {
+        qtyEl.value = 1;
+        document.getElementById('handyMsg').innerHTML = '';
+      }
       document.getElementById('handyBarcode').style.borderColor = 'var(--teal)';
     }
 
