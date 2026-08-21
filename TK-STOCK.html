@@ -4382,13 +4382,22 @@ window.addEventListener('storageReady', function(){
       }
     }
     const aspectPart = (useAspect && useAspect !== 'NOASPECT') ? useAspect : '';
-    const query = (useWidth||'') + aspectPart + (useInch||'');
-    let matches = getCatalog().filter(r => (!forceTire || isItemVisible(r)) && (!query || r.s.indexOf(query) !== -1));
+    // 扁平率あり: "165/70R13"形式で連結検索 / 扁平率なし: 幅・インチを個別チェック
+    const query = aspectPart ? (useWidth||'') + aspectPart + (useInch||'') : '';
+    let matches = getCatalog().filter(r => {
+      if(forceTire && !isItemVisible(r)) return false;
+      if(query) return r.s.indexOf(query) !== -1;
+      // 扁平率未指定: フィールド個別チェック
+      if(useWidth && r.s.indexOf(useWidth) === -1) return false;
+      if(useInch  && r.s.indexOf(useInch)  === -1) return false;
+      if(useAspect === 'NOASPECT' && /\//.test(r.s)) return false;
+      return !!(useWidth || useInch);
+    });
     if(useModel){
       const [fb, fm] = useModel.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
     }
-    const queryLabel = query || (useModel ? useModel.replace('||',' ') : '');
+    const queryLabel = query || ((useWidth||'')+(useInch ? 'R'+useInch : '')) || (useModel ? useModel.replace('||',' ') : '');
     // 自社登録タイヤを取得（統合表示用）
     const _tireCatM = categories.find(c => c.name === 'タイヤ');
     const manualMatched = (_tireCatM && (useWidth || useInch)) ? products.filter(p => {
