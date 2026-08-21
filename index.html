@@ -12632,7 +12632,7 @@ window.addEventListener('storageReady', function(){
                 const row = rows[ri];
                 if(!row) continue;
                 const sv = String(row[2]||'');
-                const sm = sv.match(/(\d+\/\d+R\d+[A-Z0-9]*)/);
+                const sm = sv.match(/(\d+(?:\/\d+)?R\d+[A-Z0-9]*)/);
                 if(!sm) continue;
                 const size = sm[1];
                 const nextRow = rows[ri+1] || [];
