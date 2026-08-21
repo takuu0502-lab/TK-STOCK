@@ -1608,6 +1608,10 @@
       <label>備考・メモ</label>
       <textarea id="f_memo" rows="3" placeholder="メモを入力（任意）" style="resize:vertical;width:100%;min-height:70px;"></textarea>
     </div>
+    <div class="field" style="margin-top:8px;">
+      <label>商品URL（リンク）</label>
+      <input type="url" id="f_url" placeholder="https://…（任意）" style="width:100%;">
+    </div>
     <div id="modalMsg"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="modalCancel">キャンセル</button>
@@ -9290,6 +9294,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_cost_fixed').checked = false;
     document.getElementById('f_sell_fixed').checked = false;
     document.getElementById('f_memo').value = '';
+    document.getElementById('f_url').value = '';
     document.getElementById('f_mfyear').value = '';
     document.getElementById('f_type_stock').checked = true;
     document.getElementById('f_order_customer').value = '';
@@ -9348,6 +9353,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_cost_fixed').checked = hasBranchFixedCost(p, _editBranch2);
     document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
     document.getElementById('f_memo').value = p.memo || '';
+    document.getElementById('f_url').value = p.url || '';
     const _mfEditBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     document.getElementById('f_mfyear').value = getBranchManufactureYear(p, _mfEditBranch) || '';
     const _pType = p.productType || 'stock';
@@ -9457,6 +9463,7 @@ window.addEventListener('storageReady', function(){
         })()
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<button class="btn btn-ghost" id="detailQrBtn" style="margin-top:10px;font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
+      + (p.url ? '<div style="margin-top:8px;"><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:14px;text-decoration:none;border:1px solid var(--teal);border-radius:8px;padding:7px 16px;">🔗 商品URLを開く</a></div>' : '')
       + '</div>'
       + (()=>{
           const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
@@ -10080,6 +10087,7 @@ window.addEventListener('storageReady', function(){
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const memo = document.getElementById('f_memo').value.trim();
+    const url = document.getElementById('f_url').value.trim();
     const manufactureYear = parseInt(document.getElementById('f_mfyear').value||'0',10)||null;
     // ホイールスペック
     const _wheelMajor = majorById(majorId);
@@ -10150,7 +10158,7 @@ window.addEventListener('storageReady', function(){
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
@@ -10170,7 +10178,7 @@ window.addEventListener('storageReady', function(){
       if(_fixedCost && costPrice > 0) initBranchFixedCost[newBranchId] = costPrice;
       const initBranchManufactureYear = {};
       if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
