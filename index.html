@@ -1015,6 +1015,7 @@
       <button class="tab-btn" data-tab="history">入出庫履歴</button>
       <button class="tab-btn" data-tab="pricing">価格調整</button>
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
+      <button class="tab-btn" data-tab="handy" id="handyTabBtn" style="display:none;">📱 ハンディ</button>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch" style="display:none;">商品検索</button>
@@ -1750,6 +1751,63 @@
 </div>
 
 <!-- ===== 棚卸しタブ ===== -->
+<div class="panel" id="tab-handy" style="display:none;padding:12px 10px 100px;">
+  <!-- ハンディターミナル専用 入出庫モード -->
+  <div style="max-width:480px;margin:0 auto;">
+    <div style="font-size:13px;font-weight:700;color:var(--text-3);text-align:center;letter-spacing:1px;margin-bottom:14px;">📱 ハンディ入出庫モード</div>
+
+    <!-- スキャン入力 -->
+    <div style="margin-bottom:16px;">
+      <input type="text" id="handyBarcode" placeholder="バーコードをスキャン または 入力" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="none"
+        style="width:100%;box-sizing:border-box;font-size:20px;padding:16px 14px;border:2px solid var(--amber);border-radius:12px;background:var(--bg-1);color:var(--text-1);text-align:center;">
+    </div>
+
+    <!-- 商品情報表示エリア -->
+    <div id="handyProductArea" style="display:none;background:var(--bg-2);border-radius:14px;padding:18px 16px;margin-bottom:16px;">
+      <div id="handyProductName" style="font-size:20px;font-weight:700;color:var(--text-1);margin-bottom:4px;"></div>
+      <div id="handyProductSpec" style="font-size:15px;color:var(--text-2);margin-bottom:12px;"></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:4px;">
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:var(--text-3);">現在庫</div>
+          <div id="handyStock" style="font-size:28px;font-weight:700;color:var(--text-1);"></div>
+        </div>
+        <div style="text-align:center;" id="handyMinStockArea">
+          <div style="font-size:11px;color:var(--text-3);">最低在庫</div>
+          <div id="handyMinStock" style="font-size:28px;font-weight:700;color:var(--text-3);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数量・操作ボタン -->
+    <div id="handyActionArea" style="display:none;">
+      <!-- 数量ステッパー -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;">
+        <button type="button" id="handyMinus" style="width:60px;height:60px;font-size:30px;border-radius:50%;border:2px solid var(--line);background:var(--bg-2);color:var(--text-1);cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+        <input type="number" id="handyQty" value="1" min="1" style="width:80px;font-size:30px;font-weight:700;text-align:center;border:2px solid var(--amber);border-radius:10px;padding:10px 0;background:var(--bg-1);color:var(--text-1);">
+        <button type="button" id="handyPlus" style="width:60px;height:60px;font-size:30px;border-radius:50%;border:2px solid var(--line);background:var(--bg-2);color:var(--text-1);cursor:pointer;display:flex;align-items:center;justify-content:center;">＋</button>
+      </div>
+      <!-- 入庫・出庫ボタン -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <button id="handyInBtn" style="padding:20px 0;font-size:20px;font-weight:700;border-radius:14px;border:none;background:var(--teal);color:#fff;cursor:pointer;letter-spacing:1px;">入 庫</button>
+        <button id="handyOutBtn" style="padding:20px 0;font-size:20px;font-weight:700;border-radius:14px;border:none;background:var(--red);color:#fff;cursor:pointer;letter-spacing:1px;">出 庫</button>
+      </div>
+      <button id="handyCancelBtn" style="width:100%;padding:12px 0;font-size:14px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg-1);color:var(--text-2);cursor:pointer;">キャンセル</button>
+    </div>
+
+    <!-- メッセージ -->
+    <div id="handyMsg" style="min-height:32px;font-size:14px;text-align:center;margin-top:8px;"></div>
+
+    <!-- 今回のセッションログ -->
+    <div style="margin-top:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text-3);">今回の作業</div>
+        <button id="handySessionClear" style="font-size:11px;color:var(--text-3);border:1px solid var(--line);background:var(--bg-1);border-radius:6px;padding:3px 10px;cursor:pointer;">クリア</button>
+      </div>
+      <div id="handySessionLog" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+  </div>
+</div>
+
 <div class="panel" id="tab-stockcount" style="display:none;">
   <div id="stockcountContent"></div>
 </div>
@@ -3564,6 +3622,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
+      if(tab === 'handy'){ setTimeout(()=>{ const el=document.getElementById('handyBarcode'); if(el) el.focus(); },100); }
       if(tab === 'list'){
         specPanelOpen = true;
         document.getElementById('openSpecSearch').classList.add('active');
@@ -11831,6 +11890,7 @@ window.addEventListener('storageReady', function(){
     document.querySelector('.tab-btn[data-tab="out"]').style.display = writable ? 'inline-block' : 'none';
     document.querySelector('.tab-btn[data-tab="history"]').style.display = writable ? 'inline-block' : 'none';
     document.querySelector('.tab-btn[data-tab="stockcount"]').style.display = writable ? 'inline-block' : 'none';
+    document.querySelector('.tab-btn[data-tab="handy"]').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('quickScanBtn').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('openAddProduct').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('inventoryPrintBtn').style.display = admin ? 'inline-block' : 'none';
@@ -12278,6 +12338,119 @@ window.addEventListener('storageReady', function(){
   }
 
   // ---------- 商品URL一括設定 ----------
+  // ---------- ハンディターミナル 入出庫モード ----------
+  (function initHandyMode(){
+    let _handyProduct = null;
+    let _handySession = []; // {name, spec, type:'in'|'out', qty, time}
+
+    function _handyReset(clearMsg){
+      _handyProduct = null;
+      document.getElementById('handyProductArea').style.display = 'none';
+      document.getElementById('handyActionArea').style.display = 'none';
+      document.getElementById('handyQty').value = '1';
+      const bc = document.getElementById('handyBarcode');
+      bc.value = '';
+      bc.style.borderColor = 'var(--amber)';
+      if(clearMsg) document.getElementById('handyMsg').innerHTML = '';
+      bc.focus();
+    }
+
+    function _handyShowProduct(p){
+      _handyProduct = p;
+      const branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const stk = p.branchStock ? (p.branchStock[branch]||0) : (p.stock||0);
+      document.getElementById('handyProductName').textContent = cleanName(p.name||'');
+      document.getElementById('handyProductSpec').textContent = p.spec||'';
+      document.getElementById('handyStock').textContent = stk + '本';
+      document.getElementById('handyMinStock').textContent = (p.minStock||0) + '本';
+      document.getElementById('handyProductArea').style.display = 'block';
+      document.getElementById('handyActionArea').style.display = 'block';
+      document.getElementById('handyMsg').innerHTML = '';
+      document.getElementById('handyBarcode').style.borderColor = 'var(--teal)';
+    }
+
+    function _handyRenderSession(){
+      const el = document.getElementById('handySessionLog');
+      if(!_handySession.length){ el.innerHTML = '<div style="font-size:12px;color:var(--text-3);text-align:center;padding:8px;">まだ作業がありません</div>'; return; }
+      el.innerHTML = _handySession.slice().reverse().map(s=>{
+        const color = s.type==='in' ? 'var(--teal)' : 'var(--red)';
+        const label = s.type==='in' ? '入庫' : '出庫';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;">'
+          + '<span style="font-size:12px;font-weight:700;color:'+color+';min-width:28px;">'+label+'</span>'
+          + '<span style="font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(cleanName(s.name))+'</span>'
+          + '<span style="font-size:13px;color:var(--text-2);">'+escapeHtml(s.spec||'')+'</span>'
+          + '<span style="font-size:14px;font-weight:700;color:'+color+';min-width:36px;text-align:right;">×'+s.qty+'</span>'
+          + '</div>';
+      }).join('');
+    }
+
+    async function _handyExec(type){
+      if(!_handyProduct || !canWriteData()) return;
+      const qty = Math.max(1, parseInt(document.getElementById('handyQty').value)||1);
+      const p = _handyProduct;
+      const branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      if(!p.branchStock) p.branchStock = {};
+      const before = p.branchStock[branch]||0;
+      if(type==='in'){
+        p.branchStock[branch] = before + qty;
+      } else {
+        p.branchStock[branch] = Math.max(0, before - qty);
+      }
+      p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
+      p.updatedAt = Date.now();
+      const hist = { id:uid('h'), productId:p.id, type, qty, branchId:branch,
+        userId: currentUser?currentUser.uid:'', userName: currentUser?currentUser.displayName:'',
+        note:'', timestamp: new Date().toISOString() };
+      inventoryHistory.push(hist);
+      await saveProducts();
+      await saveInventoryHistory();
+      _handySession.push({name:p.name, spec:p.spec, type, qty, time: Date.now()});
+      _handyRenderSession();
+      const label = type==='in'?'入庫':'出庫';
+      const after = p.branchStock[branch];
+      document.getElementById('handyMsg').innerHTML = '<div style="color:'+(type==='in'?'var(--teal)':'var(--red)')+';font-weight:700;font-size:15px;">✅ '+label+' '+qty+'本完了 → 在庫 '+after+'本</div>';
+      setTimeout(()=>_handyReset(true), 1400);
+    }
+
+    // バーコード入力
+    document.getElementById('handyBarcode').addEventListener('keydown', function(e){
+      if(e.key !== 'Enter') return;
+      const code = this.value.trim().toLowerCase();
+      if(!code) return;
+      // バーコードで検索
+      let p = products.find(x=>x.barcode===code);
+      if(!p){
+        // 商品名・サイズで部分一致
+        const kw = code.toUpperCase();
+        p = products.find(x=>(x.name||'').toUpperCase().includes(kw)||(x.spec||'').toUpperCase().includes(kw));
+      }
+      if(p){
+        _handyShowProduct(p);
+      } else {
+        document.getElementById('handyMsg').innerHTML = '<div style="color:var(--red);font-size:14px;">商品が見つかりません: '+escapeHtml(code)+'</div>';
+        this.style.borderColor = 'var(--red)';
+        this.select();
+      }
+    });
+
+    document.getElementById('handyMinus').addEventListener('click', ()=>{
+      const el = document.getElementById('handyQty');
+      el.value = Math.max(1, (parseInt(el.value)||1) - 1);
+    });
+    document.getElementById('handyPlus').addEventListener('click', ()=>{
+      const el = document.getElementById('handyQty');
+      el.value = (parseInt(el.value)||1) + 1;
+    });
+    document.getElementById('handyInBtn').addEventListener('click', ()=> _handyExec('in'));
+    document.getElementById('handyOutBtn').addEventListener('click', ()=> _handyExec('out'));
+    document.getElementById('handyCancelBtn').addEventListener('click', ()=> _handyReset(true));
+    document.getElementById('handySessionClear').addEventListener('click', ()=>{
+      _handySession = [];
+      _handyRenderSession();
+    });
+    _handyRenderSession();
+  })();
+
   let _expandedUrlBrands = new Set();
   window.renderBulkUrlTable = function renderBulkUrlTable(){
     const wrap = document.getElementById('bulkUrlTable');
