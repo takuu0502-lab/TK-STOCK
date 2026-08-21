@@ -12406,11 +12406,20 @@ window.addEventListener('storageReady', function(){
       _handyReset(true);
     });
 
-    // バーコード入力（スキャナー対応：keydown/keyup/changeすべてハンドル）
+    // バーコード入力（スキャナー対応）
     let _handyScanTimer = null;
+    let _handyLookupLock = false; // 二重発火防止ロック
     function _handyLookup(inputEl){
-      const code = (inputEl.value||'').trim().replace(/[\r\n]/g,'').toLowerCase();
-      if(!code) return;
+      if(_handyLookupLock) return;
+      const raw = (inputEl.value||'').replace(/[\r\n]/g,'').trim();
+      if(!raw) return;
+      // 入力値を即クリア（二重スキャン防止）
+      inputEl.value = '';
+      clearTimeout(_handyScanTimer);
+      _handyLookupLock = true;
+      setTimeout(()=>{ _handyLookupLock = false; }, 600);
+
+      const code = raw.toLowerCase();
       let p = products.find(x=>x.barcode===code);
       if(!p){
         const kw = code.toUpperCase();
@@ -12421,31 +12430,26 @@ window.addEventListener('storageReady', function(){
       } else {
         document.getElementById('handyMsg').innerHTML = '<div style="color:var(--red);font-size:14px;">商品が見つかりません: '+escapeHtml(code)+'</div>';
         inputEl.style.borderColor = 'var(--red)';
-        inputEl.select();
       }
     }
     const _handyBc = document.getElementById('handyBarcode');
-    // Enter / Go / 改行 キーで即検索
+    _handyBc.setAttribute('autocomplete','off');
+    // Enter / Go / 改行 キーで即検索（keydownのみ: keyupとの二重発火を避ける）
     _handyBc.addEventListener('keydown', function(e){
       if(e.key==='Enter'||e.key==='Go'||e.key==='\n'||e.keyCode===13){ e.preventDefault(); _handyLookup(this); }
     });
-    _handyBc.addEventListener('keyup', function(e){
-      if(e.key==='Enter'||e.key==='Go'||e.key==='\n'||e.keyCode===13){ _handyLookup(this); }
-    });
     // スキャナーが改行をvalueに含めてchangeを発火する場合
     _handyBc.addEventListener('change', function(){
-      if((this.value||'').includes('\n')||(this.value||'').includes('\r')){ _handyLookup(this); return; }
+      if((this.value||'').match(/[\r\n]/)) { _handyLookup(this); }
     });
-    // input イベント: 一定時間入力がなければ自動検索（スキャナーが早く入力を完了する場合）
+    // input イベント: 300ms間入力がなく8文字以上なら自動検索
     _handyBc.addEventListener('input', function(){
       clearTimeout(_handyScanTimer);
       const el = this;
       _handyScanTimer = setTimeout(()=>{
-        // 改行を含む場合は即検索
         if((el.value||'').match(/[\r\n]/)) { _handyLookup(el); return; }
-        // 6文字以上かつ0.15秒入力がなければ検索（スキャナーは一瞬で入力完了する）
-        if((el.value||'').trim().length >= 6) _handyLookup(el);
-      }, 150);
+        if((el.value||'').trim().length >= 8) _handyLookup(el);
+      }, 300);
     });
 
     document.getElementById('handyMinus').addEventListener('click', ()=>{
