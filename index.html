@@ -12419,6 +12419,7 @@ window.addEventListener('storageReady', function(){
     });
 
     // バーコード入力（スキャナー対応）
+    let _handyScanTimer = null;
     let _handyLookupLock = false; // 二重発火防止ロック
     function _handyLookup(inputEl){
       if(_handyLookupLock) return;
@@ -12458,7 +12459,15 @@ window.addEventListener('storageReady', function(){
     _handyBc.addEventListener('change', function(){
       if((this.value||'').match(/[\r\n]/)) { _handyLookup(this); }
     });
-    // 検索ボタン（Enterが来ない場合の手動フォールバック）
+    // inputイベント: スキャナーがEnterを送らない場合の自動検索（500ms待機・8文字以上）
+    _handyBc.addEventListener('input', function(){
+      clearTimeout(_handyScanTimer);
+      const el = this;
+      _handyScanTimer = setTimeout(()=>{
+        if((el.value||'').trim().length >= 8) _handyLookup(el);
+      }, 500);
+    });
+    // 検索ボタン（手動フォールバック）
     const _handySearchBtn = document.getElementById('handySearchBtn');
     if(_handySearchBtn) _handySearchBtn.addEventListener('click', ()=> _handyLookup(_handyBc));
 
