@@ -2116,7 +2116,10 @@ window.addEventListener('storageReady', function(){
     if(!spec) return '';
     const s = spec.toUpperCase().replace(/\s+/g,'');
     const m = s.match(/(\d+(?:\/\d+)?R\d{2})/);
-    return m ? m[1] : '';
+    if(m) return m[1];
+    // 扁平率なし（例: 145R12）
+    const m2 = s.match(/(\d{3,4}R\d{2})/);
+    return m2 ? m2[1] : '';
   }
 
   // ブリヂストンの既知モデルキーワード（JAN_LOOKUPのモデル名から自動生成）
