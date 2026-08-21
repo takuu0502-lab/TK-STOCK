@@ -12265,72 +12265,123 @@ window.addEventListener('storageReady', function(){
   }
 
   // ---------- 商品URL一括設定 ----------
+  let _expandedUrlBrands = new Set();
   window.renderBulkUrlTable = function renderBulkUrlTable(){
     const wrap = document.getElementById('bulkUrlTable');
     if(!wrap) return;
-    // タイヤカテゴリのみ対象
     const _tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
-    const tireProducts = _tireCatId ? products.filter(p=>p.majorId===_tireCatId) : products;
-    // ブランド→商品一覧を集計
-    const brandMap = {};
-    tireProducts.forEach(p=>{
-      const b = (p.brand||'（ブランドなし）').trim();
-      if(!brandMap[b]) brandMap[b] = [];
-      brandMap[b].push(p);
+    const brands = getBrands().filter(b=>{
+      // カタログにあるブランドのうち、タイヤ商品が存在するもののみ
+      if(!_tireCatId) return true;
+      return products.some(p=>p.majorId===_tireCatId && p.brand===b);
     });
-    const brands = Object.keys(brandMap).sort((a,b)=>a.localeCompare(b,'ja'));
     if(!brands.length){ wrap.innerHTML = '<p style="font-size:12.5px;color:var(--text-3);">登録商品がありません。</p>'; return; }
-    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead><tr style="background:var(--bg-3);">'
-      + '<th style="padding:8px 10px;text-align:left;white-space:nowrap;">ブランド</th>'
-      + '<th style="padding:8px 10px;text-align:left;white-space:nowrap;">件数</th>'
-      + '<th style="padding:8px 10px;text-align:left;">URL</th>'
-      + '<th style="padding:8px 10px;text-align:center;white-space:nowrap;">操作</th>'
-      + '</tr></thead><tbody>';
-    brands.forEach(b=>{
-      const prods = brandMap[b];
-      // そのブランドで既に設定済みのURLを代表として表示（最初に見つかったもの）
-      const existingUrl = prods.map(p=>p.url||'').find(u=>u) || '';
-      const urlCount = prods.filter(p=>p.url).length;
-      html += '<tr style="border-bottom:1px solid var(--line);">'
-        + '<td style="padding:8px 10px;font-weight:600;">' + escapeHtml(b) + '</td>'
-        + '<td style="padding:8px 10px;color:var(--text-3);white-space:nowrap;">'
-          + prods.length + '件'
-          + (urlCount > 0 ? '<br><span style="font-size:11px;color:var(--teal);">URL設定済 '+urlCount+'件</span>' : '')
-        + '</td>'
-        + '<td style="padding:8px 10px;">'
-          + '<input type="url" data-bulk-url-brand="'+escapeHtml(b)+'" value="'+escapeHtml(existingUrl)+'" placeholder="https://…" style="width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:12.5px;box-sizing:border-box;">'
-        + '</td>'
-        + '<td style="padding:8px 10px;text-align:center;white-space:nowrap;">'
-          + '<button class="btn btn-teal btn-sm" data-bulk-url-apply="'+escapeHtml(b)+'">設定</button>'
-          + (urlCount > 0 ? ' <button class="btn btn-ghost btn-sm" data-bulk-url-clear="'+escapeHtml(b)+'" style="color:var(--red);">クリア</button>' : '')
-        + '</td>'
-        + '</tr>';
+    const _inputStyle = 'width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:12.5px;box-sizing:border-box;';
+    // ブランドの商品一覧ヘルパー
+    const brandProds = b => products.filter(p=>p.brand===b && (!_tireCatId||p.majorId===_tireCatId));
+    // モデルの商品一覧ヘルパー（catalogKeyで照合、なければ名前にモデルが含まれるか）
+    const modelProds = (b, m) => products.filter(p=>{
+      if(p.brand!==b || (_tireCatId&&p.majorId!==_tireCatId)) return false;
+      if(p.catalogKey && p.catalogKey.startsWith(b+'||'+m+'||')) return true;
+      return (p.name||'').includes(m);
     });
-    html += '</tbody></table>';
+    let html = '';
+    brands.forEach(brand=>{
+      const prods = brandProds(brand);
+      const isOpen = _expandedUrlBrands.has(brand);
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const brandUrlExisting = prods.map(p=>p.url||'').find(u=>u)||'';
+      const brandUrlCount = prods.filter(p=>p.url).length;
+      html += '<div style="border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden;">'
+        // ブランド行
+        + '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg-2);flex-wrap:wrap;">'
+        + '<span style="font-weight:700;font-size:13.5px;min-width:120px;">'+escapeHtml(brand)+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">'+prods.length+'件'+(brandUrlCount?'・URL設定済'+brandUrlCount+'件':'')+'</span>'
+        + '<input type="url" data-burl-brand="'+escapeHtml(brand)+'" value="'+escapeHtml(brandUrlExisting)+'" placeholder="ブランド全体のURL（https://…）" style="'+_inputStyle+'flex:1;min-width:180px;">'
+        + '<button class="btn btn-teal btn-sm" data-burl-apply-brand="'+escapeHtml(brand)+'" style="white-space:nowrap;">全銘柄に設定</button>'
+        + (brandUrlCount ? '<button class="btn btn-ghost btn-sm" data-burl-clear-brand="'+escapeHtml(brand)+'" style="color:var(--red);white-space:nowrap;">クリア</button>' : '')
+        + '<button class="btn btn-ghost btn-sm" data-burl-toggle="'+escapeHtml(brand)+'" style="white-space:nowrap;">銘柄別 '+(isOpen?'▲':'▼')+'（'+models.length+'）</button>'
+        + '</div>';
+      // モデル展開部分
+      if(isOpen && models.length){
+        html += '<div style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:6px;">'
+          + '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">銘柄ごとに個別のURLを設定できます。</div>';
+        models.forEach(model=>{
+          const mProds = modelProds(brand, model);
+          const mUrl = mProds.map(p=>p.url||'').find(u=>u)||'';
+          const mUrlCount = mProds.filter(p=>p.url).length;
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-1);border-radius:6px;flex-wrap:wrap;">'
+            + '<span style="font-size:12.5px;min-width:120px;flex:0 0 120px;">'+escapeHtml(model)+'</span>'
+            + '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">'+mProds.length+'件'+(mUrlCount?'・設定済'+mUrlCount+'件':'')+'</span>'
+            + '<input type="url" data-burl-model="'+escapeHtml(brand+'||'+model)+'" value="'+escapeHtml(mUrl)+'" placeholder="https://…" style="'+_inputStyle+'flex:1;min-width:160px;">'
+            + '<button class="btn btn-teal btn-sm" data-burl-apply-model="'+escapeHtml(brand+'||'+model)+'" style="white-space:nowrap;">設定</button>'
+            + (mUrlCount ? '<button class="btn btn-ghost btn-sm" data-burl-clear-model="'+escapeHtml(brand+'||'+model)+'" style="color:var(--red);white-space:nowrap;">クリア</button>' : '')
+            + '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
     wrap.innerHTML = html;
-    // イベント: 設定ボタン
-    wrap.querySelectorAll('[data-bulk-url-apply]').forEach(btn=>{
+
+    // アコーディオン開閉
+    wrap.querySelectorAll('[data-burl-toggle]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const b = btn.getAttribute('data-burl-toggle');
+        if(_expandedUrlBrands.has(b)) _expandedUrlBrands.delete(b); else _expandedUrlBrands.add(b);
+        renderBulkUrlTable();
+      });
+    });
+    // ブランド全体に設定
+    wrap.querySelectorAll('[data-burl-apply-brand]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        const brand = btn.getAttribute('data-bulk-url-apply');
-        const input = wrap.querySelector('[data-bulk-url-brand="'+CSS.escape(brand)+'"]');
+        const brand = btn.getAttribute('data-burl-apply-brand');
+        const input = wrap.querySelector('[data-burl-brand="'+CSS.escape(brand)+'"]');
         const newUrl = input ? input.value.trim() : '';
-        const targets = products.filter(p=>(p.brand||'（ブランドなし）').trim()===brand);
+        const targets = brandProds(brand);
         targets.forEach(p=>{ p.url = newUrl; p.updatedAt = Date.now(); });
         await saveProducts();
-        document.getElementById('bulkUrlMsg').textContent = '✅ '+brand+' の '+targets.length+'件にURLを設定しました。';
+        document.getElementById('bulkUrlMsg').textContent = '✅ '+brand+' 全'+targets.length+'件にURLを設定しました。';
         setTimeout(()=>{ document.getElementById('bulkUrlMsg').textContent=''; }, 3000);
         renderBulkUrlTable();
       });
     });
-    // イベント: クリアボタン
-    wrap.querySelectorAll('[data-bulk-url-clear]').forEach(btn=>{
+    // ブランドをクリア
+    wrap.querySelectorAll('[data-burl-clear-brand]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        const brand = btn.getAttribute('data-bulk-url-clear');
-        const targets = products.filter(p=>(p.brand||'（ブランドなし）').trim()===brand);
+        const brand = btn.getAttribute('data-burl-clear-brand');
+        const targets = brandProds(brand);
         targets.forEach(p=>{ delete p.url; p.updatedAt = Date.now(); });
         await saveProducts();
-        document.getElementById('bulkUrlMsg').textContent = '🗑️ '+brand+' の '+targets.length+'件のURLをクリアしました。';
+        document.getElementById('bulkUrlMsg').textContent = '🗑️ '+brand+' 全'+targets.length+'件のURLをクリアしました。';
+        setTimeout(()=>{ document.getElementById('bulkUrlMsg').textContent=''; }, 3000);
+        renderBulkUrlTable();
+      });
+    });
+    // モデルに設定
+    wrap.querySelectorAll('[data-burl-apply-model]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const key = btn.getAttribute('data-burl-apply-model');
+        const [brand, model] = key.split('||');
+        const input = wrap.querySelector('[data-burl-model="'+CSS.escape(key)+'"]');
+        const newUrl = input ? input.value.trim() : '';
+        const targets = modelProds(brand, model);
+        targets.forEach(p=>{ p.url = newUrl; p.updatedAt = Date.now(); });
+        await saveProducts();
+        document.getElementById('bulkUrlMsg').textContent = '✅ '+brand+' '+model+' '+targets.length+'件にURLを設定しました。';
+        setTimeout(()=>{ document.getElementById('bulkUrlMsg').textContent=''; }, 3000);
+        renderBulkUrlTable();
+      });
+    });
+    // モデルをクリア
+    wrap.querySelectorAll('[data-burl-clear-model]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const key = btn.getAttribute('data-burl-clear-model');
+        const [brand, model] = key.split('||');
+        const targets = modelProds(brand, model);
+        targets.forEach(p=>{ delete p.url; p.updatedAt = Date.now(); });
+        await saveProducts();
+        document.getElementById('bulkUrlMsg').textContent = '🗑️ '+brand+' '+model+' '+targets.length+'件のURLをクリアしました。';
         setTimeout(()=>{ document.getElementById('bulkUrlMsg').textContent=''; }, 3000);
         renderBulkUrlTable();
       });
