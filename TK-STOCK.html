@@ -10256,10 +10256,12 @@ window.addEventListener('storageReady', function(){
         p._branchSellPrice[_saveBranch] = null;
       }
       const _anyBranchFixedSell = Object.values(p._branchSellPrice).some(v => v != null && v > 0);
+      // 固定価格チェック時はp.sellPriceをグローバルに上書きしない（他支店の通常価格を汚染しないため）
+      const _globalSellPrice = _fixedSell ? (p.sellPrice || sellPrice) : sellPrice;
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
