@@ -3997,7 +3997,7 @@ window.addEventListener('storageReady', function(){
   let selectedTireInch = null;
   let selectedCatalogModelKey = null;
   let stockOnlyFilter = false;
-  let ownStockOnlyFilter = true; // 自店舗在庫あり商品のみ
+  let ownStockOnlyFilter = false; // 自店舗在庫あり商品のみ（デフォルト：全商品表示）
   let manualOnlyFilter = false;
   let customerOrderFilter = false;
   let orderOnlyFilter = false;
@@ -5235,11 +5235,18 @@ window.addEventListener('storageReady', function(){
       });
     }
     if(list.length === 0){
-      wrap.innerHTML = '<div class="empty-state">該当する商品がありません。「＋新規商品登録」から追加してください。</div>';
+      wrap.innerHTML = '<div class="empty-state">商品が見つかりません。<br><span style="font-size:12px;color:var(--text-3);">カテゴリや支店フィルターを確認するか、「＋新規商品登録」から追加してください。</span></div>';
       return;
     }
     if(filteredList.length === 0){
-      wrap.innerHTML = '<div class="empty-state" style="color:var(--text-3);">自店舗在庫無し</div>';
+      wrap.innerHTML = '<div class="empty-state" style="color:var(--text-3);">条件に一致する商品がありません。<br><button id="resetFiltersBtn" class="btn btn-ghost btn-sm" style="margin-top:10px;font-size:13px;">🔄 フィルターをリセット</button></div>';
+      const rfBtn = document.getElementById('resetFiltersBtn');
+      if(rfBtn) rfBtn.addEventListener('click', ()=>{
+        stockOnlyFilter = false; ownStockOnlyFilter = false; manualOnlyFilter = false;
+        customerOrderFilter = false; orderOnlyFilter = false; recentFilter = false; brandSortFilter = false;
+        keywordFilter = ''; if(document.getElementById('keywordSearchInput')) document.getElementById('keywordSearchInput').value = '';
+        renderProductTable();
+      });
       return;
     }
     if(brandSortFilter){
