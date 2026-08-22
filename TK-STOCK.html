@@ -4672,7 +4672,7 @@ window.addEventListener('storageReady', function(){
           ? _catVisibleBranches.map(brId=>{
               const bStk = cp.branchStock ? (cp.branchStock[brId]||0) : 0;
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
-              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+po.items.filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
               const _brYearBadge = _yearBadgeForBranch(brId);
               let _extra = (bStk > 0 && _brYearBadge) ? _brYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
@@ -4682,7 +4682,7 @@ window.addEventListener('storageReady', function(){
           : (()=>{
               const _bStk = cp.branchStock ? (cp.branchStock[_catOwnBranchId]||0) : 0;
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
-              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+po.items.filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&(po.items||[]).some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
               const _ownYearBadge = _yearBadgeForBranch(_catOwnBranchId);
               let _extra = (_bStk > 0 && _ownYearBadge) ? _ownYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
@@ -4742,7 +4742,7 @@ window.addEventListener('storageReady', function(){
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
-                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===cp.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
+                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(i=>i.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
                 if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
                 if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               });
@@ -4756,7 +4756,7 @@ window.addEventListener('storageReady', function(){
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
-                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===cp.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
+                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&(po.items||[]).some(i=>i.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
                 if(_inschQ>0) _extra+='<div data-insch-badge="'+cp.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
                 if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               });
@@ -4782,7 +4782,7 @@ window.addEventListener('storageReady', function(){
           ? _catVisibleBranches.map(brId => {
               const bStk = p.branchStock ? (p.branchStock[brId]||0) : 0;
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
-              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               const _manBrYearBadge = _manYearBadgeForBranch(brId);
               let _extra = (bStk>0 && _manBrYearBadge) ? _manBrYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
@@ -4792,7 +4792,7 @@ window.addEventListener('storageReady', function(){
           : (()=>{
               const _bStk = getStock(p);
               const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_catOwnBranchId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
-              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               const _manOwnYearBadge = _manYearBadgeForBranch(_catOwnBranchId);
               let _extra = (_bStk>0 && _manOwnYearBadge) ? _manOwnYearBadge : '';
               if(_inschQ>0) _extra+='<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+_inschQ+'本</div>';
@@ -5215,7 +5215,7 @@ window.addEventListener('storageReady', function(){
       filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBrId]||0) : (p.stock||0)) > 0);
     }
     if(manualOnlyFilter) filteredList = filteredList.filter(p => isManualProduct(p));
-    if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && po.items.some(i => i.productId === p.id)));
+    if(customerOrderFilter) filteredList = filteredList.filter(p => provisionalOutbounds.some(po => po.status === 'pending' && (po.items||[]).some(i => i.productId === p.id)));
     if(orderOnlyFilter) filteredList = filteredList.filter(p => p.productType === 'order');
     if(keywordFilter){
       const kw = keywordFilter.trim().toLowerCase();
@@ -5349,9 +5349,9 @@ window.addEventListener('storageReady', function(){
               const bLow = isOwn && (p.minStock > 0 && bStk <= p.minStock);
               let badges = '';
               // 仮出庫：全支店の列にそれぞれ表示
-              const _poPend = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&po.items.some(i=>i.productId===p.id));
-              const provQtyProv = _poPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-              const provQtyCust = _poPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const _poPend = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(i=>i.productId===p.id));
+              const provQtyProv = _poPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const provQtyCust = _poPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               const provQty = provQtyProv + provQtyCust;
               if(provQtyProv > 0){
                 if(isOwn){
@@ -5410,12 +5410,12 @@ window.addEventListener('storageReady', function(){
             return cell;
           } else {
             // 通常の単一列
-            const _scPoPend=provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id));
-            const _scProvQtyProv=_scPoPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-            const _scProvQtyCust=_scPoPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+            const _scPoPend=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id));
+            const _scProvQtyProv=_scPoPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+            const _scProvQtyCust=_scPoPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
             const provQty=_scProvQtyProv+_scProvQtyCust;
             const provOver=_scProvQtyCust>stk;
-            const _provTipSc=_scPoPend.map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮出庫]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+            const _provTipSc=_scPoPend.map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮出庫]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
             const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
             const inschQty=(incomingSchedules||[]).filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
             return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="custody" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+(inschQty>0?'<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#1a7a5e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;" title="入庫予定を確認">📦 入庫予定 '+inschQty+'本</div>':'')+  '</td>';
@@ -6499,11 +6499,11 @@ window.addEventListener('storageReady', function(){
     }
     filtered.forEach(p=>{
       const sysQty = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
-      const _scProvPend = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id));
-      const _scProvQtyProv2 = _scProvPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-      const _scProvQty = _scProvPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-      const _scProvTip = _scProvPend.filter(po=>(po.type||'provisional')==='custody').map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
-      const _scProvTipProv = _scProvPend.filter(po=>(po.type||'provisional')==='provisional').map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+      const _scProvPend = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id));
+      const _scProvQtyProv2 = _scProvPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+      const _scProvQty = _scProvPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+      const _scProvTip = _scProvPend.filter(po=>(po.type||'provisional')==='custody').map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+      const _scProvTipProv = _scProvPend.filter(po=>(po.type||'provisional')==='provisional').map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
       const counted = counts.hasOwnProperty(p.id);
       const actQty = counted ? counts[p.id] : '';
       html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-2);border:1px solid '+(counted?'var(--teal)':'var(--line)')+';border-radius:8px;">';
@@ -6855,8 +6855,8 @@ window.addEventListener('storageReady', function(){
       const { customerName, scheduledDate, carName } = formResult;
       // 在庫超過チェック
       const overItems = ps.filter(p=>{
-        const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&po.items.some(i=>i.productId===p.id))
-          .reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+        const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id))
+          .reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
         return (provQty + 1) > getStock(p);
       });
       if(overItems.length > 0){
@@ -8790,7 +8790,7 @@ window.addEventListener('storageReady', function(){
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     tdCols += '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>';
-      if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&po.items.some(i=>i.productId===p.id)).reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _tv = (p.costPrice||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
+      if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _tv = (p.costPrice||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
 
       return '<tr>'+tdCols+'</tr>';
     }).join('');
@@ -8805,7 +8805,7 @@ window.addEventListener('storageReady', function(){
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
-    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&po.items.some(i=>i.productId===p.id)).reduce((ss,po)=>ss+po.items.filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); return s+(p.costPrice||0)*Math.max(0,stk-_fpq); },0) : 0;
+    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((ss,po)=>ss+(po.items||[]).filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); return s+(p.costPrice||0)*Math.max(0,stk-_fpq); },0) : 0;
     const totalValFooter = colTotalVal ? `<tfoot><tr><td colspan="100%" style="text-align:right;font-weight:700;padding:5pt;border-top:1pt solid #333;">合計金額：&yen;${totalValSum.toLocaleString('ja-JP')}</td></tr></tfoot>` : '';
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
       <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
@@ -8836,10 +8836,10 @@ window.addEventListener('storageReady', function(){
       const relPOs = provisionalOutbounds.filter(po=>
         po.status==='pending' &&
         (po.branchId||'taniyabe')===branchId &&
-        po.items.some(i=>i.productId===productId)
+        (po.items||[]).some(i=>i.productId===productId)
       );
       const stk = p.branchStock ? (p.branchStock[branchId]||0) : (p.stock||0);
-      const totalProv = relPOs.reduce((s,po)=>s+po.items.filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0),0);
+      const totalProv = relPOs.reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0),0);
       const isOver = totalProv > stk;
       const _provTypeLabel = badge.dataset.provType==='custody' ? '📦 預かり出庫' : '🔖 仮出庫';
       let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':_provTypeLabel)+'</span><span style="font-size:11px;font-weight:400;color:var(--text-2);">計 '+totalProv+' 本 / 在庫 '+stk+' 本'+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'本超過</span>':'')+'</span></div>';
@@ -8848,7 +8848,7 @@ window.addEventListener('storageReady', function(){
           +'<span style="text-align:center;">数量</span><span>お客様</span><span>車種</span><span style="text-align:right;">取付予定日</span></div>';
       }
       relPOs.forEach(po=>{
-        const qty = po.items.filter(i=>i.productId===productId).reduce((s,i)=>s+i.qty,0);
+        const qty = (po.items||[]).filter(i=>i.productId===productId).reduce((s,i)=>s+i.qty,0);
         const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
         const sd = _sdp.length>=3 ? parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日' : (po.scheduledDate||'—');
         html += '<div class="pt-row">'
@@ -9731,12 +9731,12 @@ window.addEventListener('storageReady', function(){
       + (()=>{
           const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
           const _detOwnStk = p.branchStock ? (p.branchStock[_detOwnBranch]||0) : (p.stock||0);
-          const _detPOs = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&po.items.some(i=>i.productId===p.id));
-          const _detProvQty = _detPOs.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-          const _detCustQty = _detPOs.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+po.items.filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const _detPOs = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&(po.items||[]).some(i=>i.productId===p.id));
+          const _detProvQty = _detPOs.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const _detCustQty = _detPOs.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
           const provQty = _detProvQty + _detCustQty;
           const provOver = provQty > _detOwnStk;
-          const _provTipDet=_detPOs.map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
+          const _provTipDet=_detPOs.map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
           return '<div class="detail-stats">'
             + '<div class="detail-stat"><div class="detail-stat-label">現在庫数（自店舗）</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
             + '<div class="detail-stat-value">'+_detOwnStk+'</div>'
@@ -9810,7 +9810,7 @@ window.addEventListener('storageReady', function(){
       const hd = document.getElementById('detailProvListHeader');
       if(!el) return;
       const _detListOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-      const allEntries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&po.items.some(i=>i.productId===id));
+      const allEntries = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detListOwnBranch&&(po.items||[]).some(i=>i.productId===id));
       const provEntries = allEntries.filter(po=>(po.type||'provisional')==='provisional');
       const custEntries = allEntries.filter(po=>(po.type||'provisional')==='custody');
       if(hd){ hd.textContent = '🔖 仮出庫リスト'; }
@@ -9820,7 +9820,7 @@ window.addEventListener('storageReady', function(){
       }
       // 共通カードビルダー
       const buildCard = (po, isCustody) => {
-        const myItems = po.items.filter(i=>i.productId===id);
+        const myItems = (po.items||[]).filter(i=>i.productId===id);
         const qty = myItems.reduce((s,i)=>s+i.qty,0);
         const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
         const _sdStr = _sdp.length>=3 ? _sdp[0]+'年'+parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日 引き渡し予定' : (po.scheduledDate||'—');
@@ -10058,7 +10058,7 @@ window.addEventListener('storageReady', function(){
         // 既存の仮出庫（未確定）分を含めた在庫チェック（自支店のみ）
         const _detPobOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         const curStk2 = getStock(p2);
-        const existingProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detPobOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===p2.id).reduce((ss,i)=>ss+i.qty,0),0);
+        const existingProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detPobOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p2.id).reduce((ss,i)=>ss+i.qty,0),0);
         if(existingProvQty + qty > curStk2){
           const over = existingProvQty + qty - curStk2;
           const ok = await showConfirm('⚠️ 在庫数を超えています。\n\n現在庫: '+curStk2+'本　仮出庫済: '+existingProvQty+'本　今回: '+qty+'本\n'+over+'本不足します。\n\nそれでも登録しますか？');
@@ -10969,13 +10969,13 @@ window.addEventListener('storageReady', function(){
         const overItems = outboundCart.filter(item=>{
           const p3 = products.find(x=>x.id===item.productId);
           if(!p3) return false;
-          const existProv = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_batchPobOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+          const existProv = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_batchPobOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
           return existProv + item.qty > getStock(p3);
         });
         if(overItems.length > 0){
           const lines = overItems.map(item=>{
             const p3 = products.find(x=>x.id===item.productId);
-            const existProv = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_batchPobOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+            const existProv = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_batchPobOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
             const curStk3 = getStock(p3);
             const over = existProv + item.qty - curStk3;
             return ' ・ '+cleanName(item.name)+'（在庫'+curStk3+'本 / 仮出庫済'+existProv+'本 / 今回'+item.qty+'本 → '+over+'本不足）';
@@ -11202,7 +11202,7 @@ window.addEventListener('storageReady', function(){
         const hasOver = entry.items.some(item=>{
           const p2 = products.find(x=>x.id===item.productId);
           if(!p2) return false;
-          const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
+          const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
           return allProvQty > getStock(p2);
         });
         const borderColor = hasOver ? 'var(--red)' : 'var(--amber)';
@@ -11223,7 +11223,7 @@ window.addEventListener('storageReady', function(){
           + '<div style="padding:10px 14px;">';
         entry.items.forEach(item=>{
           const p2 = products.find(x=>x.id===item.productId);
-          const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+po.items.filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
+          const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
           const _p2Stk = p2 ? getStock(p2) : 0;
           const itemOver = p2 && allProvQty > _p2Stk;
           html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line-soft);">'
@@ -12100,7 +12100,7 @@ window.addEventListener('storageReady', function(){
       const q = historySearchText.toLowerCase();
       provList = provList.filter(po=>{
         if((po.customerName||'').toLowerCase().includes(q)) return true;
-        return po.items.some(i=>(i.name||'').toLowerCase().includes(q)||(i.brand||'').toLowerCase().includes(q));
+        return (po.items||[]).some(i=>(i.name||'').toLowerCase().includes(q)||(i.brand||'').toLowerCase().includes(q));
       });
     }
 
