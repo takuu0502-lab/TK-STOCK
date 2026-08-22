@@ -2674,13 +2674,19 @@ window.addEventListener('storageReady', function(){
     if(p._branchFixedCost && p._branchFixedCost[branchId] != null && p._branchFixedCost[branchId] > 0){
       return p._branchFixedCost[branchId];
     }
-    // 後方互換：旧 _fixedCost フラグがある場合はその価格を全支店共通として使用
-    if(p._fixedCost && p.costPrice) return p.costPrice;
+    // 後方互換：_branchFixedCost 未設定の旧形式は登録支店のみに固定価格を適用
+    if(!p._branchFixedCost && p._fixedCost && p.costPrice){
+      const _ownerBranch = p.branchId || 'taniyabe';
+      if(branchId === _ownerBranch) return p.costPrice;
+    }
     return null;
   }
   function hasBranchFixedCost(p, branchId){
-    return (p._branchFixedCost && p._branchFixedCost[branchId] != null && p._branchFixedCost[branchId] > 0) ||
-           (!!(p._fixedCost && p.costPrice));
+    if(p._branchFixedCost && p._branchFixedCost[branchId] != null && p._branchFixedCost[branchId] > 0) return true;
+    if(!p._branchFixedCost && p._fixedCost && p.costPrice){
+      return branchId === (p.branchId || 'taniyabe');
+    }
+    return false;
   }
   // 支店別固定販売価格ヘルパー
   // p._branchSellPrice: {taniyabe: 15000, katsuta: null, ...} のような形で保存
@@ -10264,10 +10270,12 @@ window.addEventListener('storageReady', function(){
       const _anyBranchFixedSell = Object.values(p._branchSellPrice).some(v => v != null && v > 0);
       // 固定価格チェック時はp.sellPriceをグローバルに上書きしない（他支店の通常価格を汚染しないため）
       const _globalSellPrice = _fixedSell ? p.sellPrice : sellPrice;
+      // 固定仕入れ価格チェック時もp.costPriceをグローバルに上書きしない
+      const _globalCostPrice = _fixedCost ? p.costPrice : costPrice;
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
