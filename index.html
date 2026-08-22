@@ -2688,13 +2688,13 @@ window.addEventListener('storageReady', function(){
     if(p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0){
       return p._branchSellPrice[branchId];
     }
-    // 後方互換：旧 _fixedSell フラグがある場合は sellPrice を全支店共通として使用
-    if(p._fixedSell && p.sellPrice) return p.sellPrice;
+    // 後方互換：_branchSellPrice が未設定の商品のみ _fixedSell を全支店共通として使用
+    if(!p._branchSellPrice && p._fixedSell && p.sellPrice) return p.sellPrice;
     return null;
   }
   function hasBranchFixedSell(p, branchId){
     return (p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0) ||
-           (!!(p._fixedSell && p.sellPrice));
+           (!p._branchSellPrice && !!(p._fixedSell && p.sellPrice));
   }
 
   function getEffectiveCostForBranch(p, branchId){
