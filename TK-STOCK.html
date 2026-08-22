@@ -9729,8 +9729,8 @@ window.addEventListener('storageReady', function(){
         allHtml += provEntries.map(po=>buildCard(po, false)).join('');
       }
       if(custEntries.length > 0){
-        if(provEntries.length > 0) allHtml += '<div class="detail-hist-title" style="margin-top:10px;">📦 仮出庫リスト</div>';
-        else if(hd) hd.textContent = '📦 仮出庫リスト';
+        if(provEntries.length > 0) allHtml += '<div class="detail-hist-title" style="margin-top:10px;">📦 預かり出庫リスト</div>';
+        else if(hd) hd.textContent = '📦 預かり出庫リスト';
         allHtml += custEntries.map(po=>buildCard(po, true)).join('');
       }
       el.innerHTML = allHtml;
@@ -10964,7 +10964,7 @@ window.addEventListener('storageReady', function(){
     }
     if(custList.length>0){
       if(provList.length>0) html += '<div style="margin-top:16px;"></div>';
-      html += '<div style="font-size:14px;font-weight:700;color:#e8a020;margin-bottom:10px;">📦 仮出庫リスト（'+custList.length+'件）</div>';
+      html += '<div style="font-size:14px;font-weight:700;color:#e8a020;margin-bottom:10px;">📦 預かり出庫リスト（'+custList.length+'件）</div>';
       html += buildEntries(custList, true);
     }
     html += '</div>';
