@@ -1013,7 +1013,7 @@
       <button class="tab-btn" data-tab="in">入庫</button>
       <button class="tab-btn" data-tab="out">出庫</button>
       <button class="tab-btn" data-tab="history">入出庫履歴</button>
-      <button class="tab-btn" data-tab="pricing">価格調整</button>
+      <button class="tab-btn" data-tab="pricing">管理</button>
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
     </div>
     <div style="display:flex;gap:8px;">
@@ -12428,7 +12428,7 @@ window.addEventListener('storageReady', function(){
       // 入力値を即クリア（二重スキャン防止）
       inputEl.value = '';
       _handyLookupLock = true;
-      setTimeout(()=>{ _handyLookupLock = false; }, 250);
+      setTimeout(()=>{ _handyLookupLock = false; }, 50);
 
       const code = raw;
       // 既存のfindAllByBarcode関数を使用（大文字小文字・店舗優先対応）
