@@ -1846,6 +1846,13 @@
           <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="co_date_tbd" style="width:16px;height:16px;">未定</label>
         </div>
       </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">取付予定日</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <input type="date" id="co_install_date" style="flex:1;box-sizing:border-box;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="co_install_date_tbd" style="width:16px;height:16px;">未定</label>
+        </div>
+      </div>
     </div>
     <div id="co_error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px;"></div>
     <div style="display:flex;gap:8px;">
@@ -1903,6 +1910,13 @@
         <div>
           <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">車種名</label>
           <input type="text" id="isch_co_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">取付予定日</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="date" id="isch_co_install_date" style="flex:1;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:var(--bg-1);color:var(--text-1);">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="isch_co_install_tbd" style="width:14px;height:14px;">未定</label>
+          </div>
         </div>
       </div>
     </div>
@@ -11020,9 +11034,9 @@ window.addEventListener('storageReady', function(){
         + '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">📦 '+escapeHtml(pName)+(pSpec?' '+escapeHtml(pSpec):'')+'</div>'
         + '</div>'
         + '<div style="text-align:right;flex-shrink:0;margin-left:10px;">'
-        + '<div style="font-size:12px;color:var(--text-3);">入荷予定</div>'
-        + '<div style="font-size:13px;font-weight:700;color:var(--teal);">'+escapeHtml(dateStr)+'</div>'
-        + '<div style="font-size:12px;color:var(--amber);font-weight:600;">×'+order.qty+'本 ▼</div>'
+        + '<div style="font-size:11px;color:var(--text-3);">入荷予定: <strong style="color:var(--teal);">'+escapeHtml(dateStr)+'</strong></div>'
+        + (order.installDate ? '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">取付予定: <strong style="color:var(--amber);">'+escapeHtml(order.installDate)+'</strong></div>' : (order.installDate===''&&order.installDate!==undefined ? '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">取付予定: 未定</div>' : ''))
+        + '<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:2px;">×'+order.qty+'本 ▼</div>'
         + '</div>'
         + '</summary>'
         + '<div style="padding:12px 14px;background:var(--bg-2);border-top:1px solid var(--line);">'
@@ -11113,6 +11127,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('co_date').value = '';
     document.getElementById('co_date_tbd').checked = false;
     document.getElementById('co_date').disabled = false;
+    document.getElementById('co_install_date').value = '';
+    document.getElementById('co_install_date_tbd').checked = false;
+    document.getElementById('co_install_date').disabled = false;
     document.getElementById('co_error').style.display = 'none';
     document.getElementById('customerOrderModal').classList.add('show');
     setTimeout(()=>{ document.getElementById('co_product_search').focus(); }, 100);
@@ -11340,6 +11357,10 @@ window.addEventListener('storageReady', function(){
       document.getElementById('co_date').disabled = this.checked;
       if(this.checked) document.getElementById('co_date').value = '';
     });
+    document.getElementById('co_install_date_tbd').addEventListener('change', function(){
+      document.getElementById('co_install_date').disabled = this.checked;
+      if(this.checked) document.getElementById('co_install_date').value = '';
+    });
     document.getElementById('co_product_search_btn').addEventListener('click', renderCoProductSearch);
     document.getElementById('co_product_search').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); renderCoProductSearch(); } });
     document.getElementById('co_product_search').addEventListener('input', ()=>{
@@ -11356,6 +11377,8 @@ window.addEventListener('storageReady', function(){
       if(qty<1){ errEl.textContent='数量は1以上を入力してください'; errEl.style.display='block'; return; }
       const isTbd = document.getElementById('co_date_tbd').checked;
       const expectedDate = isTbd ? '' : (document.getElementById('co_date').value||'');
+      const isInstallTbd = document.getElementById('co_install_date_tbd').checked;
+      const installDate = isInstallTbd ? '' : (document.getElementById('co_install_date').value||'');
       const carName = (document.getElementById('co_car').value||'').trim();
       const _coBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       const order = {
@@ -11368,6 +11391,7 @@ window.addEventListener('storageReady', function(){
         carName,
         qty,
         expectedDate,
+        installDate,
         status: 'pending',
         createdAt: new Date().toISOString(),
         createdBy: currentUser?currentUser.displayName:''
@@ -11390,6 +11414,9 @@ window.addEventListener('storageReady', function(){
       document.getElementById('isch_co_fields').style.display = 'none';
       document.getElementById('isch_co_customer').value = '';
       document.getElementById('isch_co_car').value = '';
+      document.getElementById('isch_co_install_date').value = '';
+      document.getElementById('isch_co_install_tbd').checked = false;
+      document.getElementById('isch_co_install_date').disabled = false;
       const stockLabel = document.getElementById('isch_type_stock_label');
       const coLabel = document.getElementById('isch_type_co_label');
       stockLabel.style.borderColor='var(--teal)'; stockLabel.style.background='rgba(26,122,94,0.08)';
@@ -11419,6 +11446,10 @@ window.addEventListener('storageReady', function(){
     document.getElementById('isch_type_co').addEventListener('change', ()=>_ischApplyType('customerOrder'));
     document.getElementById('isch_type_stock_label').addEventListener('click', ()=>{ document.getElementById('isch_type_stock').checked=true; _ischApplyType('stock'); });
     document.getElementById('isch_type_co_label').addEventListener('click', ()=>{ document.getElementById('isch_type_co').checked=true; _ischApplyType('customerOrder'); });
+    document.getElementById('isch_co_install_tbd').addEventListener('change', function(){
+      document.getElementById('isch_co_install_date').disabled = this.checked;
+      if(this.checked) document.getElementById('isch_co_install_date').value = '';
+    });
 
     document.getElementById('incomingSchedCancel').addEventListener('click', ()=>{
       modal.classList.remove('show');
@@ -11469,8 +11500,11 @@ window.addEventListener('storageReady', function(){
           const customerName = (document.getElementById('isch_co_customer').value||'').trim();
           if(!customerName){ alert('お客様名を入力してください。'); return; }
           const carName = (document.getElementById('isch_co_car').value||'').trim();
+          const isInstallTbd2 = document.getElementById('isch_co_install_tbd').checked;
+          const installDate2 = isInstallTbd2 ? '' : (document.getElementById('isch_co_install_date').value||'');
           newSched.customerName = customerName;
           newSched.carName = carName;
+          newSched.installDate = installDate2;
           const coEntry = {
             id: uid('co'),
             branchId: _ownBr,
@@ -11481,6 +11515,7 @@ window.addEventListener('storageReady', function(){
             carName,
             qty,
             expectedDate: dateVal,
+            installDate: installDate2,
             incomingSchedId: newSched.id,
             status: 'pending',
             createdAt: new Date().toISOString(),
