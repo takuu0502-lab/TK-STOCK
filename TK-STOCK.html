@@ -1123,6 +1123,7 @@
     <div id="inReaderWrap"></div>
     <div id="inResult"></div>
     <div id="inCartWrap"></div>
+    <div id="customerOrderWrap" style="margin-top:24px;"></div>
     <div id="incomingSchedWrap" style="margin-top:24px;"></div>
     <div id="inSessionWrap" style="margin-top:24px;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -1808,6 +1809,52 @@
   </div>
 </div>
 
+<!-- 客注品登録モーダル -->
+<div class="modal-overlay" id="customerOrderModal">
+  <div class="modal" style="max-width:400px;width:95%;">
+    <h3 style="margin-top:0;font-size:16px;">🛒 客注品の登録</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">商品 <span style="color:var(--red);">*</span></label>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input type="text" id="co_product_search" placeholder="商品名・バーコードで検索" style="flex:1;box-sizing:border-box;" autocomplete="off">
+          <button class="btn btn-ghost btn-sm" id="co_product_search_btn" style="white-space:nowrap;">検索</button>
+        </div>
+        <div id="co_product_result" style="margin-top:6px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;display:none;"></div>
+        <div id="co_product_selected" style="margin-top:6px;display:none;padding:8px 12px;background:var(--teal-dim);border-radius:8px;font-size:13px;color:var(--teal);font-weight:600;"></div>
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">お客様名 <span style="color:var(--red);">*</span></label>
+        <input type="text" id="co_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">車種名</label>
+        <input type="text" id="co_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">数量 <span style="color:var(--red);">*</span></label>
+        <div class="qty-stepper" style="margin-top:4px;">
+          <button type="button" id="co_qty_minus">−</button>
+          <input type="number" id="co_qty" value="4" min="1" style="width:60px;">
+          <button type="button" id="co_qty_plus">＋</button>
+        </div>
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">入荷予定日</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <input type="date" id="co_date" style="flex:1;box-sizing:border-box;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="co_date_tbd" style="width:16px;height:16px;">未定</label>
+        </div>
+      </div>
+    </div>
+    <div id="co_error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" id="co_cancel" style="flex:1;">キャンセル</button>
+      <button class="btn btn-teal" id="co_save" style="flex:1;">登録する</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="incomingSchedModal">
   <div class="modal" style="max-width:380px;">
     <h3 style="margin-top:0;">📦 入庫予定の登録</h3>
@@ -2217,6 +2264,7 @@ window.addEventListener('storageReady', function(){
   let outboundCart = [];  // スキャン済み・未確定リスト（一括出庫用）
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
+  let customerOrders = []; // 客注品入庫リスト
   let incomingSchedules = []; // 入庫予定リスト
   let _detailInschRefresh = null; // 商品詳細の入庫予定再描画関数（モーダル外から呼ぶ用）
   let categories = [];
@@ -3170,6 +3218,8 @@ window.addEventListener('storageReady', function(){
       transactions = t ? JSON.parse(t.value) : [];
       const pob = await window.storage.get('provisionalOutbounds', SHARED);
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
+      const co = await window.storage.get('customerOrders', SHARED);
+      customerOrders = co ? JSON.parse(co.value) : [];
       const isch = await window.storage.get('incomingSchedules', SHARED);
       incomingSchedules = isch ? JSON.parse(isch.value) : [];
       // branchId未設定の仮出庫レコードにstaff名からbranchIdを補完するマイグレーション
@@ -3261,6 +3311,10 @@ window.addEventListener('storageReady', function(){
   async function saveProvisionalOutbounds(){
     try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
     catch(e){ console.error('save provisionalOutbounds failed', e); }
+  }
+  async function saveCustomerOrders(){
+    try{ await window.storage.set('customerOrders', JSON.stringify(customerOrders), SHARED); }
+    catch(e){ console.error('save customerOrders failed', e); }
   }
   async function saveIncomingSchedules(){
     try{ await window.storage.set('incomingSchedules', JSON.stringify(incomingSchedules), SHARED); }
@@ -3638,7 +3692,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
-      if(tab === 'in'){ renderIncomingScheduleList(); }
+      if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
       if(tab === 'list'){
         specPanelOpen = true;
@@ -10903,6 +10957,165 @@ window.addEventListener('storageReady', function(){
     }
   }
 
+  function renderCustomerOrderList(){
+    const wrap = document.getElementById('customerOrderWrap');
+    if(!wrap) return;
+    const _coBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch);
+
+    let header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--teal);">🛒 客注品入庫リスト'+(pending.length>0?' ('+pending.length+'件)':'')+'</div>'
+      + '<button class="btn btn-teal btn-sm" id="coAddBtn" style="font-size:12px;">＋ 新規登録</button>'
+      + '</div>';
+
+    if(pending.length===0){
+      wrap.innerHTML = header + '<div style="font-size:13px;color:var(--text-3);padding:6px 2px;">客注品はありません</div>';
+      document.getElementById('coAddBtn').addEventListener('click', openCustomerOrderModal);
+      return;
+    }
+
+    let rows = pending.map(order=>{
+      const p = products.find(x=>x.id===order.productId);
+      const pName = p ? cleanName(p.name) : (order.productName||'不明');
+      const pSpec = p ? (p.spec||'') : (order.spec||'');
+      const dateStr = order.expectedDate ? order.expectedDate : '未定';
+      const isOver = p && ((p.branchStock ? (p.branchStock[_coBranch]||0) : (p.stock||0)) + order.qty > (p.minStock||0) + order.qty);
+      return '<details style="border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px;">'
+        + '<summary style="padding:12px 14px;background:var(--bg-1);cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none;">'
+        + '<div>'
+        + '<div style="font-size:14px;font-weight:700;color:var(--text-1);">'+escapeHtml(order.customerName)+(order.carName?' <span style="font-size:12px;color:var(--text-2);">🚗 '+escapeHtml(order.carName)+'</span>':'')+'</div>'
+        + '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">📦 '+escapeHtml(pName)+(pSpec?' '+escapeHtml(pSpec):'')+'</div>'
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0;margin-left:10px;">'
+        + '<div style="font-size:12px;color:var(--text-3);">入荷予定</div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--teal);">'+escapeHtml(dateStr)+'</div>'
+        + '<div style="font-size:12px;color:var(--amber);font-weight:600;">×'+order.qty+'本 ▼</div>'
+        + '</div>'
+        + '</summary>'
+        + '<div style="padding:12px 14px;background:var(--bg-2);border-top:1px solid var(--line);">'
+        + '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">登録: '+(order.createdAt?new Date(order.createdAt).toLocaleDateString('ja-JP'):'')+'　担当: '+escapeHtml(order.createdBy||'')+'</div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+        + '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;min-width:120px;">✅ 入荷確定（仮出庫登録）</button>'
+        + '<button class="btn btn-ghost btn-sm co-delete-btn" data-co-id="'+order.id+'" style="flex:1;min-width:80px;color:var(--red);border-color:var(--red);">キャンセル</button>'
+        + '</div>'
+        + '</div>'
+        + '</details>';
+    }).join('');
+
+    wrap.innerHTML = header + rows;
+    document.getElementById('coAddBtn').addEventListener('click', openCustomerOrderModal);
+
+    wrap.querySelectorAll('.co-arrive-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const orderId = btn.dataset.coId;
+        const order = customerOrders.find(o=>o.id===orderId);
+        if(!order) return;
+        const p = products.find(x=>x.id===order.productId);
+        if(!p){ alert('商品が見つかりません'); return; }
+
+        const ok = await showConfirm('「'+cleanName(p.name)+'」×'+order.qty+'本を入荷確定しますか？\n在庫に追加し、仮出庫リストに登録します。');
+        if(!ok) return;
+
+        // 入庫処理
+        const _coBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        if(!p.branchStock) p.branchStock = {};
+        p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + order.qty;
+        const txIn = { id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:order.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, note:'客注品入荷 ('+order.customerName+')' };
+        transactions.push(txIn);
+        await saveProducts();
+        await saveTransactions();
+
+        // 仮出庫登録
+        const provEntry = {
+          id: uid('prov'),
+          date: new Date().toISOString(),
+          type: 'provisional',
+          customerName: order.customerName,
+          carName: order.carName||'',
+          scheduledDate: order.expectedDate||'',
+          branchId: _coBranchId,
+          staff: currentUser?currentUser.displayName:'',
+          items: [{ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty:order.qty }],
+          status: 'pending'
+        };
+        provisionalOutbounds.push(provEntry);
+        await saveProvisionalOutbounds();
+
+        // 客注品をcompleted
+        order.status = 'completed';
+        order.completedAt = new Date().toISOString();
+        await saveCustomerOrders();
+
+        renderProductTable();
+        renderCustomerOrderList();
+        renderProvisionalList();
+        const msgEl = document.getElementById('inBranchBanner');
+        if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入荷確定・仮出庫登録が完了しました。</div>'; setTimeout(()=>{ const e=document.getElementById('inBranchBanner'); if(e) e.innerHTML=''; },3000); }
+      });
+    });
+
+    wrap.querySelectorAll('.co-delete-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const orderId = btn.dataset.coId;
+        const order = customerOrders.find(o=>o.id===orderId);
+        if(!order) return;
+        const ok = await showConfirm('「'+escapeHtml(order.customerName)+'」の客注品をキャンセルしますか？');
+        if(!ok) return;
+        order.status = 'cancelled';
+        await saveCustomerOrders();
+        renderCustomerOrderList();
+      });
+    });
+  }
+
+  let _coSelectedProduct = null;
+  function openCustomerOrderModal(){
+    _coSelectedProduct = null;
+    document.getElementById('co_product_search').value = '';
+    document.getElementById('co_product_result').style.display = 'none';
+    document.getElementById('co_product_selected').style.display = 'none';
+    document.getElementById('co_customer').value = '';
+    document.getElementById('co_car').value = '';
+    document.getElementById('co_qty').value = '4';
+    document.getElementById('co_date').value = '';
+    document.getElementById('co_date_tbd').checked = false;
+    document.getElementById('co_date').disabled = false;
+    document.getElementById('co_error').style.display = 'none';
+    document.getElementById('customerOrderModal').classList.add('show');
+    setTimeout(()=>{ document.getElementById('co_product_search').focus(); }, 100);
+  }
+
+  function renderCoProductSearch(){
+    const q = (document.getElementById('co_product_search').value||'').trim().toLowerCase();
+    if(!q){ document.getElementById('co_product_result').style.display='none'; return; }
+    const _br = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const matches = products.filter(p=>{
+      const name = (p.name||'').toLowerCase();
+      const spec = (p.spec||'').toLowerCase();
+      const bc = (p.barcode||'').toLowerCase();
+      return name.includes(q) || spec.includes(q) || bc.includes(q);
+    }).slice(0,10);
+    const el = document.getElementById('co_product_result');
+    if(matches.length===0){ el.innerHTML='<div style="padding:8px 12px;font-size:13px;color:var(--text-3);">該当なし</div>'; el.style.display='block'; return; }
+    el.innerHTML = matches.map(p=>'<div class="co-p-item" data-id="'+p.id+'" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-soft);">'
+      +'<div style="font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+      +'<div style="font-size:11px;color:var(--text-3);">'+escapeHtml(p.spec||'')+'</div>'
+      +'</div>').join('');
+    el.style.display = 'block';
+    el.querySelectorAll('.co-p-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        const p = products.find(x=>x.id===item.dataset.id);
+        if(!p) return;
+        _coSelectedProduct = p;
+        document.getElementById('co_product_search').value = cleanName(p.name);
+        document.getElementById('co_product_result').style.display = 'none';
+        const sel = document.getElementById('co_product_selected');
+        sel.textContent = '✅ '+cleanName(p.name)+(p.spec?' '+p.spec:'');
+        sel.style.display = 'block';
+      });
+    });
+  }
+
   function renderProvisionalList(){
     const wrap = document.getElementById('provisionalListWrap');
     if(!wrap) return;
@@ -11077,6 +11290,61 @@ window.addEventListener('storageReady', function(){
     list.innerHTML = html
       + '<div style="font-size:12px;color:var(--text-3);text-align:right;">合計 '+totalItems+' 件 / '+totalQty+' 本</div>';
   }
+
+  // ---------- 客注品モーダル イベント ----------
+  (()=>{
+    const modal = document.getElementById('customerOrderModal');
+    document.getElementById('co_cancel').addEventListener('click', ()=>{ modal.classList.remove('show'); });
+    document.getElementById('co_qty_minus').addEventListener('click', ()=>{
+      const inp = document.getElementById('co_qty');
+      inp.value = Math.max(1, parseInt(inp.value||'1',10)-1);
+    });
+    document.getElementById('co_qty_plus').addEventListener('click', ()=>{
+      const inp = document.getElementById('co_qty');
+      inp.value = parseInt(inp.value||'1',10)+1;
+    });
+    document.getElementById('co_date_tbd').addEventListener('change', function(){
+      document.getElementById('co_date').disabled = this.checked;
+      if(this.checked) document.getElementById('co_date').value = '';
+    });
+    document.getElementById('co_product_search_btn').addEventListener('click', renderCoProductSearch);
+    document.getElementById('co_product_search').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); renderCoProductSearch(); } });
+    document.getElementById('co_product_search').addEventListener('input', ()=>{
+      _coSelectedProduct = null;
+      document.getElementById('co_product_selected').style.display='none';
+    });
+    document.getElementById('co_save').addEventListener('click', async ()=>{
+      const errEl = document.getElementById('co_error');
+      errEl.style.display='none';
+      if(!_coSelectedProduct){ errEl.textContent='商品を選択してください'; errEl.style.display='block'; return; }
+      const customerName = (document.getElementById('co_customer').value||'').trim();
+      if(!customerName){ errEl.textContent='お客様名を入力してください'; errEl.style.display='block'; return; }
+      const qty = parseInt(document.getElementById('co_qty').value||'1',10);
+      if(qty<1){ errEl.textContent='数量は1以上を入力してください'; errEl.style.display='block'; return; }
+      const isTbd = document.getElementById('co_date_tbd').checked;
+      const expectedDate = isTbd ? '' : (document.getElementById('co_date').value||'');
+      const carName = (document.getElementById('co_car').value||'').trim();
+      const _coBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const order = {
+        id: uid('co'),
+        branchId: _coBr,
+        productId: _coSelectedProduct.id,
+        productName: _coSelectedProduct.name,
+        spec: _coSelectedProduct.spec||'',
+        customerName,
+        carName,
+        qty,
+        expectedDate,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser?currentUser.displayName:''
+      };
+      customerOrders.push(order);
+      await saveCustomerOrders();
+      modal.classList.remove('show');
+      renderCustomerOrderList();
+    });
+  })();
 
   // ---------- 入庫予定モーダル イベント ----------
   (()=>{
