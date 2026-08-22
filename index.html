@@ -1839,17 +1839,23 @@
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;">
       <div class="field">
         <label style="font-size:13px;font-weight:600;">種別 <span style="color:var(--red);">*</span></label>
-        <div style="display:flex;gap:0;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden;">
-          <label id="prov_type_prov_label" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;cursor:pointer;font-size:13px;font-weight:600;background:var(--amber-dim);color:var(--amber);border-right:1px solid var(--line);">
-            <input type="radio" name="prov_type" id="prov_type_provisional" value="provisional" style="display:none;" checked>
-            🔖 仮出庫
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+          <label id="prov_type_prov_label" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border:2px solid var(--amber);border-radius:10px;background:var(--amber-dim);">
+            <input type="radio" name="prov_type" id="prov_type_provisional" value="provisional" style="width:18px;height:18px;accent-color:var(--amber);cursor:pointer;" checked>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--amber);">🔖 仮出庫</div>
+              <div style="font-size:11px;color:var(--text-2);margin-top:2px;">一般のお客様の予約・取り置き</div>
+            </div>
           </label>
-          <label id="prov_type_cust_label" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-3);">
-            <input type="radio" name="prov_type" id="prov_type_custody" value="custody" style="display:none;">
-            📦 預かり出庫
+          <label id="prov_type_cust_label" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border:2px solid var(--line);border-radius:10px;background:var(--bg-1);">
+            <input type="radio" name="prov_type" id="prov_type_custody" value="custody" style="width:18px;height:18px;accent-color:#1a7a5e;cursor:pointer;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text-2);">📦 預かり出庫</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">取引先の在庫を預かり管理</div>
+            </div>
           </label>
         </div>
-        <div id="prov_type_desc" style="font-size:11px;color:var(--text-3);margin-top:5px;">一般のお客様の予約・取り置き</div>
+        <div id="prov_type_desc" style="display:none;"></div>
       </div>
       <div class="field">
         <label id="prov_customer_label" style="font-size:13px;font-weight:600;">お客様名 <span style="color:var(--red);">*</span></label>
@@ -3757,16 +3763,18 @@ window.addEventListener('storageReady', function(){
       errorEl.textContent = '';
       function applyType(type){
         if(type==='custody'){
-          typeProvLabel.style.background=''; typeProvLabel.style.color='var(--text-3)';
-          typeCustLabel.style.background='rgba(26,122,94,0.12)'; typeCustLabel.style.color='#1a7a5e';
-          typeDesc.textContent='取引先の在庫を預かり管理（棚卸し金額に含まず）';
+          typeProvLabel.style.borderColor='var(--line)'; typeProvLabel.style.background='var(--bg-1)';
+          typeProvLabel.querySelector('div > div').style.color='var(--text-2)';
+          typeCustLabel.style.borderColor='#1a7a5e'; typeCustLabel.style.background='rgba(26,122,94,0.1)';
+          typeCustLabel.querySelector('div > div').style.color='#1a7a5e';
           formTitle.textContent='📦 預かり出庫の登録';
           custLabel.innerHTML='取引先名 <span style="color:var(--red);">*</span>';
           customerInput.placeholder='例) ABC商事';
         } else {
-          typeProvLabel.style.background='var(--amber-dim)'; typeProvLabel.style.color='var(--amber)';
-          typeCustLabel.style.background=''; typeCustLabel.style.color='var(--text-3)';
-          typeDesc.textContent='一般のお客様の予約・取り置き';
+          typeProvLabel.style.borderColor='var(--amber)'; typeProvLabel.style.background='var(--amber-dim)';
+          typeProvLabel.querySelector('div > div').style.color='var(--amber)';
+          typeCustLabel.style.borderColor='var(--line)'; typeCustLabel.style.background='var(--bg-1)';
+          typeCustLabel.querySelector('div > div').style.color='var(--text-2)';
           formTitle.textContent='🔖 仮出庫の登録';
           custLabel.innerHTML='お客様名 <span style="color:var(--red);">*</span>';
           customerInput.placeholder='例) 田中様';
