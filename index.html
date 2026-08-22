@@ -10263,7 +10263,7 @@ window.addEventListener('storageReady', function(){
       }
       const _anyBranchFixedSell = Object.values(p._branchSellPrice).some(v => v != null && v > 0);
       // 固定価格チェック時はp.sellPriceをグローバルに上書きしない（他支店の通常価格を汚染しないため）
-      const _globalSellPrice = _fixedSell ? (p.sellPrice || sellPrice) : sellPrice;
+      const _globalSellPrice = _fixedSell ? p.sellPrice : sellPrice;
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
