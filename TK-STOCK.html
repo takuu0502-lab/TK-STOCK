@@ -5166,7 +5166,7 @@ window.addEventListener('storageReady', function(){
               +'</td>';
           })()
           : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
-          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+(()=>{ const _ownMfYr=getBranchManufactureYear(p,_ownBranchId); return _ownMfYr?'<span style="font-size:10px;color:var(--teal);margin-left:4px;font-weight:600;">'+_ownMfYr+'年製</span>':''; })()+'</td>')
+          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>')
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
           if(_showMultiCols){
@@ -5221,10 +5221,14 @@ window.addEventListener('storageReady', function(){
               if(isOwn && p.customerOrders && p.customerOrders.length > 0){
                 badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
-              // 製造年バッジ：在庫がある支店列に表示（支店別製造年を使用）
+              // 製造年バッジ：在庫がある支店列に表示（年数でカラー分け）
               const _brMfYear = getBranchManufactureYear(p, brId);
               if(bStk > 0 && _brMfYear){
-                badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
+                const _curYr = new Date().getFullYear();
+                const _yrDiff = _curYr - _brMfYear;
+                const _yrBg = _yrDiff <= 0 ? '#e0f5f0' : _yrDiff === 1 ? '#d4edda' : _yrDiff === 2 ? '#fff3cd' : '#fde8e8';
+                const _yrColor = _yrDiff <= 0 ? 'var(--teal)' : _yrDiff === 1 ? '#1a7a3c' : _yrDiff === 2 ? '#b8650c' : '#c0392b';
+                badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
