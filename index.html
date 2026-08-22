@@ -3266,9 +3266,9 @@ window.addEventListener('storageReady', function(){
       const pob = await window.storage.get('provisionalOutbounds', SHARED);
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
       const co = await window.storage.get('customerOrders', SHARED);
-      customerOrders = co ? JSON.parse(co.value) : [];
+      customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
       const isch = await window.storage.get('incomingSchedules', SHARED);
-      incomingSchedules = isch ? JSON.parse(isch.value) : [];
+      incomingSchedules = (isch && isch.value) ? (JSON.parse(isch.value) || []) : [];
       // branchId未設定の仮出庫レコードにstaff名からbranchIdを補完するマイグレーション
       let pobMigrated = false;
       provisionalOutbounds.forEach(po=>{
@@ -3297,7 +3297,7 @@ window.addEventListener('storageReady', function(){
         _nagataTgt.role = 'superadmin';
         await saveAccounts();
       }
-    }catch(e){ transactions = []; provisionalOutbounds = []; }
+    }catch(e){ transactions = []; provisionalOutbounds = []; customerOrders = []; incomingSchedules = []; }
 
     try{
       const el = await window.storage.get('productEditLog', SHARED);
@@ -5127,6 +5127,7 @@ window.addEventListener('storageReady', function(){
   }
 
   function renderProductTable(){
+    try {
     renderBreadcrumb();
     renderPriceCatalog();
     renderBranchFilter();
@@ -5235,7 +5236,9 @@ window.addEventListener('storageReady', function(){
       });
     }
     if(list.length === 0){
-      wrap.innerHTML = '<div class="empty-state">商品が見つかりません。<br><span style="font-size:12px;color:var(--text-3);">カテゴリや支店フィルターを確認するか、「＋新規商品登録」から追加してください。</span></div>';
+      const _dbgCount = products.length;
+      const _dbgBranch = selectedBranchFilter || '全支店';
+      wrap.innerHTML = '<div class="empty-state">商品が見つかりません。<br><span style="font-size:12px;color:var(--text-3);">DB商品数: '+_dbgCount+'件 / 表示支店: '+escapeHtml(_dbgBranch)+'</span><br><span style="font-size:12px;color:var(--text-3);">カテゴリや支店フィルターを確認するか、「＋新規商品登録」から追加してください。</span></div>';
       return;
     }
     if(filteredList.length === 0){
@@ -5366,7 +5369,7 @@ window.addEventListener('storageReady', function(){
                 }
               }
               // 入庫予定：各支店列にそれぞれ表示
-              const inschQtyBr = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
+              const inschQtyBr = (incomingSchedules||[]).filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
               if(inschQtyBr > 0){
                 if(isOwn){
                   badges += '<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📦 入庫予定 '+inschQtyBr+'本</div>';
@@ -5414,7 +5417,7 @@ window.addEventListener('storageReady', function(){
             const provOver=_scProvQtyCust>stk;
             const _provTipSc=_scPoPend.map(po=>{ const _q=po.items.filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮出庫]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
             const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
-            const inschQty=incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
+            const inschQty=(incomingSchedules||[]).filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===p.id).reduce((s,x)=>s+x.qty,0);
             return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="custody" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+(inschQty>0?'<div data-insch-badge="'+p.id+'" style="cursor:pointer;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#1a7a5e;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;" title="入庫予定を確認">📦 入庫予定 '+inschQty+'本</div>':'')+  '</td>';
           }
         })()
@@ -5494,6 +5497,11 @@ window.addEventListener('storageReady', function(){
         });
         updateBulkBar();
       });
+    }
+    } catch(e) {
+      console.error('renderProductTable error:', e);
+      const wrap = document.getElementById('productTableWrap');
+      if(wrap) wrap.innerHTML = '<div class="empty-state" style="color:var(--red);">⚠️ 表示エラー: '+escapeHtml(String(e))+' — ページを再読み込みしてください。</div>';
     }
   }
 
