@@ -4629,7 +4629,7 @@ window.addEventListener('storageReady', function(){
                 }
               }
               const _tipAttr = _tipFull ? ' title="'+_tipFull+'"' : '';
-              const _tipBadge = _tip ? '<span title="'+_tipFull+'" style="cursor:'+(_tipFull&&!_isOwnBranch?'pointer':'default')+';font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
+              const _tipBadge = _tip ? '<span data-price-tip="'+_tipFull+'" style="cursor:'+(_tipFull&&!_isOwnBranch?'pointer':'default')+';font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
@@ -5278,7 +5278,7 @@ window.addEventListener('storageReady', function(){
                   if(_brCost) _yrTitle += '仕入: ¥'+_brCost.toLocaleString();
                   if(_brSell) _yrTitle += (_yrTitle?' / ':'')+'販売: ¥'+_brSell.toLocaleString();
                 }
-                badges += '<div title="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
+                badges += '<div data-price-tip="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
@@ -13337,6 +13337,31 @@ window.addEventListener('storageReady', function(){
   });
 
   initAuth();
+
+  // グローバルカスタムツールチップ（data-price-tip属性を持つ要素用）
+  const _tipEl = document.createElement('div');
+  _tipEl.id = 'priceTip';
+  _tipEl.style.cssText = 'position:fixed;z-index:9999;background:#1a1a1a;color:#fff;font-size:12px;line-height:1.6;padding:7px 12px;border-radius:8px;pointer-events:none;display:none;white-space:pre;box-shadow:0 2px 10px rgba(0,0,0,.25);';
+  document.body.appendChild(_tipEl);
+  document.addEventListener('mouseover', e=>{
+    const el = e.target.closest('[data-price-tip]');
+    if(!el) return;
+    const txt = el.getAttribute('data-price-tip');
+    if(!txt) return;
+    _tipEl.textContent = txt;
+    _tipEl.style.display = 'block';
+  });
+  document.addEventListener('mouseout', e=>{
+    if(!e.target.closest('[data-price-tip]')) return;
+    _tipEl.style.display = 'none';
+  });
+  document.addEventListener('mousemove', e=>{
+    if(_tipEl.style.display === 'none') return;
+    const x = e.clientX + 14, y = e.clientY + 14;
+    const w = _tipEl.offsetWidth, h = _tipEl.offsetHeight;
+    _tipEl.style.left = (x + w > window.innerWidth ? e.clientX - w - 6 : x) + 'px';
+    _tipEl.style.top  = (y + h > window.innerHeight ? e.clientY - h - 6 : y) + 'px';
+  });
 });
 </script>
 </body>
