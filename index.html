@@ -5268,15 +5268,15 @@ window.addEventListener('storageReady', function(){
                 const _yrDiff = _curYr - _brMfYear;
                 const _yrBg = _yrDiff <= 0 ? '#e0f5f0' : _yrDiff === 1 ? '#d4edda' : _yrDiff === 2 ? '#fff3cd' : '#fde8e8';
                 const _yrColor = _yrDiff <= 0 ? 'var(--teal)' : _yrDiff === 1 ? '#1a7a3c' : _yrDiff === 2 ? '#b8650c' : '#c0392b';
-                // 他店舗列に仕入れ・販売価格ツールチップ（自店舗以外・外部ユーザー除く）
-                let _yrTitle = '';
+                // 他店舗列に仕入れ・販売価格ツールチップ
+                let _yrTitle = _brMfYear + '年製';
                 if(!isOwn && !isExternalUser()){
                   const _brCost = getEffectiveCostForBranch(p, brId);
                   const _brSellFixed = getBranchFixedSell(p, brId);
                   const _catE = findCatalogEntryForProduct(p);
                   const _brSell = _brSellFixed !== null ? _brSellFixed : (_catE ? (getEffectiveSellPrice(_catE.b,_catE.m,_catE.w,_catE.t)||p.sellPrice||0) : p.sellPrice||0);
-                  if(_brCost) _yrTitle += '仕入: ¥'+_brCost.toLocaleString();
-                  if(_brSell) _yrTitle += (_yrTitle?' / ':'')+'販売: ¥'+_brSell.toLocaleString();
+                  if(_brCost > 0) _yrTitle += '\n仕入: ¥'+_brCost.toLocaleString();
+                  if(_brSell > 0) _yrTitle += '\n販売: ¥'+_brSell.toLocaleString();
                 }
                 badges += '<div data-price-tip="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
               }
