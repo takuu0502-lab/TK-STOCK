@@ -10368,14 +10368,14 @@ window.addEventListener('storageReady', function(){
         p = await showBarcodeSelectModal(_allMatches);
         if(!p){ setTimeout(()=>{ barcodeInput.focus(); }, 50); return; }
       }
-      // バーコード未登録でもBS_JAN_LOOKUPで照合して登録済み商品を探す
+      // バーコード未登録でもBS_JAN_LOOKUPで照合して登録済み商品を探す（全支店共通）
       if(!p && /^\d{13}$/.test(code)){
         const bsEntry = ALL_JAN_LOOKUP.find(e=>e.j===code);
         if(bsEntry){
           const pSize = bsEntry.s;
           const scored = products
-            .filter(pr=> normSpecSize(pr.spec||'')===pSize && (pr.branchId||'taniyabe')===_scanBranch)
-            .map(pr=>({pr, score: scoreModelMatch(pr.name||'', bsEntry.m)}))
+            .filter(pr=> normSpecSize(pr.spec||'')===pSize)
+            .map(pr=>({pr, score: scoreModelMatch(pr.name||'', bsEntry.m) + ((pr.branchId||'taniyabe')===_scanBranch ? 0.01 : 0)}))
             .sort((a,b)=>b.score-a.score);
           if(scored.length>0 && scored[0].score>=0.5){
             p = scored[0].pr;
