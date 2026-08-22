@@ -4692,7 +4692,7 @@ window.addEventListener('storageReady', function(){
             })();
         return '<tr>'
           + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+j+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
-          + '<td style="color:var(--amber);font-weight:600;text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
+          + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
           + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec||'')+'</td>'
           + (showCost ? '<td class="price-num" style="color:var(--text-2);">\u2014</td>' : '')
           + '<td class="price-num" style="color:var(--text-2);">\u2014</td>'
@@ -4883,7 +4883,7 @@ window.addEventListener('storageReady', function(){
       }
       return '<tr data-manual-idx="'+i+'">'
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+i+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
-        + '<td style="color:var(--amber);font-weight:600;text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
+        + '<td style="color:var(--amber);text-decoration:underline;cursor:pointer;" data-manual-detail="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</td>'
         + '<td style="font-family:var(--font-mono);color:var(--text-2);">'+escapeHtml(p.spec)+'</td>'
         + (showCost ? '<td class="price-num" style="color:var(--text-2);">—</td>' : '')
         + '<td class="price-num" style="color:var(--text-2);">—</td>'
