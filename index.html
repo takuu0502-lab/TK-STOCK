@@ -9919,7 +9919,8 @@ window.addEventListener('storageReady', function(){
       const el = document.getElementById('detailInschList');
       if(!el) return;
       const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-      const entries = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===id);
+      // 在庫補充のみ表示（客注品は客注品入庫リストで管理）
+      const entries = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===id&&s.inboundType!=='customerOrder');
       if(entries.length===0){
         el.innerHTML='<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">入庫予定なし</div>';
         return;
@@ -11544,7 +11545,8 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('incomingSchedWrap');
     if(!wrap) return;
     const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr);
+    // 在庫補充のみ表示（客注品は客注品入庫リストで管理）
+    const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.inboundType!=='customerOrder');
     if(pending.length===0){ wrap.innerHTML=''; return; }
     pending.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
     const today = new Date(); today.setHours(0,0,0,0);
