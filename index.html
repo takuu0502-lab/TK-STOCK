@@ -12421,7 +12421,7 @@ window.addEventListener('storageReady', function(){
     // バーコード入力（スキャナー対応）
     let _handyScanTimer = null;
     let _handyLookupLock = false; // 二重発火防止ロック
-    function _handyLookup(inputEl){
+    async function _handyLookup(inputEl){
       if(_handyLookupLock) return;
       // AIM識別子を除去（例: ]E0, ]Q0, ]C0 など — スキャナーが付加するプレフィックス）
       const raw = (inputEl.value||'').replace(/[\r\n]/g,'').trim().replace(/^\].{1,2}/, '');
@@ -12432,22 +12432,39 @@ window.addEventListener('storageReady', function(){
       setTimeout(()=>{ _handyLookupLock = false; }, 50);
 
       const code = raw;
-      // 既存のfindAllByBarcode関数を使用（大文字小文字・店舗優先対応）
-      const candidates = findAllByBarcode(code);
+      const _handyBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+
+      // 1. p.barcode / p.id で直接検索
+      let candidates = findAllByBarcode(code);
+      let found = null;
       if(candidates.length === 1){
-        _handyShowProduct(candidates[0]);
+        found = candidates[0];
       } else if(candidates.length > 1){
-        showBarcodeSelectModal(candidates).then(p=>{ if(p) _handyShowProduct(p); });
-      } else {
-        // バーコードで見つからなければ名前/サイズで検索
-        const kw = code.toUpperCase();
-        const p = products.find(x=>(x.name||'').toUpperCase().includes(kw)||(x.spec||'').toUpperCase().includes(kw));
-        if(p){
-          _handyShowProduct(p);
-        } else {
-          document.getElementById('handyMsg').innerHTML = '<div style="color:var(--red);font-size:14px;">商品が見つかりません: '+escapeHtml(code)+'</div>';
-          inputEl.style.borderColor = 'var(--red)';
+        found = await showBarcodeSelectModal(candidates);
+      }
+
+      // 2. バーコード未登録でもALL_JAN_LOOKUPで照合（JANコード13桁のみ）
+      if(!found && /^\d{13}$/.test(code) && ALL_JAN_LOOKUP && ALL_JAN_LOOKUP.length){
+        const janEntry = ALL_JAN_LOOKUP.find(e=>e.j===code);
+        if(janEntry){
+          const pSize = janEntry.s;
+          const scored = products
+            .filter(pr=> normSpecSize(pr.spec||'')===pSize)
+            .map(pr=>({pr, score: scoreModelMatch(pr.name||'', janEntry.m)}))
+            .sort((a,b)=>b.score-a.score);
+          if(scored.length > 0 && scored[0].score >= 0.5){
+            found = scored[0].pr;
+            // バーコードを自動保存
+            if(!found.barcode){ found.barcode = code; saveProducts(); }
+          }
         }
+      }
+
+      if(found){
+        _handyShowProduct(found);
+      } else {
+        document.getElementById('handyMsg').innerHTML = '<div style="color:var(--red);font-size:14px;">商品が見つかりません: '+escapeHtml(code)+'</div>';
+        inputEl.style.borderColor = 'var(--red)';
       }
     }
     const _handyBc = document.getElementById('handyBarcode');
