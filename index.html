@@ -4615,8 +4615,21 @@ window.addEventListener('storageReady', function(){
           ? _catVisibleBranches.map(brId => {
               const bStk = stockForCatalogEntryByBranch(r, brId);
               const _tip = _yearTooltip(brId);
-              const _tipAttr = _tip ? ' title="'+_tip+'"' : '';
-              const _tipBadge = _tip ? '<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
+              const _isOwnBranch = brId === _catOwnBranchId;
+              // 他支店列：価格情報をツールチップに追加（外部ユーザー除く）
+              let _tipFull = _tip || '';
+              if(!_isOwnBranch && !isExternalUser() && _tip){
+                const _tipCp = _catProds.find(cp=>(cp.branchStock||{})[brId]>0) || _catProds[0];
+                if(_tipCp){
+                  const _tCost = getEffectiveCostForBranch(_tipCp, brId);
+                  const _tSellF = getBranchFixedSell(_tipCp, brId);
+                  const _tSell = _tSellF !== null ? _tSellF : (getEffectiveSellPrice(r.b,r.m,r.w,r.t)||_tipCp.sellPrice||0);
+                  if(_tCost) _tipFull += '\n仕入: ¥'+_tCost.toLocaleString();
+                  if(_tSell) _tipFull += '\n販売: ¥'+_tSell.toLocaleString();
+                }
+              }
+              const _tipAttr = _tipFull ? ' title="'+_tipFull+'"' : '';
+              const _tipBadge = _tip ? '<span title="'+_tipFull+'" style="cursor:'+(_tipFull&&!_isOwnBranch?'pointer':'default')+';font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
                 const _inschQ = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===brId&&s.productId===cp.id).reduce((s,x)=>s+x.qty,0);
@@ -5265,7 +5278,7 @@ window.addEventListener('storageReady', function(){
                   if(_brCost) _yrTitle += '仕入: ¥'+_brCost.toLocaleString();
                   if(_brSell) _yrTitle += (_yrTitle?' / ':'')+'販売: ¥'+_brSell.toLocaleString();
                 }
-                badges += '<div title="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'help':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
+                badges += '<div title="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
