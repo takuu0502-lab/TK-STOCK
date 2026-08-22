@@ -2688,13 +2688,19 @@ window.addEventListener('storageReady', function(){
     if(p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0){
       return p._branchSellPrice[branchId];
     }
-    // 後方互換：_branchSellPrice が未設定の商品のみ _fixedSell を全支店共通として使用
-    if(!p._branchSellPrice && p._fixedSell && p.sellPrice) return p.sellPrice;
+    // 後方互換：_branchSellPrice 未設定の旧形式は登録支店のみに固定価格を適用
+    if(!p._branchSellPrice && p._fixedSell && p.sellPrice){
+      const _ownerBranch = p.branchId || 'taniyabe';
+      if(branchId === _ownerBranch) return p.sellPrice;
+    }
     return null;
   }
   function hasBranchFixedSell(p, branchId){
-    return (p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0) ||
-           (!p._branchSellPrice && !!(p._fixedSell && p.sellPrice));
+    if(p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0) return true;
+    if(!p._branchSellPrice && p._fixedSell && p.sellPrice){
+      return branchId === (p.branchId || 'taniyabe');
+    }
+    return false;
   }
 
   function getEffectiveCostForBranch(p, branchId){
