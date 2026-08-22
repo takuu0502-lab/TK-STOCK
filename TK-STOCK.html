@@ -2682,6 +2682,21 @@ window.addEventListener('storageReady', function(){
     return (p._branchFixedCost && p._branchFixedCost[branchId] != null && p._branchFixedCost[branchId] > 0) ||
            (!!(p._fixedCost && p.costPrice));
   }
+  // 支店別固定販売価格ヘルパー
+  // p._branchSellPrice: {taniyabe: 15000, katsuta: null, ...} のような形で保存
+  function getBranchFixedSell(p, branchId){
+    if(p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0){
+      return p._branchSellPrice[branchId];
+    }
+    // 後方互換：旧 _fixedSell フラグがある場合は sellPrice を全支店共通として使用
+    if(p._fixedSell && p.sellPrice) return p.sellPrice;
+    return null;
+  }
+  function hasBranchFixedSell(p, branchId){
+    return (p._branchSellPrice && p._branchSellPrice[branchId] != null && p._branchSellPrice[branchId] > 0) ||
+           (!!(p._fixedSell && p.sellPrice));
+  }
+
   function getEffectiveCostForBranch(p, branchId){
     const fixed = getBranchFixedCost(p, branchId);
     if(fixed !== null) return fixed;
@@ -9422,9 +9437,10 @@ window.addEventListener('storageReady', function(){
       ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? (p.costPrice || 0))
       : (p.costPrice || 0);
     document.getElementById('f_cost').value = (_editBranchFixed !== null ? _editBranchFixed : _editComputedCost) || '';
-    document.getElementById('f_price').value = p.sellPrice || '';
+    const _editBranchSell = getBranchFixedSell(p, _editBranch2);
+    document.getElementById('f_price').value = (_editBranchSell !== null ? _editBranchSell : p.sellPrice) || '';
     document.getElementById('f_cost_fixed').checked = hasBranchFixedCost(p, _editBranch2);
-    document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
+    document.getElementById('f_sell_fixed').checked = hasBranchFixedSell(p, _editBranch2);
     document.getElementById('f_memo').value = p.memo || '';
     document.getElementById('f_url').value = p.url || '';
     const _mfEditBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -9489,7 +9505,9 @@ window.addEventListener('storageReady', function(){
       // 自社登録商品（カタログ外）：登録価格をそのまま使用
       cost = p.costPrice || 0;
     }
-    const sell = p.sellPrice || 0;
+    const _branchSellFixed = getBranchFixedSell(p, _detBranch);
+    const sell = _branchSellFixed !== null ? _branchSellFixed
+      : (catalogEntry ? (getEffectiveSellPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t) || p.sellPrice || 0) : p.sellPrice || 0);
     const margin = (cost && sell) ? (sell - cost) : null;
     const _detHistOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const hist = transactions.filter(t=>t.productId===id&&(t.branchId||'taniyabe')===_detHistOwnBranch).slice(0, 100);
@@ -9969,9 +9987,11 @@ window.addEventListener('storageReady', function(){
         _pendingFromCatalog = !!p._fromCatalog;
         document.getElementById('f_memo').value = p.memo || '';
         document.getElementById('f_cost').value = p.costPrice || '';
-        document.getElementById('f_price').value = p.sellPrice || '';
-        document.getElementById('f_cost_fixed').checked = !!p._fixedCost;
-        document.getElementById('f_sell_fixed').checked = !!p._fixedSell;
+        const _dupBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        const _dupSell = getBranchFixedSell(p, _dupBranchId);
+        document.getElementById('f_price').value = (_dupSell !== null ? _dupSell : p.sellPrice) || '';
+        document.getElementById('f_cost_fixed').checked = hasBranchFixedCost(p, _dupBranchId);
+        document.getElementById('f_sell_fixed').checked = hasBranchFixedSell(p, _dupBranchId);
         document.getElementById('f_stock').value = 0;
         document.getElementById('f_minstock').value = p.minStock || 0;
         populateMajorSelect(p.majorId);
@@ -10228,10 +10248,18 @@ window.addEventListener('storageReady', function(){
       }
       // 後方互換フラグも更新（全支店に _branchFixedCost がある場合のみ _fixedCost をfalseに）
       const _anyBranchFixed = Object.values(p._branchFixedCost).some(v => v != null && v > 0);
+      // 支店別固定販売価格を保存
+      if(!p._branchSellPrice) p._branchSellPrice = {};
+      if(_fixedSell && sellPrice > 0){
+        p._branchSellPrice[_saveBranch] = sellPrice;
+      } else {
+        p._branchSellPrice[_saveBranch] = null;
+      }
+      const _anyBranchFixedSell = Object.values(p._branchSellPrice).some(v => v != null && v > 0);
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
@@ -10249,9 +10277,11 @@ window.addEventListener('storageReady', function(){
       const initBranchLocation={}; initBranchLocation[newBranchId] = locationId;
       const initBranchFixedCost = {};
       if(_fixedCost && costPrice > 0) initBranchFixedCost[newBranchId] = costPrice;
+      const initBranchSellPrice = {};
+      if(_fixedSell && sellPrice > 0) initBranchSellPrice[newBranchId] = sellPrice;
       const initBranchManufactureYear = {};
       if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
