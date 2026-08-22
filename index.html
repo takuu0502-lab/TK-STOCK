@@ -13341,7 +13341,7 @@ window.addEventListener('storageReady', function(){
   // グローバルカスタムツールチップ（data-price-tip属性を持つ要素用）
   const _tipEl = document.createElement('div');
   _tipEl.id = 'priceTip';
-  _tipEl.style.cssText = 'position:fixed;z-index:9999;background:#1a1a1a;color:#fff;font-size:12px;line-height:1.6;padding:7px 12px;border-radius:8px;pointer-events:none;display:none;white-space:pre;box-shadow:0 2px 10px rgba(0,0,0,.25);';
+  _tipEl.style.cssText = 'position:fixed;z-index:9999;background:#fff;color:#333;font-size:12px;line-height:1.8;padding:8px 14px;border-radius:10px;pointer-events:none;display:none;white-space:pre;box-shadow:0 3px 16px rgba(0,0,0,.15);border:1px solid #e0ddd6;';
   document.body.appendChild(_tipEl);
   document.addEventListener('mouseover', e=>{
     const el = e.target.closest('[data-price-tip]');
