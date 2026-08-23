@@ -10826,7 +10826,7 @@ window.addEventListener('storageReady', function(){
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
-    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, sell));
+    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || sell) : sell));
     document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
     // 複製ボタン（管理者以上のみ）
     const _dupBtn = document.getElementById('detailDuplicate');
