@@ -3308,10 +3308,11 @@ window.addEventListener('storageReady', function(){
     await loadWheelCatalog();
 
     // JAN自動設定（起動時・スコア0.9以上・未登録商品のみ・サイレント実行）
+    // ※ barcode が "" の場合は手動削除済みとみなしてスキップ
     {
       let _bsAutoCount = 0;
       for(const p of products){
-        if(p.barcode) continue;
+        if(p.barcode !== undefined && p.barcode !== null) continue; // 空文字含め登録済みはスキップ
         const pSize = normSpecSize(p.spec||'');
         if(!pSize) continue;
         const best = ALL_JAN_LOOKUP
