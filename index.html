@@ -9777,6 +9777,207 @@ window.addEventListener('storageReady', function(){
   const detailModal = document.getElementById('productDetailModal');
   let detailProductId = null;
 
+  function printTirePOP(p, sell){
+    const brandName = escapeHtml(p.brand || '');
+    const modelName = escapeHtml(cleanName(p.name) || '');
+    const sizeStr   = escapeHtml(p.spec || '');
+    const sellTax   = sell ? Math.floor(sell * 1.1) : null;
+    const sell4     = sellTax ? sellTax * 4 : null;
+    const branchName = currentUser ? (currentUser.branchName || currentUser.branchId || '') : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>POP印刷 - ${modelName}</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 210mm;
+    height: 297mm;
+    font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background: #fff;
+    color: #111;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+  .pop-page {
+    width: 210mm;
+    height: 297mm;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .pop-header {
+    background: #c8102e;
+    color: #fff;
+    padding: 18mm 14mm 10mm;
+    flex-shrink: 0;
+  }
+  .pop-header .brand {
+    font-size: 22pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    opacity: 0.92;
+    margin-bottom: 3mm;
+  }
+  .pop-header .model {
+    font-size: 36pt;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+  }
+  .pop-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10mm 14mm;
+    gap: 8mm;
+  }
+  .pop-size-box {
+    background: #f0f0f0;
+    border-radius: 6mm;
+    padding: 6mm 14mm;
+    text-align: center;
+    width: 100%;
+  }
+  .pop-size-label {
+    font-size: 13pt;
+    color: #555;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-bottom: 2mm;
+  }
+  .pop-size-value {
+    font-size: 42pt;
+    font-weight: 800;
+    color: #111;
+    letter-spacing: 0.04em;
+    font-feature-settings: "tnum";
+  }
+  .pop-price-section {
+    width: 100%;
+    text-align: center;
+  }
+  .pop-price-label {
+    font-size: 13pt;
+    color: #555;
+    font-weight: 600;
+    margin-bottom: 2mm;
+    letter-spacing: 0.06em;
+  }
+  .pop-price-1 {
+    font-size: 70pt;
+    font-weight: 900;
+    color: #c8102e;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum";
+  }
+  .pop-price-1 .yen { font-size: 46pt; vertical-align: baseline; }
+  .pop-price-1 .tax { font-size: 16pt; color: #333; font-weight: 600; vertical-align: baseline; margin-left: 2mm; }
+  .pop-price-4-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4mm;
+    margin-top: 5mm;
+    padding: 4mm 10mm;
+    background: #111;
+    border-radius: 4mm;
+  }
+  .pop-price-4-label {
+    font-size: 14pt;
+    color: #fff;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .pop-price-4-value {
+    font-size: 32pt;
+    font-weight: 900;
+    color: #fff;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.01em;
+  }
+  .pop-price-4-value .yen { font-size: 22pt; }
+  .pop-no-price {
+    font-size: 28pt;
+    font-weight: 700;
+    color: #999;
+    border: 2px dashed #ccc;
+    padding: 8mm 14mm;
+    border-radius: 4mm;
+  }
+  .pop-footer {
+    background: #111;
+    color: #fff;
+    padding: 5mm 14mm;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .pop-footer .shop { font-size: 13pt; font-weight: 700; letter-spacing: 0.04em; }
+  .pop-footer .note { font-size: 9pt; color: #aaa; }
+  .pop-divider {
+    width: 90%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #ddd, transparent);
+    flex-shrink: 0;
+  }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="pop-page">
+  <div class="pop-header">
+    ${brandName ? `<div class="brand">${brandName}</div>` : ''}
+    <div class="model">${modelName}</div>
+  </div>
+  <div class="pop-body">
+    ${sizeStr ? `
+    <div class="pop-size-box">
+      <div class="pop-size-label">タイヤサイズ</div>
+      <div class="pop-size-value">${sizeStr}</div>
+    </div>` : ''}
+    <div class="pop-divider"></div>
+    <div class="pop-price-section">
+      <div class="pop-price-label">タイヤ1本（税込）</div>
+      ${sellTax ? `
+      <div class="pop-price-1">
+        <span class="yen">¥</span>${sellTax.toLocaleString('ja-JP')}<span class="tax">（税込）</span>
+      </div>
+      ${sell4 ? `
+      <div class="pop-price-4-row">
+        <span class="pop-price-4-label">4本セット</span>
+        <span class="pop-price-4-value"><span class="yen">¥</span>${sell4.toLocaleString('ja-JP')}</span>
+        <span style="font-size:12pt;color:#aaa;">（税込）</span>
+      </div>` : ''}` : `
+      <div class="pop-no-price">価格未設定</div>`}
+    </div>
+  </div>
+  <div class="pop-footer">
+    <span class="shop">${escapeHtml(branchName)}</span>
+    <span class="note">※価格はすべて税込表示です</span>
+  </div>
+</div>
+<script>window.onload = function(){ window.print(); };<\/script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
   function openProductDetail(id){
     const p = products.find(x=>x.id===id);
     if(!p) return;
@@ -9862,7 +10063,10 @@ window.addEventListener('storageReady', function(){
             + '</div>';
         })()
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
-      + '<button class="btn btn-ghost" id="detailQrBtn" style="margin-top:10px;font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">'
+      + '<button class="btn btn-ghost" id="detailQrBtn" style="font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
+      + '<button class="btn btn-ghost" id="detailPopBtn" style="font-size:14px;padding:8px 18px;border-color:var(--amber);color:var(--amber);">🖨️ POP印刷</button>'
+      + '</div>'
       + (p.url ? '<div style="margin-top:8px;"><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:14px;text-decoration:none;border:1px solid var(--teal);border-radius:8px;padding:7px 16px;">🔗 商品URLを開く</a></div>' : '')
       + '</div>'
       + (()=>{
@@ -10283,6 +10487,7 @@ window.addEventListener('storageReady', function(){
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
+    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, sell));
     document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
     // 複製ボタン（管理者以上のみ）
     const _dupBtn = document.getElementById('detailDuplicate');
