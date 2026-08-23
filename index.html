@@ -9938,8 +9938,9 @@ window.addEventListener('storageReady', function(){
       const el = document.getElementById('detailInschList');
       if(!el) return;
       const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-      // 在庫補充のみ表示（客注品は客注品入庫リストで管理）
-      const entries = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.productId===id&&s.inboundType!=='customerOrder');
+      const _visBrs = getVisibleBranches();
+      // 閲覧可能な全支店の入庫予定を表示（在庫補充のみ、客注品は除く）
+      const entries = (incomingSchedules||[]).filter(s=>s.status==='pending'&&_visBrs.includes(s.branchId)&&s.productId===id&&s.inboundType!=='customerOrder');
       if(entries.length===0){
         el.innerHTML='<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">入庫予定なし</div>';
         return;
@@ -9953,18 +9954,20 @@ window.addEventListener('storageReady', function(){
         const diffLabel = _isTbdEd?'未定':diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
         const diffColor = _isTbdEd?'var(--text-3)':diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
         const _edStr = _isTbdEd ? '未定 入庫予定' : (()=>{ const _edp=s.expectedDate.split('-'); return _edp[0]+'年'+parseInt(_edp[1])+'月'+parseInt(_edp[2])+'日入庫予定'; })();
+        const _isOwnBrEntry = s.branchId === _ownBr;
+        const _brBadge = !_isOwnBrEntry ? '<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:6px;background:var(--bg-3);color:var(--text-2);margin-left:6px;">'+escapeHtml(branchName(s.branchId))+'</span>' : '';
         return '<div style="padding:10px 12px;background:rgba(26,122,94,0.07);border:1px solid var(--teal);border-radius:8px;margin-bottom:8px;">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-          +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 '+_edStr+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 '+_edStr+_brBadge+'</span>'
           +'<span style="font-size:11px;font-weight:600;color:'+diffColor+';">'+diffLabel+'</span>'
           +'</div>'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
           +'<div style="font-size:13px;">数量：<strong>'+s.qty+'本</strong>　担当：<span style="color:var(--text-2);">'+escapeHtml(s.createdBy||'')+'</span></div>'
-          +'<div style="display:flex;gap:6px;">'
+          +(_isOwnBrEntry ? '<div style="display:flex;gap:6px;">'
           +'<button class="btn btn-teal btn-sm" data-insch-confirm="'+s.id+'" style="font-size:12px;padding:4px 12px;">入庫確定</button>'
           +'<button class="btn btn-ghost btn-sm" data-insch-edit="'+s.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--teal);color:var(--teal);">編集</button>'
           +'<button class="btn btn-ghost btn-sm" data-insch-delete="'+s.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);">削除</button>'
-          +'</div>'
+          +'</div>' : '')
           +'</div>'
           +(s.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(26,122,94,0.1);border-radius:6px;font-size:12px;color:#1a7a5e;font-weight:600;">👤 '+escapeHtml(s.customerName)+(s.carName?' ／ 車種：'+escapeHtml(s.carName):'')+(s.provScheduledDate?(()=>{const _pp=s.provScheduledDate.split('-');return ' ／ 引渡予定：'+(_pp.length>=3?_pp[0]+'年'+parseInt(_pp[1])+'月'+parseInt(_pp[2])+'日':s.provScheduledDate);})():'')+'</div>':'')
           +'</div>';
