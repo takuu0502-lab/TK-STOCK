@@ -1543,7 +1543,8 @@
                   <th style="padding:6px 8px;text-align:left;font-weight:600;">フィールド</th>
                   <th style="padding:6px 8px;text-align:center;">X（mm）</th>
                   <th style="padding:6px 8px;text-align:center;">Y（mm）</th>
-                  <th style="padding:6px 8px;text-align:center;">文字サイズ（pt）</th>
+                  <th style="padding:6px 8px;text-align:center;">サイズ（pt）</th>
+                  <th style="padding:6px 8px;text-align:center;">フォント</th>
                   <th style="padding:6px 8px;text-align:center;">文字色</th>
                   <th style="padding:6px 8px;text-align:center;">配置</th>
                 </tr>
@@ -10062,9 +10063,23 @@ window.addEventListener('storageReady', function(){
 
   // デフォルトフィールド定義（PDF用）
   const _PT_DEFAULT_FIELDS = [
-    { key: 'SIZE',    label: 'タイヤサイズ',    x: 105, y: 148, size: 42, color: '#111111', align: 'center' },
-    { key: 'PRICE_1', label: '1本税込価格',      x: 105, y: 198, size: 52, color: '#c8102e', align: 'center' },
-    { key: 'PRICE_4', label: '4本セット税込価格', x: 105, y: 248, size: 32, color: '#ffffff', align: 'center' },
+    { key: 'SIZE',    label: 'タイヤサイズ',    x: 105, y: 148, size: 42, font: 'HelveticaBold', color: '#111111', align: 'center' },
+    { key: 'PRICE_1', label: '1本税込価格',      x: 105, y: 198, size: 52, font: 'HelveticaBold', color: '#c8102e', align: 'center' },
+    { key: 'PRICE_4', label: '4本セット税込価格', x: 105, y: 248, size: 32, font: 'HelveticaBold', color: '#ffffff', align: 'center' },
+  ];
+
+  // pdf-lib StandardFonts 一覧（英数字に使えるもの）
+  const _PT_FONTS = [
+    { value: 'HelveticaBold',        label: 'Helvetica Bold（太字）' },
+    { value: 'Helvetica',            label: 'Helvetica（通常）' },
+    { value: 'HelveticaOblique',     label: 'Helvetica Italic（斜体）' },
+    { value: 'HelveticaBoldOblique', label: 'Helvetica Bold Italic' },
+    { value: 'TimesBold',            label: 'Times Bold（明朝太字）' },
+    { value: 'TimesRoman',           label: 'Times Roman（明朝）' },
+    { value: 'TimesBoldItalic',      label: 'Times Bold Italic' },
+    { value: 'TimesItalic',          label: 'Times Italic' },
+    { value: 'CourierBold',          label: 'Courier Bold（等幅太字）' },
+    { value: 'Courier',              label: 'Courier（等幅）' },
   ];
 
   function _ptSetType(type){
@@ -10082,16 +10097,23 @@ window.addEventListener('storageReady', function(){
   function _ptRenderFieldsTable(fields){
     const tbody = document.getElementById('ptFieldsBody');
     if(!tbody) return;
+    const fontOpts = _PT_FONTS.map(fo => `<option value="${fo.value}">${fo.label}</option>`).join('');
     const alignOpts = ['left','center','right'].map(a => `<option value="${a}">${a==='left'?'左寄せ':a==='center'?'中央':'右寄せ'}</option>`).join('');
-    tbody.innerHTML = fields.map((f, i) => `
+    tbody.innerHTML = fields.map((f, i) => {
+      const curFont = f.font || 'HelveticaBold';
+      const fontSel = fontOpts.replace(`value="${curFont}"`, `value="${curFont}" selected`);
+      const alignSel = alignOpts.replace(`value="${f.align}"`, `value="${f.align}" selected`);
+      return `
       <tr style="border-top:1px solid var(--line);">
         <td style="padding:6px 8px;font-weight:600;color:var(--text-1);white-space:nowrap;">${f.label}</td>
-        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fx" data-i="${i}" style="width:62px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.x}"></td>
-        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fy" data-i="${i}" style="width:62px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.y}"></td>
-        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fs" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.size}"></td>
-        <td style="padding:4px 4px;text-align:center;"><input type="color" class="pt-fc" data-i="${i}" style="width:40px;height:30px;border:none;cursor:pointer;background:none;" value="${f.color}"></td>
-        <td style="padding:4px 4px;text-align:center;"><select class="pt-fa" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;">${alignOpts.replace(`value="${f.align}"`, `value="${f.align}" selected`)}</select></td>
-      </tr>`).join('');
+        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fx" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.x}"></td>
+        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fy" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.y}"></td>
+        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fs" data-i="${i}" style="width:52px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.size}"></td>
+        <td style="padding:4px 4px;text-align:center;"><select class="pt-ff" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:11px;max-width:160px;">${fontSel}</select></td>
+        <td style="padding:4px 4px;text-align:center;"><input type="color" class="pt-fc" data-i="${i}" style="width:38px;height:28px;border:none;cursor:pointer;background:none;" value="${f.color}"></td>
+        <td style="padding:4px 4px;text-align:center;"><select class="pt-fa" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;">${alignSel}</select></td>
+      </tr>`;
+    }).join('');
   }
 
   function _ptReadFields(){
@@ -10099,6 +10121,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.pt-fx').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].x = Number(el.value)||0; });
     document.querySelectorAll('.pt-fy').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].y = Number(el.value)||0; });
     document.querySelectorAll('.pt-fs').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].size = Number(el.value)||14; });
+    document.querySelectorAll('.pt-ff').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].font = el.value; });
     document.querySelectorAll('.pt-fc').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].color = el.value; });
     document.querySelectorAll('.pt-fa').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].align = el.value; });
     return fields;
@@ -10153,7 +10176,15 @@ window.addEventListener('storageReady', function(){
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const page = pdfDoc.getPages()[0];
       const { height } = page.getSize();
-      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      // フォントキャッシュ（同一フォントの重複埋め込みを避ける）
+      const _fontCache = {};
+      async function _getFont(fontName){
+        if(_fontCache[fontName]) return _fontCache[fontName];
+        const sfKey = StandardFonts[fontName] || StandardFonts.HelveticaBold;
+        const f = await pdfDoc.embedFont(sfKey);
+        _fontCache[fontName] = f;
+        return f;
+      }
 
       const sellTax = sell ? Math.floor(sell * 1.1) : null;
       const sell4   = sellTax ? sellTax * 4 : null;
@@ -10168,7 +10199,8 @@ window.addEventListener('storageReady', function(){
       for(const field of (template.pdfFields || [])){
         const text = values[field.key] || '';
         if(!text) continue;
-        const fs = field.size || 14;
+        const fs   = field.size || 14;
+        const font = await _getFont(field.font || 'HelveticaBold');
         const xBase = (field.x || 0) * MM;
         const yPt   = height - ((field.y || 0) * MM) - fs;
         let drawX = xBase;
