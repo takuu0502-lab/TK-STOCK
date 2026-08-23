@@ -6945,14 +6945,10 @@ window.addEventListener('storageReady', function(){
     document.getElementById('bulkEditFromBarBtn').addEventListener('click', ()=>{
       const selectedIds = [...selectedProducts];
       if(!selectedIds.length) return;
-      window._openBulkEditForCatalog('');
-      // 選択中の商品IDにチェックを入れる
+      // 選択中の商品IDのみ表示し、全件チェック済みにする
+      window._openBulkEditForCatalog('', selectedIds);
       setTimeout(()=>{
-        document.querySelectorAll('#bulkEditTbody .be-chk').forEach(chk=>{
-          if(selectedIds.includes(chk.dataset.pid)){
-            chk.checked = true;
-          }
-        });
+        document.querySelectorAll('#bulkEditTbody .be-chk').forEach(chk=>{ chk.checked = true; });
         const countEl = document.getElementById('bulkEditSelectedCount');
         if(countEl) countEl.textContent = selectedIds.length+'件選択中';
       }, 50);
@@ -8502,6 +8498,7 @@ window.addEventListener('storageReady', function(){
     const _beCount       = document.getElementById('bulkEditSelectedCount');
     const _beBulkMajor   = document.getElementById('beBulkMajor');
     const _beBulkSub     = document.getElementById('beBulkSub');
+    let _beRestrictIds   = null; // null=全商品, array=絞り込み対象IDリスト
 
     // ヘルパー: 大分類オプションHTML
     function _beMajorOpts(selectedId){
@@ -8524,9 +8521,8 @@ window.addEventListener('storageReady', function(){
 
     function _beGetFiltered(){
       const q = _beFilter.value.trim().toLowerCase();
-      return q
-        ? products.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q))
-        : [...products];
+      let base = _beRestrictIds ? products.filter(p=>_beRestrictIds.includes(p.id)) : [...products];
+      return q ? base.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q)) : base;
     }
 
     function _beUpdateCount(){
@@ -8665,13 +8661,14 @@ window.addEventListener('storageReady', function(){
       saveBtn.disabled=false;
     });
 
-    document.getElementById('bulkEditClose').addEventListener('click', ()=>{ _beModal.style.display='none'; });
-    _beModal.addEventListener('click', e=>{ if(e.target===_beModal) _beModal.style.display='none'; });
+    document.getElementById('bulkEditClose').addEventListener('click', ()=>{ _beModal.style.display='none'; _beRestrictIds=null; });
+    _beModal.addEventListener('click', e=>{ if(e.target===_beModal){ _beModal.style.display='none'; _beRestrictIds=null; } });
 
     // 価格カタログからモデル名で絞り込んで開く
-    window._openBulkEditForCatalog = (query)=>{
+    window._openBulkEditForCatalog = (query, restrictIds)=>{
       _beFilter.value = query || '';
       _beStatus.textContent = '';
+      _beRestrictIds = restrictIds || null;
       _beInitBulkSelects();
       _beModal.style.display = 'flex';
       _beRender();
