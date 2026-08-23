@@ -8314,6 +8314,8 @@ window.addEventListener('storageReady', function(){
         resetSpecSelections();
         if(selectedMajor) expanded.add(selectedMajor);
         renderSpecSearchPanel();
+        renderCatTree();
+        renderProductTable();
       });
     });
     panel.querySelectorAll('[data-spec-sub]').forEach(chip=>{
@@ -8321,6 +8323,8 @@ window.addEventListener('storageReady', function(){
         selectedSub = chip.dataset.specSub || null;
         resetSpecSelections();
         renderSpecSearchPanel();
+        renderCatTree();
+        renderProductTable();
       });
     });
     const specSelect = document.getElementById('specSelect');
