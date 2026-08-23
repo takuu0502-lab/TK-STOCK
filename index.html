@@ -1470,9 +1470,10 @@
 
 <!-- POP印刷テンプレート編集モーダル -->
 <div class="modal-overlay" id="popTemplateModal">
-  <div class="modal" style="max-width:780px;width:96%;max-height:92vh;overflow-y:auto;">
+  <div class="modal" style="max-width:820px;width:96%;max-height:92vh;overflow-y:auto;">
     <h3 style="margin-top:0;font-size:16px;">🖨️ POP印刷テンプレート編集</h3>
     <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- 共通：名前・ブランド・銘柄 -->
       <div class="field">
         <label>テンプレート名（管理用）</label>
         <input type="text" id="ptName" placeholder="例：REGNO GR-XⅢ専用テンプレ" style="width:100%;box-sizing:border-box;">
@@ -1487,24 +1488,82 @@
           <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;">
         </div>
       </div>
-      <div style="background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-2);line-height:1.7;">
-        <strong>使用できるプレースホルダー：</strong><br>
-        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{BRAND}}</code> ブランド名 &nbsp;
-        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{MODEL}}</code> 商品名（銘柄） &nbsp;
-        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SIZE}}</code> タイヤサイズ<br>
-        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_1}}</code> 1本税込価格 &nbsp;
-        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_4}}</code> 4本セット税込価格 &nbsp;
-        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SHOP}}</code> 店舗名
+      <!-- タイプ切替 -->
+      <div style="display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:fit-content;">
+        <button type="button" class="pt-type-btn active" data-type="html" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;background:var(--amber);color:#fff;cursor:pointer;">📄 HTMLテンプレート</button>
+        <button type="button" class="pt-type-btn" data-type="pdf" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;background:var(--bg-2);color:var(--text-2);cursor:pointer;">📑 PDFテンプレート</button>
       </div>
-      <div class="field">
-        <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-          <span>テンプレートHTML（A4・1枚に収まるよう設計）</span>
-          <button type="button" class="btn btn-ghost btn-sm" id="ptLoadDefault">デフォルトデザインを読込む</button>
-        </label>
-        <textarea id="ptHtml" rows="16" placeholder="HTMLを入力…" style="width:100%;box-sizing:border-box;font-family:var(--font-mono);font-size:12px;line-height:1.5;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);padding:8px 10px;resize:vertical;"></textarea>
+
+      <!-- HTML セクション -->
+      <div id="ptHtmlSection">
+        <div style="background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-2);line-height:1.7;margin-bottom:10px;">
+          <strong>使用できるプレースホルダー：</strong><br>
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{BRAND}}</code> ブランド名 &nbsp;
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{MODEL}}</code> 商品名（銘柄） &nbsp;
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SIZE}}</code> タイヤサイズ<br>
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_1}}</code> 1本税込価格 &nbsp;
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_4}}</code> 4本セット税込価格 &nbsp;
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SHOP}}</code> 店舗名
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <span>テンプレートHTML</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="ptLoadDefault">デフォルトデザインを読込む</button>
+          </label>
+          <textarea id="ptHtml" rows="14" placeholder="HTMLを入力…" style="width:100%;box-sizing:border-box;font-family:var(--font-mono);font-size:12px;line-height:1.5;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);padding:8px 10px;resize:vertical;"></textarea>
+        </div>
       </div>
+
+      <!-- PDF セクション -->
+      <div id="ptPdfSection" style="display:none;flex-direction:column;gap:12px;">
+        <div style="background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-2);line-height:1.7;">
+          ブランドロゴ・デザインが含まれたPDFをアップロードし、タイヤサイズ・価格を重ねて印刷します。<br>
+          ※ファイルサイズは <strong>3MB以下</strong> を推奨。英数字（サイズ・価格）はHelvética系フォントで描画されます。
+        </div>
+        <!-- PDFアップロード -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:6px;">PDFテンプレートファイル</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+              📂 PDFを選択
+              <input type="file" id="ptPdfFile" accept=".pdf" style="display:none;">
+            </label>
+            <span id="ptPdfFileName" style="font-size:13px;color:var(--text-2);">未選択</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="ptPdfPreviewBtn" style="display:none;">👁 PDF確認</button>
+          </div>
+          <div id="ptPdfInfo" style="margin-top:6px;font-size:12px;color:var(--text-3);"></div>
+        </div>
+        <!-- フィールド位置設定 -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:8px;">テキスト配置設定（PDFの左上が原点）</div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+              <thead>
+                <tr style="background:var(--bg-3);">
+                  <th style="padding:6px 8px;text-align:left;font-weight:600;">フィールド</th>
+                  <th style="padding:6px 8px;text-align:center;">X（mm）</th>
+                  <th style="padding:6px 8px;text-align:center;">Y（mm）</th>
+                  <th style="padding:6px 8px;text-align:center;">文字サイズ（pt）</th>
+                  <th style="padding:6px 8px;text-align:center;">文字色</th>
+                  <th style="padding:6px 8px;text-align:center;">配置</th>
+                </tr>
+              </thead>
+              <tbody id="ptFieldsBody">
+                <!-- JS で描画 -->
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:6px;">X/Y はテキスト <em>左端・上端</em> からの距離（mm）。配置が「中央」のときはX座標が中心線になります。</div>
+        </div>
+        <!-- テスト生成 -->
+        <div>
+          <button type="button" class="btn btn-ghost btn-sm" id="ptPdfTestBtn">🧪 サンプルデータで生成してダウンロード</button>
+        </div>
+      </div>
+
+      <!-- 共通ボタン -->
       <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;">
-        <button class="btn btn-ghost" id="ptPreviewBtn">👁 プレビュー（サンプルデータ）</button>
+        <button class="btn btn-ghost" id="ptPreviewBtn">👁 プレビュー（サンプル）</button>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-ghost" id="ptCancelBtn">キャンセル</button>
           <button class="btn btn-amber" id="ptSaveBtn">💾 保存</button>
@@ -9937,7 +9996,11 @@ window.addEventListener('storageReady', function(){
 
   function printTirePOP(p, sell){
     const matched = _findMatchingPOPTemplate(p);
-    const templateHtml = matched ? matched.html : _getDefaultPOPHtml();
+    if(matched && matched.type === 'pdf'){
+      _printPOPFromPDF(matched, p, sell);
+      return;
+    }
+    const templateHtml = (matched && matched.html) ? matched.html : _getDefaultPOPHtml();
     const finalHtml = _applyPOPPlaceholders(templateHtml, p, sell);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
@@ -9992,7 +10055,55 @@ window.addEventListener('storageReady', function(){
     });
   }
 
+  // ── POP印刷テンプレート モーダル管理 ────────────────────────────
   let _editingPopTemplateIdx = null;
+  let _ptCurrentType = 'html';  // 'html' or 'pdf'
+  let _ptCurrentPdfBase64 = null; // 現在読み込み中のPDFのbase64
+
+  // デフォルトフィールド定義（PDF用）
+  const _PT_DEFAULT_FIELDS = [
+    { key: 'SIZE',    label: 'タイヤサイズ',    x: 105, y: 148, size: 42, color: '#111111', align: 'center' },
+    { key: 'PRICE_1', label: '1本税込価格',      x: 105, y: 198, size: 52, color: '#c8102e', align: 'center' },
+    { key: 'PRICE_4', label: '4本セット税込価格', x: 105, y: 248, size: 32, color: '#ffffff', align: 'center' },
+  ];
+
+  function _ptSetType(type){
+    _ptCurrentType = type;
+    document.getElementById('ptHtmlSection').style.display  = type === 'html' ? 'block'  : 'none';
+    document.getElementById('ptPdfSection').style.display   = type === 'pdf'  ? 'flex'   : 'none';
+    document.getElementById('ptPreviewBtn').style.display   = type === 'html' ? 'inline-flex' : 'none';
+    document.querySelectorAll('.pt-type-btn').forEach(b => {
+      const active = b.dataset.type === type;
+      b.style.background = active ? 'var(--amber)' : 'var(--bg-2)';
+      b.style.color = active ? '#fff' : 'var(--text-2)';
+    });
+  }
+
+  function _ptRenderFieldsTable(fields){
+    const tbody = document.getElementById('ptFieldsBody');
+    if(!tbody) return;
+    const alignOpts = ['left','center','right'].map(a => `<option value="${a}">${a==='left'?'左寄せ':a==='center'?'中央':'右寄せ'}</option>`).join('');
+    tbody.innerHTML = fields.map((f, i) => `
+      <tr style="border-top:1px solid var(--line);">
+        <td style="padding:6px 8px;font-weight:600;color:var(--text-1);white-space:nowrap;">${f.label}</td>
+        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fx" data-i="${i}" style="width:62px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.x}"></td>
+        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fy" data-i="${i}" style="width:62px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.y}"></td>
+        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fs" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.size}"></td>
+        <td style="padding:4px 4px;text-align:center;"><input type="color" class="pt-fc" data-i="${i}" style="width:40px;height:30px;border:none;cursor:pointer;background:none;" value="${f.color}"></td>
+        <td style="padding:4px 4px;text-align:center;"><select class="pt-fa" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;">${alignOpts.replace(`value="${f.align}"`, `value="${f.align}" selected`)}</select></td>
+      </tr>`).join('');
+  }
+
+  function _ptReadFields(){
+    const fields = JSON.parse(JSON.stringify(_PT_DEFAULT_FIELDS));
+    document.querySelectorAll('.pt-fx').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].x = Number(el.value)||0; });
+    document.querySelectorAll('.pt-fy').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].y = Number(el.value)||0; });
+    document.querySelectorAll('.pt-fs').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].size = Number(el.value)||14; });
+    document.querySelectorAll('.pt-fc').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].color = el.value; });
+    document.querySelectorAll('.pt-fa').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].align = el.value; });
+    return fields;
+  }
+
   function openPopTemplateModal(idx){
     _editingPopTemplateIdx = (idx !== undefined && idx !== null) ? idx : null;
     const t = (_editingPopTemplateIdx !== null) ? popTemplates[_editingPopTemplateIdx] : null;
@@ -10001,22 +10112,143 @@ window.addEventListener('storageReady', function(){
     document.getElementById('ptModel').value = t ? (t.model || '') : '';
     document.getElementById('ptHtml').value  = t ? (t.html  || '') : '';
     document.getElementById('ptMsg').innerHTML = '';
+    _ptCurrentPdfBase64 = t ? (t.pdfBase64 || null) : null;
+    const pdfFileNameEl = document.getElementById('ptPdfFileName');
+    const pdfPreviewBtn = document.getElementById('ptPdfPreviewBtn');
+    if(_ptCurrentPdfBase64){
+      pdfFileNameEl.textContent = '（登録済み）';
+      pdfPreviewBtn.style.display = 'inline-flex';
+    } else {
+      pdfFileNameEl.textContent = '未選択';
+      pdfPreviewBtn.style.display = 'none';
+    }
+    document.getElementById('ptPdfInfo').textContent = '';
+    // フィールド設定
+    const fields = (t && t.pdfFields) ? t.pdfFields : JSON.parse(JSON.stringify(_PT_DEFAULT_FIELDS));
+    _ptRenderFieldsTable(fields);
+    // タイプ設定
+    _ptSetType(t ? (t.type || 'html') : 'html');
     document.getElementById('popTemplateModal').classList.add('show');
   }
 
+  // PDFライブラリを動的ロード
+  async function _loadPDFLib(){
+    if(window.PDFLib) return window.PDFLib;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+      s.onload = () => resolve(window.PDFLib);
+      s.onerror = () => reject(new Error('pdf-libの読み込みに失敗しました'));
+      document.head.appendChild(s);
+    });
+  }
+
+  // PDFにテキストを描画してダウンロード
+  async function _printPOPFromPDF(template, p, sell){
+    try {
+      const PDFLib = await _loadPDFLib();
+      const { PDFDocument, StandardFonts, rgb } = PDFLib;
+
+      const pdfBytes = Uint8Array.from(atob(template.pdfBase64), c => c.charCodeAt(0));
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const page = pdfDoc.getPages()[0];
+      const { height } = page.getSize();
+      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      const sellTax = sell ? Math.floor(sell * 1.1) : null;
+      const sell4   = sellTax ? sellTax * 4 : null;
+      const MM = 2.83465; // 1mm in pt
+
+      const values = {
+        SIZE:    p.spec || '',
+        PRICE_1: sellTax ? sellTax.toLocaleString('ja-JP') + '円(税込)' : '',
+        PRICE_4: sell4   ? sell4.toLocaleString('ja-JP')   + '円(税込)' : '',
+      };
+
+      for(const field of (template.pdfFields || [])){
+        const text = values[field.key] || '';
+        if(!text) continue;
+        const fs = field.size || 14;
+        const xBase = (field.x || 0) * MM;
+        const yPt   = height - ((field.y || 0) * MM) - fs;
+        let drawX = xBase;
+        if(field.align === 'center'){
+          drawX = xBase - font.widthOfTextAtSize(text, fs) / 2;
+        } else if(field.align === 'right'){
+          drawX = xBase - font.widthOfTextAtSize(text, fs);
+        }
+        const hex = (field.color || '#000000').replace('#','');
+        const r = parseInt(hex.slice(0,2),16)/255;
+        const g = parseInt(hex.slice(2,4),16)/255;
+        const b = parseInt(hex.slice(4,6),16)/255;
+        page.drawText(text, { x: drawX, y: yPt, size: fs, font, color: rgb(r,g,b) });
+      }
+
+      const outBytes = await pdfDoc.save();
+      const blob = new Blob([outBytes], { type: 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'POP_' + (p.spec || 'print').replace(/[\/\s]/g,'_') + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+    } catch(e){
+      console.error('PDF印刷エラー:', e);
+      alert('PDF生成中にエラーが発生しました: ' + e.message);
+    }
+  }
+
+  // ── イベントリスナー ──────────────────────────────────────────
   document.getElementById('addPopTemplateBtn').addEventListener('click', () => openPopTemplateModal(null));
+
+  document.querySelectorAll('.pt-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => _ptSetType(btn.dataset.type));
+  });
 
   document.getElementById('ptLoadDefault').addEventListener('click', () => {
     if(document.getElementById('ptHtml').value.trim() && !confirm('現在のHTMLを上書きしますか？')) return;
     document.getElementById('ptHtml').value = _getDefaultPOPHtml();
   });
 
+  // PDF ファイル選択
+  document.getElementById('ptPdfFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 5 * 1024 * 1024){ alert('ファイルサイズが大きすぎます（5MB以下にしてください）。'); e.target.value=''; return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result.split(',')[1];
+      _ptCurrentPdfBase64 = base64;
+      document.getElementById('ptPdfFileName').textContent = file.name + ' (' + (file.size/1024).toFixed(0) + 'KB)';
+      document.getElementById('ptPdfPreviewBtn').style.display = 'inline-flex';
+      document.getElementById('ptPdfInfo').textContent = '✅ PDFを読み込みました。下の配置設定でサイズ・価格のテキスト位置を指定してください。';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // PDF プレビュー
+  document.getElementById('ptPdfPreviewBtn').addEventListener('click', () => {
+    if(!_ptCurrentPdfBase64){ alert('PDFが選択されていません。'); return; }
+    const url = 'data:application/pdf;base64,' + _ptCurrentPdfBase64;
+    window.open(url, '_blank');
+  });
+
+  // PDF サンプル生成テスト
+  document.getElementById('ptPdfTestBtn').addEventListener('click', async () => {
+    if(!_ptCurrentPdfBase64){ alert('先にPDFをアップロードしてください。'); return; }
+    const fields = _ptReadFields();
+    const fakeTemplate = { pdfBase64: _ptCurrentPdfBase64, pdfFields: fields };
+    const sampleP = { brand: 'ブリヂストン', name: 'REGNO GR-XⅢ', spec: '195/65R15 91H' };
+    await _printPOPFromPDF(fakeTemplate, sampleP, 18000);
+  });
+
+  // HTML プレビュー
   document.getElementById('ptPreviewBtn').addEventListener('click', () => {
     const html = document.getElementById('ptHtml').value.trim();
     if(!html){ alert('HTMLを入力してください。'); return; }
     const sampleProduct = { brand: 'ブリヂストン', name: 'REGNO GR-XⅢ', spec: '195/65R15 91H' };
-    const sampleSell = 18000;
-    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, sampleSell);
+    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, 18000);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(w){ w.document.write(finalHtml); w.document.close(); }
   });
@@ -10029,10 +10261,19 @@ window.addEventListener('storageReady', function(){
     const name  = document.getElementById('ptName').value.trim();
     const brand = document.getElementById('ptBrand').value.trim();
     const model = document.getElementById('ptModel').value.trim();
-    const html  = document.getElementById('ptHtml').value.trim();
-    if(!name){ document.getElementById('ptMsg').innerHTML = '<div class="msg msg-err">テンプレート名を入力してください。</div>'; return; }
-    if(!html){ document.getElementById('ptMsg').innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
-    const entry = { name, brand, model, html };
+    const type  = _ptCurrentType;
+    const msg   = document.getElementById('ptMsg');
+    if(!name){ msg.innerHTML = '<div class="msg msg-err">テンプレート名を入力してください。</div>'; return; }
+    let entry;
+    if(type === 'pdf'){
+      if(!_ptCurrentPdfBase64){ msg.innerHTML = '<div class="msg msg-err">PDFをアップロードしてください。</div>'; return; }
+      entry = { name, brand, model, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
+    } else {
+      const html = document.getElementById('ptHtml').value.trim();
+      if(!html){ msg.innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
+      entry = { name, brand, model, type: 'html', html };
+    }
+    msg.innerHTML = '<div class="msg msg-ok">保存中…</div>';
     if(_editingPopTemplateIdx !== null){
       popTemplates[_editingPopTemplateIdx] = entry;
     } else {
@@ -10040,6 +10281,7 @@ window.addEventListener('storageReady', function(){
     }
     await savePopTemplates();
     renderPopTemplateList();
+    msg.innerHTML = '';
     document.getElementById('popTemplateModal').classList.remove('show');
   });
 
