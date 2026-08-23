@@ -11290,10 +11290,11 @@ window.addEventListener('storageReady', function(){
       entries.forEach(entry=>{
         const d = new Date(entry.date);
         const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-        const totalQty = entry.items.reduce((s,x)=>s+x.qty,0);
+        const _items = entry.items||[];
+        const totalQty = _items.reduce((s,x)=>s+x.qty,0);
         const _sdp2 = entry.scheduledDate ? entry.scheduledDate.split('-') : [];
         const _sdStr2 = _sdp2.length>=3 ? _sdp2[0]+'年'+parseInt(_sdp2[1])+'月'+parseInt(_sdp2[2])+'日' : (entry.scheduledDate||'—');
-        const hasOver = entry.items.some(item=>{
+        const hasOver = _items.some(item=>{
           const p2 = products.find(x=>x.id===item.productId);
           if(!p2) return false;
           const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
@@ -11312,10 +11313,10 @@ window.addEventListener('storageReady', function(){
           + '</div>'
           + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+dateStr+(entry.staff?' ・ '+escapeHtml(entry.staff):'')+'</div>'
           + '</div>'
-          + '<span style="font-size:13px;color:'+(hasOver?'var(--red)':'var(--amber)')+';font-weight:700;flex-shrink:0;">'+entry.items.length+'商品<br>'+totalQty+'本 ▼</span>'
+          + '<span style="font-size:13px;color:'+(hasOver?'var(--red)':'var(--amber)')+';font-weight:700;flex-shrink:0;">'+_items.length+'商品<br>'+totalQty+'本 ▼</span>'
           + '</summary>'
           + '<div style="padding:10px 14px;">';
-        entry.items.forEach(item=>{
+        _items.forEach(item=>{
           const p2 = products.find(x=>x.id===item.productId);
           const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
           const _p2Stk = p2 ? getStock(p2) : 0;
