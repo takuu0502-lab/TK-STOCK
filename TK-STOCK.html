@@ -1861,6 +1861,16 @@
         </div>
       </div>
     </div>
+    <!-- 入庫・仮出庫同時登録オプション（新規登録時のみ表示） -->
+    <div id="co_inbound_now_field" style="padding:10px 14px;background:var(--teal-dim);border:1px solid rgba(26,122,94,0.25);border-radius:10px;margin-bottom:4px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="co_inbound_now" style="width:18px;height:18px;accent-color:var(--teal);cursor:pointer;flex:none;">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--teal);">✅ 入庫・仮出庫を同時登録する</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px;">既に商品が届いている場合、在庫に追加して仮出庫リストへ登録します</div>
+        </div>
+      </label>
+    </div>
     <div id="co_error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px;"></div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost" id="co_cancel" style="flex:1;">キャンセル</button>
@@ -11260,6 +11270,11 @@ window.addEventListener('storageReady', function(){
       document.getElementById('co_install_date_tbd').checked = false;
       document.getElementById('co_install_date').disabled = false;
     }
+    // 入庫・仮出庫同時登録オプションは新規登録時のみ表示
+    const _coInboundNowField = document.getElementById('co_inbound_now_field');
+    const _coInboundNow = document.getElementById('co_inbound_now');
+    if(_coInboundNowField) _coInboundNowField.style.display = editOrder ? 'none' : 'block';
+    if(_coInboundNow) _coInboundNow.checked = false;
     document.getElementById('co_error').style.display = 'none';
     modal.classList.add('show');
     if(!editOrder) setTimeout(()=>{ document.getElementById('co_product_search').focus(); }, 100);
@@ -11538,6 +11553,8 @@ window.addEventListener('storageReady', function(){
         }
       } else {
         // 新規登録
+        const _inboundNow = document.getElementById('co_inbound_now') && document.getElementById('co_inbound_now').checked;
+        const _coStatus = _inboundNow ? 'completed' : 'pending';
         const order = {
           id: uid('co'),
           branchId: _coBr,
@@ -11549,15 +11566,46 @@ window.addEventListener('storageReady', function(){
           qty,
           expectedDate,
           installDate,
-          status: 'pending',
+          status: _coStatus,
           createdAt: new Date().toISOString(),
           createdBy: currentUser?currentUser.displayName:''
         };
+        if(_inboundNow){
+          order.completedAt = new Date().toISOString();
+        }
         customerOrders.push(order);
+
+        if(_inboundNow){
+          // 入庫処理：在庫追加
+          const _p = _coSelectedProduct;
+          if(!_p.branchStock) _p.branchStock = {};
+          _p.branchStock[_coBr] = (_p.branchStock[_coBr]||0) + qty;
+          const txIn = { id:uid('tx'), productId:_p.id, name:_p.name, brand:_p.brand||'', spec:_p.spec||'', type:'in', qty:qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBr, note:'客注品入荷 ('+customerName+')' };
+          transactions.push(txIn);
+          await saveProducts();
+          await saveTransactions();
+          // 仮出庫登録
+          const provEntry = {
+            id: uid('prov'),
+            date: new Date().toISOString(),
+            type: 'provisional',
+            customerName: customerName,
+            carName: carName||'',
+            scheduledDate: installDate||expectedDate||'',
+            branchId: _coBr,
+            staff: currentUser?currentUser.displayName:'',
+            items: [{ productId:_p.id, name:_p.name, brand:_p.brand||'', spec:_p.spec||'', partno:_p.partno||'', qty:qty }],
+            status: 'pending'
+          };
+          provisionalOutbounds.push(provEntry);
+          await saveProvisionalOutbounds();
+        }
       }
       await saveCustomerOrders();
       modal.classList.remove('show');
+      renderProductTable();
       renderCustomerOrderList();
+      renderProvisionalList();
     });
   })();
 
