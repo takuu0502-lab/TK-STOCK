@@ -5245,7 +5245,8 @@ window.addEventListener('storageReady', function(){
         if(p.brand !== _ckB || (p.name||'').indexOf(_ckM) === -1) return false;
       }
       // _fromCatalog自動登録品で同カタログエントリに手動登録品がある場合は非表示（重複防止）
-      if(p._fromCatalog){
+      // キーワード検索中はスキップ（非表示になっている商品も検索・確認できるようにする）
+      if(p._fromCatalog && !keywordFilter){
         const _dupCatEntry = findCatalogEntryForProduct(p);
         if(_dupCatEntry){
           const _dupAll = findAllProductsForCatalogEntry(_dupCatEntry);
