@@ -1457,6 +1457,61 @@
     </div>
     <div id="bulkUrlTable" style="max-width:700px;"></div>
 
+    <div class="pricing-section-divider"></div>
+    <div class="pricing-section-title">🖨️ POP印刷テンプレート</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">
+      銘柄ごとのPOP印刷テンプレートを登録します。商品詳細からPOP印刷する際に、ブランド・銘柄名で自動マッチングして適用されます。テンプレート未登録の場合はデフォルトデザインで印刷されます。
+    </p>
+    <div id="popTemplateList" style="margin-bottom:14px;"></div>
+    <button class="btn btn-amber btn-sm" id="addPopTemplateBtn">＋ テンプレートを追加</button>
+
+  </div>
+</div>
+
+<!-- POP印刷テンプレート編集モーダル -->
+<div class="modal-overlay" id="popTemplateModal">
+  <div class="modal" style="max-width:780px;width:96%;max-height:92vh;overflow-y:auto;">
+    <h3 style="margin-top:0;font-size:16px;">🖨️ POP印刷テンプレート編集</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>テンプレート名（管理用）</label>
+        <input type="text" id="ptName" placeholder="例：REGNO GR-XⅢ専用テンプレ" style="width:100%;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:160px;">
+          <label>対象ブランド（前方一致）</label>
+          <input type="text" id="ptBrand" placeholder="例：ブリヂストン" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div class="field" style="flex:1;min-width:160px;">
+          <label>対象銘柄（部分一致）</label>
+          <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-2);line-height:1.7;">
+        <strong>使用できるプレースホルダー：</strong><br>
+        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{BRAND}}</code> ブランド名 &nbsp;
+        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{MODEL}}</code> 商品名（銘柄） &nbsp;
+        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SIZE}}</code> タイヤサイズ<br>
+        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_1}}</code> 1本税込価格 &nbsp;
+        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_4}}</code> 4本セット税込価格 &nbsp;
+        <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SHOP}}</code> 店舗名
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span>テンプレートHTML（A4・1枚に収まるよう設計）</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="ptLoadDefault">デフォルトデザインを読込む</button>
+        </label>
+        <textarea id="ptHtml" rows="16" placeholder="HTMLを入力…" style="width:100%;box-sizing:border-box;font-family:var(--font-mono);font-size:12px;line-height:1.5;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);padding:8px 10px;resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;">
+        <button class="btn btn-ghost" id="ptPreviewBtn">👁 プレビュー（サンプルデータ）</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" id="ptCancelBtn">キャンセル</button>
+          <button class="btn btn-amber" id="ptSaveBtn">💾 保存</button>
+        </div>
+      </div>
+      <div id="ptMsg" style="font-size:13px;"></div>
+    </div>
   </div>
 </div>
 
@@ -2352,6 +2407,7 @@ window.addEventListener('storageReady', function(){
   let outboundCart = [];  // スキャン済み・未確定リスト（一括出庫用）
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
+  let popTemplates = []; // POP印刷テンプレート
   let customerOrders = []; // 客注品入庫リスト
   let incomingSchedules = []; // 入庫予定リスト
   let _detailInschRefresh = null; // 商品詳細の入庫予定再描画関数（モーダル外から呼ぶ用）
@@ -3248,6 +3304,7 @@ window.addEventListener('storageReady', function(){
     await loadImportedJanItems();
     await loadLabelSettings();
     await loadCatalogVisibility();
+    await loadPopTemplates();
     try{
       const c = await window.storage.get('categories', SHARED);
       categories = c ? JSON.parse(c.value) : [];
@@ -9777,206 +9834,214 @@ window.addEventListener('storageReady', function(){
   const detailModal = document.getElementById('productDetailModal');
   let detailProductId = null;
 
-  function printTirePOP(p, sell){
-    const brandName = escapeHtml(p.brand || '');
-    const modelName = escapeHtml(cleanName(p.name) || '');
-    const sizeStr   = escapeHtml(p.spec || '');
-    const sellTax   = sell ? Math.floor(sell * 1.1) : null;
-    const sell4     = sellTax ? sellTax * 4 : null;
-    const branchName = currentUser ? (currentUser.branchName || currentUser.branchId || '') : '';
-
-    const html = `<!DOCTYPE html>
+  // ── POP印刷デフォルトテンプレートHTML ──────────────────────────
+  function _getDefaultPOPHtml(){
+    return `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>POP印刷 - ${modelName}</title>
+<title>POP印刷</title>
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    width: 210mm;
-    height: 297mm;
-    font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-    background: #fff;
-    color: #111;
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-  }
-  .pop-page {
-    width: 210mm;
-    height: 297mm;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: hidden;
-  }
-  .pop-header {
-    background: #c8102e;
-    color: #fff;
-    padding: 18mm 14mm 10mm;
-    flex-shrink: 0;
-  }
-  .pop-header .brand {
-    font-size: 22pt;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    opacity: 0.92;
-    margin-bottom: 3mm;
-  }
-  .pop-header .model {
-    font-size: 36pt;
-    font-weight: 800;
-    line-height: 1.15;
-    letter-spacing: 0.02em;
-  }
-  .pop-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 10mm 14mm;
-    gap: 8mm;
-  }
-  .pop-size-box {
-    background: #f0f0f0;
-    border-radius: 6mm;
-    padding: 6mm 14mm;
-    text-align: center;
-    width: 100%;
-  }
-  .pop-size-label {
-    font-size: 13pt;
-    color: #555;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    margin-bottom: 2mm;
-  }
-  .pop-size-value {
-    font-size: 42pt;
-    font-weight: 800;
-    color: #111;
-    letter-spacing: 0.04em;
-    font-feature-settings: "tnum";
-  }
-  .pop-price-section {
-    width: 100%;
-    text-align: center;
-  }
-  .pop-price-label {
-    font-size: 13pt;
-    color: #555;
-    font-weight: 600;
-    margin-bottom: 2mm;
-    letter-spacing: 0.06em;
-  }
-  .pop-price-1 {
-    font-size: 70pt;
-    font-weight: 900;
-    color: #c8102e;
-    line-height: 1;
-    letter-spacing: -0.01em;
-    font-feature-settings: "tnum";
-  }
-  .pop-price-1 .yen { font-size: 46pt; vertical-align: baseline; }
-  .pop-price-1 .tax { font-size: 16pt; color: #333; font-weight: 600; vertical-align: baseline; margin-left: 2mm; }
-  .pop-price-4-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4mm;
-    margin-top: 5mm;
-    padding: 4mm 10mm;
-    background: #111;
-    border-radius: 4mm;
-  }
-  .pop-price-4-label {
-    font-size: 14pt;
-    color: #fff;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .pop-price-4-value {
-    font-size: 32pt;
-    font-weight: 900;
-    color: #fff;
-    font-feature-settings: "tnum";
-    letter-spacing: -0.01em;
-  }
-  .pop-price-4-value .yen { font-size: 22pt; }
-  .pop-no-price {
-    font-size: 28pt;
-    font-weight: 700;
-    color: #999;
-    border: 2px dashed #ccc;
-    padding: 8mm 14mm;
-    border-radius: 4mm;
-  }
-  .pop-footer {
-    background: #111;
-    color: #fff;
-    padding: 5mm 14mm;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-  }
-  .pop-footer .shop { font-size: 13pt; font-weight: 700; letter-spacing: 0.04em; }
-  .pop-footer .note { font-size: 9pt; color: #aaa; }
-  .pop-divider {
-    width: 90%;
-    height: 1px;
-    background: linear-gradient(to right, transparent, #ddd, transparent);
-    flex-shrink: 0;
-  }
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
+  body { width: 210mm; height: 297mm; font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Helvetica Neue', sans-serif; background: #fff; color: #111; display: flex; align-items: stretch; }
+  .pop-page { width: 210mm; height: 297mm; display: flex; flex-direction: column; overflow: hidden; }
+  .pop-header { background: #c8102e; color: #fff; padding: 18mm 14mm 10mm; flex-shrink: 0; }
+  .pop-brand { font-size: 22pt; font-weight: 700; opacity: 0.92; margin-bottom: 3mm; }
+  .pop-model { font-size: 36pt; font-weight: 800; line-height: 1.15; }
+  .pop-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10mm 14mm; gap: 8mm; }
+  .pop-size-box { background: #f0f0f0; border-radius: 6mm; padding: 6mm 14mm; text-align: center; width: 100%; }
+  .pop-size-label { font-size: 13pt; color: #555; font-weight: 600; margin-bottom: 2mm; }
+  .pop-size-value { font-size: 42pt; font-weight: 800; }
+  .pop-divider { width: 90%; height: 1px; background: linear-gradient(to right, transparent, #ddd, transparent); }
+  .pop-price-section { width: 100%; text-align: center; }
+  .pop-price-label { font-size: 13pt; color: #555; font-weight: 600; margin-bottom: 2mm; }
+  .pop-price-1 { font-size: 70pt; font-weight: 900; color: #c8102e; line-height: 1; }
+  .pop-price-4-row { display: flex; align-items: center; justify-content: center; gap: 4mm; margin-top: 5mm; padding: 4mm 10mm; background: #111; border-radius: 4mm; }
+  .pop-price-4-label { font-size: 14pt; color: #fff; font-weight: 700; white-space: nowrap; }
+  .pop-price-4-value { font-size: 32pt; font-weight: 900; color: #fff; }
+  .pop-price-none { font-size: 28pt; font-weight: 700; color: #999; border: 2px dashed #ccc; padding: 8mm 14mm; border-radius: 4mm; }
+  .pop-footer { background: #111; color: #fff; padding: 5mm 14mm; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .pop-shop { font-size: 13pt; font-weight: 700; }
+  .pop-note { font-size: 9pt; color: #aaa; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
 <body>
 <div class="pop-page">
   <div class="pop-header">
-    ${brandName ? `<div class="brand">${brandName}</div>` : ''}
-    <div class="model">${modelName}</div>
+    <div class="pop-brand">{{BRAND}}</div>
+    <div class="pop-model">{{MODEL}}</div>
   </div>
   <div class="pop-body">
-    ${sizeStr ? `
     <div class="pop-size-box">
       <div class="pop-size-label">タイヤサイズ</div>
-      <div class="pop-size-value">${sizeStr}</div>
-    </div>` : ''}
+      <div class="pop-size-value">{{SIZE}}</div>
+    </div>
     <div class="pop-divider"></div>
     <div class="pop-price-section">
       <div class="pop-price-label">タイヤ1本（税込）</div>
-      ${sellTax ? `
-      <div class="pop-price-1">
-        <span class="yen">¥</span>${sellTax.toLocaleString('ja-JP')}<span class="tax">（税込）</span>
-      </div>
-      ${sell4 ? `
-      <div class="pop-price-4-row">
-        <span class="pop-price-4-label">4本セット</span>
-        <span class="pop-price-4-value"><span class="yen">¥</span>${sell4.toLocaleString('ja-JP')}</span>
-        <span style="font-size:12pt;color:#aaa;">（税込）</span>
-      </div>` : ''}` : `
-      <div class="pop-no-price">価格未設定</div>`}
+      {{PRICE_BLOCK}}
     </div>
   </div>
   <div class="pop-footer">
-    <span class="shop">${escapeHtml(branchName)}</span>
-    <span class="note">※価格はすべて税込表示です</span>
+    <span class="pop-shop">{{SHOP}}</span>
+    <span class="pop-note">※価格はすべて税込表示です</span>
   </div>
 </div>
 <script>window.onload = function(){ window.print(); };<\/script>
 </body>
 </html>`;
+  }
 
+  // テンプレートHTMLにプレースホルダーを適用
+  function _applyPOPPlaceholders(templateHtml, p, sell){
+    const brand    = p.brand || '';
+    const model    = cleanName(p.name) || '';
+    const sizeStr  = p.spec || '';
+    const sellTax  = sell ? Math.floor(sell * 1.1) : null;
+    const sell4    = sellTax ? sellTax * 4 : null;
+    const branchName = currentUser ? (currentUser.branchName || currentUser.branchId || '') : '';
+
+    const priceBlock = sellTax
+      ? `<div class="pop-price-1">¥${sellTax.toLocaleString('ja-JP')}</div>`
+        + (sell4 ? `<div class="pop-price-4-row"><span class="pop-price-4-label">4本セット</span><span class="pop-price-4-value">¥${sell4.toLocaleString('ja-JP')}</span><span style="font-size:12pt;color:#aaa;">（税込）</span></div>` : '')
+      : '<div class="pop-price-none">価格未設定</div>';
+
+    return templateHtml
+      .replace(/\{\{BRAND\}\}/g,       escapeHtml(brand))
+      .replace(/\{\{MODEL\}\}/g,       escapeHtml(model))
+      .replace(/\{\{SIZE\}\}/g,        escapeHtml(sizeStr))
+      .replace(/\{\{PRICE_1\}\}/g,     sellTax ? '¥'+sellTax.toLocaleString('ja-JP') : '―')
+      .replace(/\{\{PRICE_4\}\}/g,     sell4   ? '¥'+sell4.toLocaleString('ja-JP')   : '―')
+      .replace(/\{\{PRICE_BLOCK\}\}/g, priceBlock)
+      .replace(/\{\{SHOP\}\}/g,        escapeHtml(branchName));
+  }
+
+  // 商品に合致するPOPテンプレートを探す（銘柄+ブランド > 銘柄のみ > ブランドのみ > 全商品共通）
+  function _findMatchingPOPTemplate(p){
+    const brand = (p.brand || '').trim();
+    const model = cleanName(p.name || '').trim();
+    let best = null, bestScore = -1;
+    for(const t of popTemplates){
+      const tb = (t.brand || '').trim();
+      const tm = (t.model || '').trim();
+      const matchBrand = !tb || brand.startsWith(tb);
+      const matchModel = !tm || model.includes(tm);
+      if(!matchBrand || !matchModel) continue;
+      const score = (tb ? 2 : 0) + (tm ? 1 : 0);
+      if(score > bestScore){ bestScore = score; best = t; }
+    }
+    return best;
+  }
+
+  function printTirePOP(p, sell){
+    const matched = _findMatchingPOPTemplate(p);
+    const templateHtml = matched ? matched.html : _getDefaultPOPHtml();
+    const finalHtml = _applyPOPPlaceholders(templateHtml, p, sell);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
-    w.document.write(html);
+    w.document.write(finalHtml);
     w.document.close();
   }
+
+  // ── POP印刷テンプレート管理 ──────────────────────────────────
+  async function loadPopTemplates(){
+    const res = await storage.get('popTemplates', true);
+    popTemplates = (res && res.value) ? (Array.isArray(res.value) ? res.value : Object.values(res.value)) : [];
+    renderPopTemplateList();
+  }
+
+  async function savePopTemplates(){
+    await storage.set('popTemplates', popTemplates, true);
+  }
+
+  function renderPopTemplateList(){
+    const wrap = document.getElementById('popTemplateList');
+    if(!wrap) return;
+    if(popTemplates.length === 0){
+      wrap.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">テンプレートがまだ登録されていません。</div>';
+      return;
+    }
+    wrap.innerHTML = popTemplates.map((t, i) => {
+      const brandTag = t.brand ? `<span style="background:var(--amber);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(t.brand)}</span>` : '';
+      const modelTag = t.model ? `<span style="background:var(--teal);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(t.model)}</span>` : '<span style="font-size:11px;color:var(--text-3);">全商品共通</span>';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-2);border-radius:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <div style="font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:4px;">${escapeHtml(t.name || '（名称未設定）')}</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">${brandTag}${modelTag}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" data-pt-edit="${i}">✏️ 編集</button>
+          <button class="btn btn-ghost btn-sm" data-pt-del="${i}" style="color:var(--red);">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-pt-edit]').forEach(btn => {
+      btn.addEventListener('click', () => openPopTemplateModal(Number(btn.dataset.ptEdit)));
+    });
+    wrap.querySelectorAll('[data-pt-del]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const i = Number(btn.dataset.ptDel);
+        const t = popTemplates[i];
+        if(!await showConfirm(`「${t.name || '（名称未設定）'}」を削除しますか？`)) return;
+        popTemplates.splice(i, 1);
+        await savePopTemplates();
+        renderPopTemplateList();
+      });
+    });
+  }
+
+  let _editingPopTemplateIdx = null;
+  function openPopTemplateModal(idx){
+    _editingPopTemplateIdx = (idx !== undefined && idx !== null) ? idx : null;
+    const t = (_editingPopTemplateIdx !== null) ? popTemplates[_editingPopTemplateIdx] : null;
+    document.getElementById('ptName').value  = t ? (t.name  || '') : '';
+    document.getElementById('ptBrand').value = t ? (t.brand || '') : '';
+    document.getElementById('ptModel').value = t ? (t.model || '') : '';
+    document.getElementById('ptHtml').value  = t ? (t.html  || '') : '';
+    document.getElementById('ptMsg').innerHTML = '';
+    document.getElementById('popTemplateModal').classList.add('show');
+  }
+
+  document.getElementById('addPopTemplateBtn').addEventListener('click', () => openPopTemplateModal(null));
+
+  document.getElementById('ptLoadDefault').addEventListener('click', () => {
+    if(document.getElementById('ptHtml').value.trim() && !confirm('現在のHTMLを上書きしますか？')) return;
+    document.getElementById('ptHtml').value = _getDefaultPOPHtml();
+  });
+
+  document.getElementById('ptPreviewBtn').addEventListener('click', () => {
+    const html = document.getElementById('ptHtml').value.trim();
+    if(!html){ alert('HTMLを入力してください。'); return; }
+    const sampleProduct = { brand: 'ブリヂストン', name: 'REGNO GR-XⅢ', spec: '195/65R15 91H' };
+    const sampleSell = 18000;
+    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, sampleSell);
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if(w){ w.document.write(finalHtml); w.document.close(); }
+  });
+
+  document.getElementById('ptCancelBtn').addEventListener('click', () => {
+    document.getElementById('popTemplateModal').classList.remove('show');
+  });
+
+  document.getElementById('ptSaveBtn').addEventListener('click', async () => {
+    const name  = document.getElementById('ptName').value.trim();
+    const brand = document.getElementById('ptBrand').value.trim();
+    const model = document.getElementById('ptModel').value.trim();
+    const html  = document.getElementById('ptHtml').value.trim();
+    if(!name){ document.getElementById('ptMsg').innerHTML = '<div class="msg msg-err">テンプレート名を入力してください。</div>'; return; }
+    if(!html){ document.getElementById('ptMsg').innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
+    const entry = { name, brand, model, html };
+    if(_editingPopTemplateIdx !== null){
+      popTemplates[_editingPopTemplateIdx] = entry;
+    } else {
+      popTemplates.push(entry);
+    }
+    await savePopTemplates();
+    renderPopTemplateList();
+    document.getElementById('popTemplateModal').classList.remove('show');
+  });
 
   function openProductDetail(id){
     const p = products.find(x=>x.id===id);
