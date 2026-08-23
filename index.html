@@ -11285,70 +11285,79 @@ window.addEventListener('storageReady', function(){
     if(pending.length===0){ wrap.innerHTML=''; return; }
     const provList = pending.filter(e=>(e.type||'custody')==='provisional');
     const custList = pending.filter(e=>(e.type||'custody')==='custody');
-    const buildEntries = (entries, isCustody) => {
-      let html = '';
-      entries.forEach(entry=>{
-        const d = new Date(entry.date);
-        const dateStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    function _fmtJpDatePL(str){
+      if(!str) return '—';
+      const d = new Date(str+'T00:00:00');
+      if(isNaN(d)) return str;
+      return d.getFullYear()+'年 '+String(d.getMonth()+1).padStart(2,'0')+'月 '+String(d.getDate()).padStart(2,'0')+'日';
+    }
+    const buildCards = (entries, isCustody) => {
+      return entries.map(entry=>{
         const _items = entry.items||[];
         const totalQty = _items.reduce((s,x)=>s+x.qty,0);
-        const _sdp2 = entry.scheduledDate ? entry.scheduledDate.split('-') : [];
-        const _sdStr2 = _sdp2.length>=3 ? _sdp2[0]+'年'+parseInt(_sdp2[1])+'月'+parseInt(_sdp2[2])+'日' : (entry.scheduledDate||'—');
+        const sdStr = _fmtJpDatePL(entry.scheduledDate);
         const hasOver = _items.some(item=>{
           const p2 = products.find(x=>x.id===item.productId);
           if(!p2) return false;
           const allProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0);
           return allProvQty > getStock(p2);
         });
-        const borderColor = hasOver ? 'var(--red)' : 'var(--amber)';
-        const bgColor = hasOver ? 'rgba(220,50,50,0.07)' : 'var(--amber-dim)';
-        html += '<details id="prov-entry-'+entry.id+'" style="margin-bottom:8px;border:2px solid '+borderColor+';border-radius:8px;overflow:hidden;">'
-          + '<summary style="list-style:none;background:'+bgColor+';padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;">'
-          + '<div style="flex:1;min-width:0;">'
-          + (hasOver ? '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px;">⚠️ 在庫超過あり</div>' : '')
-          + '<div style="font-size:16px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName)+'様</div>'
-          + '<div style="font-size:13px;color:var(--text-2);margin-top:4px;line-height:1.6;">'
-          + '📅 引き渡し予定: <strong>'+_sdStr2+'</strong>'
-          + (entry.carName?' &nbsp;🚗 <strong>'+escapeHtml(entry.carName)+'</strong>':'')
-          + '</div>'
-          + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+dateStr+(entry.staff?' ・ '+escapeHtml(entry.staff):'')+'</div>'
-          + '</div>'
-          + '<span style="font-size:13px;color:'+(hasOver?'var(--red)':'var(--amber)')+';font-weight:700;flex-shrink:0;">'+_items.length+'商品<br>'+totalQty+'本 ▼</span>'
-          + '</summary>'
-          + '<div style="padding:10px 14px;">';
-        _items.forEach(item=>{
+        const borderColor = hasOver ? 'var(--red)' : 'var(--line)';
+        const cancelLabel = isCustody ? '取り消し' : '取り消し';
+        /* 商品リスト */
+        const itemRows = _items.map(item=>{
           const p2 = products.find(x=>x.id===item.productId);
           const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
           const _p2Stk = p2 ? getStock(p2) : 0;
           const itemOver = p2 && allProvQty > _p2Stk;
-          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line-soft);">'
-            + '<div><div style="font-size:14px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
-            + '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div>'
-            + (itemOver ? '<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠️ 在庫'+_p2Stk+'本に対し仮出庫合計'+allProvQty+'本</div>' : '')
-            + '</div>'
-            + '<div style="font-size:15px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'本</div>'
-            + '</div>';
-        });
-        const cancelLabel = isCustody ? '預かり出庫取り消し' : '仮出庫取り消し';
-        html += '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'
-          + '<button class="btn btn-red btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:100px;">出庫確定</button>'
-          + '<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:80px;border-color:var(--teal);color:var(--teal);">編集</button>'
-          + '<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:100px;color:var(--red);border-color:var(--red);">'+cancelLabel+'</button>'
-          + '<button class="btn btn-ghost btn-sm prov-back-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:80px;">戻る</button>'
-          + '</div>'
-          + '</div></details>';
-      });
-      return html;
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);">'
+            +'<div style="min-width:0;flex:1;">'
+            +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
+            +'<div style="font-size:12px;color:var(--text-2);">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div>'
+            +(itemOver?'<div style="font-size:11px;color:var(--red);">⚠️ 在庫'+_p2Stk+'本 / 仮出庫計'+allProvQty+'本</div>':'')
+            +'</div>'
+            +'<div style="font-size:14px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'本</div>'
+            +'</div>';
+        }).join('');
+        return '<div id="prov-entry-'+entry.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
+          /* カード上部 */
+          +'<div style="padding:14px 16px;flex:1;">'
+          +(hasOver?'<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;">⚠️ 在庫超過あり</div>':'')
+          /* 顧客名・車種 */
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+          +'<span style="font-size:17px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName||'—')+'<span style="font-size:13px;font-weight:400;color:var(--text-2);">　様</span></span>'
+          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:2px 10px;text-align:center;flex-shrink:0;">'
+          +'<div style="font-size:10px;color:var(--amber);font-weight:600;">合計</div>'
+          +'<div style="font-size:15px;font-weight:700;color:var(--amber);line-height:1.1;">'+totalQty+'<span style="font-size:11px;">本</span></div>'
+          +'</div>'
+          +'</div>'
+          +(entry.carName?'<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">車種：'+escapeHtml(entry.carName)+'</div>':'<div style="margin-bottom:8px;"></div>')
+          /* 引き渡し予定日 */
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
+          +'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">引き渡し予定日</span>'
+          +'<span style="font-size:14px;font-weight:700;color:var(--amber);">'+escapeHtml(sdStr)+'</span>'
+          +'</div>'
+          /* 商品リスト */
+          +'<div>'+itemRows+'</div>'
+          +'</div>'
+          /* カード下部ボタン */
+          +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
+          +'<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">出庫確定</button>'
+          +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
+          +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
+          +'</div>'
+          +'</div>';
+      }).join('');
     };
     let html = '<div style="margin-top:4px;">';
     if(provList.length>0){
       html += '<div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:10px;">🔖 仮出庫リスト（'+provList.length+'件）</div>';
-      html += buildEntries(provList, false);
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+buildCards(provList, false)+'</div>';
     }
     if(custList.length>0){
-      if(provList.length>0) html += '<div style="margin-top:16px;"></div>';
+      if(provList.length>0) html += '<div style="margin-top:20px;"></div>';
       html += '<div style="font-size:14px;font-weight:700;color:#e8a020;margin-bottom:10px;">📦 預かり出庫リスト（'+custList.length+'件）</div>';
-      html += buildEntries(custList, true);
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+buildCards(custList, true)+'</div>';
     }
     html += '</div>';
     wrap.innerHTML = html;
