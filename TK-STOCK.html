@@ -9939,8 +9939,8 @@ window.addEventListener('storageReady', function(){
       if(!el) return;
       const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       const _visBrs = getVisibleBranches();
-      // 閲覧可能な全支店の入庫予定を表示（在庫補充のみ、客注品は除く）
-      const entries = (incomingSchedules||[]).filter(s=>s.status==='pending'&&_visBrs.includes(s.branchId)&&s.productId===id&&s.inboundType!=='customerOrder');
+      // 閲覧可能な全支店の入庫予定を表示（全タイプ）
+      const entries = (incomingSchedules||[]).filter(s=>s.status==='pending'&&_visBrs.includes(s.branchId)&&s.productId===id);
       if(entries.length===0){
         el.innerHTML='<div style="font-size:13px;color:var(--text-3);padding:8px 2px;">入庫予定なし</div>';
         return;
