@@ -2301,7 +2301,10 @@ window.addEventListener('storageReady', function(){
     const pn = norm(productName);
     const mn = norm(modelStr);
     if(pn === mn) return 1.0;
-    if(pn.includes(mn) || mn.includes(pn)) return 0.9;
+    // 末尾一致（ブランド接頭辞を許容、"TYPE RV"等の後続語は不許容）
+    if(pn.endsWith(mn)) return 0.9;
+    // モデル名がより詳細な場合（例:"GR X 3 TYPE RV"は"GR X 3"を含む）
+    if(mn.includes(pn)) return 0.85;
     const pWords = pn.split(' ').filter(w=>w.length>=2);
     const mWords = mn.split(' ').filter(w=>w.length>=2);
     if(!pWords.length || !mWords.length) return 0;
