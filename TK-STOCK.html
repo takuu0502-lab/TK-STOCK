@@ -838,23 +838,27 @@
     <!-- 項目トグル -->
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:var(--bg-2);border-radius:8px;">
       <span style="font-size:11px;color:var(--text-3);white-space:nowrap;font-weight:600;">編集項目：</span>
-      <label id="beColLbl-name"  style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="name"  checked style="accent-color:var(--amber);cursor:pointer;">商品名</label>
-      <label id="beColLbl-brand" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="brand" checked style="accent-color:var(--amber);cursor:pointer;">ブランド名</label>
-      <label id="beColLbl-major" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="major" checked style="accent-color:var(--amber);cursor:pointer;">大分類</label>
-      <label id="beColLbl-sub"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sub"   checked style="accent-color:var(--amber);cursor:pointer;">中分類</label>
-      <label id="beColLbl-jan"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="jan"   checked style="accent-color:var(--amber);cursor:pointer;">JANコード</label>
-      <label id="beColLbl-spec"  style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="spec"  checked style="accent-color:var(--amber);cursor:pointer;">規格</label>
+      <label id="beColLbl-name"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="name"     checked style="accent-color:var(--amber);cursor:pointer;">商品名</label>
+      <label id="beColLbl-brand"    style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="brand"    checked style="accent-color:var(--amber);cursor:pointer;">ブランド名</label>
+      <label id="beColLbl-major"    style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="major"    checked style="accent-color:var(--amber);cursor:pointer;">大分類</label>
+      <label id="beColLbl-sub"      style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sub"      checked style="accent-color:var(--amber);cursor:pointer;">中分類</label>
+      <label id="beColLbl-spec"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="spec"     checked style="accent-color:var(--amber);cursor:pointer;">規格</label>
+      <label id="beColLbl-cost"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="cost"     checked style="accent-color:var(--amber);cursor:pointer;">仕入れ原価</label>
+      <label id="beColLbl-sell"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sell"     checked style="accent-color:var(--amber);cursor:pointer;">販売価格</label>
+      <label id="beColLbl-minstock" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="minstock" checked style="accent-color:var(--amber);cursor:pointer;">最低在庫数</label>
     </div>
     <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:380px;">
       <table id="bulkEditTable" style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
           <th style="padding:8px 10px;width:36px;"><input type="checkbox" id="bulkEditAllChk"></th>
-          <th data-be-col="name"  style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
-          <th data-be-col="brand" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
-          <th data-be-col="major" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">大分類</th>
-          <th data-be-col="sub"   style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">中分類</th>
-          <th data-be-col="jan"   style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">JANコード</th>
-          <th data-be-col="spec"  style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
+          <th data-be-col="name"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
+          <th data-be-col="brand"    style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
+          <th data-be-col="major"    style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">大分類</th>
+          <th data-be-col="sub"      style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">中分類</th>
+          <th data-be-col="spec"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
+          <th data-be-col="cost"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">仕入れ原価</th>
+          <th data-be-col="sell"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">販売価格</th>
+          <th data-be-col="minstock" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">最低在庫数</th>
         </tr></thead>
         <tbody id="bulkEditTbody"></tbody>
       </table>
@@ -8546,12 +8550,14 @@ window.addEventListener('storageReady', function(){
       _beTbody.innerHTML = list.map(p=>`
         <tr id="be-row-${p.id}" style="border-top:1px solid var(--line);">
           <td style="padding:6px 10px;text-align:center;"><input type="checkbox" class="be-chk" data-pid="${p.id}"></td>
-          <td data-be-col="name"  style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="${inpStyle('100%')}"></td>
-          <td data-be-col="brand" style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="${inpStyle('100%')}"></td>
-          <td data-be-col="major" style="padding:4px 6px;"><select class="be-major" data-pid="${p.id}" style="${selStyle}">${_beMajorOpts(p.majorId||'')}</select></td>
-          <td data-be-col="sub"   style="padding:4px 6px;"><select class="be-sub" data-pid="${p.id}" style="${selStyle}">${_beSubOpts(p.majorId||'', p.subId||'')}</select></td>
-          <td data-be-col="jan"   style="padding:4px 6px;"><input type="text" class="be-jan" data-pid="${p.id}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコード" style="${inpStyle('130px')}font-family:var(--font-mono);"></td>
-          <td data-be-col="spec"  style="padding:6px 10px;font-size:11px;color:var(--text-3);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
+          <td data-be-col="name"     style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="${inpStyle('100%')}"></td>
+          <td data-be-col="brand"    style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="${inpStyle('100%')}"></td>
+          <td data-be-col="major"    style="padding:4px 6px;"><select class="be-major" data-pid="${p.id}" style="${selStyle}">${_beMajorOpts(p.majorId||'')}</select></td>
+          <td data-be-col="sub"      style="padding:4px 6px;"><select class="be-sub" data-pid="${p.id}" style="${selStyle}">${_beSubOpts(p.majorId||'', p.subId||'')}</select></td>
+          <td data-be-col="spec"     style="padding:4px 6px;"><input type="text" class="be-spec" data-pid="${p.id}" value="${escapeHtml(p.spec||'')}" style="${inpStyle('120px')}"></td>
+          <td data-be-col="cost"     style="padding:4px 6px;"><input type="number" class="be-cost" data-pid="${p.id}" value="${p.costPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
+          <td data-be-col="sell"     style="padding:4px 6px;"><input type="number" class="be-sell" data-pid="${p.id}" value="${p.sellPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
+          <td data-be-col="minstock" style="padding:4px 6px;"><input type="number" class="be-minstock" data-pid="${p.id}" value="${p.minStock||''}" placeholder="0" min="0" style="${inpStyle('60px')}"></td>
         </tr>`).join('');
       // チェックボックス変更
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.addEventListener('change', _beUpdateCount));
@@ -8567,7 +8573,7 @@ window.addEventListener('storageReady', function(){
         });
       });
       // 入力変更でハイライト＆自動チェック
-      _beTbody.querySelectorAll('.be-name,.be-brand,.be-jan,.be-sub').forEach(inp=>{
+      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub').forEach(inp=>{
         inp.addEventListener('change', ()=>{
           const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
           if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
@@ -8614,17 +8620,26 @@ window.addEventListener('storageReady', function(){
         const pid = chk.dataset.pid;
         const p = products.find(x=>x.id===pid);
         if(!p) return;
-        const nameVal  = (_beTbody.querySelector(`.be-name[data-pid="${pid}"]`)?.value||'').trim();
-        const brandVal = (_beTbody.querySelector(`.be-brand[data-pid="${pid}"]`)?.value||'').trim();
-        const janVal   = (_beTbody.querySelector(`.be-jan[data-pid="${pid}"]`)?.value||'').trim().toLowerCase();
-        const majorVal = (_beTbody.querySelector(`.be-major[data-pid="${pid}"]`)?.value)||'';
-        const subVal   = (_beTbody.querySelector(`.be-sub[data-pid="${pid}"]`)?.value)||'';
+        const nameVal     = (_beTbody.querySelector(`.be-name[data-pid="${pid}"]`)?.value||'').trim();
+        const brandVal    = (_beTbody.querySelector(`.be-brand[data-pid="${pid}"]`)?.value||'').trim();
+        const majorVal    = (_beTbody.querySelector(`.be-major[data-pid="${pid}"]`)?.value)||'';
+        const subVal      = (_beTbody.querySelector(`.be-sub[data-pid="${pid}"]`)?.value)||'';
+        const specVal     = (_beTbody.querySelector(`.be-spec[data-pid="${pid}"]`)?.value||'').trim();
+        const costRaw     = _beTbody.querySelector(`.be-cost[data-pid="${pid}"]`)?.value;
+        const sellRaw     = _beTbody.querySelector(`.be-sell[data-pid="${pid}"]`)?.value;
+        const minStockRaw = _beTbody.querySelector(`.be-minstock[data-pid="${pid}"]`)?.value;
+        const costVal     = costRaw !== '' && costRaw != null ? Number(costRaw) : null;
+        const sellVal     = sellRaw !== '' && sellRaw != null ? Number(sellRaw) : null;
+        const minStockVal = minStockRaw !== '' && minStockRaw != null ? Number(minStockRaw) : null;
         let dirty = false;
-        if(nameVal  && nameVal  !== p.name)    { p.name=nameVal;    dirty=true; }
-        if(brandVal !== (p.brand||''))         { p.brand=brandVal;  dirty=true; }
-        if(janVal   !== (p.barcode||''))       { p.barcode=janVal;  dirty=true; }
-        if(majorVal !== (p.majorId||''))       { p.majorId=majorVal||null; dirty=true; }
-        if(subVal   !== (p.subId||''))         { p.subId=subVal||null;     dirty=true; }
+        if(nameVal  && nameVal  !== p.name)          { p.name=nameVal;    dirty=true; }
+        if(brandVal !== (p.brand||''))               { p.brand=brandVal;  dirty=true; }
+        if(majorVal !== (p.majorId||''))             { p.majorId=majorVal||null; dirty=true; }
+        if(subVal   !== (p.subId||''))               { p.subId=subVal||null;     dirty=true; }
+        if(specVal  !== (p.spec||''))                { p.spec=specVal;    dirty=true; }
+        if(costVal !== null && costVal !== (p.costPrice||0))     { p.costPrice=costVal;      dirty=true; }
+        if(sellVal !== null && sellVal !== (p.sellPrice||0))     { p.sellPrice=sellVal;      dirty=true; }
+        if(minStockVal !== null && minStockVal !== (p.minStock||0)){ p.minStock=minStockVal; dirty=true; }
         if(dirty){ p.updatedAt=Date.now(); changed++; }
       });
       if(!changed){ _beStatus.style.color='var(--text-2)'; _beStatus.textContent='変更がありません。'; return; }
