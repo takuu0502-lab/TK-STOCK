@@ -11077,31 +11077,44 @@ window.addEventListener('storageReady', function(){
       const dateStr = _fmtJpDate(order.expectedDate);
       const installStr = order.installDate ? _fmtJpDate(order.installDate) : null;
       const isOver = p && ((p.branchStock ? (p.branchStock[_coBranch]||0) : (p.stock||0)) + order.qty > (p.minStock||0) + order.qty);
-      return '<details style="border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:8px;">'
-        + '<summary style="padding:14px 16px;background:var(--bg-1);cursor:pointer;list-style:none;">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-        + '<div>'
-        + '<span style="font-size:17px;font-weight:700;color:var(--text-1);">'+escapeHtml(order.customerName)+'<span style="font-size:14px;font-weight:400;">様</span></span>'
-        + (order.carName ? ' <span style="font-size:17px;color:var(--text-2);font-weight:500;">'+escapeHtml(order.carName)+'</span>' : '')
+      return '<details style="border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.05);">'
+        + '<summary style="padding:16px 18px;background:var(--bg-1);cursor:pointer;list-style:none;">'
+        /* ── 顧客名 + 車種 ── */
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">'
+        + '<span style="font-size:18px;font-weight:700;color:var(--text-1);">'+escapeHtml(order.customerName)+'<span style="font-size:14px;font-weight:400;color:var(--text-2);">　様</span></span>'
+        + (order.carName ? '<span style="font-size:15px;color:var(--text-2);font-weight:500;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:2px 8px;">🚗 '+escapeHtml(order.carName)+'</span>' : '')
         + '</div>'
-        + '<div style="font-size:12px;color:var(--text-3);">▼</div>'
+        + '<span style="font-size:12px;color:var(--text-3);">▼</span>'
         + '</div>'
-        + '<div style="font-size:17px;color:var(--text-2);margin-bottom:8px;display:flex;align-items:center;gap:10px;">'+escapeHtml(pName)+(pSpec?' <span style="color:var(--text-3);">'+escapeHtml(pSpec)+'</span>':'')+'<span style="font-size:14px;color:var(--amber);font-weight:600;">×'+order.qty+'本</span></div>'
-        + '<div style="display:flex;flex-direction:column;gap:4px;">'
-        + '<div style="display:flex;align-items:baseline;gap:6px;">'
-        + '<span style="font-size:12px;color:var(--text-3);white-space:nowrap;">入庫予定日：</span>'
-        + '<span style="font-size:16px;font-weight:700;color:var(--teal);">'+escapeHtml(dateStr)+'</span>'
+        /* ── 商品名 + 規格 + 数量 ── */
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:16px;font-weight:600;color:var(--text-1);">'+escapeHtml(pName)+'</div>'
+        + (pSpec ? '<div style="font-size:15px;color:var(--text-2);margin-top:1px;">'+escapeHtml(pSpec)+'</div>' : '')
+        + '</div>'
+        + '<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:4px 12px;text-align:center;flex-shrink:0;">'
+        + '<div style="font-size:11px;color:var(--amber);font-weight:600;">数量</div>'
+        + '<div style="font-size:18px;font-weight:700;color:var(--amber);line-height:1.1;">'+order.qty+'<span style="font-size:12px;">本</span></div>'
+        + '</div>'
+        + '</div>'
+        /* ── 日付 ── */
+        + '<div style="display:flex;flex-direction:column;gap:6px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:11px;font-weight:600;color:var(--teal);background:rgba(0,160,140,0.08);border:1px solid var(--teal);border-radius:4px;padding:2px 7px;white-space:nowrap;">入庫予定日</span>'
+        + '<span style="font-size:17px;font-weight:700;color:var(--teal);">'+escapeHtml(dateStr)+'</span>'
         + '</div>'
         + (installStr
-            ? '<div style="display:flex;align-items:baseline;gap:6px;">'
-              + '<span style="font-size:12px;color:var(--text-3);white-space:nowrap;">取付予定日：</span>'
-              + '<span style="font-size:16px;font-weight:700;color:var(--amber);">'+escapeHtml(installStr)+'</span>'
+            ? '<div style="display:flex;align-items:center;gap:10px;">'
+              + '<span style="font-size:11px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:2px 7px;white-space:nowrap;">取付予定日</span>'
+              + '<span style="font-size:17px;font-weight:700;color:var(--amber);">'+escapeHtml(installStr)+'</span>'
               + '</div>'
             : '')
         + '</div>'
         + '</summary>'
-        + '<div style="padding:12px 14px;background:var(--bg-2);border-top:1px solid var(--line);">'
-        + '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">登録: '+(order.createdAt?new Date(order.createdAt).toLocaleDateString('ja-JP'):'')+'　担当: '+escapeHtml(order.createdBy||'')+'</div>'
+        /* ── 詳細エリア ── */
+        + '<div style="padding:12px 18px;background:var(--bg-2);border-top:1px solid var(--line);">'
+        + '<div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">登録: '+(order.createdAt?new Date(order.createdAt).toLocaleDateString('ja-JP'):'')+'　担当: '+escapeHtml(order.createdBy||'')+'</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
         + '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;min-width:120px;">✅ 入荷確定（仮出庫登録）</button>'
         + '<button class="btn btn-ghost btn-sm co-delete-btn" data-co-id="'+order.id+'" style="flex:1;min-width:80px;color:var(--red);border-color:var(--red);">キャンセル</button>'
