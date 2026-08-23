@@ -1026,7 +1026,7 @@
   <div class="panel" id="tab-list" style="display:none;">
     <div id="specSearchPanel" style="display:none;"></div>
     <div class="list-layout">
-      <div class="cat-tree" id="catTree"></div>
+      <div class="cat-tree" id="catTree" style="display:none;"></div>
       <div class="table-area">
         <div class="breadcrumb" id="breadcrumb"></div>
         <div id="priceCatalogWrap"></div>
@@ -4023,7 +4023,7 @@ window.addEventListener('storageReady', function(){
     return !findCatalogEntryForProduct(p);
   }
   let expanded = new Set();
-  let specPanelOpen = false;
+  let specPanelOpen = true; // 在庫一覧タブではカテゴリパネルを常時表示
 
   document.getElementById('openSpecSearch').addEventListener('click', function(){
     switchTab('list');
@@ -4297,7 +4297,7 @@ window.addEventListener('storageReady', function(){
     const name = prompt('新しい大分類の名称を入力してください');
     if(!name || !name.trim()) return;
     categories.push({id: uid('c'), name: name.trim(), subs: []});
-    await saveCategories(); renderCatTree(); renderProductTable();
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
   }
   async function addSubCategory(majorId){
     if(!canWriteData()) return;
@@ -4306,7 +4306,7 @@ window.addEventListener('storageReady', function(){
     const cat = majorById(majorId);
     cat.subs.push({id: uid('s'), name: name.trim(), subsubs: []});
     expanded.add(majorId);
-    await saveCategories(); renderCatTree(); renderProductTable();
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
   }
   async function addSubSubCategory(majorId, subId){
     if(!canWriteData()) return;
@@ -8198,6 +8198,9 @@ window.addEventListener('storageReady', function(){
         +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':col)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
         +escapeHtml(cat.name)+'</span>';
     });
+    if(canWriteData()){
+      html += '<span class="chip" id="specAddMajorBtn" style="border-color:var(--text-3);color:var(--text-3);cursor:pointer;">＋ 大分類を追加</span>';
+    }
     html += '</div></div>';
 
     if(selectedMajor !== null){
@@ -8214,6 +8217,9 @@ window.addEventListener('storageReady', function(){
             +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
             +escapeHtml(sub.name)+'</span>';
         });
+        if(canWriteData()){
+          html += '<span class="chip" id="specAddSubBtn" data-spec-add-sub="'+selectedMajor+'" style="border-color:var(--text-3);color:var(--text-3);cursor:pointer;">＋ 中分類を追加</span>';
+        }
         html += '</div></div>';
       }
 
@@ -8343,6 +8349,16 @@ window.addEventListener('storageReady', function(){
     document.getElementById('specSearchGo').addEventListener('click', ()=>{
       renderCatTree();
       renderProductTable();
+    });
+    const _addMajorBtn = document.getElementById('specAddMajorBtn');
+    if(_addMajorBtn) _addMajorBtn.addEventListener('click', async ()=>{
+      await addMajorCategory();
+      renderSpecSearchPanel();
+    });
+    const _addSubBtn = document.getElementById('specAddSubBtn');
+    if(_addSubBtn) _addSubBtn.addEventListener('click', async ()=>{
+      await addSubCategory(_addSubBtn.dataset.specAddSub);
+      renderSpecSearchPanel();
     });
   }
 
