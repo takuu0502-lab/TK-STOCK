@@ -1488,10 +1488,16 @@
           <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;">
         </div>
       </div>
-      <!-- タイプ切替 -->
-      <div style="display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:fit-content;">
-        <button type="button" class="pt-type-btn active" data-type="html" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;background:var(--amber);color:#fff;cursor:pointer;">📄 HTMLテンプレート</button>
-        <button type="button" class="pt-type-btn" data-type="pdf" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;background:var(--bg-2);color:var(--text-2);cursor:pointer;">📑 PDFテンプレート</button>
+      <!-- タイプ・向き切替 -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;">
+          <button type="button" class="pt-type-btn active" data-type="html" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;background:var(--amber);color:#fff;cursor:pointer;">📄 HTMLテンプレート</button>
+          <button type="button" class="pt-type-btn" data-type="pdf" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;background:var(--bg-2);color:var(--text-2);cursor:pointer;">📑 PDFテンプレート</button>
+        </div>
+        <div id="ptOrientWrap" style="display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;">
+          <button type="button" class="pt-orient-btn active" data-orient="portrait" style="padding:8px 16px;font-size:13px;font-weight:600;border:none;background:var(--teal);color:#fff;cursor:pointer;">縦（A4）</button>
+          <button type="button" class="pt-orient-btn" data-orient="landscape" style="padding:8px 16px;font-size:13px;font-weight:600;border:none;background:var(--bg-2);color:var(--text-2);cursor:pointer;">横（A4）</button>
+        </div>
       </div>
 
       <!-- HTML セクション -->
@@ -9895,17 +9901,20 @@ window.addEventListener('storageReady', function(){
   let detailProductId = null;
 
   // ── POP印刷デフォルトテンプレートHTML ──────────────────────────
-  function _getDefaultPOPHtml(){
+  function _getDefaultPOPHtml(orient){
+    const landscape = orient === 'landscape';
+    const pgW = landscape ? '297mm' : '210mm';
+    const pgH = landscape ? '210mm' : '297mm';
     return `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <title>POP印刷</title>
 <style>
-  @page { size: A4 portrait; margin: 0; }
+  @page { size: ${pgW} ${pgH}; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { width: 210mm; height: 297mm; font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Helvetica Neue', sans-serif; background: #fff; color: #111; display: flex; align-items: stretch; }
-  .pop-page { width: 210mm; height: 297mm; display: flex; flex-direction: column; overflow: hidden; }
+  body { width: ${pgW}; height: ${pgH}; font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Helvetica Neue', sans-serif; background: #fff; color: #111; display: flex; align-items: stretch; }
+  .pop-page { width: ${pgW}; height: ${pgH}; display: flex; flex-direction: column; overflow: hidden; }
   .pop-header { background: #c8102e; color: #fff; padding: 18mm 14mm 10mm; flex-shrink: 0; }
   .pop-brand { font-size: 22pt; font-weight: 700; opacity: 0.92; margin-bottom: 3mm; }
   .pop-model { font-size: 36pt; font-weight: 800; line-height: 1.15; }
@@ -10003,7 +10012,7 @@ window.addEventListener('storageReady', function(){
       _printPOPFromPDF(matched, p, retailPrice, sellPrice);
       return;
     }
-    const templateHtml = (matched && matched.html) ? matched.html : _getDefaultPOPHtml();
+    const templateHtml = (matched && matched.html) ? matched.html : _getDefaultPOPHtml(matched && matched.orient);
     const finalHtml = _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
@@ -10060,8 +10069,9 @@ window.addEventListener('storageReady', function(){
 
   // ── POP印刷テンプレート モーダル管理 ────────────────────────────
   let _editingPopTemplateIdx = null;
-  let _ptCurrentType = 'html';  // 'html' or 'pdf'
-  let _ptCurrentPdfBase64 = null; // 現在読み込み中のPDFのbase64
+  let _ptCurrentType = 'html';      // 'html' or 'pdf'
+  let _ptCurrentOrient = 'portrait'; // 'portrait' or 'landscape'
+  let _ptCurrentPdfBase64 = null;   // 現在読み込み中のPDFのbase64
 
   // デフォルトフィールド定義（PDF用）
   const _PT_DEFAULT_FIELDS = [
@@ -10089,9 +10099,20 @@ window.addEventListener('storageReady', function(){
     document.getElementById('ptHtmlSection').style.display  = type === 'html' ? 'block'  : 'none';
     document.getElementById('ptPdfSection').style.display   = type === 'pdf'  ? 'flex'   : 'none';
     document.getElementById('ptPreviewBtn').style.display   = type === 'html' ? 'inline-flex' : 'none';
+    // 向き切替はHTMLのみ有効（PDFはアップロードしたファイルの向きに依存）
+    document.getElementById('ptOrientWrap').style.display   = type === 'html' ? 'flex' : 'none';
     document.querySelectorAll('.pt-type-btn').forEach(b => {
       const active = b.dataset.type === type;
       b.style.background = active ? 'var(--amber)' : 'var(--bg-2)';
+      b.style.color = active ? '#fff' : 'var(--text-2)';
+    });
+  }
+
+  function _ptSetOrient(orient){
+    _ptCurrentOrient = orient;
+    document.querySelectorAll('.pt-orient-btn').forEach(b => {
+      const active = b.dataset.orient === orient;
+      b.style.background = active ? 'var(--teal)' : 'var(--bg-2)';
       b.style.color = active ? '#fff' : 'var(--text-2)';
     });
   }
@@ -10151,8 +10172,9 @@ window.addEventListener('storageReady', function(){
     // フィールド設定
     const fields = (t && t.pdfFields) ? t.pdfFields : JSON.parse(JSON.stringify(_PT_DEFAULT_FIELDS));
     _ptRenderFieldsTable(fields);
-    // タイプ設定
+    // タイプ・向き設定
     _ptSetType(t ? (t.type || 'html') : 'html');
+    _ptSetOrient(t ? (t.orient || 'portrait') : 'portrait');
     document.getElementById('popTemplateModal').classList.add('show');
   }
 
@@ -10241,9 +10263,13 @@ window.addEventListener('storageReady', function(){
     btn.addEventListener('click', () => _ptSetType(btn.dataset.type));
   });
 
+  document.querySelectorAll('.pt-orient-btn').forEach(btn => {
+    btn.addEventListener('click', () => _ptSetOrient(btn.dataset.orient));
+  });
+
   document.getElementById('ptLoadDefault').addEventListener('click', () => {
     if(document.getElementById('ptHtml').value.trim() && !confirm('現在のHTMLを上書きしますか？')) return;
-    document.getElementById('ptHtml').value = _getDefaultPOPHtml();
+    document.getElementById('ptHtml').value = _getDefaultPOPHtml(_ptCurrentOrient);
   });
 
   // PDF ファイル選択
@@ -10306,7 +10332,7 @@ window.addEventListener('storageReady', function(){
     } else {
       const html = document.getElementById('ptHtml').value.trim();
       if(!html){ msg.innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
-      entry = { name, brand, model, type: 'html', html };
+      entry = { name, brand, model, type: 'html', orient: _ptCurrentOrient, html };
     }
     msg.innerHTML = '<div class="msg msg-ok">保存中…</div>';
     if(_editingPopTemplateIdx !== null){
