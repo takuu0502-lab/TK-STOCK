@@ -1935,6 +1935,14 @@
             <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="isch_co_install_tbd" style="width:14px;height:14px;">未定</label>
           </div>
         </div>
+        <!-- 仮出庫同時登録 -->
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;background:var(--teal-dim);border:1px solid rgba(26,122,94,0.25);border-radius:8px;">
+          <input type="checkbox" id="isch_co_prov_now" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex:none;">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--teal);">🔖 仮出庫も同時に登録する</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:1px;">入庫予定と同時に仮出庫リストへ登録します</div>
+          </div>
+        </label>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:18px;">
@@ -11622,6 +11630,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('isch_co_car').value = '';
       document.getElementById('isch_co_install_date').value = '';
       document.getElementById('isch_co_install_tbd').checked = false;
+      const _ischProvNow = document.getElementById('isch_co_prov_now');
+      if(_ischProvNow) _ischProvNow.checked = false;
       document.getElementById('isch_co_install_date').disabled = false;
       const stockLabel = document.getElementById('isch_type_stock_label');
       const coLabel = document.getElementById('isch_type_co_label');
@@ -11731,6 +11741,25 @@ window.addEventListener('storageReady', function(){
           customerOrders.push(coEntry);
           await saveCustomerOrders();
           renderCustomerOrderList();
+          // 仮出庫同時登録
+          const _ischProvNow = document.getElementById('isch_co_prov_now');
+          if(_ischProvNow && _ischProvNow.checked){
+            const provEntry = {
+              id: uid('prov'),
+              date: new Date().toISOString(),
+              type: 'provisional',
+              customerName: customerName,
+              carName: carName||'',
+              scheduledDate: installDate2||dateVal||'',
+              branchId: _ownBr,
+              staff: currentUser?currentUser.displayName:'',
+              items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty:qty }],
+              status: 'pending'
+            };
+            provisionalOutbounds.push(provEntry);
+            await saveProvisionalOutbounds();
+            renderProvisionalList();
+          }
         }
         incomingSchedules.push(newSched);
         _ischResetForm();
