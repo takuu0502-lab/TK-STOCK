@@ -2342,6 +2342,7 @@ window.addEventListener('storageReady', function(){
   let customerOrders = []; // 客注品入庫リスト
   let incomingSchedules = []; // 入庫予定リスト
   let _detailInschRefresh = null; // 商品詳細の入庫予定再描画関数（モーダル外から呼ぶ用）
+  let _detailProvRefresh = null;  // 商品詳細の仮出庫リスト再描画関数（モーダル外から呼ぶ用）
   let categories = [];
   let editingId = null;
   let _pendingCatalogKey = null;
@@ -9983,6 +9984,7 @@ window.addEventListener('storageReady', function(){
       });
     }
     renderDetailProvList();
+    _detailProvRefresh = renderDetailProvList;
 
     // ---------- 入庫予定リスト（商品詳細） ----------
     function renderDetailInschList(){
@@ -11148,6 +11150,10 @@ window.addEventListener('storageReady', function(){
               + '</div>'
             : '')
         + '</div>'
+        + (order.createdBy||order.createdAt ? '<div style="margin-top:8px;font-size:11px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;">'
+            +(order.createdBy ? '<span>担当：'+escapeHtml(order.createdBy)+'</span>' : '')
+            +(order.createdAt ? (()=>{ const _d=new Date(order.createdAt); return '<span>登録：'+_d.getFullYear()+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+String(_d.getDate()).padStart(2,'0')+' '+String(_d.getHours()).padStart(2,'0')+':'+String(_d.getMinutes()).padStart(2,'0')+'</span>'; })() : '')
+            +'</div>' : '')
         + '</div>'
         /* ── カード下部ボタン ── */
         + '<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
@@ -11206,6 +11212,7 @@ window.addEventListener('storageReady', function(){
         renderProductTable();
         renderCustomerOrderList();
         renderProvisionalList();
+        if(_detailProvRefresh) _detailProvRefresh();
         const msgEl = document.getElementById('inBranchBanner');
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入荷確定・仮出庫登録が完了しました。</div>'; setTimeout(()=>{ const e=document.getElementById('inBranchBanner'); if(e) e.innerHTML=''; },3000); }
       });
@@ -11384,6 +11391,10 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           /* 商品リスト */
           +'<div>'+itemRows+'</div>'
+          +((entry.staff||entry.date) ? '<div style="margin-top:8px;font-size:11px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;">'
+            +(entry.staff ? '<span>担当：'+escapeHtml(entry.staff)+'</span>' : '')
+            +(entry.date ? (()=>{ const _d=new Date(entry.date); return '<span>登録：'+_d.getFullYear()+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+String(_d.getDate()).padStart(2,'0')+' '+String(_d.getHours()).padStart(2,'0')+':'+String(_d.getMinutes()).padStart(2,'0')+'</span>'; })() : '')
+            +'</div>' : '')
           +'</div>'
           /* カード下部ボタン */
           +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
@@ -11617,6 +11628,7 @@ window.addEventListener('storageReady', function(){
       renderProductTable();
       renderCustomerOrderList();
       renderProvisionalList();
+      if(_detailProvRefresh) _detailProvRefresh();
     });
   })();
 
@@ -11762,6 +11774,7 @@ window.addEventListener('storageReady', function(){
             provisionalOutbounds.push(provEntry);
             await saveProvisionalOutbounds();
             renderProvisionalList();
+            if(_detailProvRefresh) _detailProvRefresh();
           }
         }
         incomingSchedules.push(newSched);
