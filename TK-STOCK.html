@@ -5136,7 +5136,7 @@ window.addEventListener('storageReady', function(){
     const _attr = clickable ? 'data-insch-badge="'+pid+'"' : '';
     const _cur = clickable ? 'pointer' : 'default';
     let _h = '';
-    if(_coQ>0) _h += '<div '+_attr+' style="cursor:'+_cur+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#7a5c00;color:#fff;font-size:'+_fs+'px;font-weight:700;padding:'+_pad+';border-radius:8px;white-space:nowrap;">🛒 客注品入庫予定 '+_coQ+'本</div>';
+    if(_coQ>0) _h += '<div '+_attr+' style="cursor:'+_cur+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#4caf7d;color:#fff;font-size:'+_fs+'px;font-weight:700;padding:'+_pad+';border-radius:8px;white-space:nowrap;">🛒 客注品入庫予定 '+_coQ+'本</div>';
     if(_stQ>0) _h += '<div '+_attr+' style="cursor:'+_cur+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#1a7a5e;color:#fff;font-size:'+_fs+'px;font-weight:700;padding:'+_pad+';border-radius:8px;white-space:nowrap;">📦 在庫品入庫予定 '+_stQ+'本</div>';
     return _h;
   }
