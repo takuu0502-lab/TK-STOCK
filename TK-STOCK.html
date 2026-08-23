@@ -9955,25 +9955,27 @@ window.addEventListener('storageReady', function(){
   }
 
   // テンプレートHTMLにプレースホルダーを適用
-  function _applyPOPPlaceholders(templateHtml, p, sell){
+  // retailPrice = メーカー希望小売価格（税抜）, sellPrice = 販売価格（税抜）
+  function _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice){
+    const sp       = sellPrice !== undefined ? sellPrice : retailPrice;
     const brand    = p.brand || '';
     const model    = cleanName(p.name) || '';
     const sizeStr  = p.spec || '';
-    const sellTax  = sell ? Math.floor(sell * 1.1) : null;
-    const sell4    = sellTax ? sellTax * 4 : null;
+    const price1Tax = retailPrice ? Math.floor(retailPrice * 1.1) : null;
+    const sell4Tax  = sp ? Math.floor(sp * 1.1) * 4 : null;
     const branchName = currentUser ? (currentUser.branchName || currentUser.branchId || '') : '';
 
-    const priceBlock = sellTax
-      ? `<div class="pop-price-1">¥${sellTax.toLocaleString('ja-JP')}</div>`
-        + (sell4 ? `<div class="pop-price-4-row"><span class="pop-price-4-label">4本セット</span><span class="pop-price-4-value">¥${sell4.toLocaleString('ja-JP')}</span><span style="font-size:12pt;color:#aaa;">（税込）</span></div>` : '')
+    const priceBlock = price1Tax
+      ? `<div class="pop-price-1">¥${price1Tax.toLocaleString('ja-JP')}</div>`
+        + (sell4Tax ? `<div class="pop-price-4-row"><span class="pop-price-4-label">4本セット</span><span class="pop-price-4-value">¥${sell4Tax.toLocaleString('ja-JP')}</span><span style="font-size:12pt;color:#aaa;">（税込）</span></div>` : '')
       : '<div class="pop-price-none">価格未設定</div>';
 
     return templateHtml
       .replace(/\{\{BRAND\}\}/g,       escapeHtml(brand))
       .replace(/\{\{MODEL\}\}/g,       escapeHtml(model))
       .replace(/\{\{SIZE\}\}/g,        escapeHtml(sizeStr))
-      .replace(/\{\{PRICE_1\}\}/g,     sellTax ? '¥'+sellTax.toLocaleString('ja-JP') : '―')
-      .replace(/\{\{PRICE_4\}\}/g,     sell4   ? '¥'+sell4.toLocaleString('ja-JP')   : '―')
+      .replace(/\{\{PRICE_1\}\}/g,     price1Tax ? '¥'+price1Tax.toLocaleString('ja-JP') : '―')
+      .replace(/\{\{PRICE_4\}\}/g,     sell4Tax  ? '¥'+sell4Tax.toLocaleString('ja-JP')  : '―')
       .replace(/\{\{PRICE_BLOCK\}\}/g, priceBlock)
       .replace(/\{\{SHOP\}\}/g,        escapeHtml(branchName));
   }
@@ -9995,14 +9997,14 @@ window.addEventListener('storageReady', function(){
     return best;
   }
 
-  function printTirePOP(p, sell){
+  function printTirePOP(p, retailPrice, sellPrice){
     const matched = _findMatchingPOPTemplate(p);
     if(matched && matched.type === 'pdf'){
-      _printPOPFromPDF(matched, p, sell);
+      _printPOPFromPDF(matched, p, retailPrice, sellPrice);
       return;
     }
     const templateHtml = (matched && matched.html) ? matched.html : _getDefaultPOPHtml();
-    const finalHtml = _applyPOPPlaceholders(templateHtml, p, sell);
+    const finalHtml = _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
     w.document.write(finalHtml);
@@ -10167,8 +10169,9 @@ window.addEventListener('storageReady', function(){
   }
 
   // PDFにテキストを描画してダウンロード
-  async function _printPOPFromPDF(template, p, sell){
+  async function _printPOPFromPDF(template, p, retailPrice, sellPrice){
     try {
+      const sp = sellPrice !== undefined ? sellPrice : retailPrice;
       const PDFLib = await _loadPDFLib();
       const { PDFDocument, StandardFonts, rgb } = PDFLib;
 
@@ -10186,14 +10189,14 @@ window.addEventListener('storageReady', function(){
         return f;
       }
 
-      const sellTax = sell ? Math.floor(sell * 1.1) : null;
-      const sell4   = sellTax ? sellTax * 4 : null;
+      const price1Tax = retailPrice ? Math.floor(retailPrice * 1.1) : null;
+      const sell4Tax  = sp ? Math.floor(sp * 1.1) * 4 : null;
       const MM = 2.83465; // 1mm in pt
 
       const values = {
         SIZE:    p.spec || '',
-        PRICE_1: sellTax ? sellTax.toLocaleString('ja-JP') : '',
-        PRICE_4: sell4   ? sell4.toLocaleString('ja-JP')   : '',
+        PRICE_1: price1Tax ? price1Tax.toLocaleString('ja-JP') : '',
+        PRICE_4: sell4Tax  ? sell4Tax.toLocaleString('ja-JP')  : '',
       };
 
       for(const field of (template.pdfFields || [])){
@@ -10272,7 +10275,7 @@ window.addEventListener('storageReady', function(){
     const fields = _ptReadFields();
     const fakeTemplate = { pdfBase64: _ptCurrentPdfBase64, pdfFields: fields };
     const sampleP = { brand: 'ブリヂストン', name: 'REGNO GR-XⅢ', spec: '195/65R15 91H' };
-    await _printPOPFromPDF(fakeTemplate, sampleP, 18000);
+    await _printPOPFromPDF(fakeTemplate, sampleP, 22000, 18000);
   });
 
   // HTML プレビュー
@@ -10280,7 +10283,7 @@ window.addEventListener('storageReady', function(){
     const html = document.getElementById('ptHtml').value.trim();
     if(!html){ alert('HTMLを入力してください。'); return; }
     const sampleProduct = { brand: 'ブリヂストン', name: 'REGNO GR-XⅢ', spec: '195/65R15 91H' };
-    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, 18000);
+    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, 22000, 18000);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(w){ w.document.write(finalHtml); w.document.close(); }
   });
@@ -10826,7 +10829,7 @@ window.addEventListener('storageReady', function(){
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
-    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || sell) : sell));
+    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || sell) : sell, sell));
     document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
     // 複製ボタン（管理者以上のみ）
     const _dupBtn = document.getElementById('detailDuplicate');
