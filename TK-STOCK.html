@@ -4419,7 +4419,15 @@ window.addEventListener('storageReady', function(){
     // フォールバック：スペック＋名前の部分一致
     if(!p.spec) return false;
     if(!_specMatchesCatalog(p.spec, r.s)) return false;
-    return _nameMatchesCatalog(p.name, r.b, r.m);
+    if(!_nameMatchesCatalog(p.name, r.b, r.m)) return false;
+    // より詳細なカタログエントリ（同ブランドでモデル名がより長い）が存在する場合はそちらを優先
+    // 例: rM="REGNO GR-XⅢ" のとき商品名が "REGNO GR-XⅢ TYPE RV" なら TYPE RV エントリに委ねる
+    const _moreSpecific = getCatalog().find(r2 =>
+      r2 !== r && r2.b === r.b && r2.m.length > r.m.length && r2.m.includes(r.m) &&
+      _specMatchesCatalog(p.spec, r2.s) && _nameMatchesCatalog(p.name, r2.b, r2.m)
+    );
+    if(_moreSpecific) return false;
+    return true;
   }
   function stockForCatalogEntry(r){
     return products.reduce((total, p) => total + (_matchesCatalogEntry(p,r) ? getStock(p) : 0), 0);
