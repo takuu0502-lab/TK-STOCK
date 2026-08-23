@@ -836,14 +836,6 @@
       <button class="btn btn-ghost btn-sm" id="bulkEditDeselectAll">全解除</button>
       <span id="bulkEditSelectedCount" style="font-size:12px;color:var(--text-3);white-space:nowrap;"></span>
     </div>
-    <!-- 一括適用バー -->
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;background:var(--bg-2);border-radius:8px;padding:8px 12px;">
-      <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">全行一括：</span>
-      <select id="beBulkMajor" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);"></select>
-      <button class="btn btn-ghost btn-sm" id="beApplyMajor" style="white-space:nowrap;">大分類を適用</button>
-      <select id="beBulkSub" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);"></select>
-      <button class="btn btn-ghost btn-sm" id="beApplySub" style="white-space:nowrap;">中分類を適用</button>
-    </div>
     <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:380px;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
@@ -8496,8 +8488,6 @@ window.addEventListener('storageReady', function(){
     const _beFilter      = document.getElementById('bulkEditFilter');
     const _beStatus      = document.getElementById('bulkEditStatus');
     const _beCount       = document.getElementById('bulkEditSelectedCount');
-    const _beBulkMajor   = document.getElementById('beBulkMajor');
-    const _beBulkSub     = document.getElementById('beBulkSub');
     let _beRestrictIds   = null; // null=全商品, array=絞り込み対象IDリスト
 
     // ヘルパー: 大分類オプションHTML
@@ -8513,11 +8503,7 @@ window.addEventListener('storageReady', function(){
         + major.subs.map(s=>`<option value="${s.id}"${s.id===selectedId?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
     }
 
-    // 一括適用バーの大分類セレクトを初期化
-    function _beInitBulkSelects(){
-      _beBulkMajor.innerHTML = _beMajorOpts('');
-      _beBulkSub.innerHTML = '<option value="">中分類なし</option>';
-    }
+    function _beInitBulkSelects(){ /* no-op */ }
 
     function _beGetFiltered(){
       const q = _beFilter.value.trim().toLowerCase();
@@ -8578,37 +8564,6 @@ window.addEventListener('storageReady', function(){
     }
 
     _beFilter.addEventListener('input', _beRender);
-
-    // 一括適用バー: 大分類が変わったら中分類を更新
-    _beBulkMajor.addEventListener('change', ()=>{
-      _beBulkSub.innerHTML = _beSubOpts(_beBulkMajor.value, '');
-    });
-
-    document.getElementById('beApplyMajor').addEventListener('click', ()=>{
-      const majorId = _beBulkMajor.value;
-      _beTbody.querySelectorAll('.be-major').forEach(sel=>{
-        const pid = sel.dataset.pid;
-        sel.value = majorId;
-        sel.style.borderColor = 'var(--teal)';
-        const subSel = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
-        if(subSel){ subSel.innerHTML = _beSubOpts(majorId, ''); }
-        const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
-        if(chk && !chk.checked){ chk.checked=true; }
-      });
-      _beUpdateCount();
-    });
-
-    document.getElementById('beApplySub').addEventListener('click', ()=>{
-      const subId = _beBulkSub.value;
-      _beTbody.querySelectorAll('.be-sub').forEach(sel=>{
-        sel.value = subId;
-        sel.style.borderColor = 'var(--teal)';
-        const pid = sel.dataset.pid;
-        const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
-        if(chk && !chk.checked){ chk.checked=true; }
-      });
-      _beUpdateCount();
-    });
 
     document.getElementById('bulkEditAllChk').addEventListener('change', e=>{
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=e.target.checked);
