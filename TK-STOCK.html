@@ -5251,13 +5251,14 @@ window.addEventListener('storageReady', function(){
         if(_dupCatEntry){
           const _dupAll = findAllProductsForCatalogEntry(_dupCatEntry);
           const _dupBranch = selectedBranchFilter || _myBranch;
-          // 自支店所有 or 全支店合計で在庫あり の手動登録品がある場合のみ非表示
-          // （0在庫かつ別支店の残骸データは対象外）
+          // 現在表示中の支店で在庫が1本以上ある手動登録品がある場合のみ非表示
+          // （0在庫の残骸データは対象外）
           if(_dupAll.some(q => {
             if(q.id === p.id || q._fromCatalog) return false;
-            const _qOwned = (q.branchId || 'taniyabe') === _dupBranch;
-            const _qStk = q.branchStock ? Object.values(q.branchStock).reduce((s,v)=>s+(v||0),0) : (q.stock||0);
-            return _qOwned || _qStk > 0;
+            const _brStk = q.branchStock
+              ? (q.branchStock[_dupBranch] || 0)
+              : ((q.branchId || 'taniyabe') === _dupBranch ? (q.stock || 0) : 0);
+            return _brStk > 0;
           })) return false;
         }
       }
