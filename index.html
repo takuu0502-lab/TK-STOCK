@@ -10502,10 +10502,14 @@ window.addEventListener('storageReady', function(){
       return;
     }
     if(barcode){
-      const dups = products.filter(p => p.barcode === barcode && p.id !== editingId);
+      const _myBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+      // 自店舗で重複登録されている場合のみ警告
+      const dups = products.filter(p => {
+        if(p.barcode !== barcode || p.id === editingId) return false;
+        return (p.branchId || 'taniyabe') === _myBranchId;
+      });
       if(dups.length > 0){
-        const _dupBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-        const dupNames = dups.map(d=>{ const _dy=getBranchManufactureYear(d,_dupBranch); return escapeHtml(d.name)+(_dy?' ('+_dy+'年製)':''); }).join('、');
+        const dupNames = dups.map(d=>{ const _dy=getBranchManufactureYear(d,_myBranchId); return escapeHtml(d.name)+(_dy?' ('+_dy+'年製)':''); }).join('、');
         const ok = await showConfirm('同じJANコードが既に登録されています。\n\n登録済み：'+dupNames.replace(/<[^>]*>/g,'')+'\n\n製造年違いなどの場合は重複登録できます。\nそれでも登録しますか？');
         if(!ok) return;
       }
