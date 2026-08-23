@@ -10192,8 +10192,8 @@ window.addEventListener('storageReady', function(){
 
       const values = {
         SIZE:    p.spec || '',
-        PRICE_1: sellTax ? sellTax.toLocaleString('ja-JP') + '円(税込)' : '',
-        PRICE_4: sell4   ? sell4.toLocaleString('ja-JP')   + '円(税込)' : '',
+        PRICE_1: sellTax ? '¥' + sellTax.toLocaleString('ja-JP') : '',
+        PRICE_4: sell4   ? '¥' + sell4.toLocaleString('ja-JP')   : '',
       };
 
       for(const field of (template.pdfFields || [])){
