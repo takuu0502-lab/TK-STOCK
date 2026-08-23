@@ -211,10 +211,10 @@
   /* 商品検索タイヤサイズ（旧レイアウト） */
   .tire-size-row{display:inline-flex;align-items:flex-end;gap:0;flex-wrap:nowrap;max-width:100%;}
   .tire-size-col{display:flex;flex-direction:column;gap:4px;flex:none;}
-  .tire-size-col select{width:75px;font-size:14px;font-weight:600;padding:0 2px;border-radius:0;text-align:center;height:40px;box-sizing:border-box;}
-  .tire-size-col:first-of-type select{border-radius:6px 0 0 6px;width:80px;}
+  .tire-size-col select{width:80px;font-size:13px;font-weight:600;padding:4px 8px;border-radius:99px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);text-align:center;height:34px;box-sizing:border-box;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;}
+  .tire-size-col select:focus{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber-dim);}
   .tire-size-col label{font-size:11px;color:var(--text-3);font-weight:600;letter-spacing:0.3px;display:block;text-align:center;width:100%;}
-  .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-2);font-size:16px;background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:0 2px;height:40px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;flex:none;}
+  .tire-size-sep{font-family:var(--font-mono);font-weight:700;color:var(--text-3);font-size:15px;padding:0 3px;height:34px;box-sizing:border-box;display:inline-flex;align-items:center;align-self:flex-end;flex:none;}
   .tire-size-li-wrap{display:flex;align-items:center;gap:4px;width:100%;}
   .tire-size-li-wrap select{flex:1;font-size:14px;font-weight:600;height:40px;border-radius:0;text-align:center;box-sizing:border-box;min-width:44px;}
   .tire-size-li-wrap select:first-child{border-radius:6px 0 0 6px;}
@@ -550,9 +550,9 @@
 
     /* ── タイヤサイズ選択（商品検索） ── */
     .tire-size-row{flex-wrap:wrap;gap:4px 0;}
-    .tire-size-col select{width:80px;font-size:13px;}
-    .tire-size-col:first-of-type select{width:88px;}
-    .tire-size-col:last-of-type select{width:70px;}
+    .tire-size-col select{width:78px;font-size:12px;}
+    .tire-size-col:first-of-type select{width:86px;}
+    .tire-size-col:last-of-type select{width:68px;}
     /* ── タイヤサイズ選択（見積もり） ── */
     .tss-card select{font-size:16px;}
     .tss-preview{font-size:17px;}
@@ -8270,7 +8270,7 @@ window.addEventListener('storageReady', function(){
           html += '</select></div>';
           const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
           html += '<div class="tire-size-col" style="margin-left:16px;border-left:1px solid var(--line);padding-left:16px;"><label>銘柄</label>';
-          html += '<select id="specCatalogModel" style="min-width:160px;"><option value="">指定しない</option>';
+          html += '<select id="specCatalogModel" style="width:180px;"><option value="">指定しない</option>';
           catalogModels.forEach(key=>{
             html += '<option value="'+escapeHtml(key)+'"'+(selectedCatalogModelKey===key?' selected':'')+'>'+escapeHtml(key.replace('||',' '))+'</option>';
           });
