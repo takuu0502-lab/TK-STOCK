@@ -3328,6 +3328,11 @@ window.addEventListener('storageReady', function(){
       if(_bsAutoCount) await saveProducts();
     }
 
+    // デフォルトでタイヤを選択
+    if(selectedMajor === null){
+      const _defTire = categories.find(c=>c.name==='タイヤ');
+      if(_defTire){ selectedMajor = _defTire.id; expanded.add(_defTire.id); }
+    }
     renderCatTree();
     renderSpecSearchPanel();
     renderProductTable();
@@ -8266,15 +8271,16 @@ window.addEventListener('storageReady', function(){
             html += '<option value="'+val+'"'+(selectedTireInch===val?' selected':'')+'>'+inch+'</option>';
           });
           html += '</select></div>';
-          html += '</div>';
+          // 銘柄選択をサイズ行と横並びに
           const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
-          html += '<div style="margin-top:10px;">';
-          html += '<label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:5px;">または銘柄で選ぶ（ブリヂストン価格表より）</label>';
-          html += '<select id="specCatalogModel"><option value="">指定しない</option>';
+          html += '<div class="tire-size-col" style="margin-left:16px;border-left:1px solid var(--line);padding-left:16px;">';
+          html += '<label>銘柄</label>';
+          html += '<select id="specCatalogModel" style="min-width:160px;"><option value="">指定しない</option>';
           catalogModels.forEach(key=>{
             html += '<option value="'+escapeHtml(key)+'"'+(selectedCatalogModelKey===key?' selected':'')+'>'+escapeHtml(key.replace('||',' '))+'</option>';
           });
           html += '</select></div>';
+          html += '</div>';
         } else {
           let specOptions;
           if(isWheel){
