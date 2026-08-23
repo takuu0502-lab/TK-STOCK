@@ -847,6 +847,12 @@
       <label id="beColLbl-sell"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sell"     checked style="accent-color:var(--amber);cursor:pointer;">販売価格</label>
       <label id="beColLbl-minstock" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="minstock" checked style="accent-color:var(--amber);cursor:pointer;">最低在庫数</label>
     </div>
+    <!-- 中分類一括変更 -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">中分類を一括変更：</span>
+      <select id="beBulkSub" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);flex:1;min-width:120px;"></select>
+      <button class="btn btn-ghost btn-sm" id="beApplySub" style="white-space:nowrap;">チェック行に適用</button>
+    </div>
     <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:380px;">
       <table id="bulkEditTable" style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
@@ -8525,7 +8531,13 @@ window.addEventListener('storageReady', function(){
         + major.subs.map(s=>`<option value="${s.id}"${s.id===selectedId?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
     }
 
-    function _beInitBulkSelects(){ /* no-op */ }
+    const _beBulkSub = document.getElementById('beBulkSub');
+
+    function _beInitBulkSelects(){
+      // 全大分類の中分類をまとめて列挙
+      _beBulkSub.innerHTML = '<option value="">（中分類を選択）</option>'
+        + (categories||[]).flatMap(c=>(c.subs||[]).map(s=>`<option value="${s.id}">[${escapeHtml(c.name)}] ${escapeHtml(s.name)}</option>`)).join('');
+    }
 
     function _beGetFiltered(){
       return _beRestrictIds ? products.filter(p=>_beRestrictIds.includes(p.id)) : [...products];
@@ -8610,6 +8622,17 @@ window.addEventListener('storageReady', function(){
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=e.target.checked);
       _beUpdateCount();
     });
+    document.getElementById('beApplySub').addEventListener('click', ()=>{
+      const subId = _beBulkSub.value;
+      if(!subId) return;
+      // チェック済み行の中分類を一括変更
+      _beTbody.querySelectorAll('.be-chk:checked').forEach(chk=>{
+        const pid = chk.dataset.pid;
+        const subSel = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+        if(subSel){ subSel.value = subId; subSel.style.borderColor = 'var(--teal)'; }
+      });
+    });
+
     document.getElementById('bulkEditSelectAll').addEventListener('click', ()=>{
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=true);
       document.getElementById('bulkEditAllChk').checked=true;
