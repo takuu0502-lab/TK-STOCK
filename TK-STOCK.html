@@ -11112,7 +11112,8 @@ window.addEventListener('storageReady', function(){
         /* ── カード下部ボタン ── */
         + '<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
         + '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;font-size:12px;">✅ 入荷確定</button>'
-        + '<button class="btn btn-ghost btn-sm co-delete-btn" data-co-id="'+order.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 10px;">✕</button>'
+        + '<button class="btn btn-ghost btn-sm co-edit-btn" data-co-id="'+order.id+'" style="font-size:12px;padding:0 10px;" title="編集">✏️</button>'
+        + '<button class="btn btn-ghost btn-sm co-delete-btn" data-co-id="'+order.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 10px;" title="取消">🗑️</button>'
         + '</div>'
         + '</div>';
     }).join('');
@@ -11170,6 +11171,15 @@ window.addEventListener('storageReady', function(){
       });
     });
 
+    wrap.querySelectorAll('.co-edit-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const orderId = btn.dataset.coId;
+        const order = customerOrders.find(o=>o.id===orderId);
+        if(!order) return;
+        openCustomerOrderModal(order);
+      });
+    });
+
     wrap.querySelectorAll('.co-delete-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const orderId = btn.dataset.coId;
@@ -11185,23 +11195,55 @@ window.addEventListener('storageReady', function(){
   }
 
   let _coSelectedProduct = null;
-  function openCustomerOrderModal(){
+  let _coEditOrderId = null; // 編集中の注文ID（nullなら新規）
+  function openCustomerOrderModal(editOrder){
     _coSelectedProduct = null;
+    _coEditOrderId = editOrder ? editOrder.id : null;
+    const modal = document.getElementById('customerOrderModal');
+    const titleEl = modal.querySelector('h3');
+    if(titleEl) titleEl.textContent = editOrder ? '✏️ 客注品の編集' : '🛒 客注品の登録';
+    document.getElementById('co_save').textContent = editOrder ? '更新する' : '登録する';
     document.getElementById('co_product_search').value = '';
     document.getElementById('co_product_result').style.display = 'none';
-    document.getElementById('co_product_selected').style.display = 'none';
-    document.getElementById('co_customer').value = '';
-    document.getElementById('co_car').value = '';
-    document.getElementById('co_qty').value = '4';
-    document.getElementById('co_date').value = '';
-    document.getElementById('co_date_tbd').checked = false;
-    document.getElementById('co_date').disabled = false;
-    document.getElementById('co_install_date').value = '';
-    document.getElementById('co_install_date_tbd').checked = false;
-    document.getElementById('co_install_date').disabled = false;
+    if(editOrder){
+      const ep = products.find(x=>x.id===editOrder.productId);
+      if(ep){
+        _coSelectedProduct = ep;
+        const sel = document.getElementById('co_product_selected');
+        sel.style.display = 'block';
+        sel.querySelector('#co_selected_name') && (sel.querySelector('#co_selected_name').textContent = cleanName(ep.name));
+        // 商品選択表示を更新
+        const _selName = sel.querySelector('[id^="co_selected"]');
+        sel.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--teal);">✅ '+escapeHtml(cleanName(ep.name))+(ep.spec?' <span style="color:var(--text-2);font-weight:400;">'+escapeHtml(ep.spec)+'</span>':'')+'</div>';
+      } else {
+        document.getElementById('co_product_selected').style.display = 'none';
+      }
+      document.getElementById('co_customer').value = editOrder.customerName||'';
+      document.getElementById('co_car').value = editOrder.carName||'';
+      document.getElementById('co_qty').value = editOrder.qty||4;
+      const isTbd = !editOrder.expectedDate;
+      document.getElementById('co_date_tbd').checked = isTbd;
+      document.getElementById('co_date').value = isTbd ? '' : (editOrder.expectedDate||'');
+      document.getElementById('co_date').disabled = isTbd;
+      const isInstTbd = editOrder.installDate === '' || editOrder.installDate === undefined || editOrder.installDate === null;
+      document.getElementById('co_install_date_tbd').checked = isInstTbd;
+      document.getElementById('co_install_date').value = isInstTbd ? '' : (editOrder.installDate||'');
+      document.getElementById('co_install_date').disabled = isInstTbd;
+    } else {
+      document.getElementById('co_product_selected').style.display = 'none';
+      document.getElementById('co_customer').value = '';
+      document.getElementById('co_car').value = '';
+      document.getElementById('co_qty').value = '4';
+      document.getElementById('co_date').value = '';
+      document.getElementById('co_date_tbd').checked = false;
+      document.getElementById('co_date').disabled = false;
+      document.getElementById('co_install_date').value = '';
+      document.getElementById('co_install_date_tbd').checked = false;
+      document.getElementById('co_install_date').disabled = false;
+    }
     document.getElementById('co_error').style.display = 'none';
-    document.getElementById('customerOrderModal').classList.add('show');
-    setTimeout(()=>{ document.getElementById('co_product_search').focus(); }, 100);
+    modal.classList.add('show');
+    if(!editOrder) setTimeout(()=>{ document.getElementById('co_product_search').focus(); }, 100);
   }
 
   function renderCoProductSearch(){
@@ -11450,22 +11492,40 @@ window.addEventListener('storageReady', function(){
       const installDate = isInstallTbd ? '' : (document.getElementById('co_install_date').value||'');
       const carName = (document.getElementById('co_car').value||'').trim();
       const _coBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-      const order = {
-        id: uid('co'),
-        branchId: _coBr,
-        productId: _coSelectedProduct.id,
-        productName: _coSelectedProduct.name,
-        spec: _coSelectedProduct.spec||'',
-        customerName,
-        carName,
-        qty,
-        expectedDate,
-        installDate,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser?currentUser.displayName:''
-      };
-      customerOrders.push(order);
+      if(_coEditOrderId){
+        // 編集モード：既存レコードを上書き
+        const existing = customerOrders.find(o=>o.id===_coEditOrderId);
+        if(existing){
+          existing.productId = _coSelectedProduct.id;
+          existing.productName = _coSelectedProduct.name;
+          existing.spec = _coSelectedProduct.spec||'';
+          existing.customerName = customerName;
+          existing.carName = carName;
+          existing.qty = qty;
+          existing.expectedDate = expectedDate;
+          existing.installDate = installDate;
+          existing.updatedAt = new Date().toISOString();
+          existing.updatedBy = currentUser?currentUser.displayName:'';
+        }
+      } else {
+        // 新規登録
+        const order = {
+          id: uid('co'),
+          branchId: _coBr,
+          productId: _coSelectedProduct.id,
+          productName: _coSelectedProduct.name,
+          spec: _coSelectedProduct.spec||'',
+          customerName,
+          carName,
+          qty,
+          expectedDate,
+          installDate,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser?currentUser.displayName:''
+        };
+        customerOrders.push(order);
+      }
       await saveCustomerOrders();
       modal.classList.remove('show');
       renderCustomerOrderList();
