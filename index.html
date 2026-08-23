@@ -5250,7 +5250,15 @@ window.addEventListener('storageReady', function(){
         const _dupCatEntry = findCatalogEntryForProduct(p);
         if(_dupCatEntry){
           const _dupAll = findAllProductsForCatalogEntry(_dupCatEntry);
-          if(_dupAll.some(q => q.id !== p.id && !q._fromCatalog)) return false;
+          const _dupBranch = selectedBranchFilter || _myBranch;
+          // 自支店所有 or 全支店合計で在庫あり の手動登録品がある場合のみ非表示
+          // （0在庫かつ別支店の残骸データは対象外）
+          if(_dupAll.some(q => {
+            if(q.id === p.id || q._fromCatalog) return false;
+            const _qOwned = (q.branchId || 'taniyabe') === _dupBranch;
+            const _qStk = q.branchStock ? Object.values(q.branchStock).reduce((s,v)=>s+(v||0),0) : (q.stock||0);
+            return _qOwned || _qStk > 0;
+          })) return false;
         }
       }
       return true;
