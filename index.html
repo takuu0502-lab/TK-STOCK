@@ -1610,6 +1610,14 @@
         </div>
       </div>
     </div>
+    <!-- タイヤ見積もり表示設定（タイヤ分類のみ表示） -->
+    <div class="field" id="f_estimate_visible_field" style="display:none;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+        <input type="checkbox" id="f_estimate_visible" checked style="width:16px;height:16px;accent-color:var(--teal);">
+        タイヤ見積もり一覧に表示する
+      </label>
+      <div style="font-size:11px;color:var(--text-3);margin-top:3px;">チェックを外すと、タイヤ見積もりタブの一覧に表示されません</div>
+    </div>
     <div class="field">
       <label>仕入先</label>
       <div style="display:flex;gap:6px;align-items:center;">
@@ -4589,6 +4597,7 @@ window.addEventListener('storageReady', function(){
     const _tireCatM = categories.find(c => c.name === 'タイヤ');
     const manualMatched = (_tireCatM && (useWidth || useInch)) ? products.filter(p => {
       if(p.majorId !== _tireCatM.id) return false;
+      if(p.hideFromEstimate) return false;
       if(!p.spec) return false;
       if(useWidth && p.spec.indexOf(useWidth) === -1) return false;
       if(useInch  && p.spec.indexOf(useInch)  === -1) return false;
@@ -9274,6 +9283,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_spec').style.display = isTire ? 'none' : 'block';
     document.getElementById('f_spec_tire_row').style.display = isTire ? 'flex' : 'none';
     document.getElementById('f_wheel_fields').style.display = isWheel ? 'block' : 'none';
+    document.getElementById('f_estimate_visible_field').style.display = isTire ? 'block' : 'none';
   }
   function populateSpecTireSelects(){
     const _branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
@@ -9623,6 +9633,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_price').value = (_editBranchSell !== null ? _editBranchSell : p.sellPrice) || '';
     document.getElementById('f_cost_fixed').checked = hasBranchFixedCost(p, _editBranch2);
     document.getElementById('f_sell_fixed').checked = hasBranchFixedSell(p, _editBranch2);
+    const _estChkEdit = document.getElementById('f_estimate_visible');
+    if(_estChkEdit) _estChkEdit.checked = !p.hideFromEstimate;
     document.getElementById('f_memo').value = p.memo || '';
     document.getElementById('f_url').value = p.url || '';
     const _mfEditBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -10394,6 +10406,8 @@ window.addEventListener('storageReady', function(){
       color:  document.getElementById('f_wheel_color').value.trim()
     } : null;
     const productType = document.querySelector('input[name="f_productType"]:checked')?.value || 'stock';
+    const _estVisibleChk = document.getElementById('f_estimate_visible');
+    const hideFromEstimate = _estVisibleChk ? !_estVisibleChk.checked : false;
     const orderCustomer = productType === 'order' ? document.getElementById('f_order_customer').value.trim() : '';
     const orderCar      = productType === 'order' ? document.getElementById('f_order_car').value.trim() : '';
     const orderDueDate  = productType === 'order' ? document.getElementById('f_order_duedate').value : '';
@@ -10463,7 +10477,7 @@ window.addEventListener('storageReady', function(){
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
@@ -10485,7 +10499,7 @@ window.addEventListener('storageReady', function(){
       if(_fixedSell && sellPrice > 0) initBranchSellPrice[newBranchId] = sellPrice;
       const initBranchManufactureYear = {};
       if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
