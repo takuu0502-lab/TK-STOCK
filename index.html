@@ -11081,12 +11081,12 @@ window.addEventListener('storageReady', function(){
         + '<summary style="padding:14px 16px;background:var(--bg-1);cursor:pointer;list-style:none;">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
         + '<div>'
-        + '<span style="font-size:17px;font-weight:700;color:var(--text-1);">'+escapeHtml(order.customerName)+'</span>'
-        + (order.carName ? ' <span style="font-size:13px;color:var(--text-2);font-weight:500;">'+escapeHtml(order.carName)+'</span>' : '')
+        + '<span style="font-size:17px;font-weight:700;color:var(--text-1);">'+escapeHtml(order.customerName)+'<span style="font-size:14px;font-weight:400;">様</span></span>'
+        + (order.carName ? ' <span style="font-size:15px;color:var(--text-2);font-weight:500;">'+escapeHtml(order.carName)+'</span>' : '')
         + '</div>'
         + '<div style="font-size:12px;color:var(--amber);font-weight:600;">×'+order.qty+'本 ▼</div>'
         + '</div>'
-        + '<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">'+escapeHtml(pName)+(pSpec?' <span style="color:var(--text-3);">'+escapeHtml(pSpec)+'</span>':'')+'</div>'
+        + '<div style="font-size:15px;color:var(--text-2);margin-bottom:8px;">'+escapeHtml(pName)+(pSpec?' <span style="color:var(--text-3);">'+escapeHtml(pSpec)+'</span>':'')+'</div>'
         + '<div style="display:flex;flex-direction:column;gap:4px;">'
         + '<div style="display:flex;align-items:baseline;gap:6px;">'
         + '<span style="font-size:12px;color:var(--text-3);white-space:nowrap;">入庫予定日：</span>'
