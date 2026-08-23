@@ -11677,53 +11677,59 @@ window.addEventListener('storageReady', function(){
     if(pending.length===0){ wrap.innerHTML=''; return; }
     pending.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
     const today = new Date(); today.setHours(0,0,0,0);
-    let html = '<div style="margin-top:4px;">'
-      +'<div style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;">📦 入庫予定リスト（'+pending.length+'件）</div>';
-    pending.forEach(s=>{
+    function _fmtJpDateIS(str){
+      if(!str) return '未定';
+      const d = new Date(str+'T00:00:00');
+      if(isNaN(d)) return str;
+      return d.getFullYear()+'年 '+String(d.getMonth()+1).padStart(2,'0')+'月 '+String(d.getDate()).padStart(2,'0')+'日';
+    }
+    let cards = pending.map(s=>{
       const p2 = products.find(x=>x.id===s.productId);
       const d = new Date(s.expectedDate+'T00:00:00');
       const diff = Math.round((d-today)/(1000*60*60*24));
       const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
       const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
-      const borderColor = diff<0?'var(--red)':'var(--teal)';
-      const bgColor = diff<0?'rgba(220,50,50,0.07)':'rgba(26,122,94,0.07)';
+      const borderColor = diff<0?'var(--red)':'var(--line)';
       const stk = p2 ? getStock(p2) : '?';
-      html += '<details id="isch-entry-'+s.id+'" style="margin-bottom:8px;border:2px solid '+borderColor+';border-radius:8px;overflow:hidden;">'
-        +'<summary style="list-style:none;background:'+bgColor+';padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;">'
+      return '<div id="isch-entry-'+s.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
+        /* カード上部 */
+        +'<div style="padding:14px 16px;flex:1;">'
+        +(diff<0?'<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;">⚠️ 入荷日超過</div>':'')
+        /* 商品名・規格・数量 */
+        +'<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
         +'<div style="flex:1;min-width:0;">'
-        +(diff<0?'<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px;">⚠️ 入荷日超過</div>':'')
-        +'<div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+(s.spec?' <span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(s.spec)+'</span>':'')+'</div>'
-        +(s.inboundType==='customerOrder'?'<span style="font-size:11px;font-weight:700;background:var(--amber);color:#fff;border-radius:6px;padding:2px 7px;display:inline-block;margin-top:3px;">🛒 客注品</span>':'')
-        +'<div style="font-size:13px;color:var(--text-2);margin-top:4px;line-height:1.6;">'
-        +'📅 入荷予定日: <strong>'+s.expectedDate+'</strong>'
+        +'<div style="font-size:16px;font-weight:700;color:var(--text-1);line-height:1.3;">'+escapeHtml(cleanName(s.productName))+'</div>'
+        +(s.spec?'<div style="font-size:14px;color:var(--text-2);margin-top:2px;">'+escapeHtml(s.spec)+'</div>':'')
+        +(s.brand?'<div style="font-size:12px;color:var(--text-3);margin-top:1px;">'+escapeHtml(s.brand)+'</div>':'')
         +'</div>'
-        +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">登録: '+escapeHtml(s.createdBy||'—')+'</div>'
-        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:3px;">👤 '+escapeHtml(s.customerName)+(s.carName?' / '+escapeHtml(s.carName):'')+(s.provScheduledDate?(()=>{const _pp=s.provScheduledDate.split('-');return ' 引渡:'+(_pp.length>=3?_pp[0]+'年'+parseInt(_pp[1])+'月'+parseInt(_pp[2])+'日':s.provScheduledDate);})():'')+'</div>':'')
+        +'<div style="background:rgba(26,160,140,0.1);border:1px solid var(--teal);border-radius:8px;padding:3px 10px;text-align:center;flex-shrink:0;">'
+        +'<div style="font-size:10px;color:var(--teal);font-weight:600;">入荷数</div>'
+        +'<div style="font-size:16px;font-weight:700;color:var(--teal);line-height:1.1;">'+s.qty+'<span style="font-size:11px;">本</span></div>'
         +'</div>'
-        +'<span style="font-size:14px;color:'+diffColor+';font-weight:700;flex-shrink:0;">+'+s.qty+'本</span>'
-        +'</summary>'
-        +'<div style="padding:10px 14px;">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:10px;">'
-        +'<div>'
-        +'<div style="font-size:14px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(s.productName))+'</div>'
-        +(s.customerName?'<div style="font-size:12px;color:var(--amber);font-weight:600;margin-top:4px;padding:6px 8px;background:rgba(232,160,32,0.1);border-radius:6px;">👤 取引先: '+escapeHtml(s.customerName)+(s.carName?' &nbsp;|&nbsp; 車種: '+escapeHtml(s.carName):'')+(s.provScheduledDate?(()=>{const _pp=s.provScheduledDate.split('-');return ' &nbsp;|&nbsp; 引渡予定: '+(_pp.length>=3?_pp[0]+'年'+parseInt(_pp[1])+'月'+parseInt(_pp[2])+'日':s.provScheduledDate);})():'')+'</div>':'')
-        +'<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+(s.brand?escapeHtml(s.brand)+' ':'')+(s.spec?escapeHtml(s.spec):'')+'</div>'
-        +'<div style="font-size:12px;color:var(--text-3);margin-top:2px;">現在庫: <strong>'+stk+'本</strong>　入荷後: <strong style="color:var(--teal);">'+(stk==='?'?'?':stk+s.qty)+'本</strong></div>'
         +'</div>'
-        +'<div style="font-size:20px;font-weight:700;color:var(--teal);">+'+s.qty+'本</div>'
+        /* 在庫情報 */
+        +'<div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">現在庫: <strong style="color:var(--text-1);">'+stk+'本</strong>　→　入荷後: <strong style="color:var(--teal);">'+(stk==='?'?'?':stk+s.qty)+'本</strong></div>'
+        /* 入荷予定日 */
+        +'<div style="display:flex;flex-direction:column;gap:5px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+        +'<span style="font-size:10px;font-weight:600;color:var(--teal);background:rgba(0,160,140,0.08);border:1px solid var(--teal);border-radius:4px;padding:1px 6px;white-space:nowrap;">入庫予定日</span>'
+        +'<span style="font-size:14px;font-weight:700;color:var(--teal);">'+escapeHtml(_fmtJpDateIS(s.expectedDate))+'</span>'
         +'</div>'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">'
-        +'<span style="color:var(--text-2);">📅 '+s.expectedDate+'</span>'
-        +'<span style="font-weight:700;color:'+diffColor+';">'+diffLabel+'</span>'
+        +'<div style="font-size:12px;font-weight:700;color:'+diffColor+';">'+diffLabel+'</div>'
         +'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'
-        +'<button class="btn btn-teal btn-sm insch-tab-confirm-btn" data-insch-tab-confirm="'+s.id+'" style="flex:1;min-width:100px;">入庫確定</button>'
-        +'<button class="btn btn-ghost btn-sm insch-tab-edit-btn" data-insch-tab-edit="'+s.id+'" style="flex:1;min-width:80px;border-color:var(--teal);color:var(--teal);">編集</button>'
-        +'<button class="btn btn-ghost btn-sm insch-tab-delete-btn" data-insch-tab-delete="'+s.id+'" style="flex:1;min-width:80px;color:var(--red);">削除</button>'
         +'</div>'
-        +'</div></details>';
-    });
-    html += '</div>';
+        /* カード下部ボタン */
+        +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
+        +'<button class="btn btn-teal btn-sm insch-tab-confirm-btn" data-insch-tab-confirm="'+s.id+'" style="flex:1;font-size:12px;">入庫確定</button>'
+        +'<button class="btn btn-ghost btn-sm insch-tab-edit-btn" data-insch-tab-edit="'+s.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
+        +'<button class="btn btn-ghost btn-sm insch-tab-delete-btn" data-insch-tab-delete="'+s.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">削除</button>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+    let html = '<div style="margin-top:4px;">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;">📦 入庫予定リスト（'+pending.length+'件）</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+cards+'</div>'
+      +'</div>';
     wrap.innerHTML = html;
 
     wrap.querySelectorAll('[data-insch-tab-confirm]').forEach(btn=>{
