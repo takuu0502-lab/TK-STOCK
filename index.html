@@ -835,16 +835,26 @@
       <button class="btn btn-ghost btn-sm" id="bulkEditDeselectAll">全解除</button>
       <span id="bulkEditSelectedCount" style="font-size:12px;color:var(--text-3);white-space:nowrap;"></span>
     </div>
+    <!-- 項目トグル -->
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:var(--bg-2);border-radius:8px;">
+      <span style="font-size:11px;color:var(--text-3);white-space:nowrap;font-weight:600;">編集項目：</span>
+      <label id="beColLbl-name"  style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="name"  checked style="accent-color:var(--amber);cursor:pointer;">商品名</label>
+      <label id="beColLbl-brand" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="brand" checked style="accent-color:var(--amber);cursor:pointer;">ブランド名</label>
+      <label id="beColLbl-major" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="major" checked style="accent-color:var(--amber);cursor:pointer;">大分類</label>
+      <label id="beColLbl-sub"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sub"   checked style="accent-color:var(--amber);cursor:pointer;">中分類</label>
+      <label id="beColLbl-jan"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="jan"   checked style="accent-color:var(--amber);cursor:pointer;">JANコード</label>
+      <label id="beColLbl-spec"  style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="spec"  checked style="accent-color:var(--amber);cursor:pointer;">規格</label>
+    </div>
     <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:380px;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <table id="bulkEditTable" style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--bg-2);position:sticky;top:0;z-index:1;">
           <th style="padding:8px 10px;width:36px;"><input type="checkbox" id="bulkEditAllChk"></th>
-          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
-          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
-          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">大分類</th>
-          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">中分類</th>
-          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">JANコード</th>
-          <th style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
+          <th data-be-col="name"  style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">商品名</th>
+          <th data-be-col="brand" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
+          <th data-be-col="major" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">大分類</th>
+          <th data-be-col="sub"   style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">中分類</th>
+          <th data-be-col="jan"   style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">JANコード</th>
+          <th data-be-col="spec"  style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
         </tr></thead>
         <tbody id="bulkEditTbody"></tbody>
       </table>
@@ -8512,6 +8522,23 @@ window.addEventListener('storageReady', function(){
       _beCount.textContent = checked ? checked+'件選択中' : '';
     }
 
+    function _beApplyCols(){
+      const table = document.getElementById('bulkEditTable');
+      if(!table) return;
+      document.querySelectorAll('.be-col-chk').forEach(chk=>{
+        const col = chk.dataset.col;
+        const show = chk.checked;
+        // ヘッダー
+        const th = table.querySelector(`th[data-be-col="${col}"]`);
+        if(th) th.style.display = show ? '' : 'none';
+        // 全行のtd
+        table.querySelectorAll(`td[data-be-col="${col}"]`).forEach(td=>{ td.style.display = show ? '' : 'none'; });
+        // トグルラベルのスタイル更新
+        const lbl = document.getElementById(`beColLbl-${col}`);
+        if(lbl){ lbl.style.background = show ? 'var(--amber-dim)' : 'var(--bg-1)'; lbl.style.borderColor = show ? 'var(--amber)' : 'var(--line)'; }
+      });
+    }
+
     function _beRender(){
       const list = _beGetFiltered().sort((a,b)=>(a.name||'').localeCompare(b.name||'ja'));
       const selStyle = 'padding:3px 6px;border:1px solid var(--line);border-radius:6px;font-size:11px;background:var(--bg-1);color:var(--text-1);max-width:110px;';
@@ -8519,16 +8546,12 @@ window.addEventListener('storageReady', function(){
       _beTbody.innerHTML = list.map(p=>`
         <tr id="be-row-${p.id}" style="border-top:1px solid var(--line);">
           <td style="padding:6px 10px;text-align:center;"><input type="checkbox" class="be-chk" data-pid="${p.id}"></td>
-          <td style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="${inpStyle('100%')}"></td>
-          <td style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="${inpStyle('100%')}"></td>
-          <td style="padding:4px 6px;">
-            <select class="be-major" data-pid="${p.id}" style="${selStyle}">${_beMajorOpts(p.majorId||'')}</select>
-          </td>
-          <td style="padding:4px 6px;">
-            <select class="be-sub" data-pid="${p.id}" style="${selStyle}">${_beSubOpts(p.majorId||'', p.subId||'')}</select>
-          </td>
-          <td style="padding:4px 6px;"><input type="text" class="be-jan" data-pid="${p.id}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコード" style="${inpStyle('130px')}font-family:var(--font-mono);"></td>
-          <td style="padding:6px 10px;font-size:11px;color:var(--text-3);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
+          <td data-be-col="name"  style="padding:4px 6px;"><input type="text" class="be-name" data-pid="${p.id}" value="${escapeHtml(p.name||'')}" style="${inpStyle('100%')}"></td>
+          <td data-be-col="brand" style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="${inpStyle('100%')}"></td>
+          <td data-be-col="major" style="padding:4px 6px;"><select class="be-major" data-pid="${p.id}" style="${selStyle}">${_beMajorOpts(p.majorId||'')}</select></td>
+          <td data-be-col="sub"   style="padding:4px 6px;"><select class="be-sub" data-pid="${p.id}" style="${selStyle}">${_beSubOpts(p.majorId||'', p.subId||'')}</select></td>
+          <td data-be-col="jan"   style="padding:4px 6px;"><input type="text" class="be-jan" data-pid="${p.id}" value="${escapeHtml(p.barcode||'')}" placeholder="JANコード" style="${inpStyle('130px')}font-family:var(--font-mono);"></td>
+          <td data-be-col="spec"  style="padding:6px 10px;font-size:11px;color:var(--text-3);white-space:nowrap;">${escapeHtml(p.spec||'—')}</td>
         </tr>`).join('');
       // チェックボックス変更
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.addEventListener('change', _beUpdateCount));
@@ -8557,7 +8580,13 @@ window.addEventListener('storageReady', function(){
         });
       });
       _beUpdateCount();
+      _beApplyCols();
     }
+
+    // 項目トグル
+    document.querySelectorAll('.be-col-chk').forEach(chk=>{
+      chk.addEventListener('change', _beApplyCols);
+    });
 
 
 
