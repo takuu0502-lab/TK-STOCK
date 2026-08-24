@@ -10956,7 +10956,7 @@ window.addEventListener('storageReady', function(){
     detailModal.classList.add('show');
   }
 
-  function _printReceiveLabel(p, qty){
+  function _printReceiveLabel(p, qty, opts){
     const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const brLabel = branchName(brId);
     const ws = p.wheelSpec;
@@ -10966,13 +10966,24 @@ window.addEventListener('storageReady', function(){
     ].filter(Boolean).join('  ') : (p.spec||'');
     const today = new Date();
     const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
+    const customerName = (opts && opts.customerName) || '';
+    const installDate  = (opts && opts.installDate)  || '';
+    function fmtDate(str){
+      if(!str) return '';
+      const d = new Date(str+'T00:00:00');
+      if(isNaN(d)) return str;
+      return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
+    }
+    const installStr = fmtDate(installDate);
     const labelHtml = Array.from({length:qty}).map(()=>`
       <div class="label">
         <div class="label-status">入庫済み</div>
         <div class="label-name">${escapeHtml(p.brand||'')} ${escapeHtml(p.name||'')}</div>
         <div class="label-spec">${escapeHtml(specStr)}</div>
         <div class="label-partno">品番：${escapeHtml(p.partno||'—')}</div>
-        <div class="label-footer">${escapeHtml(dateStr)}　${escapeHtml(brLabel)}</div>
+        ${customerName ? `<div class="label-customer">👤 ${escapeHtml(customerName)}　様</div>` : ''}
+        ${installStr   ? `<div class="label-install">取付日：${escapeHtml(installStr)}</div>` : ''}
+        <div class="label-footer">入庫日：${escapeHtml(dateStr)}　${escapeHtml(brLabel)}</div>
       </div>`).join('');
     const win = window.open('','_blank','width=600,height=400');
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>入庫済みラベル</title>
@@ -10987,11 +10998,13 @@ window.addEventListener('storageReady', function(){
         page-break-after: always; overflow: hidden;
       }
       .label:last-child { page-break-after: auto; }
-      .label-status { font-size: 7pt; font-weight: 900; color: #fff; background: #000; display: inline-block; padding: 0.5mm 2mm; border-radius: 2mm; margin-bottom: 1mm; width: fit-content; }
-      .label-name   { font-size: var(--font-size-name); font-weight: 700; line-height: 1.3; }
-      .label-spec   { font-size: var(--font-size-spec); color: #333; line-height: 1.3; }
-      .label-partno { font-size: var(--font-size-small); color: #555; }
-      .label-footer { font-size: var(--font-size-small); color: #555; text-align: right; }
+      .label-status   { font-size: 7pt; font-weight: 900; color: #fff; background: #000; display: inline-block; padding: 0.5mm 2mm; border-radius: 2mm; margin-bottom: 1mm; width: fit-content; }
+      .label-name     { font-size: var(--font-size-name); font-weight: 700; line-height: 1.3; }
+      .label-spec     { font-size: var(--font-size-spec); color: #333; line-height: 1.3; }
+      .label-partno   { font-size: var(--font-size-small); color: #555; }
+      .label-customer { font-size: var(--font-size-small); font-weight: 700; color: #1a7a5e; }
+      .label-install  { font-size: var(--font-size-small); color: #c07000; }
+      .label-footer   { font-size: var(--font-size-small); color: #555; text-align: right; }
       @media print {
         @page { size: var(--label-w) var(--label-h); margin: 0; }
         body { margin: 0; }
@@ -11927,7 +11940,7 @@ window.addEventListener('storageReady', function(){
         await saveCustomerOrders();
 
         const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+order.qty+'枚');
-        if(doPrint) _printReceiveLabel(p, order.qty);
+        if(doPrint) _printReceiveLabel(p, order.qty, { customerName: order.customerName, installDate: order.installDate });
         renderProductTable();
         renderCustomerOrderList();
         renderProvisionalList();
