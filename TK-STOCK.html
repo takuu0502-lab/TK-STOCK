@@ -1486,7 +1486,12 @@
           <input type="text" id="ptBrand" placeholder="例：ブリヂストン" style="width:100%;box-sizing:border-box;">
         </div>
         <div class="field" style="flex:1;min-width:160px;">
-          <label>対象銘柄（部分一致）</label>
+          <label style="display:flex;align-items:center;gap:10px;">
+            <span>対象銘柄</span>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:400;cursor:pointer;">
+              <input type="checkbox" id="ptModelExact" style="accent-color:var(--teal);"> 完全一致
+            </label>
+          </label>
           <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;">
         </div>
         <div class="field" style="min-width:160px;">
@@ -10037,7 +10042,7 @@ window.addEventListener('storageReady', function(){
       const tm = (t.model || '').trim();
       const branchList = Array.isArray(t.branch) ? t.branch : (t.branch ? [t.branch] : []);
       const matchBrand  = !tb || brand.startsWith(tb);
-      const matchModel  = !tm || model.includes(tm);
+      const matchModel  = !tm || (t.modelExact ? model === tm : model.includes(tm));
       const matchBranch = branchList.length === 0 || branchList.includes(myBranchId);
       if(!matchBrand || !matchModel || !matchBranch) continue;
       // 支店一致:4点、ブランド一致:2点、銘柄一致:1点
@@ -10202,6 +10207,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('ptName').value   = t ? (t.name   || '') : '';
     document.getElementById('ptBrand').value  = t ? (t.brand  || '') : '';
     document.getElementById('ptModel').value  = t ? (t.model  || '') : '';
+    document.getElementById('ptModelExact').checked = t ? !!t.modelExact : false;
     const savedBranches = t ? (Array.isArray(t.branch) ? t.branch : (t.branch ? [t.branch] : [])) : [];
     document.querySelectorAll('.pt-branch-chk').forEach(chk => { chk.checked = savedBranches.includes(chk.value); });
     document.getElementById('ptHtml').value  = t ? (t.html  || '') : '';
@@ -10367,9 +10373,10 @@ window.addEventListener('storageReady', function(){
   });
 
   document.getElementById('ptSaveBtn').addEventListener('click', async () => {
-    const name   = document.getElementById('ptName').value.trim();
-    const brand  = document.getElementById('ptBrand').value.trim();
-    const model  = document.getElementById('ptModel').value.trim();
+    const name        = document.getElementById('ptName').value.trim();
+    const brand       = document.getElementById('ptBrand').value.trim();
+    const model       = document.getElementById('ptModel').value.trim();
+    const modelExact  = document.getElementById('ptModelExact').checked;
     const branch = [...document.querySelectorAll('.pt-branch-chk:checked')].map(c => c.value); // [] = 全支店
     const type   = _ptCurrentType;
     const msg   = document.getElementById('ptMsg');
@@ -10377,11 +10384,11 @@ window.addEventListener('storageReady', function(){
     let entry;
     if(type === 'pdf'){
       if(!_ptCurrentPdfBase64){ msg.innerHTML = '<div class="msg msg-err">PDFをアップロードしてください。</div>'; return; }
-      entry = { name, brand, model, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
+      entry = { name, brand, model, modelExact, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
     } else {
       const html = document.getElementById('ptHtml').value.trim();
       if(!html){ msg.innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
-      entry = { name, brand, model, branch, type: 'html', orient: _ptCurrentOrient, html };
+      entry = { name, brand, model, modelExact, branch, type: 'html', orient: _ptCurrentOrient, html };
     }
     msg.innerHTML = '<div class="msg msg-ok">保存中…</div>';
     if(_editingPopTemplateIdx !== null){
