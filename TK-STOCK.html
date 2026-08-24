@@ -10753,13 +10753,13 @@ window.addEventListener('storageReady', function(){
             user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
           sched.status='done';
           await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+          const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
+          if(doPrint) _printReceiveLabel(p2, sched.qty);
           renderProductTable(); renderHistory(); renderIncomingScheduleList();
           renderDetailInschList();
           const msgEl = document.getElementById('detailActionMsg');
           if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'本）</div>';
             setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
-          const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
-          if(doPrint) _printReceiveLabel(p2, sched.qty);
         });
       });
       el.querySelectorAll('[data-insch-edit]').forEach(btn=>{
@@ -11063,14 +11063,14 @@ window.addEventListener('storageReady', function(){
     renderCatTree();
     renderProductTable();
     renderHistory();
+    if(kind === 'in'){
+      const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+qty+'枚');
+      if(doPrint) _printReceiveLabel(p, qty);
+    }
     openProductDetail(id);
     const refreshedMsg = document.getElementById('detailActionMsg');
     if(refreshedMsg){
       refreshedMsg.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+getStock(p)+'）。</div>';
-    }
-    if(kind === 'in'){
-      const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+qty+'枚');
-      if(doPrint) _printReceiveLabel(p, qty);
     }
   }
 
@@ -11925,14 +11925,14 @@ window.addEventListener('storageReady', function(){
         order.completedAt = new Date().toISOString();
         await saveCustomerOrders();
 
+        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+order.qty+'枚');
+        if(doPrint) _printReceiveLabel(p, order.qty);
         renderProductTable();
         renderCustomerOrderList();
         renderProvisionalList();
         if(_detailProvRefresh) _detailProvRefresh();
         const msgEl = document.getElementById('inBranchBanner');
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入荷確定・仮出庫登録が完了しました。</div>'; setTimeout(()=>{ const e=document.getElementById('inBranchBanner'); if(e) e.innerHTML=''; },3000); }
-        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+order.qty+'枚');
-        if(doPrint) _printReceiveLabel(p, order.qty);
       });
     });
 
