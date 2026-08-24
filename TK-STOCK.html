@@ -12660,11 +12660,15 @@ window.addEventListener('storageReady', function(){
           }
           renderProvisionalList();
           renderCustomerOrderList();
-          showToast('入庫確定・仮出庫登録しました（'+sched.qty+'本）');
+          showToast('入庫確定・仮出庫登録しました（'+sched.qty+'）');
         } else {
-          showToast('入庫確定しました（'+sched.qty+'本）');
+          showToast('入庫確定しました（'+sched.qty+'）');
         }
         await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+        const _printOpts = (sched.inboundType==='customerOrder' && sched.customerName)
+          ? { customerName: sched.customerName, installDate: sched.scheduledDate||'' } : {};
+        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
+        if(doPrint) _printReceiveLabel(p2, sched.qty, _printOpts);
         renderProductTable(); renderHistory(); renderIncomingScheduleList(); renderInboundSession();
       });
     });
