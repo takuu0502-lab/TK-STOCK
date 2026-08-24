@@ -3926,6 +3926,13 @@ window.addEventListener('storageReady', function(){
       if(tab === 'list'){
         specPanelOpen = true;
         document.getElementById('openSpecSearch').classList.add('active');
+        // デフォルト：タイヤ選択・在庫あり（他店含む）ON
+        if(selectedMajor === null){
+          const _defTire = categories.find(c=>c.name==='タイヤ');
+          if(_defTire){ selectedMajor = _defTire.id; expanded.add(_defTire.id); }
+        }
+        if(!stockOnlyFilter){ stockOnlyFilter = true; }
+        renderCatTree();
         renderSpecSearchPanel();
       }
       if(tab === 'in'){
@@ -4160,10 +4167,14 @@ window.addEventListener('storageReady', function(){
     document.getElementById('productDetailModal').classList.remove('show');
     stopAllScanners();
     specPanelOpen = false;
-    selectedMajor = null;
+    // ホームに戻る際もタイヤをデフォルト選択に復元
+    const _homeTire = categories.find(c=>c.name==='タイヤ');
+    selectedMajor = _homeTire ? _homeTire.id : null;
+    if(_homeTire) expanded.add(_homeTire.id);
     selectedSub = null;
     selectedSubSub = null;
     resetSpecSelections();
+    stockOnlyFilter = true;
     showHomeState();
     renderCatTree();
     renderSpecSearchPanel();
