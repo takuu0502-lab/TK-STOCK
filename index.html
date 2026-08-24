@@ -8451,6 +8451,9 @@ window.addEventListener('storageReady', function(){
     let html = '<div class="spec-search-panel">';
 
     html += '<div class="spec-step"><div class="spec-step-label">1. 大分類</div><div class="spec-step-tabs">';
+    // すべてチップ
+    const _allActive = selectedMajor === null;
+    html += '<span class="chip'+(_allActive?' active':'')+'" data-spec-all="1" style="'+(_allActive?'border-color:var(--text-2);background:var(--text-2);color:#fff;':'border-color:var(--text-2);color:var(--text-2);')+'">すべて</span>';
     categories.forEach(cat=>{
       const active = selectedMajor === cat.id;
       const col = colorForMajor(cat.id).text;
@@ -8563,6 +8566,16 @@ window.addEventListener('storageReady', function(){
     panel.innerHTML = html;
 
 
+    panel.querySelectorAll('[data-spec-all]').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        selectedMajor = null;
+        selectedSub = null;
+        resetSpecSelections();
+        renderSpecSearchPanel();
+        renderCatTree();
+        renderProductTable();
+      });
+    });
     panel.querySelectorAll('[data-spec-major]').forEach(chip=>{
       chip.addEventListener('click', ()=>{
         const mid = chip.dataset.specMajor;
