@@ -1491,10 +1491,10 @@
         </div>
         <div class="field" style="min-width:160px;">
           <label>対象支店（複数選択可・未選択で全支店共通）</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="checkbox" class="pt-branch-chk" value="taniyabe" style="accent-color:var(--teal);">谷田部店</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="checkbox" class="pt-branch-chk" value="katsuta"  style="accent-color:var(--teal);">勝田店</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="checkbox" class="pt-branch-chk" value="iwama"    style="accent-color:var(--teal);">岩間店</label>
+          <div style="display:flex;gap:12px;flex-wrap:nowrap;margin-top:4px;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="taniyabe" style="accent-color:var(--teal);">谷田部店</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="katsuta"  style="accent-color:var(--teal);">勝田店</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="iwama"    style="accent-color:var(--teal);">岩間店</label>
           </div>
         </div>
       </div>
@@ -10881,7 +10881,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
     document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || sell) : sell, sell));
-    document.getElementById('detailDelete').style.display = writable ? 'inline-block' : 'none';
+    document.getElementById('detailDelete').style.display = (currentUser && currentUser.role === 'superadmin') ? 'inline-block' : 'none';
     // 複製ボタン（管理者以上のみ）
     const _dupBtn = document.getElementById('detailDuplicate');
     _dupBtn.style.display = isAdminUser() ? 'inline-block' : 'none';
@@ -11050,7 +11050,7 @@ window.addEventListener('storageReady', function(){
     if(detailProductId) openEditModal(detailProductId);
   });
   document.getElementById('detailDelete').addEventListener('click', async ()=>{
-    if(!canWriteData()) return;
+    if(!currentUser || currentUser.role !== 'superadmin') return;
     if(!detailProductId) return;
     const p = products.find(x=>x.id===detailProductId);
     if(!p) return;
