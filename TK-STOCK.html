@@ -846,6 +846,7 @@
       <label id="beColLbl-cost"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="cost"     checked style="accent-color:var(--amber);cursor:pointer;">仕入れ原価</label>
       <label id="beColLbl-sell"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sell"     checked style="accent-color:var(--amber);cursor:pointer;">販売価格</label>
       <label id="beColLbl-minstock" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="minstock" checked style="accent-color:var(--amber);cursor:pointer;">最低在庫数</label>
+      <label id="beColLbl-partno"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="partno"   checked style="accent-color:var(--amber);cursor:pointer;">品番</label>
     </div>
     <!-- 中分類一括変更 -->
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
@@ -865,6 +866,7 @@
           <th data-be-col="cost"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">仕入れ原価</th>
           <th data-be-col="sell"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">販売価格</th>
           <th data-be-col="minstock" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">最低在庫数</th>
+          <th data-be-col="partno"   style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">品番</th>
         </tr></thead>
         <tbody id="bulkEditTbody"></tbody>
       </table>
@@ -8712,6 +8714,7 @@ window.addEventListener('storageReady', function(){
           <td data-be-col="cost"     style="padding:4px 6px;"><input type="number" class="be-cost" data-pid="${p.id}" value="${p.costPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
           <td data-be-col="sell"     style="padding:4px 6px;"><input type="number" class="be-sell" data-pid="${p.id}" value="${p.sellPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
           <td data-be-col="minstock" style="padding:4px 6px;"><input type="number" class="be-minstock" data-pid="${p.id}" value="${p.minStock||''}" placeholder="0" min="0" style="${inpStyle('60px')}"></td>
+          <td data-be-col="partno"   style="padding:4px 6px;"><input type="text" class="be-partno" data-pid="${p.id}" value="${escapeHtml(p.partno||'')}" placeholder="品番" style="${inpStyle('100px')}"></td>
         </tr>`).join('');
       // チェックボックス変更
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.addEventListener('change', _beUpdateCount));
@@ -8727,7 +8730,7 @@ window.addEventListener('storageReady', function(){
         });
       });
       // 入力変更でハイライト＆自動チェック
-      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub').forEach(inp=>{
+      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub,.be-partno').forEach(inp=>{
         inp.addEventListener('change', ()=>{
           const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
           if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
@@ -8793,6 +8796,7 @@ window.addEventListener('storageReady', function(){
         const costRaw     = _beTbody.querySelector(`.be-cost[data-pid="${pid}"]`)?.value;
         const sellRaw     = _beTbody.querySelector(`.be-sell[data-pid="${pid}"]`)?.value;
         const minStockRaw = _beTbody.querySelector(`.be-minstock[data-pid="${pid}"]`)?.value;
+        const partnoVal   = (_beTbody.querySelector(`.be-partno[data-pid="${pid}"]`)?.value||'').trim();
         const costVal     = costRaw !== '' && costRaw != null ? Number(costRaw) : null;
         const sellVal     = sellRaw !== '' && sellRaw != null ? Number(sellRaw) : null;
         const minStockVal = minStockRaw !== '' && minStockRaw != null ? Number(minStockRaw) : null;
@@ -8805,6 +8809,7 @@ window.addEventListener('storageReady', function(){
         if(costVal !== null && costVal !== (p.costPrice||0))     { p.costPrice=costVal;      dirty=true; }
         if(sellVal !== null && sellVal !== (p.sellPrice||0))     { p.sellPrice=sellVal;      dirty=true; }
         if(minStockVal !== null && minStockVal !== (p.minStock||0)){ p.minStock=minStockVal; dirty=true; }
+        if(partnoVal !== (p.partno||''))             { p.partno=partnoVal; dirty=true; }
         if(dirty){ p.updatedAt=Date.now(); changed++; }
       });
       if(!changed){ _beStatus.style.color='var(--text-2)'; _beStatus.textContent='変更がありません。'; return; }
