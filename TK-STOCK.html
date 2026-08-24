@@ -11924,6 +11924,8 @@ window.addEventListener('storageReady', function(){
         if(_detailProvRefresh) _detailProvRefresh();
         const msgEl = document.getElementById('inBranchBanner');
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入荷確定・仮出庫登録が完了しました。</div>'; setTimeout(()=>{ const e=document.getElementById('inBranchBanner'); if(e) e.innerHTML=''; },3000); }
+        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+order.qty+'枚');
+        if(doPrint) _printReceiveLabel(p, order.qty);
       });
     });
 
