@@ -11060,10 +11060,11 @@ window.addEventListener('storageReady', function(){
     });
     await saveProducts();
     await saveTransactions();
-    renderCatTree();
-    renderProductTable();
-    renderHistory();
+    try{ renderCatTree(); }catch(e){ console.error('renderCatTree error', e); }
+    try{ renderProductTable(); }catch(e){ console.error('renderProductTable error', e); }
+    try{ renderHistory(); }catch(e){ console.error('renderHistory error', e); }
     if(kind === 'in'){
+      await new Promise(r => setTimeout(r, 80));
       const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+qty+'枚');
       if(doPrint) _printReceiveLabel(p, qty);
     }
