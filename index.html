@@ -11160,6 +11160,7 @@ window.addEventListener('storageReady', function(){
     const orderCar      = productType === 'order' ? document.getElementById('f_order_car').value.trim() : '';
     const orderDueDate  = productType === 'order' ? document.getElementById('f_order_duedate').value : '';
     const msgEl = document.getElementById('modalMsg');
+    let _savedProductForOrder = null;
 
     if(!name){
       msgEl.innerHTML = '<div class="msg msg-error">商品名を入力するか、タイヤ銘柄を選択してください。</div>';
@@ -11260,6 +11261,7 @@ window.addEventListener('storageReady', function(){
         if(_autoNewCatEntry) _newProd.catalogKey = _autoNewCatEntry.b+'||'+_autoNewCatEntry.m+'||'+_autoNewCatEntry.s;
       }
       products.push(_newProd);
+      if(productType === 'order') _savedProductForOrder = _newProd;
     }
     // JANコード辞書に自動保存
     if(barcode && /^\d{8,}$/.test(barcode)){
@@ -11274,6 +11276,29 @@ window.addEventListener('storageReady', function(){
     try { if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts); } catch(e){ console.error('renderPriceCatalog(front) error:', e); }
     try { if(window._lastEstRearOpts) renderPriceCatalog(window._lastEstRearOpts); } catch(e){ console.error('renderPriceCatalog(rear) error:', e); }
     closeModal();
+    // 客注品の新規登録後：入庫予定モーダルを自動表示
+    if(_savedProductForOrder){
+      await new Promise(r => setTimeout(r, 150));
+      const doInsch = await showConfirm('📦 続けて入庫予定を登録しますか？');
+      if(doInsch){
+        const _ischModal = document.getElementById('incomingSchedModal');
+        delete _ischModal.dataset.editId;
+        _ischModal.dataset.targetProductId = _savedProductForOrder.id;
+        document.getElementById('incomingSchedModalProductName').textContent = cleanName(_savedProductForOrder.name) + (_savedProductForOrder.spec ? ' / ' + _savedProductForOrder.spec : '');
+        const _defDate = orderDueDate || (()=>{ const t=new Date(); t.setDate(t.getDate()+1); return t.toISOString().slice(0,10); })();
+        document.getElementById('incomingSchedDate').value = _defDate;
+        document.getElementById('incomingSchedQty').value = 4;
+        // 客注品タイプに切替（クリックでUIも更新）
+        document.getElementById('isch_type_co_label').click();
+        // お客様名・車種を自動入力
+        if(orderCustomer) document.getElementById('isch_co_customer').value = orderCustomer;
+        if(orderCar)      document.getElementById('isch_co_car').value = orderCar;
+        // 仮出庫同時登録チェックをONにしておく
+        const _provNowChk = document.getElementById('isch_co_prov_now');
+        if(_provNowChk) _provNowChk.checked = true;
+        _ischModal.classList.add('show');
+      }
+    }
     } catch(e){ console.error('save error:', e); closeModal(); }
   });
 
