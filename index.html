@@ -10738,6 +10738,8 @@ window.addEventListener('storageReady', function(){
           const msgEl = document.getElementById('detailActionMsg');
           if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'本）</div>';
             setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
+          const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
+          if(doPrint) _printReceiveLabel(p2, sched.qty);
         });
       });
       el.querySelectorAll('[data-insch-edit]').forEach(btn=>{
