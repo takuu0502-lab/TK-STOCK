@@ -7316,7 +7316,7 @@ window.addEventListener('storageReady', function(){
         document.getElementById('receiveScanProductArea').style.display = 'none';
         const msg = document.getElementById('receiveScanDoneMsg');
         const branchLabel = branchName(brId);
-        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'本<br>在庫：'+p.branchStock[brId]+'本（'+branchLabel+'）</span>';
+        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'<br>在庫：'+p.branchStock[brId]+'（'+branchLabel+'）</span>';
         document.getElementById('receiveScanDoneArea').style.display = 'block';
         btn.disabled = false;
         // 印刷確認ダイアログ
@@ -10742,7 +10742,7 @@ window.addEventListener('storageReady', function(){
           if(!sched) return;
           const p2 = products.find(x=>x.id===sched.productId);
           if(!p2) return;
-          const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'本\n入荷予定日: '+sched.expectedDate);
+          const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'\n入荷予定日: '+sched.expectedDate);
           if(!ok) return;
           const opBranch = getOperationBranch();
           if(!p2.branchStock) p2.branchStock={};
@@ -10758,7 +10758,7 @@ window.addEventListener('storageReady', function(){
           renderProductTable(); renderHistory(); renderIncomingScheduleList();
           renderDetailInschList();
           const msgEl = document.getElementById('detailActionMsg');
-          if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'本）</div>';
+          if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'）</div>';
             setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
         });
       });
@@ -10832,7 +10832,7 @@ window.addEventListener('storageReady', function(){
         const existingProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detPobOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p2.id).reduce((ss,i)=>ss+i.qty,0),0);
         if(existingProvQty + qty > curStk2){
           const over = existingProvQty + qty - curStk2;
-          const ok = await showConfirm('⚠️ 在庫数を超えています。\n\n現在庫: '+curStk2+'本　仮出庫済: '+existingProvQty+'本　今回: '+qty+'本\n'+over+'本不足します。\n\nそれでも登録しますか？');
+          const ok = await showConfirm('⚠️ 在庫数を超えています。\n\n現在庫: '+curStk2+'　仮出庫済: '+existingProvQty+'　今回: '+qty+'\n'+over+' 不足します。\n\nそれでも登録しますか？');
           if(!ok) return;
         }
         const formResult = await showProvisionalForm();
@@ -11063,7 +11063,7 @@ window.addEventListener('storageReady', function(){
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
     if(kind === 'out' && qty > getStock(p)){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return; }
     const label = kind === 'in' ? '入庫' : '出庫';
-    const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' 点 '+label+' します。よろしいですか？');
+    const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' '+label+' します。よろしいですか？');
     if(!confirmed) return;
     const opBranch = getOperationBranch(); if(!p.branchStock) p.branchStock={}; p.branchStock[opBranch] = (p.branchStock[opBranch]||0) + (kind==='in' ? qty : -qty); p.stock = p.branchStock[opBranch];
     transactions.unshift({
