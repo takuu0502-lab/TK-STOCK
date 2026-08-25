@@ -4407,7 +4407,10 @@ window.addEventListener('storageReady', function(){
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
     ['list','estimate','in','out','history','pricing','stockcount','reservation'].forEach(t=>{
-      document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
+      try{
+        const el = document.getElementById('tab-'+t);
+        if(el) el.style.display = (t === tabName) ? 'block' : 'none';
+      }catch(e){ console.warn('switchTab panel error', t, e); }
     });
     if(tabName === 'out'){ renderProvisionalList(); }
   }
@@ -4443,6 +4446,7 @@ window.addEventListener('storageReady', function(){
         if(!stockOnlyFilter){ stockOnlyFilter = true; }
         renderCatTree();
         renderSpecSearchPanel();
+        renderProductTable();
       }
       if(tab === 'in'){
         setTimeout(()=>{
