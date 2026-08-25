@@ -2252,9 +2252,49 @@
   <div class="modal" style="max-width:480px;">
     <h3 style="margin-top:0;">📦 一括入庫予定登録</h3>
     <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- 種別選択 -->
+      <div style="display:flex;gap:10px;">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border:2px solid var(--teal);border-radius:10px;background:var(--teal-dim);" id="bulkInsch_stock_label">
+          <input type="radio" name="bulkInsch_type" id="bulkInsch_type_stock" value="stock" checked style="width:16px;height:16px;accent-color:var(--teal);">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--teal);">📦 在庫品</div>
+            <div style="font-size:10px;color:var(--text-3);">通常の入庫予定</div>
+          </div>
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border:2px solid var(--line);border-radius:10px;background:var(--bg-1);" id="bulkInsch_co_label">
+          <input type="radio" name="bulkInsch_type" id="bulkInsch_type_co" value="co" style="width:16px;height:16px;accent-color:#1a6e4a;">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text-2);">🛒 客注品</div>
+            <div style="font-size:10px;color:var(--text-3);">お客様注文品</div>
+          </div>
+        </label>
+      </div>
+      <!-- 客注品フィールド（客注品選択時のみ表示） -->
+      <div id="bulkInsch_co_fields" style="display:none;padding:12px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;display:none;flex-direction:column;gap:10px;">
+        <div class="field">
+          <label style="font-size:12px;font-weight:600;">お客様名 <span style="color:var(--red);">*</span></label>
+          <input type="text" id="bulkInsch_co_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:13px;">
+        </div>
+        <div class="field">
+          <label style="font-size:12px;font-weight:600;">車種名</label>
+          <input type="text" id="bulkInsch_co_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:13px;">
+        </div>
+        <div class="field">
+          <label style="font-size:12px;font-weight:600;">取付予定日</label>
+          <input type="date" id="bulkInsch_co_install_date" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:13px;">
+        </div>
+        <div style="padding:8px 10px;background:var(--bg-1);border:1px solid var(--line);border-radius:8px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;">📞 入荷時のお客様への連絡</div>
+          <div style="display:flex;gap:16px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="radio" name="bulkInsch_co_notify" id="bulkInsch_co_notify_yes" value="yes" checked style="width:14px;height:14px;"> 連絡が必要</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="radio" name="bulkInsch_co_notify" id="bulkInsch_co_notify_no" value="no" style="width:14px;height:14px;"> 連絡不要</label>
+          </div>
+        </div>
+      </div>
+      <!-- 商品リスト -->
       <div>
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">対象商品・入荷予定日・数量</div>
-        <div id="bulkInsch_items" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="bulkInsch_items" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
       </div>
     </div>
     <div id="bulkInschError" style="color:var(--red);font-size:12px;margin:10px 0 0;display:none;"></div>
@@ -7331,13 +7371,36 @@ window.addEventListener('storageReady', function(){
       });
       const errorEl = document.getElementById('bulkInschError');
       errorEl.style.display = 'none';
+      // 種別リセット
+      document.getElementById('bulkInsch_type_stock').checked = true;
+      document.getElementById('bulkInsch_co_notify_yes').checked = true;
+      document.getElementById('bulkInsch_co_customer').value = '';
+      document.getElementById('bulkInsch_co_car').value = '';
+      document.getElementById('bulkInsch_co_install_date').value = '';
+      const _coFields = document.getElementById('bulkInsch_co_fields');
+      const _stockLabel = document.getElementById('bulkInsch_stock_label');
+      const _coLabel = document.getElementById('bulkInsch_co_label');
+      _coFields.style.display = 'none';
+      function _applyTypeStyle(){
+        const isCo = document.getElementById('bulkInsch_type_co').checked;
+        _coFields.style.display = isCo ? 'flex' : 'none';
+        _stockLabel.style.borderColor = isCo ? 'var(--line)' : 'var(--teal)';
+        _stockLabel.style.background = isCo ? 'var(--bg-1)' : 'var(--teal-dim)';
+        _stockLabel.querySelector('div > div').style.color = isCo ? 'var(--text-2)' : 'var(--teal)';
+        _coLabel.style.borderColor = isCo ? '#1a6e4a' : 'var(--line)';
+        _coLabel.style.background = isCo ? 'rgba(26,110,74,0.08)' : 'var(--bg-1)';
+        _coLabel.querySelector('div > div').style.color = isCo ? '#1a6e4a' : 'var(--text-2)';
+      }
+      document.getElementById('bulkInsch_type_stock').onchange = _applyTypeStyle;
+      document.getElementById('bulkInsch_type_co').onchange = _applyTypeStyle;
+      _stockLabel.onclick = ()=>{ document.getElementById('bulkInsch_type_stock').checked=true; _applyTypeStyle(); };
+      _coLabel.onclick = ()=>{ document.getElementById('bulkInsch_type_co').checked=true; _applyTypeStyle(); };
       document.getElementById('bulkInschModal').classList.add('show');
 
       const okBtn = document.getElementById('bulkInschOkBtn');
       const cancelBtn = document.getElementById('bulkInschCancelBtn');
       function closeModal(){ document.getElementById('bulkInschModal').classList.remove('show'); okBtn.removeEventListener('click', onOk); cancelBtn.removeEventListener('click', onCancel); }
       async function onOk(){
-        // 各商品の日付を個別に取得・バリデーション
         const dates = ps.map((_,i)=> document.getElementById('bulkInsch_date_'+i).value);
         const missingIdx = dates.findIndex(d=>!d);
         if(missingIdx >= 0){
@@ -7346,33 +7409,59 @@ window.addEventListener('storageReady', function(){
           document.getElementById('bulkInsch_date_'+missingIdx).focus();
           return;
         }
+        const isCo = document.getElementById('bulkInsch_type_co').checked;
         const opBranch = getOperationBranch();
         const _user = currentUser ? currentUser.displayName : '';
-        ps.forEach((p, i)=>{
-          const qty = Math.max(1, parseInt(document.getElementById('bulkInsch_qty_'+i).value||'1',10));
-          incomingSchedules.push({
-            id: uid('isch'),
-            productId: p.id,
-            productName: p.name,
-            brand: p.brand||'',
-            spec: p.spec||'',
-            branchId: opBranch,
-            qty,
-            expectedDate: dates[i],
-            customerName: '',
-            carName: '',
-            inboundType: 'stock',
-            createdAt: new Date().toISOString(),
-            createdBy: _user,
-            status: 'pending'
+
+        if(isCo){
+          // 客注品モード
+          const customerName = (document.getElementById('bulkInsch_co_customer').value||'').trim();
+          if(!customerName){ errorEl.textContent='お客様名を入力してください'; errorEl.style.display='block'; document.getElementById('bulkInsch_co_customer').focus(); return; }
+          const carName = (document.getElementById('bulkInsch_co_car').value||'').trim();
+          const installDate = document.getElementById('bulkInsch_co_install_date').value||'';
+          const needsNotification = document.getElementById('bulkInsch_co_notify_yes').checked;
+          const _coId = uid('co');
+          const _orderItems = ps.map((p,i)=>({
+            productId: p.id, productName: p.name, spec: p.spec||'', brand: p.brand||'', partno: p.partno||'',
+            qty: Math.max(1, parseInt(document.getElementById('bulkInsch_qty_'+i).value||'1',10))
+          }));
+          // 客注品登録（全商品まとめて1件）
+          const coOrder = {
+            id: _coId, branchId: opBranch,
+            items: _orderItems,
+            productId: _orderItems[0].productId, productName: _orderItems[0].productName, spec: _orderItems[0].spec||'',
+            qty: _orderItems.reduce((s,x)=>s+x.qty,0),
+            customerName, carName,
+            expectedDate: dates[0], // 先頭商品の予定日を入庫予定日として使用
+            installDate, needsNotification, notified: false,
+            status: 'pending', createdAt: new Date().toISOString(), createdBy: _user
+          };
+          customerOrders.push(coOrder);
+          // 入庫予定（商品ごと）
+          ps.forEach((p,i)=>{
+            const qty = _orderItems[i].qty;
+            incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:opBranch, qty, expectedDate:dates[i], customerName, carName, installDate, inboundType:'co', customerOrderId:_coId, needsNotification, createdAt:new Date().toISOString(), createdBy:_user, status:'pending' });
           });
-        });
+          // 仮出庫を自動登録
+          const _autoProv = { id:uid('prov'), date:new Date().toISOString(), type:'provisional', customerName, carName:carName||'', scheduledDate:installDate||dates[0]||'', branchId:opBranch, staff:_user, items:_orderItems.map(oi=>({ productId:oi.productId, name:oi.productName, brand:oi.brand||'', spec:oi.spec||'', partno:oi.partno||'', qty:oi.qty })), customerOrderId:_coId, status:'pending' };
+          provisionalOutbounds.push(_autoProv);
+          await saveCustomerOrders();
+          await saveProvisionalOutbounds();
+        } else {
+          // 在庫品モード（既存処理）
+          ps.forEach((p, i)=>{
+            const qty = Math.max(1, parseInt(document.getElementById('bulkInsch_qty_'+i).value||'1',10));
+            incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:opBranch, qty, expectedDate:dates[i], customerName:'', carName:'', inboundType:'stock', createdAt:new Date().toISOString(), createdBy:_user, status:'pending' });
+          });
+        }
         await saveIncomingSchedules();
         renderIncomingScheduleList();
+        renderCustomerOrderList();
+        renderProvisionalList();
         if(_detailInschRefresh) _detailInschRefresh();
         closeModal();
         selectedProducts.clear(); updateBulkBar(); renderProductTable();
-        showToast('入庫予定を'+ps.length+'件登録しました');
+        showToast(isCo ? '客注品として入庫予定を登録しました' : '入庫予定を'+ps.length+'件登録しました');
       }
       function onCancel(){ closeModal(); }
       okBtn.addEventListener('click', onOk);
