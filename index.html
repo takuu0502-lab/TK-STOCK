@@ -2211,13 +2211,9 @@
   <div class="modal" style="max-width:480px;">
     <h3 style="margin-top:0;">📦 一括入庫予定登録</h3>
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="field">
-        <label style="font-size:13px;font-weight:600;">入荷予定日 <span style="color:var(--red);">*</span></label>
-        <input type="date" id="bulkInsch_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
-      </div>
       <div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">対象商品・数量</div>
-        <div id="bulkInsch_items" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">対象商品・入荷予定日・数量</div>
+        <div id="bulkInsch_items" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
       </div>
     </div>
     <div id="bulkInschError" style="color:var(--red);font-size:12px;margin:10px 0 0;display:none;"></div>
@@ -7160,20 +7156,27 @@ window.addEventListener('storageReady', function(){
       if(ps.length === 0) return;
       // 翌日をデフォルト日付に
       const _tomorrow = new Date(); _tomorrow.setDate(_tomorrow.getDate()+1);
-      document.getElementById('bulkInsch_date').value = _tomorrow.toISOString().slice(0,10);
-      // 商品リストを描画
+      const _defaultDate = _tomorrow.toISOString().slice(0,10);
+      // 商品リストを描画（商品ごとに日付・数量）
       const itemsEl = document.getElementById('bulkInsch_items');
       itemsEl.innerHTML = ps.map((p, i)=>{
         const _sub = [p.brand||'', p.spec||''].filter(Boolean).join(' ');
-        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;">'
-          +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(cleanName(p.name))+'</div>'
-          +(_sub?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(_sub)+'</div>':'')
+        return '<div style="padding:10px 12px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:4px;">'+escapeHtml(cleanName(p.name))+'</div>'
+          +(_sub?'<div style="font-size:11px;color:var(--text-2);margin-bottom:8px;">'+escapeHtml(_sub)+'</div>':'<div style="margin-bottom:8px;"></div>')
+          +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+          +'<div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:130px;">'
+          +'<label style="font-size:11px;color:var(--text-3);font-weight:600;">入荷予定日</label>'
+          +'<input type="date" id="bulkInsch_date_'+i+'" value="'+_defaultDate+'" style="width:100%;box-sizing:border-box;font-size:13px;">'
           +'</div>'
-          +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
-          +'<button type="button" class="bulk-insch-step" data-idx="'+i+'" data-step="-1" style="width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">−</button>'
+          +'<div style="display:flex;flex-direction:column;gap:3px;">'
+          +'<label style="font-size:11px;color:var(--text-3);font-weight:600;">数量</label>'
+          +'<div style="display:flex;align-items:center;gap:5px;">'
+          +'<button type="button" class="bulk-insch-step" data-idx="'+i+'" data-step="-1" style="width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>'
           +'<input type="number" id="bulkInsch_qty_'+i+'" value="4" min="1" style="width:50px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:5px;color:var(--text-1);font-size:14px;padding:3px 6px;">'
-          +'<button type="button" class="bulk-insch-step" data-idx="'+i+'" data-step="1" style="width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">＋</button>'
+          +'<button type="button" class="bulk-insch-step" data-idx="'+i+'" data-step="1" style="width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">＋</button>'
+          +'</div>'
+          +'</div>'
           +'</div>'
           +'</div>';
       }).join('');
@@ -7192,8 +7195,15 @@ window.addEventListener('storageReady', function(){
       const cancelBtn = document.getElementById('bulkInschCancelBtn');
       function closeModal(){ document.getElementById('bulkInschModal').classList.remove('show'); okBtn.removeEventListener('click', onOk); cancelBtn.removeEventListener('click', onCancel); }
       async function onOk(){
-        const date = document.getElementById('bulkInsch_date').value;
-        if(!date){ errorEl.textContent='入荷予定日を入力してください。'; errorEl.style.display='block'; return; }
+        // 各商品の日付を個別に取得・バリデーション
+        const dates = ps.map((_,i)=> document.getElementById('bulkInsch_date_'+i).value);
+        const missingIdx = dates.findIndex(d=>!d);
+        if(missingIdx >= 0){
+          errorEl.textContent = (missingIdx+1)+'番目の商品の入荷予定日を入力してください。';
+          errorEl.style.display = 'block';
+          document.getElementById('bulkInsch_date_'+missingIdx).focus();
+          return;
+        }
         const opBranch = getOperationBranch();
         const _user = currentUser ? currentUser.displayName : '';
         ps.forEach((p, i)=>{
@@ -7206,7 +7216,7 @@ window.addEventListener('storageReady', function(){
             spec: p.spec||'',
             branchId: opBranch,
             qty,
-            expectedDate: date,
+            expectedDate: dates[i],
             customerName: '',
             carName: '',
             inboundType: 'stock',
