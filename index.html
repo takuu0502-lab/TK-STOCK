@@ -1039,6 +1039,7 @@
       <button class="tab-btn" data-tab="estimate">タイヤ見積</button>
       <button class="tab-btn" data-tab="in">入庫</button>
       <button class="tab-btn" data-tab="out">出庫</button>
+      <button class="tab-btn" data-tab="reservation">📋 予約</button>
       <button class="tab-btn" data-tab="history">入出庫履歴</button>
       <button class="tab-btn" data-tab="pricing">管理</button>
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
@@ -1971,6 +1972,10 @@
 </div>
 
 <!-- ===== 棚卸しタブ ===== -->
+<div class="panel" id="tab-reservation" style="display:none;">
+  <div id="reservationContent"></div>
+</div>
+
 <div class="panel" id="tab-stockcount" style="display:none;">
   <div id="stockcountContent"></div>
 </div>
@@ -2281,6 +2286,10 @@
         <div class="field">
           <label style="font-size:12px;font-weight:600;">取付予定日</label>
           <input type="date" id="bulkInsch_co_install_date" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:13px;">
+        </div>
+        <div class="field">
+          <label style="font-size:12px;font-weight:600;">予約カテゴリー</label>
+          <select id="bulkInsch_co_category" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);"></select>
         </div>
         <div style="padding:8px 10px;background:var(--bg-1);border:1px solid var(--line);border-radius:8px;">
           <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;">📞 入荷時のお客様への連絡</div>
@@ -2596,6 +2605,7 @@ window.addEventListener('storageReady', function(){
   let provisionalOutbounds = []; // 仮出庫リスト
   let popTemplates = []; // POP印刷テンプレート
   let customerOrders = []; // 客注品入庫リスト
+  let reservationCategories = ['夏タイヤ・ホイール予約', 'スタッドレス予約', '用品予約']; // 予約カテゴリー
   let incomingSchedules = []; // 入庫予定リスト
   let _detailInschRefresh = null; // 商品詳細の入庫予定再描画関数（モーダル外から呼ぶ用）
   let _detailProvRefresh = null;  // 商品詳細の仮出庫リスト再描画関数（モーダル外から呼ぶ用）
@@ -3611,6 +3621,8 @@ window.addEventListener('storageReady', function(){
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
       const co = await window.storage.get('customerOrders', SHARED);
       customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
+      const rc = await window.storage.get('reservationCategories', SHARED);
+      if(rc && rc.value){ try{ reservationCategories = JSON.parse(rc.value) || reservationCategories; }catch(e){} }
       const isch = await window.storage.get('incomingSchedules', SHARED);
       incomingSchedules = (isch && isch.value) ? (JSON.parse(isch.value) || []) : [];
       // branchId未設定の仮出庫レコードにstaff名からbranchIdを補完するマイグレーション
@@ -3718,6 +3730,10 @@ window.addEventListener('storageReady', function(){
   async function saveCustomerOrders(){
     try{ await window.storage.set('customerOrders', JSON.stringify(customerOrders), SHARED); }
     catch(e){ console.error('save customerOrders failed', e); }
+  }
+  async function saveReservationCategories(){
+    try{ await window.storage.set('reservationCategories', JSON.stringify(reservationCategories), SHARED); }
+    catch(e){ console.error('save reservationCategories failed', e); }
   }
   async function saveIncomingSchedules(){
     try{ await window.storage.set('incomingSchedules', JSON.stringify(incomingSchedules), SHARED); }
@@ -4070,11 +4086,186 @@ window.addEventListener('storageReady', function(){
     return _hslToHex(newH, Math.min(s, 80), Math.max(32, Math.min(52, l)));
   }
 
+  // ─── 予約タブ ────────────────────────────────────────────────────────────────
+  let _resCurCat = null; // 現在選択中カテゴリー（null = 全て）
+  let _resSearchText = '';
+
+  function _getOrderStatus(order){
+    // 入庫予定（複数）を確認
+    const ischItems = incomingSchedules.filter(i=>i.customerOrderId === order.id);
+    const allArrived = ischItems.length > 0 && ischItems.every(i=>i.status==='arrived'||i.status==='done');
+    if(order.status === 'delivered') return {code:'delivered', label:'納品済み', color:'#888'};
+    if(allArrived || order.status === 'arrived') return {code:'arrived', label:'入荷済み', color:'#1a7a5e'};
+    if(ischItems.length > 0) return {code:'ordered', label:'発注済み', color:'#d97706'};
+    return {code:'pending', label:'注文待ち', color:'#e53e3e'};
+  }
+
+  function _getNotifyStatus(order){
+    if(order.needsNotification === false) return {label:'連絡不要', color:'#888'};
+    if(order.notified) return {label:'連絡済み', color:'#1a7a5e'};
+    return {label:'連絡未', color:'#e53e3e'};
+  }
+
+  function renderReservationTab(){
+    const container = document.getElementById('reservationContent');
+    if(!container) return;
+    const opBranch = getOperationBranch();
+    // フィルタ適用
+    let orders = customerOrders.filter(o=> !opBranch || o.branchId === opBranch);
+    if(_resCurCat) orders = orders.filter(o=>o.category === _resCurCat);
+    if(_resSearchText){
+      const q = _resSearchText.toLowerCase();
+      orders = orders.filter(o=>{
+        const items = _getOrderItems(o);
+        const itemStr = items.map(i=>(i.productName||'')+(i.spec||'')).join('').toLowerCase();
+        return (o.customerName||'').toLowerCase().includes(q)||(o.carName||'').toLowerCase().includes(q)||itemStr.includes(q);
+      });
+    }
+    // カテゴリーごとに集計
+    const allCatCounts = {};
+    customerOrders.filter(o=>!opBranch||o.branchId===opBranch).forEach(o=>{
+      const c = o.category||'未分類'; allCatCounts[c]=(allCatCounts[c]||0)+1;
+    });
+
+    let html = '';
+    // ヘッダーバー
+    html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--text-1);flex:1;">📋 予約管理</div>';
+    html += '<input type="text" id="resSearchInput" placeholder="氏名・車種・商品で検索" value="'+escapeHtml(_resSearchText)+'" style="padding:7px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;width:200px;background:var(--bg-1);color:var(--text-1);">';
+    html += '<button class="btn btn-teal btn-sm" id="resCatManageBtn" style="white-space:nowrap;">＋ カテゴリー管理</button>';
+    html += '</div>';
+
+    // カテゴリータブ
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:2px solid var(--line);padding-bottom:8px;">';
+    html += '<button class="res-cat-tab'+ (!_resCurCat?' res-cat-active':'')+'" data-cat="">すべて ('+ customerOrders.filter(o=>!opBranch||o.branchId===opBranch).length+')</button>';
+    reservationCategories.forEach(cat=>{
+      const cnt = allCatCounts[cat]||0;
+      html += '<button class="res-cat-tab'+(_resCurCat===cat?' res-cat-active':'')+'" data-cat="'+escapeHtml(cat)+'">'+escapeHtml(cat)+' ('+cnt+')</button>';
+    });
+    html += '</div>';
+
+    // テーブル
+    if(orders.length === 0){
+      html += '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:14px;">予約がありません</div>';
+    } else {
+      html += '<div style="overflow-x:auto;">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      html += '<thead><tr style="background:var(--bg-3);color:var(--text-2);text-align:left;">';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">状況</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">お客様名</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">車種</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">商品</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">入荷予定</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">取付予定</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">連絡</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">カテゴリー</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">操作</th>';
+      html += '</tr></thead><tbody>';
+      orders.forEach(order=>{
+        const st = _getOrderStatus(order);
+        const ns = _getNotifyStatus(order);
+        const items = _getOrderItems(order);
+        const itemsHtml = items.map(i=>{
+          const p = products.find(x=>x.id===i.productId);
+          const nm = p ? cleanName(p.name) : (i.productName||'不明');
+          const sp = p ? (p.spec||'') : (i.spec||'');
+          return '<div style="font-size:12px;"><span style="font-weight:600;">'+escapeHtml(nm)+'</span>'+(sp?' <span style="color:var(--text-3);">'+escapeHtml(sp)+'</span>':'')+'<span style="color:var(--amber);font-weight:700;margin-left:4px;">×'+i.qty+'</span></div>';
+        }).join('');
+        const ischItems = incomingSchedules.filter(i=>i.customerOrderId===order.id);
+        const expectedDateStr = ischItems.length ? ischItems.map(i=>i.expectedDate||'').filter(Boolean).sort()[0]||'未定' : (order.expectedDate||'未定');
+        const rowBg = st.code==='delivered' ? 'rgba(0,0,0,0.03)' : 'transparent';
+        html += '<tr style="border-bottom:1px solid var(--line);background:'+rowBg+';transition:background 0.1s;" class="res-row" data-order-id="'+order.id+'">';
+        html += '<td style="padding:10px 12px;"><span style="display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;background:'+st.color+'22;color:'+st.color+';">'+st.label+'</span></td>';
+        html += '<td style="padding:10px 12px;font-weight:600;color:var(--text-1);">'+escapeHtml(order.customerName||'-')+'</td>';
+        html += '<td style="padding:10px 12px;color:var(--text-2);">'+escapeHtml(order.carName||'-')+'</td>';
+        html += '<td style="padding:10px 12px;">'+itemsHtml+'</td>';
+        html += '<td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(expectedDateStr)+'</td>';
+        html += '<td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(order.installDate||'未定')+'</td>';
+        html += '<td style="padding:10px 12px;"><span style="font-size:11px;font-weight:600;color:'+ns.color+';">'+ns.label+'</span></td>';
+        html += '<td style="padding:10px 12px;color:var(--text-3);font-size:12px;">'+escapeHtml(order.category||'未分類')+'</td>';
+        html += '<td style="padding:10px 12px;white-space:nowrap;">';
+        if(st.code !== 'delivered'){
+          html += '<button class="btn btn-ghost btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">納品済みにする</button>';
+        }
+        html += '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    container.innerHTML = html;
+
+    // スタイル注入（初回のみ）
+    if(!document.getElementById('resCatTabStyle')){
+      const s = document.createElement('style');
+      s.id = 'resCatTabStyle';
+      s.textContent = '.res-cat-tab{padding:6px 14px;border:1px solid var(--line);border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;font-size:13px;font-weight:600;background:var(--bg-1);color:var(--text-2);transition:all 0.15s;}.res-cat-tab.res-cat-active{background:var(--bg-2);color:var(--amber);border-bottom:2px solid var(--amber);}.res-row:hover{background:var(--bg-1)!important;}';
+      document.head.appendChild(s);
+    }
+
+    // イベント
+    container.querySelectorAll('.res-cat-tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        _resCurCat = btn.dataset.cat || null;
+        renderReservationTab();
+      });
+    });
+    const searchInput = container.querySelector('#resSearchInput');
+    if(searchInput){
+      searchInput.addEventListener('input', ()=>{ _resSearchText = searchInput.value; renderReservationTab(); });
+    }
+    container.querySelectorAll('.res-deliver-btn').forEach(btn=>{
+      btn.addEventListener('click', async()=>{
+        const oid = btn.dataset.orderId;
+        const ord = customerOrders.find(o=>o.id===oid);
+        if(ord){ ord.status='delivered'; await saveCustomerOrders(); renderReservationTab(); renderCustomerOrderList(); showToast('納品済みにしました'); }
+      });
+    });
+    const catManageBtn = container.querySelector('#resCatManageBtn');
+    if(catManageBtn) catManageBtn.addEventListener('click', ()=>{ _openResCatManageModal(); });
+  }
+
+  function _openResCatManageModal(){
+    // カテゴリー管理モーダル（インライン生成）
+    let existing = document.getElementById('resCatManageModal');
+    if(existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'resCatManageModal';
+    overlay.className = 'modal-overlay show';
+    overlay.innerHTML = '<div class="modal" style="max-width:380px;"><div class="modal-header"><span style="font-weight:700;font-size:16px;">📂 カテゴリー管理</span><button class="modal-close" id="resCatCloseBtn">✕</button></div><div class="modal-body" style="display:flex;flex-direction:column;gap:10px;"><div id="resCatList" style="display:flex;flex-direction:column;gap:6px;"></div><div style="display:flex;gap:8px;margin-top:6px;"><input type="text" id="resCatNewInput" placeholder="新しいカテゴリー名" style="flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);"><button class="btn btn-teal btn-sm" id="resCatAddBtn">追加</button></div></div></div>';
+    document.body.appendChild(overlay);
+
+    function renderCatList(){
+      const listEl = document.getElementById('resCatList');
+      listEl.innerHTML = reservationCategories.map((cat,idx)=>'<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;"><span style="flex:1;font-size:13px;font-weight:600;">'+escapeHtml(cat)+'</span>'+(idx>0?'<button class="btn btn-ghost btn-sm res-cat-up" data-idx="'+idx+'" style="padding:2px 7px;font-size:12px;">▲</button>':'')+(idx<reservationCategories.length-1?'<button class="btn btn-ghost btn-sm res-cat-down" data-idx="'+idx+'" style="padding:2px 7px;font-size:12px;">▼</button>':'')+'<button class="btn btn-ghost btn-sm res-cat-del" data-idx="'+idx+'" style="padding:2px 7px;font-size:12px;color:var(--red);border-color:var(--red);">削除</button></div>').join('');
+      listEl.querySelectorAll('.res-cat-del').forEach(b=>b.addEventListener('click', async()=>{
+        const i=parseInt(b.dataset.idx); reservationCategories.splice(i,1); await saveReservationCategories(); renderCatList();
+      }));
+      listEl.querySelectorAll('.res-cat-up').forEach(b=>b.addEventListener('click', async()=>{
+        const i=parseInt(b.dataset.idx); [reservationCategories[i-1],reservationCategories[i]]=[reservationCategories[i],reservationCategories[i-1]]; await saveReservationCategories(); renderCatList();
+      }));
+      listEl.querySelectorAll('.res-cat-down').forEach(b=>b.addEventListener('click', async()=>{
+        const i=parseInt(b.dataset.idx); [reservationCategories[i],reservationCategories[i+1]]=[reservationCategories[i+1],reservationCategories[i]]; await saveReservationCategories(); renderCatList();
+      }));
+    }
+    renderCatList();
+
+    document.getElementById('resCatAddBtn').addEventListener('click', async()=>{
+      const val=(document.getElementById('resCatNewInput').value||'').trim();
+      if(!val) return;
+      if(reservationCategories.includes(val)){ showToast('同名のカテゴリーが既にあります'); return; }
+      reservationCategories.push(val); document.getElementById('resCatNewInput').value='';
+      await saveReservationCategories(); renderCatList();
+    });
+    document.getElementById('resCatCloseBtn').addEventListener('click', ()=>{ overlay.remove(); renderReservationTab(); });
+    overlay.addEventListener('click', e=>{ if(e.target===overlay){ overlay.remove(); renderReservationTab(); } });
+  }
+  // ─── 予約タブ ここまで ─────────────────────────────────────────────────────────
+
   function switchTab(tabName){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
-    ['list','estimate','in','out','history','pricing','stockcount'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
     });
     if(tabName === 'out'){ renderProvisionalList(); }
@@ -4082,7 +4273,7 @@ window.addEventListener('storageReady', function(){
 
   function showHomeState(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    ['list','estimate','in','out','history','pricing','stockcount'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = 'none';
     });
   }
@@ -4099,6 +4290,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
+      if(tab === 'reservation'){ renderReservationTab(); }
       if(tab === 'list'){
         specPanelOpen = true;
         document.getElementById('openSpecSearch').classList.add('active');
@@ -7359,6 +7551,9 @@ window.addEventListener('storageReady', function(){
       document.getElementById('bulkInsch_co_customer').value = '';
       document.getElementById('bulkInsch_co_car').value = '';
       document.getElementById('bulkInsch_co_install_date').value = '';
+      // カテゴリードロップダウンを最新の reservationCategories で更新
+      const _catSel = document.getElementById('bulkInsch_co_category');
+      if(_catSel){ _catSel.innerHTML = reservationCategories.map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join(''); }
       const _coFields = document.getElementById('bulkInsch_co_fields');
       const _stockLabel = document.getElementById('bulkInsch_stock_label');
       const _coLabel = document.getElementById('bulkInsch_co_label');
@@ -7402,6 +7597,7 @@ window.addEventListener('storageReady', function(){
           const carName = (document.getElementById('bulkInsch_co_car').value||'').trim();
           const installDate = document.getElementById('bulkInsch_co_install_date').value||'';
           const needsNotification = document.getElementById('bulkInsch_co_notify_yes').checked;
+          const coCategory = (document.getElementById('bulkInsch_co_category').value||reservationCategories[0]||'');
           const _coId = uid('co');
           const _orderItems = ps.map((p,i)=>({
             productId: p.id, productName: p.name, spec: p.spec||'', brand: p.brand||'', partno: p.partno||'',
@@ -7416,7 +7612,7 @@ window.addEventListener('storageReady', function(){
             customerName, carName,
             expectedDate: dates[0], // 先頭商品の予定日を入庫予定日として使用
             installDate, needsNotification, notified: false,
-            status: 'pending', createdAt: new Date().toISOString(), createdBy: _user
+            status: 'pending', category: coCategory, createdAt: new Date().toISOString(), createdBy: _user
           };
           customerOrders.push(coOrder);
           // 入庫予定（商品ごと）
