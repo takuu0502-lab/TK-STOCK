@@ -4112,8 +4112,8 @@ window.addEventListener('storageReady', function(){
         return pi.qty > getStock(p);
       });
       if(hasOverStock) return {code:'ordered', label:'発注済み', color:'#d97706'};
-      // 在庫で充当できる → 在庫あり（引き渡し待ち）
-      return {code:'ready', label:'在庫あり', color:'#1a7a5e'};
+      // 在庫で充当できる → 納品済み
+      return {code:'ready', label:'納品済み', color:'#1a7a5e'};
     }
     // 入庫予定（複数）を確認
     const ischItems = incomingSchedules.filter(i=>i.customerOrderId === order.id);
