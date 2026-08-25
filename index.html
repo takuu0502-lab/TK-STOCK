@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <!-- Quagga removed: Html5Qrcode(ZXing) used as fallback instead -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -605,7 +606,18 @@
     <div id="qrModalSpec"></div>
     <div id="qrcode"></div>
     <div id="qrModalCode"></div>
-    <div style="display:flex;gap:10px;justify-content:center;">
+    <!-- SHバーコード（Code-128）エリア -->
+    <div id="barcodeArea" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);">
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:600;">📶 1Dバーコード（スキャナー用）</div>
+      <svg id="barcodeSvg" style="max-width:100%;"></svg>
+    </div>
+    <!-- JANコードなし：発行ボタン -->
+    <div id="issueShBarcodeArea" style="display:none;margin-top:14px;padding:10px 12px;background:var(--amber-dim);border-radius:8px;border:1px solid var(--amber);">
+      <div style="font-size:12px;color:var(--amber);font-weight:600;margin-bottom:8px;">⚠️ JANコードなし</div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">SHバーコード（1Dバーコード）を発行すると、スキャナー設定を変えずにスキャン運用できます。</div>
+      <button class="btn btn-amber" id="issueShBarcodeBtn" style="width:100%;">📶 SHバーコードを発行する</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;">
       <button class="btn btn-amber" id="qrPrintBtn">🖨 印刷</button>
       <button class="btn btn-ghost" id="qrModalClose">閉じる</button>
     </div>
@@ -3327,9 +3339,34 @@ window.addEventListener('storageReady', function(){
 
   function uid(prefix){ return (prefix||'p') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
+  // ── SHバーコード発番 ──────────────────────────────
+  async function generateShBarcode(){
+    let seq = 1;
+    try{
+      const stored = await window.storage.get('shBarcodeSeq', SHARED);
+      if(stored && stored.value) seq = parseInt(stored.value) + 1;
+    }catch(_){}
+    // 既存商品のSH番号と重複しないようチェック
+    const existing = new Set(products.map(p=>p.internalBarcode).filter(Boolean));
+    while(existing.has('SH-'+String(seq).padStart(6,'0'))){ seq++; }
+    try{ await window.storage.set('shBarcodeSeq', String(seq), SHARED); }catch(_){}
+    return 'SH-'+String(seq).padStart(6,'0');
+  }
+
+  function _renderBarcodeSvg(code){
+    const svg = document.getElementById('barcodeSvg');
+    if(!svg || !code) return;
+    try{
+      JsBarcode(svg, code, {
+        format: 'CODE128', width:2, height:55,
+        displayValue:true, fontSize:11, margin:4
+      });
+    }catch(_){}
+  }
+
   // ── QRコード生成 ──────────────────────────────
   function openQrModal(p){
-    const qrValue = p.barcode || p.id;
+    const qrValue = p.barcode || p.internalBarcode || p.id;
     const name = cleanName(p.name);
     const spec = p.spec || '';
     document.getElementById('qrModalName').textContent = name;
@@ -3337,24 +3374,57 @@ window.addEventListener('storageReady', function(){
     document.getElementById('qrModalCode').textContent = qrValue;
     const qrDiv = document.getElementById('qrcode');
     qrDiv.innerHTML = '';
-    new QRCode(qrDiv, {
-      text: qrValue,
-      width: 180,
-      height: 180,
-      correctLevel: QRCode.CorrectLevel.M
-    });
+    new QRCode(qrDiv, { text: qrValue, width:180, height:180, correctLevel: QRCode.CorrectLevel.M });
+
+    // Code-128エリア表示制御
+    const barcodeArea = document.getElementById('barcodeArea');
+    const issueArea   = document.getElementById('issueShBarcodeArea');
+    if(p.internalBarcode){
+      barcodeArea.style.display = 'block';
+      issueArea.style.display   = 'none';
+      _renderBarcodeSvg(p.internalBarcode);
+    } else if(!p.barcode){
+      // JANコードなし：発行ボタンを表示
+      barcodeArea.style.display = 'none';
+      issueArea.style.display   = 'block';
+    } else {
+      barcodeArea.style.display = 'none';
+      issueArea.style.display   = 'none';
+    }
+
     document.getElementById('qrModal').classList.add('show');
 
+    // SHバーコード発行ボタン
+    document.getElementById('issueShBarcodeBtn').onclick = async () => {
+      const btn = document.getElementById('issueShBarcodeBtn');
+      btn.disabled = true;
+      btn.textContent = '発行中...';
+      const code = await generateShBarcode();
+      p.internalBarcode = code;
+      p.updatedAt = Date.now();
+      await saveProducts();
+      barcodeArea.style.display = 'block';
+      issueArea.style.display   = 'none';
+      _renderBarcodeSvg(code);
+      document.getElementById('qrModalCode').textContent = code;
+      showToast('SHバーコードを発行しました：'+code);
+    };
+
+    // 印刷
     document.getElementById('qrPrintBtn').onclick = ()=>{
       const canvas = qrDiv.querySelector('canvas');
-      const imgSrc = canvas ? canvas.toDataURL() : (qrDiv.querySelector('img') ? qrDiv.querySelector('img').src : '');
+      const qrImgSrc = canvas ? canvas.toDataURL() : (qrDiv.querySelector('img') ? qrDiv.querySelector('img').src : '');
+      const barSvg = document.getElementById('barcodeSvg');
+      const barHtml = (barSvg && p.internalBarcode && barSvg.querySelector('rect'))
+        ? '<div style="margin-top:10px;">'+barSvg.outerHTML+'</div>' : '';
       document.getElementById('qrPrintArea').style.display = 'block';
       document.getElementById('qrPrintArea').innerHTML =
         '<div class="qr-label">'
         + '<div class="qr-label-name">'+escapeHtml(name)+'</div>'
         + (spec ? '<div class="qr-label-spec">'+escapeHtml(spec)+'</div>' : '')
-        + (imgSrc ? '<img src="'+imgSrc+'" style="width:150px;height:150px;">' : '')
+        + (qrImgSrc ? '<img src="'+qrImgSrc+'" style="width:150px;height:150px;">' : '')
         + '<div class="qr-label-code">'+escapeHtml(qrValue)+'</div>'
+        + barHtml
         + '</div>';
       document.body.dataset.printing = 'qr';
       window.print();
@@ -3843,14 +3913,16 @@ window.addEventListener('storageReady', function(){
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     // 自店舗の商品を優先して返す（大文字小文字を区別しない）
     return products.find(p => (p.barcode||'').trim().toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
+      || products.find(p => (p.internalBarcode||'').trim().toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
       || products.find(p => (p.id||'').trim().toLowerCase() === c && (p.branchId || 'taniyabe') === ownBranch)
       || products.find(p => (p.barcode||'').trim().toLowerCase() === c)
+      || products.find(p => (p.internalBarcode||'').trim().toLowerCase() === c)
       || products.find(p => (p.id||'').trim().toLowerCase() === c);
   }
   function findAllByBarcode(code){
     const c = code.trim().toLowerCase();
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-    const all = products.filter(p => (p.barcode||'').trim().toLowerCase() === c || (p.id||'').trim().toLowerCase() === c);
+    const all = products.filter(p => (p.barcode||'').trim().toLowerCase() === c || (p.internalBarcode||'').trim().toLowerCase() === c || (p.id||'').trim().toLowerCase() === c);
     // 自店舗を先頭に
     return all.sort((a,b)=>{
       const aOwn = (a.branchId||'taniyabe') === ownBranch ? 0 : 1;
