@@ -4267,10 +4267,8 @@ window.addEventListener('storageReady', function(){
           +(order.createdBy ? '<div style="color:var(--text-3);">'+escapeHtml(order.createdBy)+'</div>' : '')
           +'</td>';
         html += '<td style="padding:10px 12px;white-space:nowrap;">';
-        if(st.code === 'ready'){
-          html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">✅ お渡し完了</button>';
-        } else if(st.code !== 'delivered'){
-          html += '<button class="btn btn-ghost btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">納品済みにする</button>';
+        if(st.code !== 'delivered'){
+          html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">✅ 作業完了</button>';
         }
         html += '</td>';
         html += '</tr>';
