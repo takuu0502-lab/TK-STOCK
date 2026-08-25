@@ -7765,11 +7765,7 @@ window.addEventListener('storageReady', function(){
             const qty = _orderItems[i].qty;
             incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:opBranch, qty, expectedDate:dates[i], customerName, carName, installDate, inboundType:'customerOrder', customerOrderId:_coId, needsNotification, createdAt:new Date().toISOString(), createdBy:_user, status:'pending' });
           });
-          // 仮出庫を自動登録
-          const _autoProv = { id:uid('prov'), date:new Date().toISOString(), type:'provisional', customerName, carName:carName||'', scheduledDate:installDate||dates[0]||'', branchId:opBranch, staff:_user, items:_orderItems.map(oi=>({ productId:oi.productId, name:oi.productName, brand:oi.brand||'', spec:oi.spec||'', partno:oi.partno||'', qty:oi.qty })), customerOrderId:_coId, status:'pending' };
-          provisionalOutbounds.push(_autoProv);
           await saveCustomerOrders();
-          await saveProvisionalOutbounds();
         } else {
           // 在庫品モード（既存処理）
           ps.forEach((p, i)=>{
