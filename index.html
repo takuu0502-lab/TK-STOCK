@@ -4095,31 +4095,27 @@ window.addEventListener('storageReady', function(){
   let _resShowDelivered = false; // 納品済みも表示するか
 
   function _getOrderStatus(order){
-    // 仮出庫が完了（お渡し済み）なら納品済み
-    // customerOrderId または prov.id で照合（旧フロー対応）
     const provItem = provisionalOutbounds.find(p=>p.customerOrderId === order.id || p.id === order.id || (order._provId && p.id === order._provId));
+    // お渡し完了済み
     if(order.status === 'delivered' || (provItem && provItem.status === 'done')){
       return {code:'delivered', label:'納品済み', color:'#888'};
     }
-    // 仮出庫が存在する場合：この注文分の数量が在庫で賄えるかチェック
-    // status が 'pending' または未設定（旧データ）を対象とする
+    // 入庫予定を最優先で確認（発注済み・入荷待ち）
+    const ischItems = incomingSchedules.filter(i=>i.customerOrderId === order.id);
+    const allArrived = ischItems.length > 0 && ischItems.every(i=>i.status==='arrived'||i.status==='done');
+    if(allArrived || order.status === 'arrived') return {code:'arrived', label:'入荷済み', color:'#1a6e9f'};
+    if(ischItems.length > 0) return {code:'ordered', label:'発注済み', color:'#d97706'};
+    // 入庫予定なし・仮出庫あり → 在庫チェック
     if(provItem && provItem.status !== 'done'){
       const provItems = provItem.items || [];
       const hasOverStock = provItems.some(pi=>{
         const p = products.find(x=>x.id===pi.productId);
         if(!p) return false;
-        // この注文の数量 vs 在庫（在庫 >= 注文数量なら足りている）
         return pi.qty > getStock(p);
       });
       if(hasOverStock) return {code:'ordered', label:'発注済み', color:'#d97706'};
-      // 在庫で充当できる → 納品済み
       return {code:'ready', label:'納品済み', color:'#1a7a5e'};
     }
-    // 入庫予定（複数）を確認
-    const ischItems = incomingSchedules.filter(i=>i.customerOrderId === order.id);
-    const allArrived = ischItems.length > 0 && ischItems.every(i=>i.status==='arrived'||i.status==='done');
-    if(allArrived || order.status === 'arrived') return {code:'arrived', label:'入荷済み', color:'#1a7a5e'};
-    if(ischItems.length > 0) return {code:'ordered', label:'発注済み', color:'#d97706'};
     return {code:'pending', label:'注文待ち', color:'#e53e3e'};
   }
 
@@ -4301,13 +4297,16 @@ window.addEventListener('storageReady', function(){
     container.querySelectorAll('.res-deliver-btn').forEach(btn=>{
       btn.addEventListener('click', async()=>{
         const oid = btn.dataset.orderId;
-        // customerOrders にあれば更新
         const ord = customerOrders.find(o=>o.id===oid);
+        const customerLabel = ord ? escapeHtml(ord.customerName||'') : '';
+        const confirmed = await showConfirm('✅ 作業完了にしますか？'+(customerLabel?'\n\nお客様：'+customerLabel:''));
+        if(!confirmed) return;
+        // customerOrders にあれば更新
         if(ord){ ord.status='delivered'; await saveCustomerOrders(); }
         // provisionalOutbounds にも対応エントリがあれば done にする
         const prov = provisionalOutbounds.find(p=>p.customerOrderId===oid||p.id===oid);
         if(prov){ prov.status='done'; await saveProvisionalOutbounds(); }
-        renderReservationTab(); renderCustomerOrderList(); showToast('納品済みにしました');
+        renderReservationTab(); renderCustomerOrderList(); showToast('作業完了にしました');
       });
     });
     // カテゴリー変更（インラインセレクト）
