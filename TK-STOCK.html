@@ -1502,6 +1502,14 @@
             <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="iwama"    style="accent-color:var(--teal);">岩間店</label>
           </div>
         </div>
+        <div class="field" style="min-width:120px;max-width:180px;">
+          <label style="display:flex;align-items:center;gap:6px;">
+            製造年（以前）
+            <span style="font-size:11px;color:var(--text-3);font-weight:400;">例：2023</span>
+          </label>
+          <input type="number" id="ptMfgYearMax" min="2000" max="2099" placeholder="空欄＝条件なし" style="width:100%;box-sizing:border-box;">
+          <div style="font-size:11px;color:var(--text-3);margin-top:3px;">入力した年以前の製品に優先適用</div>
+        </div>
       </div>
       <!-- タイプ・向き切替 -->
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -10031,11 +10039,13 @@ window.addEventListener('storageReady', function(){
       .replace(/\{\{SHOP\}\}/g,        escapeHtml(branchName));
   }
 
-  // 商品に合致するPOPテンプレートを探す（支店一致 > ブランド一致 > 銘柄一致 の優先度）
-  function _findMatchingPOPTemplate(p){
+  // 商品に合致するPOPテンプレートを探す（支店一致 > 製造年一致 > ブランド一致 > 銘柄一致 の優先度）
+  function _findMatchingPOPTemplate(p, mfgYear){
     const brand      = (p.brand || '').trim();
     const model      = cleanName(p.name || '').trim();
     const myBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    // mfgYearが未指定の場合は商品から自動取得
+    const productMfgYear = mfgYear != null ? mfgYear : getBranchManufactureYear(p, myBranchId);
     let best = null, bestScore = -1;
     for(const t of popTemplates){
       const tb = (t.brand || '').trim();
@@ -10044,9 +10054,11 @@ window.addEventListener('storageReady', function(){
       const matchBrand  = !tb || brand.startsWith(tb);
       const matchModel  = !tm || (t.modelExact ? model === tm : model.includes(tm));
       const matchBranch = branchList.length === 0 || branchList.includes(myBranchId);
-      if(!matchBrand || !matchModel || !matchBranch) continue;
-      // 支店一致:4点、ブランド一致:2点、銘柄一致:1点
-      const score = (branchList.length > 0 ? 4 : 0) + (tb ? 2 : 0) + (tm ? 1 : 0);
+      // 製造年条件：テンプレートにmfgYearMaxが設定されている場合、商品の製造年がそれ以下でないとマッチしない
+      const matchMfgYear = !t.mfgYearMax || (productMfgYear && productMfgYear <= t.mfgYearMax);
+      if(!matchBrand || !matchModel || !matchBranch || !matchMfgYear) continue;
+      // 支店一致:8点、製造年条件一致:4点、ブランド一致:2点、銘柄一致:1点
+      const score = (branchList.length > 0 ? 8 : 0) + (t.mfgYearMax ? 4 : 0) + (tb ? 2 : 0) + (tm ? 1 : 0);
       if(score > bestScore){ bestScore = score; best = t; }
     }
     return best;
@@ -10092,10 +10104,13 @@ window.addEventListener('storageReady', function(){
       const branchTag = bList.length > 0
         ? bList.map(b => `<span style="background:#6366f1;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(branchLabel[b]||b)}</span>`).join('')
         : '<span style="font-size:11px;color:var(--text-3);">全支店</span>';
+      const mfgYearTag = t.mfgYearMax
+        ? `<span style="background:#c07000;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">📅 ${t.mfgYearMax}年以前</span>`
+        : '';
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-2);border-radius:8px;margin-bottom:6px;flex-wrap:wrap;">
         <div style="flex:1;min-width:160px;">
           <div style="font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:4px;">${escapeHtml(t.name || '（名称未設定）')}</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;">${branchTag}${brandTag}${modelTag}</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">${branchTag}${brandTag}${modelTag}${mfgYearTag}</div>
         </div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-ghost btn-sm" data-pt-edit="${i}">✏️ 編集</button>
@@ -10210,6 +10225,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('ptModelExact').checked = t ? !!t.modelExact : false;
     const savedBranches = t ? (Array.isArray(t.branch) ? t.branch : (t.branch ? [t.branch] : [])) : [];
     document.querySelectorAll('.pt-branch-chk').forEach(chk => { chk.checked = savedBranches.includes(chk.value); });
+    document.getElementById('ptMfgYearMax').value = t ? (t.mfgYearMax || '') : '';
     document.getElementById('ptHtml').value  = t ? (t.html  || '') : '';
     document.getElementById('ptMsg').innerHTML = '';
     _ptCurrentPdfBase64 = t ? (t.pdfBase64 || null) : null;
@@ -10378,17 +10394,19 @@ window.addEventListener('storageReady', function(){
     const model       = document.getElementById('ptModel').value.trim();
     const modelExact  = document.getElementById('ptModelExact').checked;
     const branch = [...document.querySelectorAll('.pt-branch-chk:checked')].map(c => c.value); // [] = 全支店
+    const _mfgYearMaxRaw = document.getElementById('ptMfgYearMax').value.trim();
+    const mfgYearMax = _mfgYearMaxRaw ? parseInt(_mfgYearMaxRaw, 10) : null;
     const type   = _ptCurrentType;
     const msg   = document.getElementById('ptMsg');
     if(!name){ msg.innerHTML = '<div class="msg msg-err">テンプレート名を入力してください。</div>'; return; }
     let entry;
     if(type === 'pdf'){
       if(!_ptCurrentPdfBase64){ msg.innerHTML = '<div class="msg msg-err">PDFをアップロードしてください。</div>'; return; }
-      entry = { name, brand, model, modelExact, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
+      entry = { name, brand, model, modelExact, mfgYearMax, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
     } else {
       const html = document.getElementById('ptHtml').value.trim();
       if(!html){ msg.innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
-      entry = { name, brand, model, modelExact, branch, type: 'html', orient: _ptCurrentOrient, html };
+      entry = { name, brand, model, modelExact, mfgYearMax, branch, type: 'html', orient: _ptCurrentOrient, html };
     }
     msg.innerHTML = '<div class="msg msg-ok">保存中…</div>';
     if(_editingPopTemplateIdx !== null){
