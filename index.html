@@ -13478,7 +13478,8 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     // 在庫補充のみ表示（客注品は客注品入庫リストで管理）
-    const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.inboundType!=='customerOrder');
+    // inboundType: 'co' は旧フォーマットの客注品（後方互換）
+    const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.inboundType!=='customerOrder'&&s.inboundType!=='co'&&!s.customerOrderId&&!s.customerName);
     if(pending.length===0){ wrap.innerHTML=''; return; }
     pending.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
     const today = new Date(); today.setHours(0,0,0,0);
