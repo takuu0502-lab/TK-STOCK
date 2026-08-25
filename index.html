@@ -12814,7 +12814,7 @@ window.addEventListener('storageReady', function(){
         if(!order) return;
         const _arriveItems = _getOrderItems(order);
         const _arriveLines = _arriveItems.map(si=>{ const _p=products.find(x=>x.id===si.productId); return '「'+((_p?cleanName(_p.name):si.productName)||'不明')+'」×'+si.qty+'本'; }).join('、');
-        const ok = await showConfirm(_arriveLines+'\nを入荷確定しますか？\n在庫に追加し、仮出庫リストに登録します。');
+        const ok = await showConfirm(_arriveLines+'\nを入荷確定しますか？\n在庫に追加します。');
         if(!ok) return;
 
         const _coBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
@@ -12829,22 +12829,6 @@ window.addEventListener('storageReady', function(){
         }
         await saveProducts();
         await saveTransactions();
-
-        // 仮出庫登録（全商品まとめて1エントリ）
-        const provEntry = {
-          id: uid('prov'),
-          date: new Date().toISOString(),
-          type: 'provisional',
-          customerName: order.customerName,
-          carName: order.carName||'',
-          scheduledDate: order.expectedDate||'',
-          branchId: _coBranchId,
-          staff: currentUser?currentUser.displayName:'',
-          items: _provItems,
-          status: 'pending'
-        };
-        provisionalOutbounds.push(provEntry);
-        await saveProvisionalOutbounds();
 
         order.status = 'completed';
         order.completedAt = new Date().toISOString();
