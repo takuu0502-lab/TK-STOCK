@@ -12710,9 +12710,9 @@ window.addEventListener('storageReady', function(){
       const _diffDays = _expD ? Math.round((_expD - _coToday)/(1000*60*60*24)) : null;
       const _isOver = _diffDays !== null && _diffDays < 0;
       const _borderCol = _isOver ? 'var(--red)' : 'var(--line)';
-      // 商品リスト表示（incomingSchedules があれば個別入荷確定ボタンを表示）
+      // 商品リスト表示（複数の場合は個別入荷確定ボタンを表示）
       const _linkedIschAll = incomingSchedules.filter(s=>s.customerOrderId===order.id);
-      const _hasLinkedIsch = _linkedIschAll.length > 0;
+      const _isMulti = _srcItems.length > 1;
       const _itemsHtml = _srcItems.map(si=>{
         const p = products.find(x=>x.id===si.productId);
         const nm = p ? cleanName(p.name) : (si.productName||'不明');
@@ -12729,8 +12729,13 @@ window.addEventListener('storageReady', function(){
           +(sp?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(sp)+'</div>':'')
           +'</div>'
           +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;text-align:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--amber);">'+si.qty+_unit+'</div>'
-          +(_isItemArrived ? '<div style="font-size:11px;font-weight:700;color:var(--teal);white-space:nowrap;">✅入荷済</div>'
-            : (_linkedIsch ? '<button class="btn btn-teal btn-sm co-item-arrive-btn" data-co-id="'+order.id+'" data-isch-id="'+_linkedIsch.id+'" data-product-id="'+si.productId+'" data-qty="'+si.qty+'" data-unit="'+_unit+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;">入荷確定</button>' : ''))
+          +(_isMulti
+            ? (_isItemArrived
+                ? '<div style="font-size:11px;font-weight:700;color:var(--teal);white-space:nowrap;">✅入荷済</div>'
+                : (_linkedIsch
+                    ? '<button class="btn btn-teal btn-sm co-item-arrive-btn" data-co-id="'+order.id+'" data-isch-id="'+_linkedIsch.id+'" data-product-id="'+si.productId+'" data-qty="'+si.qty+'" data-unit="'+_unit+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;">入荷確定</button>'
+                    : ''))
+            : '')
           +'</div>';
       }).join('');
       return '<div style="border:1.5px solid '+_borderCol+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
@@ -12763,7 +12768,10 @@ window.addEventListener('storageReady', function(){
         + '</div>'
         /* ── カード下部ボタン ── */
         + '<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-        + (!_hasLinkedIsch ? '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;font-size:12px;">✅ 入荷確定</button>' : '')
+        + (!_isMulti
+            ? '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;font-size:12px;">✅ 入荷確定</button>'
+            : '<button class="btn btn-teal btn-sm co-all-arrive-btn" data-co-id="'+order.id+'" style="flex:1;font-size:12px;">✅ 全て入荷確定</button>')
+        + '<button class="btn btn-ghost btn-sm co-edit-btn" data-co-id="'+order.id+'" style="font-size:12px;border-color:var(--teal);color:var(--teal);padding:0 12px;">編集</button>'
         + '<button class="btn btn-ghost btn-sm co-delete-btn" data-co-id="'+order.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">取消</button>'
         + '</div>'
         + '</div>';
@@ -12860,6 +12868,45 @@ window.addEventListener('storageReady', function(){
       });
     });
 
+    // 編集ボタン
+    wrap.querySelectorAll('.co-edit-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const order = customerOrders.find(o=>o.id===btn.dataset.coId);
+        if(!order) return;
+        openCustomerOrderModal(order);
+      });
+    });
+
+    // 全て入荷確定
+    wrap.querySelectorAll('.co-all-arrive-btn').forEach(btn=>{
+      btn.addEventListener('click', async()=>{
+        const orderId = btn.dataset.coId;
+        const order = customerOrders.find(o=>o.id===orderId);
+        if(!order) return;
+        const _arriveItems = _getOrderItems(order);
+        const _lines = _arriveItems.map(si=>{ const _p=products.find(x=>x.id===si.productId); return '「'+((_p?cleanName(_p.name):si.productName)||'不明')+'」×'+si.qty; }).join('、');
+        const ok = await showConfirm(_lines+'\n全て入荷確定しますか？\n在庫に追加します。');
+        if(!ok) return;
+        const _coBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        for(const si of _arriveItems){
+          const p = products.find(x=>x.id===si.productId);
+          if(!p) continue;
+          if(!p.branchStock) p.branchStock = {};
+          p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + si.qty;
+          transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, note:'客注品入荷 ('+order.customerName+')' });
+        }
+        // 全 incomingSchedules を done に
+        incomingSchedules.filter(s=>s.customerOrderId===orderId&&s.status==='pending').forEach(s=>s.status='done');
+        order.status = 'completed';
+        order.completedAt = new Date().toISOString();
+        await saveProducts(); await saveTransactions(); await saveIncomingSchedules(); await saveCustomerOrders();
+        renderProductTable(); renderCustomerOrderList(); renderProvisionalList();
+        if(_detailProvRefresh) _detailProvRefresh();
+        if(_detailInschRefresh) _detailInschRefresh();
+        showToast('全て入荷確定しました');
+      });
+    });
+
     // 商品ごとの入荷確定
     wrap.querySelectorAll('.co-item-arrive-btn').forEach(btn=>{
       btn.addEventListener('click', async()=>{
@@ -12927,7 +12974,8 @@ window.addEventListener('storageReady', function(){
     if(_coItems.length===0){ el.innerHTML=''; return; }
     el.innerHTML = _coItems.map((item, idx)=>{
       const p = item.product;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--teal-dim);border:1px solid rgba(26,122,94,0.25);border-radius:8px;">'
+      return '<div style="background:var(--teal-dim);border:1px solid rgba(26,122,94,0.25);border-radius:8px;overflow:hidden;">'
+        +'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;">'
         +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(cleanName(p.name))+'</div>'
         +(p.spec?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(p.spec)+'</div>':'')
@@ -12939,6 +12987,11 @@ window.addEventListener('storageReady', function(){
         +'<span style="font-size:12px;color:var(--text-2);">本</span>'
         +'</div>'
         +'<button type="button" class="co-item-remove btn btn-ghost btn-sm" data-idx="'+idx+'" style="padding:0 6px;font-size:14px;color:var(--red);border-color:var(--red);height:28px;">✕</button>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;padding:4px 10px 8px;border-top:1px solid rgba(26,122,94,0.15);">'
+        +'<label style="font-size:11px;color:var(--teal);font-weight:600;white-space:nowrap;">入荷予定日</label>'
+        +'<input type="date" class="co-item-date" data-idx="'+idx+'" value="'+(item.expectedDate||'')+'" style="font-size:12px;flex:1;border:1px solid rgba(26,122,94,0.3);border-radius:5px;padding:3px 6px;background:var(--bg-1);color:var(--text-1);">'
+        +'</div>'
         +'</div>';
     }).join('');
     el.querySelectorAll('.co-item-minus').forEach(btn=>{
@@ -12968,6 +13021,12 @@ window.addEventListener('storageReady', function(){
         _renderCoItemsList();
       });
     });
+    el.querySelectorAll('.co-item-date').forEach(inp=>{
+      inp.addEventListener('change', ()=>{
+        const i = parseInt(inp.dataset.idx);
+        _coItems[i].expectedDate = inp.value || '';
+      });
+    });
   }
 
   function openCustomerOrderModal(editOrder){
@@ -12984,7 +13043,8 @@ window.addEventListener('storageReady', function(){
       const srcItems = _getOrderItems(editOrder);
       _coItems = srcItems.map(si=>{
         const p = products.find(x=>x.id===si.productId) || { id:si.productId, name:si.productName||'不明', spec:si.spec||'' };
-        return { product: p, qty: si.qty||1 };
+        const _isch = incomingSchedules.find(s=>s.customerOrderId===editOrder.id&&s.productId===si.productId&&s.status==='pending');
+        return { product: p, qty: si.qty||1, expectedDate: _isch ? (_isch.expectedDate||'') : (editOrder.expectedDate||'') };
       });
       document.getElementById('co_customer').value = editOrder.customerName||'';
       document.getElementById('co_car').value = editOrder.carName||'';
@@ -13345,23 +13405,16 @@ window.addEventListener('storageReady', function(){
           }
           await saveProducts();
           await saveTransactions();
+        } else {
+          // 入庫予定を商品ごとに登録
+          const _coUser = currentUser?currentUser.displayName:'';
+          for(const ci of _coItems){
+            const _ed = ci.expectedDate || expectedDate || '';
+            if(!_ed) continue; // 入荷予定日未設定はスキップ
+            incomingSchedules.push({ id:uid('isch'), productId:ci.product.id, productName:ci.product.name, brand:ci.product.brand||'', spec:ci.product.spec||'', branchId:_coBr, qty:ci.qty, expectedDate:_ed, customerName, carName:carName||'', installDate:installDate||'', inboundType:'customerOrder', customerOrderId:_coId, needsNotification:_coNeedsNotify, createdAt:new Date().toISOString(), createdBy:_coUser, status:'pending' });
+          }
+          await saveIncomingSchedules();
         }
-        // 常に仮出庫を自動登録（全商品まとめて1エントリ）
-        const _autoProv = {
-          id: uid('prov'),
-          date: new Date().toISOString(),
-          type: 'provisional',
-          customerName,
-          carName: carName||'',
-          scheduledDate: installDate||expectedDate||'',
-          branchId: _coBr,
-          staff: currentUser?currentUser.displayName:'',
-          items: _orderItems.map(oi=>({ productId:oi.productId, name:oi.productName, brand:oi.brand||'', spec:oi.spec||'', partno:oi.partno||'', qty:oi.qty })),
-          customerOrderId: _coId,
-          status: 'pending'
-        };
-        provisionalOutbounds.push(_autoProv);
-        await saveProvisionalOutbounds();
       }
       await saveCustomerOrders();
       modal.classList.remove('show');
