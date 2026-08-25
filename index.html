@@ -12174,6 +12174,21 @@ window.addEventListener('storageReady', function(){
           +'<div style="font-size:15px;font-weight:700;color:var(--amber);line-height:1.1;">'+totalQty+'<span style="font-size:11px;">本</span></div>'
           +'</div>'
           +'</div>'
+          /* 商品概要（顧客名直下に表示） */
+          +(_items.length > 0 ? '<div style="margin-bottom:6px;">'
+            +_items.map(item=>{
+              const _pSummary = products.find(x=>x.id===item.productId);
+              const _sName = cleanName(item.name||(_pSummary&&_pSummary.name)||'');
+              const _sSpec = item.spec||(_pSummary&&_pSummary.spec)||'';
+              const _sBrand = item.brand||(_pSummary&&_pSummary.brand)||'';
+              return _sName ? '<div style="font-size:12px;color:var(--text-1);padding:2px 0;">'
+                +(_sBrand?'<span style="color:var(--text-3);">'+escapeHtml(_sBrand)+'</span> ':'')
+                +'<span style="font-weight:600;">'+escapeHtml(_sName)+'</span>'
+                +(_sSpec?' <span style="color:var(--text-2);">'+escapeHtml(_sSpec)+'</span>':'')
+                +' <span style="color:var(--amber);font-weight:700;">×'+item.qty+'</span>'
+                +'</div>' : '';
+            }).join('')
+            +'</div>' : '')
           +(entry.carName?'<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">車種：'+escapeHtml(entry.carName)+'</div>':'<div style="margin-bottom:8px;"></div>')
           /* 引き渡し予定日 */
           +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
