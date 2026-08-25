@@ -471,15 +471,13 @@
 
   .low-flag{color:var(--red);font-size:11px;font-weight:600;margin-left:6px;}
   .res-tag{font-size:10.5px;padding:2px 7px;border-radius:4px;background:var(--amber-dim);color:var(--amber);margin-left:6px;font-weight:600;}
-  #provTooltip{position:fixed;z-index:9999;pointer-events:none;display:none;min-width:240px;max-width:320px;background:var(--bg-1);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:12px 16px;font-size:12px;color:var(--text-1);line-height:1.5;}
+  #provTooltip{position:fixed;z-index:9999;pointer-events:none;display:none;min-width:220px;max-width:300px;background:var(--bg-1);border:1px solid var(--amber);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:12px 16px;font-size:12px;color:var(--text-1);line-height:1.5;}
   #provTooltip .pt-title{font-weight:700;font-size:13px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
-  #provTooltip .pt-summary{font-size:11px;color:var(--text-2);margin-bottom:8px;padding:4px 8px;background:var(--bg-2);border-radius:6px;display:flex;gap:12px;}
-  #provTooltip .pt-row{display:grid;grid-template-columns:36px 1fr 1fr auto;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;}
+  #provTooltip .pt-row{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;}
   #provTooltip .pt-row:last-child{border-bottom:none;}
   #provTooltip .pt-qty{font-weight:700;text-align:center;background:var(--bg-2);border-radius:4px;padding:1px 4px;font-size:11px;}
   #provTooltip .pt-customer{color:var(--text-1);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #provTooltip .pt-car{color:var(--text-2);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #provTooltip .pt-date{color:var(--text-3);font-size:11px;white-space:nowrap;text-align:right;}
   #provTooltip .pt-over{color:var(--red);font-weight:700;}
   #inschTooltip{position:fixed;z-index:9999;pointer-events:none;display:none;min-width:220px;max-width:300px;background:var(--bg-1);border:1px solid #1a7a5e;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:12px 16px;font-size:12px;color:var(--text-1);line-height:1.5;}
   #inschTooltip .it-title{font-weight:700;font-size:13px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
@@ -9258,20 +9256,31 @@ window.addEventListener('storageReady', function(){
       const totalProv = relPOs.reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0),0);
       const isOver = totalProv > stk;
       const _provTypeLabel = badge.dataset.provType==='custody' ? '📦 預かり出庫' : '🔖 仮出庫';
-      let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':_provTypeLabel)+'</span><span style="font-size:11px;font-weight:400;color:var(--text-2);">計 '+totalProv+' 本 / 在庫 '+stk+' 本'+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'本超過</span>':'')+'</span></div>';
+      const _todayP = (()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; })();
+      let html = '<div class="pt-title"><span>'+(isOver?'⚠️ 在庫超過':_provTypeLabel)+'</span>'
+        +'<span style="font-size:11px;font-weight:400;color:var(--amber);">計 '+totalProv+' / 在庫 '+stk+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'超過</span>':'')+'</span></div>';
       if(relPOs.length > 0){
-        html += '<div style="display:grid;grid-template-columns:36px 1fr 1fr auto;gap:4px 8px;padding:4px 0 2px;font-size:10px;font-weight:600;color:var(--text-3);border-bottom:1px solid var(--line);margin-bottom:2px;">'
-          +'<span style="text-align:center;">数量</span><span>お客様</span><span>車種</span><span style="text-align:right;">取付予定日</span></div>';
+        html += '<div style="display:grid;grid-template-columns:36px 1fr auto;gap:4px 8px;padding:4px 0 2px;font-size:10px;font-weight:600;color:var(--text-3);border-bottom:1px solid var(--line);margin-bottom:2px;">'
+          +'<span style="text-align:center;">数量</span><span>お客様 / 車種</span><span style="text-align:right;">引き渡し予定日</span></div>';
       }
-      relPOs.forEach(po=>{
+      relPOs.slice().sort((a,b)=>(a.scheduledDate||'').localeCompare(b.scheduledDate||'')).forEach(po=>{
         const qty = (po.items||[]).filter(i=>i.productId===productId).reduce((s,i)=>s+i.qty,0);
-        const _sdp = po.scheduledDate ? po.scheduledDate.split('-') : [];
-        const sd = _sdp.length>=3 ? parseInt(_sdp[1])+'月'+parseInt(_sdp[2])+'日' : (po.scheduledDate||'—');
+        const _isTbd = !po.scheduledDate || po.scheduledDate === '未定';
+        const _d = _isTbd ? null : new Date(po.scheduledDate+'T00:00:00');
+        const _diff = _isTbd ? null : Math.round((_d - _todayP)/(1000*60*60*24));
+        const _diffLabel = _isTbd?'未定':_diff===0?'今日':_diff>0?_diff+'日後':Math.abs(_diff)+'日超過';
+        const _diffColor = _isTbd?'var(--text-3)':_diff<0?'var(--red)':_diff===0?'var(--amber)':'var(--amber)';
+        const _sdDisp = _isTbd?'未定':(po.scheduledDate||'').replace(/\d{4}-/,'').replace('-','/');
         html += '<div class="pt-row">'
-          +'<span class="pt-qty">'+qty+'本</span>'
-          +'<span class="pt-customer">'+(po.customerName?escapeHtml(po.customerName)+' 様':'—')+'</span>'
-          +'<span class="pt-car">'+(po.carName?escapeHtml(po.carName):'—')+'</span>'
-          +'<span class="pt-date">'+sd+'</span>'
+          +'<span class="pt-qty">'+qty+'</span>'
+          +'<div>'
+          +'<div class="pt-customer">'+(po.customerName?escapeHtml(po.customerName)+' 様':'—')+'</div>'
+          +(po.carName?'<div class="pt-car">'+escapeHtml(po.carName)+'</div>':'')
+          +'</div>'
+          +'<div style="text-align:right;">'
+          +'<div style="font-size:11px;color:var(--text-3);">'+_sdDisp+'</div>'
+          +'<div style="font-size:10px;font-weight:700;color:'+_diffColor+';">'+_diffLabel+'</div>'
+          +'</div>'
           +'</div>';
       });
       tip.innerHTML = html;
