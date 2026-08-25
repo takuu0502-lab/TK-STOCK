@@ -10649,7 +10649,8 @@ window.addEventListener('storageReady', function(){
           if(!po) return;
           const result = await showProvisionalEditForm(po);
           if(!result) return;
-          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||''; po.items = result.items;
+          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||'';
+          (po.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
           await saveProvisionalOutbounds();
           renderProductTable(); renderProvisionalList(); renderDetailProvList();
         });
@@ -10672,7 +10673,8 @@ window.addEventListener('storageReady', function(){
           if(!po) return;
           const result = await showProvisionalEditForm(po);
           if(!result) return;
-          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||''; po.items = result.items;
+          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||'';
+          (po.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
           await saveProvisionalOutbounds();
           renderProductTable(); renderProvisionalList(); renderDetailProvList();
         });
@@ -12143,13 +12145,16 @@ window.addEventListener('storageReady', function(){
           const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
           const _p2Stk = p2 ? getStock(p2) : 0;
           const itemOver = p2 && allProvQty > _p2Stk;
+          // タイヤ以外も含め名前・ブランド・スペックを表示
+          const _dispName = escapeHtml(cleanName(item.name || (p2 && p2.name) || '—'));
+          const _dispSub  = [item.brand||(p2&&p2.brand)||'', item.spec||(p2&&p2.spec)||''].filter(Boolean).join(' ');
           return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);">'
             +'<div style="min-width:0;flex:1;">'
-            +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.name))+'</div>'
-            +'<div style="font-size:12px;color:var(--text-2);">'+(item.brand?item.brand+' ':'')+(item.spec||'')+'</div>'
-            +(itemOver?'<div style="font-size:11px;color:var(--red);">⚠️ 在庫'+_p2Stk+'本 / 仮出庫計'+allProvQty+'本</div>':'')
+            +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+_dispName+'</div>'
+            +(_dispSub ? '<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(_dispSub)+'</div>' : '')
+            +(itemOver?'<div style="font-size:11px;color:var(--red);">⚠️ 在庫'+_p2Stk+' / 仮出庫計'+allProvQty+'</div>':'')
             +'</div>'
-            +'<div style="font-size:14px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'本</div>'
+            +'<div style="font-size:14px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'</div>'
             +'</div>';
         }).join('');
         return '<div id="prov-entry-'+entry.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
