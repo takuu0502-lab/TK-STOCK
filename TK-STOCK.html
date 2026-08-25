@@ -9544,8 +9544,9 @@ window.addEventListener('storageReady', function(){
       let currentFacingMode = 'environment';
 
       try{
+        // iPad/スマホは1280x720で十分（高解像度は処理が重くなる）
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: currentFacingMode, width: { ideal:1920 }, height: { ideal:1080 } }
+          video: { facingMode: currentFacingMode, width: { ideal:1280, max:1920 }, height: { ideal:720, max:1080 } }
         });
 
         const track = stream.getVideoTracks()[0];
@@ -9620,7 +9621,7 @@ window.addEventListener('storageReady', function(){
               currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
               try{
                 stream = await navigator.mediaDevices.getUserMedia({
-                  video: { facingMode: currentFacingMode, width:{ideal:1920}, height:{ideal:1080} }
+                  video: { facingMode: currentFacingMode, width:{ideal:1280,max:1920}, height:{ideal:720,max:1080} }
                 });
                 const _nt = stream.getVideoTracks()[0];
                 if(_nt && _nt.applyConstraints){
@@ -9682,19 +9683,29 @@ window.addEventListener('storageReady', function(){
         let barcodeDetector = null;
         if('BarcodeDetector' in window){
           try{
-            barcodeDetector = new BarcodeDetector({
-              formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
-            });
+            // デバイスがサポートするフォーマットのみ使用（iOS対応）
+            const _allFmts = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'];
+            let _fmts = _allFmts;
+            try{
+              const _supported = await BarcodeDetector.getSupportedFormats();
+              _fmts = _allFmts.filter(f=>_supported.includes(f));
+              if(_fmts.length === 0) _fmts = ['qr_code'];
+            }catch(_){}
+            barcodeDetector = new BarcodeDetector({ formats: _fmts });
           }catch(_){}
         }
 
         if(barcodeDetector){
-          // ── Path A: BarcodeDetector（canvas不要・ネイティブ高速検出）──
+          // ── Path A: BarcodeDetector（ネイティブ高速検出）──
+          // iPad/モバイルでの過負荷防止：120ms間引き
           let detecting = false;
+          let lastDetect = 0;
           const tickA = async () => {
             if(detected) return;
-            if(video.readyState >= video.HAVE_ENOUGH_DATA && !detecting){
+            const now = Date.now();
+            if(video.readyState >= video.HAVE_ENOUGH_DATA && !detecting && now - lastDetect >= 120){
               detecting = true;
+              lastDetect = now;
               try{
                 const codes = await barcodeDetector.detect(video);
                 const hit = codes.find(b => b.rawValue);
@@ -9712,18 +9723,20 @@ window.addEventListener('storageReady', function(){
           rafId = requestAnimationFrame(tickA);
 
         } else {
-          // ── Path B: canvas経由（jsQR + Quagga）BarcodeDetector非対応端末向け ──
-          // jsQR でQRコードをスキャン（100msごとにフレームを処理）
+          // ── Path B: canvas経由（jsQR）BarcodeDetector非対応端末向け ──
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           let lastScan = 0;
           const tickB = () => {
             if(detected) return;
-            if(video.readyState >= video.HAVE_ENOUGH_DATA && Date.now() - lastScan > 100){
+            if(video.readyState >= video.HAVE_ENOUGH_DATA && Date.now() - lastScan > 150){
               lastScan = Date.now();
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              ctx.drawImage(video, 0, 0);
+              // 処理負荷削減：640px幅に縮小してスキャン
+              const maxW = 640;
+              const scale = Math.min(1, maxW / (video.videoWidth || maxW));
+              canvas.width  = Math.round((video.videoWidth  || maxW) * scale);
+              canvas.height = Math.round((video.videoHeight || 480) * scale);
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               if(typeof jsQR !== 'undefined'){
                 try{
                   const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
