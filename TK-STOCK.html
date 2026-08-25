@@ -4100,20 +4100,17 @@ window.addEventListener('storageReady', function(){
     if(order.status === 'delivered' || (provItem && provItem.status === 'done')){
       return {code:'delivered', label:'納品済み', color:'#888'};
     }
-    // 仮出庫が存在する場合：在庫超過チェック
+    // 仮出庫が存在する場合：この注文分の数量が在庫で賄えるかチェック
     if(provItem && provItem.status === 'pending'){
       const provItems = provItem.items || [];
       const hasOverStock = provItems.some(pi=>{
         const p = products.find(x=>x.id===pi.productId);
         if(!p) return false;
-        // 同商品の全仮出庫合計
-        const totalProv = provisionalOutbounds
-          .filter(po=>po.status==='pending')
-          .reduce((s,po)=>(po.items||[]).filter(i=>i.productId===pi.productId).reduce((ss,i)=>ss+i.qty,s),0);
-        return totalProv > getStock(p);
+        // この注文の数量 vs 在庫（在庫 >= 注文数量なら足りている）
+        return pi.qty > getStock(p);
       });
       if(hasOverStock) return {code:'ordered', label:'発注済み', color:'#d97706'};
-      // 在庫あり → 在庫から出庫予定 = 納品済みとして扱う
+      // 在庫で充当できる → 納品済み
       return {code:'delivered', label:'納品済み', color:'#888'};
     }
     // 入庫予定（複数）を確認
