@@ -2298,6 +2298,10 @@
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="radio" name="bulkInsch_co_notify" id="bulkInsch_co_notify_no" value="no" style="width:14px;height:14px;"> 連絡不要</label>
           </div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px 10px;background:var(--teal-dim);border:1px solid var(--teal);border-radius:8px;">
+          <input type="checkbox" id="bulkInsch_co_prov" style="width:16px;height:16px;accent-color:var(--teal);">
+          <span style="font-weight:600;color:var(--teal);">🔖 仮出庫も同時に登録する</span>
+        </label>
       </div>
       <!-- 商品リスト -->
       <div>
@@ -7696,6 +7700,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('bulkInsch_co_customer').value = '';
       document.getElementById('bulkInsch_co_car').value = '';
       document.getElementById('bulkInsch_co_install_date').value = '';
+      const _bulkCoProvChk = document.getElementById('bulkInsch_co_prov');
+      if(_bulkCoProvChk) _bulkCoProvChk.checked = false;
       // カテゴリードロップダウンを最新の reservationCategories で更新
       const _catSel = document.getElementById('bulkInsch_co_category');
       if(_catSel){ _catSel.innerHTML = reservationCategories.map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join(''); }
@@ -7766,6 +7772,13 @@ window.addEventListener('storageReady', function(){
             incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:opBranch, qty, expectedDate:dates[i], customerName, carName, installDate, inboundType:'customerOrder', customerOrderId:_coId, needsNotification, createdAt:new Date().toISOString(), createdBy:_user, status:'pending' });
           });
           await saveCustomerOrders();
+          // 仮出庫も登録する場合
+          const _doProv = document.getElementById('bulkInsch_co_prov')?.checked;
+          if(_doProv){
+            const _provEntry = { id:uid('prov'), date:new Date().toISOString(), type:'provisional', customerName, carName:carName||'', scheduledDate:installDate||dates[0]||'', branchId:opBranch, staff:_user, items:_orderItems.map(oi=>({ productId:oi.productId, name:oi.productName, brand:oi.brand||'', spec:oi.spec||'', partno:oi.partno||'', qty:oi.qty })), customerOrderId:_coId, needsNotification, notified:false, notifiedAt:null, status:'pending' };
+            provisionalOutbounds.push(_provEntry);
+            await saveProvisionalOutbounds();
+          }
         } else {
           // 在庫品モード（既存処理）
           ps.forEach((p, i)=>{
