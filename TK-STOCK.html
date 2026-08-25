@@ -1066,6 +1066,7 @@
   <button class="btn-bulk btn-bulk-teal" id="bulkInBtn">📥 入庫登録</button>
   <button class="btn-bulk btn-bulk-out" id="bulkOutBtn">📤 出庫登録</button>
   <button class="btn-bulk btn-bulk-prov" id="bulkProvBtn">🔖 仮出庫登録</button>
+  <button class="btn-bulk" id="bulkInschBtn" style="background:#1a7a5e;color:#fff;">📦 入庫予定登録</button>
   <button class="btn-bulk btn-bulk-qr" id="bulkQrBtn">🖨 QR印刷</button>
   <button class="btn-bulk btn-bulk-order" id="bulkOrderBtn">📋 発注書作成</button>
   <button class="btn-bulk" id="bulkEditFromBarBtn" style="background:#555;color:#fff;">✏️ 一括編集</button>
@@ -2201,6 +2202,28 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="provEditCancelBtn">キャンセル</button>
       <button class="btn btn-amber" id="provEditOkBtn">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 一括入庫予定登録モーダル -->
+<div class="modal-overlay" id="bulkInschModal">
+  <div class="modal" style="max-width:480px;">
+    <h3 style="margin-top:0;">📦 一括入庫予定登録</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">入荷予定日 <span style="color:var(--red);">*</span></label>
+        <input type="date" id="bulkInsch_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">対象商品・数量</div>
+        <div id="bulkInsch_items" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+    </div>
+    <div id="bulkInschError" style="color:var(--red);font-size:12px;margin:10px 0 0;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="bulkInschCancelBtn">キャンセル</button>
+      <button class="btn btn-teal" id="bulkInschOkBtn">登録する</button>
     </div>
   </div>
 </div>
@@ -7130,6 +7153,78 @@ window.addEventListener('storageReady', function(){
     // 選択解除
     document.getElementById('bulkClearBtn').addEventListener('click', ()=>{
       selectedProducts.clear(); updateBulkBar(); renderProductTable();
+    });
+    // 一括入庫予定登録
+    document.getElementById('bulkInschBtn').addEventListener('click', ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length === 0) return;
+      // 翌日をデフォルト日付に
+      const _tomorrow = new Date(); _tomorrow.setDate(_tomorrow.getDate()+1);
+      document.getElementById('bulkInsch_date').value = _tomorrow.toISOString().slice(0,10);
+      // 商品リストを描画
+      const itemsEl = document.getElementById('bulkInsch_items');
+      itemsEl.innerHTML = ps.map((p, i)=>{
+        const _sub = [p.brand||'', p.spec||''].filter(Boolean).join(' ');
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;">'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(cleanName(p.name))+'</div>'
+          +(_sub?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(_sub)+'</div>':'')
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+          +'<button type="button" class="bulk-insch-step" data-idx="'+i+'" data-step="-1" style="width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">−</button>'
+          +'<input type="number" id="bulkInsch_qty_'+i+'" value="4" min="1" style="width:50px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:5px;color:var(--text-1);font-size:14px;padding:3px 6px;">'
+          +'<button type="button" class="bulk-insch-step" data-idx="'+i+'" data-step="1" style="width:26px;height:26px;border-radius:5px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">＋</button>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+      itemsEl.querySelectorAll('.bulk-insch-step').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const idx = parseInt(btn.dataset.idx);
+          const qtyInput = document.getElementById('bulkInsch_qty_'+idx);
+          qtyInput.value = Math.max(1, (parseInt(qtyInput.value||'1',10)) + parseInt(btn.dataset.step));
+        });
+      });
+      const errorEl = document.getElementById('bulkInschError');
+      errorEl.style.display = 'none';
+      document.getElementById('bulkInschModal').classList.add('show');
+
+      const okBtn = document.getElementById('bulkInschOkBtn');
+      const cancelBtn = document.getElementById('bulkInschCancelBtn');
+      function closeModal(){ document.getElementById('bulkInschModal').classList.remove('show'); okBtn.removeEventListener('click', onOk); cancelBtn.removeEventListener('click', onCancel); }
+      async function onOk(){
+        const date = document.getElementById('bulkInsch_date').value;
+        if(!date){ errorEl.textContent='入荷予定日を入力してください。'; errorEl.style.display='block'; return; }
+        const opBranch = getOperationBranch();
+        const _user = currentUser ? currentUser.displayName : '';
+        ps.forEach((p, i)=>{
+          const qty = Math.max(1, parseInt(document.getElementById('bulkInsch_qty_'+i).value||'1',10));
+          incomingSchedules.push({
+            id: uid('isch'),
+            productId: p.id,
+            productName: p.name,
+            brand: p.brand||'',
+            spec: p.spec||'',
+            branchId: opBranch,
+            qty,
+            expectedDate: date,
+            customerName: '',
+            carName: '',
+            inboundType: 'stock',
+            createdAt: new Date().toISOString(),
+            createdBy: _user,
+            status: 'pending'
+          });
+        });
+        await saveIncomingSchedules();
+        renderIncomingScheduleList();
+        if(_detailInschRefresh) _detailInschRefresh();
+        closeModal();
+        selectedProducts.clear(); updateBulkBar(); renderProductTable();
+        showToast('入庫予定を'+ps.length+'件登録しました');
+      }
+      function onCancel(){ closeModal(); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
     });
     // 一括編集（選択中の商品をモーダルで編集）
     document.getElementById('bulkEditFromBarBtn').addEventListener('click', ()=>{
