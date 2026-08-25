@@ -12715,12 +12715,15 @@ window.addEventListener('storageReady', function(){
         const p = products.find(x=>x.id===si.productId);
         const nm = p ? cleanName(p.name) : (si.productName||'不明');
         const sp = p ? (p.spec||'') : (si.spec||'');
+        const _majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
+        const _siIsTire = (_majorCat && _majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
+        const _unit = _siIsTire ? '本' : '個';
         return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;">'
           +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(nm)+'</div>'
           +(sp?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(sp)+'</div>':'')
           +'</div>'
-          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;text-align:center;flex-shrink:0;font-size:13px;font-weight:700;color:var(--amber);">'+si.qty+'本</div>'
+          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;text-align:center;flex-shrink:0;font-size:13px;font-weight:700;color:var(--amber);">'+si.qty+_unit+'</div>'
           +'</div>';
       }).join('');
       return '<div style="border:1.5px solid '+_borderCol+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
