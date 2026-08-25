@@ -4121,6 +4121,29 @@ window.addEventListener('storageReady', function(){
     // 重複排除：同じ id は1件のみ（念のため）
     const seenIds = new Set();
     const uniqueOrders = customerOrders.filter(o=>{ if(seenIds.has(o.id)) return false; seenIds.add(o.id); return true; });
+    // customerOrders に対応エントリがない仮出庫（旧フロー登録分）を補完
+    const coIdSet = new Set(uniqueOrders.map(o=>o.id));
+    provisionalOutbounds.forEach(prov=>{
+      if(!prov.customerName) return; // 客注品でない仮出庫は除外
+      if(prov.customerOrderId && coIdSet.has(prov.customerOrderId)) return; // 既にcustomerOrdersに存在
+      // 仮出庫エントリから customerOrder 相当のオブジェクトを生成
+      const items = (prov.items||[]).map(i=>({ productId:i.productId||'', productName:i.name||i.productName||'', spec:i.spec||'', brand:i.brand||'', qty:i.qty||1 }));
+      const synthId = prov.customerOrderId || prov.id;
+      if(seenIds.has(synthId)) return;
+      seenIds.add(synthId);
+      uniqueOrders.push({
+        id: synthId, _fromProv: true, _provId: prov.id,
+        branchId: prov.branchId||'',
+        items: items,
+        productId: items[0]&&items[0].productId||'', productName: items[0]&&items[0].productName||'',
+        qty: items.reduce((s,i)=>s+i.qty,0),
+        customerName: prov.customerName||'', carName: prov.carName||'',
+        installDate: prov.scheduledDate||'',
+        expectedDate: '', needsNotification: prov.needsNotification, notified: prov.notified||false,
+        status: prov.status==='done' ? 'delivered' : 'pending',
+        category: prov.category||'', createdAt: prov.date||'', createdBy: prov.staff||''
+      });
+    });
     // 納品済みフィルタ
     let baseOrders = uniqueOrders.filter(o=> !opBranch || o.branchId === opBranch);
     if(!_resShowDelivered){
@@ -4249,38 +4272,45 @@ window.addEventListener('storageReady', function(){
     container.querySelectorAll('.res-deliver-btn').forEach(btn=>{
       btn.addEventListener('click', async()=>{
         const oid = btn.dataset.orderId;
+        // customerOrders にあれば更新
         const ord = customerOrders.find(o=>o.id===oid);
-        if(ord){ ord.status='delivered'; await saveCustomerOrders(); renderReservationTab(); renderCustomerOrderList(); showToast('納品済みにしました'); }
+        if(ord){ ord.status='delivered'; await saveCustomerOrders(); }
+        // provisionalOutbounds にも対応エントリがあれば done にする
+        const prov = provisionalOutbounds.find(p=>p.customerOrderId===oid||p.id===oid);
+        if(prov){ prov.status='done'; await saveProvisionalOutbounds(); }
+        renderReservationTab(); renderCustomerOrderList(); showToast('納品済みにしました');
       });
     });
+    // customerOrders or provisionalOutbounds どちらも更新するヘルパー
+    async function _resUpdateNotify(oid, updater){
+      const ord = customerOrders.find(o=>o.id===oid);
+      if(ord){ updater(ord); await saveCustomerOrders(); }
+      const prov = provisionalOutbounds.find(p=>p.customerOrderId===oid||p.id===oid);
+      if(prov){ updater(prov); await saveProvisionalOutbounds(); }
+      renderReservationTab(); renderCustomerOrderList();
+    }
     // 連絡済みトグル
     container.querySelectorAll('.res-notify-toggle-btn').forEach(btn=>{
       btn.addEventListener('click', async()=>{
-        const ord = customerOrders.find(o=>o.id===btn.dataset.orderId);
-        if(!ord) return;
-        ord.notified = !ord.notified;
-        if(ord.notified){ ord.notifiedAt = new Date().toISOString(); }
-        await saveCustomerOrders(); renderReservationTab(); renderCustomerOrderList();
-        showToast(ord.notified ? '✅ 連絡済みにしました' : '未連絡に戻しました');
+        const oid = btn.dataset.orderId;
+        const ord = customerOrders.find(o=>o.id===oid);
+        const prov = provisionalOutbounds.find(p=>p.customerOrderId===oid||p.id===oid);
+        const cur = ord ? ord.notified : (prov ? prov.notified : false);
+        await _resUpdateNotify(oid, obj=>{ obj.notified=!cur; if(!cur) obj.notifiedAt=new Date().toISOString(); });
+        showToast(!cur ? '✅ 連絡済みにしました' : '未連絡に戻しました');
       });
     });
     // 連絡不要にする
     container.querySelectorAll('.res-no-notify-btn').forEach(btn=>{
       btn.addEventListener('click', async()=>{
-        const ord = customerOrders.find(o=>o.id===btn.dataset.orderId);
-        if(!ord) return;
-        ord.needsNotification = false;
-        await saveCustomerOrders(); renderReservationTab(); renderCustomerOrderList();
+        await _resUpdateNotify(btn.dataset.orderId, obj=>{ obj.needsNotification=false; });
         showToast('連絡不要に設定しました');
       });
     });
     // 連絡が必要に戻す
     container.querySelectorAll('.res-notify-need-btn').forEach(btn=>{
       btn.addEventListener('click', async()=>{
-        const ord = customerOrders.find(o=>o.id===btn.dataset.orderId);
-        if(!ord) return;
-        ord.needsNotification = true;
-        await saveCustomerOrders(); renderReservationTab(); renderCustomerOrderList();
+        await _resUpdateNotify(btn.dataset.orderId, obj=>{ obj.needsNotification=true; });
         showToast('連絡が必要に設定しました');
       });
     });
