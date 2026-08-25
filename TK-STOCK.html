@@ -4211,11 +4211,13 @@ window.addEventListener('storageReady', function(){
           const p = products.find(x=>x.id===i.productId);
           const nm = p ? cleanName(p.name) : (i.productName||'不明');
           const sp = p ? (p.spec||'') : (i.spec||'');
-          // タイヤサイズ（spec）を大きく、商品名をその下に
+          // タイヤかどうか判定（大分類名がタイヤ、またはspecがタイヤサイズ形式）
+          const majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
+          const isTire = (majorCat && majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
           return '<div style="padding:3px 0;">'
             +(sp ? '<div style="font-size:14px;font-weight:800;color:var(--text-1);letter-spacing:0.3px;">'+escapeHtml(sp)+'</div>' : '')
             +'<div style="font-size:11px;color:var(--text-2);margin-top:1px;">'+escapeHtml(nm)+'</div>'
-            +'<div style="font-size:12px;font-weight:700;color:var(--amber);">×'+i.qty+'本</div>'
+            +(isTire ? '<div style="font-size:12px;font-weight:700;color:var(--amber);">×'+i.qty+'本</div>' : '')
             +'</div>';
         }).join('<div style="border-top:1px dashed var(--line);margin:2px 0;"></div>');
         const ischItems = incomingSchedules.filter(i=>i.customerOrderId===order.id);
