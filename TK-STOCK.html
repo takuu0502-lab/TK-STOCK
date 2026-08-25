@@ -12279,13 +12279,14 @@ window.addEventListener('storageReady', function(){
               const _bg  = _ntf ? '#d4edda' : '#fff3cd';
               const _col = _ntf ? '#1a7a3c' : '#b8650c';
               const _lbl = _ntf ? '✅ 連絡済み' : '📞 未連絡';
-              return '<div style="margin-top:10px;display:flex;align-items:center;gap:8px;">'
+              return '<div style="margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
                 +'<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;background:'+_bg+';color:'+_col+';">'+_lbl+'</span>'
                 +'<button class="btn btn-ghost btn-sm co-notify-toggle-btn" data-co-id="'+order.id+'" style="font-size:11px;padding:2px 10px;">'
                 +(_ntf ? '未連絡に戻す' : '連絡済みにする')+'</button>'
+                +'<button class="btn btn-ghost btn-sm co-no-notify-btn" data-co-id="'+order.id+'" style="font-size:11px;padding:2px 10px;color:var(--text-3);border-color:var(--text-3);">連絡不要にする</button>'
                 +'</div>';
             })()
-          : '<div style="margin-top:8px;"><span style="font-size:11px;color:var(--text-3);background:var(--bg-3);padding:2px 8px;border-radius:4px;">連絡不要</span></div>')
+          : '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:var(--text-3);background:var(--bg-3);padding:2px 8px;border-radius:4px;">連絡不要</span><button class="btn btn-ghost btn-sm co-needs-notify-btn" data-co-id="'+order.id+'" style="font-size:11px;padding:2px 10px;">連絡が必要に戻す</button></div>')
         + '</div>'
         /* ── カード下部ボタン ── */
         + '<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
@@ -12309,8 +12310,34 @@ window.addEventListener('storageReady', function(){
         order.notifiedAt = order.notified ? new Date().toISOString() : null;
         await saveCustomerOrders();
         renderCustomerOrderList();
-        renderProvisionalList(); // 仮出庫リストも連動更新
+        renderProvisionalList();
         showToast(order.notified ? '✅ 連絡済みにしました' : '連絡済みを解除しました');
+      });
+    });
+    // 連絡不要にする
+    wrap.querySelectorAll('.co-no-notify-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const order = customerOrders.find(o=>o.id===btn.dataset.coId);
+        if(!order) return;
+        order.needsNotification = false;
+        order.notified = false;
+        order.notifiedAt = null;
+        await saveCustomerOrders();
+        renderCustomerOrderList();
+        renderProvisionalList();
+        showToast('連絡不要に設定しました');
+      });
+    });
+    // 連絡が必要に戻す
+    wrap.querySelectorAll('.co-needs-notify-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const order = customerOrders.find(o=>o.id===btn.dataset.coId);
+        if(!order) return;
+        order.needsNotification = true;
+        await saveCustomerOrders();
+        renderCustomerOrderList();
+        renderProvisionalList();
+        showToast('連絡が必要に設定しました');
       });
     });
 
@@ -12578,13 +12605,14 @@ window.addEventListener('storageReady', function(){
           +(entry.customerOrderId ? (()=>{
               const _coRef = customerOrders.find(o=>o.id===entry.customerOrderId);
               if(!_coRef) return '';
-              if(_coRef.needsNotification === false) return '<div style="margin-top:8px;"><span style="font-size:11px;color:var(--text-3);background:var(--bg-3);padding:2px 8px;border-radius:4px;">連絡不要</span></div>';
+              if(_coRef.needsNotification === false) return '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:var(--text-3);background:var(--bg-3);padding:2px 8px;border-radius:4px;">連絡不要</span><button class="btn btn-ghost btn-sm prov-needs-notify-btn" data-co-id="'+entry.customerOrderId+'" style="font-size:11px;padding:2px 10px;">連絡が必要に戻す</button></div>';
               const _ntf = _coRef.notified;
               const _bg = _ntf ? '#d4edda' : '#fff3cd';
               const _col = _ntf ? '#1a7a3c' : '#b8650c';
-              return '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'
+              return '<div style="margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
                 +'<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;background:'+_bg+';color:'+_col+';">'+(_ntf?'✅ 連絡済み':'📞 未連絡')+'</span>'
                 +'<button class="btn btn-ghost btn-sm prov-notify-toggle-btn" data-prov-id="'+entry.id+'" data-co-id="'+entry.customerOrderId+'" style="font-size:11px;padding:2px 10px;">'+(_ntf?'未連絡に戻す':'連絡済みにする')+'</button>'
+                +'<button class="btn btn-ghost btn-sm prov-no-notify-btn" data-co-id="'+entry.customerOrderId+'" style="font-size:11px;padding:2px 10px;color:var(--text-3);border-color:var(--text-3);">連絡不要にする</button>'
                 +'</div>';
             })() : '')
           +'</div>'
@@ -12668,6 +12696,33 @@ window.addEventListener('storageReady', function(){
         renderProvisionalList();
         renderCustomerOrderList();
         showToast(coRef.notified ? '✅ 連絡済みにしました' : '連絡済みを解除しました');
+      });
+    });
+
+    // 仮出庫：連絡不要にする
+    wrap.querySelectorAll('.prov-no-notify-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const coRef = customerOrders.find(o=>o.id===btn.dataset.coId);
+        if(!coRef) return;
+        coRef.needsNotification = false;
+        coRef.notified = false;
+        coRef.notifiedAt = null;
+        await saveCustomerOrders();
+        renderProvisionalList();
+        renderCustomerOrderList();
+        showToast('連絡不要に設定しました');
+      });
+    });
+    // 仮出庫：連絡が必要に戻す
+    wrap.querySelectorAll('.prov-needs-notify-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const coRef = customerOrders.find(o=>o.id===btn.dataset.coId);
+        if(!coRef) return;
+        coRef.needsNotification = true;
+        await saveCustomerOrders();
+        renderProvisionalList();
+        renderCustomerOrderList();
+        showToast('連絡が必要に設定しました');
       });
     });
 
