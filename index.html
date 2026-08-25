@@ -1480,35 +1480,34 @@
         <label>テンプレート名（管理用）</label>
         <input type="text" id="ptName" placeholder="例：REGNO GR-XⅢ専用テンプレ" style="width:100%;box-sizing:border-box;">
       </div>
+      <!-- 1行目：ブランド・銘柄 -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="field" style="flex:1;min-width:160px;">
           <label>対象ブランド（前方一致）</label>
           <input type="text" id="ptBrand" placeholder="例：ブリヂストン" style="width:100%;box-sizing:border-box;">
         </div>
         <div class="field" style="flex:1;min-width:160px;">
-          <label style="display:flex;align-items:center;gap:10px;">
-            <span>対象銘柄</span>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:400;cursor:pointer;">
-              <input type="checkbox" id="ptModelExact" style="accent-color:var(--teal);"> 完全一致
-            </label>
-          </label>
+          <label>対象銘柄</label>
           <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;">
+          <label style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;font-weight:400;cursor:pointer;">
+            <input type="checkbox" id="ptModelExact" style="accent-color:var(--teal);width:14px;height:14px;"> 完全一致で照合する
+          </label>
         </div>
-        <div class="field" style="min-width:160px;">
+      </div>
+      <!-- 2行目：支店・製造年 -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+        <div class="field" style="flex:2;min-width:200px;">
           <label>対象支店（複数選択可・未選択で全支店共通）</label>
-          <div style="display:flex;gap:12px;flex-wrap:nowrap;margin-top:4px;">
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="taniyabe" style="accent-color:var(--teal);">谷田部店</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="katsuta"  style="accent-color:var(--teal);">勝田店</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="pt-branch-chk" value="iwama"    style="accent-color:var(--teal);">岩間店</label>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" class="pt-branch-chk" value="taniyabe" style="accent-color:var(--teal);width:15px;height:15px;">谷田部店</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" class="pt-branch-chk" value="katsuta"  style="accent-color:var(--teal);width:15px;height:15px;">勝田店</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" class="pt-branch-chk" value="iwama"    style="accent-color:var(--teal);width:15px;height:15px;">岩間店</label>
           </div>
         </div>
-        <div class="field" style="min-width:120px;max-width:180px;">
-          <label style="display:flex;align-items:center;gap:6px;">
-            製造年（以前）
-            <span style="font-size:11px;color:var(--text-3);font-weight:400;">例：2023</span>
-          </label>
-          <input type="number" id="ptMfgYearMax" min="2000" max="2099" placeholder="空欄＝条件なし" style="width:100%;box-sizing:border-box;">
-          <div style="font-size:11px;color:var(--text-3);margin-top:3px;">入力した年以前の製品に優先適用</div>
+        <div class="field" style="flex:1;min-width:160px;max-width:220px;">
+          <label>製造年（以前）</label>
+          <input type="number" id="ptMfgYearMax" min="2000" max="2099" placeholder="例：2023（空欄＝条件なし）" style="width:100%;box-sizing:border-box;">
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">入力した年以前の製品に優先適用</div>
         </div>
       </div>
       <!-- タイプ・向き切替 -->
