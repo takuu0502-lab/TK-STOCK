@@ -3464,6 +3464,11 @@ window.addEventListener('storageReady', function(){
           const staffUser = accounts.find(u=>u.displayName === po.staff);
           po.branchId = (staffUser && staffUser.branchId) ? staffUser.branchId : 'taniyabe';
         }
+        // items が undefined になっているレコードを修復
+        if(!Array.isArray(po.items)){
+          pobMigrated = true;
+          po.items = [];
+        }
       });
       if(pobMigrated) await saveProvisionalOutbounds();
 
@@ -3982,7 +3987,7 @@ window.addEventListener('storageReady', function(){
       _editDateTbd.onchange = function(){ _editDateInput.disabled = _editDateTbd.checked; if(_editDateTbd.checked) _editDateInput.value=''; };
       document.getElementById('provEdit_car').value = entry.carName || '';
       const itemsEl = document.getElementById('provEdit_items');
-      itemsEl.innerHTML = entry.items.map((item, i)=>{
+      itemsEl.innerHTML = (entry.items||[]).map((item, i)=>{
         const sub = [item.brand||'', item.spec||''].filter(Boolean).join(' ');
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-2);border-radius:8px;margin-bottom:6px;">'
           +'<div style="flex:1;min-width:0;">'
@@ -4025,7 +4030,7 @@ window.addEventListener('storageReady', function(){
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_customer').focus(); return; }
         if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; _editDateInput.focus(); return; }
-        const qtys = entry.items.map((_,i)=> Math.max(1, parseInt(document.getElementById('provEdit_qty_'+i).value||'1',10)));
+        const qtys = (entry.items||[]).map((_,i)=> Math.max(1, parseInt(document.getElementById('provEdit_qty_'+i).value||'1',10)));
         cleanup({ customerName:name, scheduledDate:date, carName:car, qtys });
       }
       function onCancel(){ cleanup(null); }
@@ -12240,7 +12245,7 @@ window.addEventListener('storageReady', function(){
         entry.customerName  = result.customerName;
         entry.scheduledDate = result.scheduledDate;
         entry.carName       = result.carName;
-        entry.items.forEach((item, i)=>{ item.qty = result.qtys[i]; });
+        (entry.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
         await saveProvisionalOutbounds();
         renderProductTable();
         renderHistory();
