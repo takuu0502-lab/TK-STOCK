@@ -4096,7 +4096,11 @@ window.addEventListener('storageReady', function(){
 
   function _getOrderStatus(order){
     const provItem = provisionalOutbounds.find(p=>p.customerOrderId === order.id || p.id === order.id || (order._provId && p.id === order._provId));
-    // お渡し完了済み
+    // 出庫確定（売上済み）
+    if(provItem && provItem.status === 'confirmed'){
+      return {code:'sold', label:'売上済み', color:'#6b7280'};
+    }
+    // お渡し完了済み（作業完了ボタン押下）
     if(order.status === 'delivered' || (provItem && provItem.status === 'done')){
       return {code:'delivered', label:'納品済み', color:'#888'};
     }
@@ -4151,7 +4155,7 @@ window.addEventListener('storageReady', function(){
         customerName: prov.customerName||'', carName: prov.carName||'',
         installDate: prov.scheduledDate||'',
         expectedDate: '', needsNotification: prov.needsNotification, notified: prov.notified||false,
-        status: prov.status==='done' ? 'delivered' : 'pending',
+        status: prov.status==='done' ? 'delivered' : prov.status==='confirmed' ? 'sold' : 'pending',
         category: prov.category||'', createdAt: prov.date||'', createdBy: prov.staff||''
       });
     });
@@ -4160,7 +4164,7 @@ window.addEventListener('storageReady', function(){
     if(!_resShowDelivered){
       baseOrders = baseOrders.filter(o=>{
         const st = _getOrderStatus(o);
-        return st.code !== 'delivered';
+        return st.code !== 'delivered' && st.code !== 'sold';
       });
     }
     // カテゴリーごとに集計（進行中のみ）
@@ -4263,7 +4267,7 @@ window.addEventListener('storageReady', function(){
           +(order.createdBy ? '<div style="color:var(--text-3);">'+escapeHtml(order.createdBy)+'</div>' : '')
           +'</td>';
         html += '<td style="padding:10px 12px;white-space:nowrap;">';
-        if(st.code !== 'delivered'){
+        if(st.code !== 'delivered' && st.code !== 'sold'){
           html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">✅ 作業完了</button>';
         }
         html += '</td>';
