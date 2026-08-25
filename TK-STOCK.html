@@ -4200,6 +4200,7 @@ window.addEventListener('storageReady', function(){
       html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">取付予定</th>';
       html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">連絡</th>';
       html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">カテゴリー</th>';
+      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">登録日・担当</th>';
       html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">操作</th>';
       html += '</tr></thead><tbody>';
       orders.forEach(order=>{
@@ -4237,6 +4238,11 @@ window.addEventListener('storageReady', function(){
         }
         html += '</td>';
         html += '<td style="padding:10px 12px;color:var(--text-3);font-size:12px;">'+escapeHtml(order.category||'未分類')+'</td>';
+        const _createdDateStr = order.createdAt ? (()=>{ const d=new Date(order.createdAt); return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0'); })() : '';
+        html += '<td style="padding:10px 12px;white-space:nowrap;font-size:12px;color:var(--text-2);">'
+          +(_createdDateStr ? '<div>'+escapeHtml(_createdDateStr)+'</div>' : '')
+          +(order.createdBy ? '<div style="color:var(--text-3);">'+escapeHtml(order.createdBy)+'</div>' : '')
+          +'</td>';
         html += '<td style="padding:10px 12px;white-space:nowrap;">';
         if(st.code !== 'delivered'){
           html += '<button class="btn btn-ghost btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">納品済みにする</button>';
