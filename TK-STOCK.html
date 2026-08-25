@@ -12663,12 +12663,28 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     const _coBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch);
+    // 仮出庫と同時に入庫予定登録したエントリ（customerOrders に対応なし）を補完
+    const coIdSet2 = new Set(customerOrders.map(o=>o.id));
+    const orphanIsch = incomingSchedules.filter(s=>
+      s.status==='pending' && s.branchId===_coBranch &&
+      s.customerName && !s.customerOrderId &&
+      s.inboundType!=='stock' && s.inboundType!=='customerOrder'
+    );
+    // customerName+carName でグループ化
+    const orphanGroups = {};
+    orphanIsch.forEach(s=>{
+      const key = (s.customerName||'')+'__'+(s.carName||'');
+      if(!orphanGroups[key]) orphanGroups[key] = { customerName:s.customerName, carName:s.carName||'', items:[], expectedDate:s.expectedDate||'' };
+      orphanGroups[key].items.push(s);
+    });
+    const orphanList = Object.values(orphanGroups);
+    const totalCount = pending.length + orphanList.length;
 
     let header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-      + '<div style="font-size:14px;font-weight:700;color:var(--teal);">🛒 客注品入庫リスト'+(pending.length>0?' ('+pending.length+'件)':'')+'</div>'
+      + '<div style="font-size:14px;font-weight:700;color:var(--teal);">🛒 客注品入庫リスト'+(totalCount>0?' ('+totalCount+'件)':'')+'</div>'
       + '</div>';
 
-    if(pending.length===0){
+    if(pending.length===0 && orphanList.length===0){
       wrap.innerHTML = header + '<div style="font-size:13px;color:var(--text-3);padding:6px 2px;">客注品はありません</div>';
       return;
     }
@@ -12738,7 +12754,33 @@ window.addEventListener('storageReady', function(){
     }).join('');
 
     const grid = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+rows+'</div>';
-    wrap.innerHTML = header + grid;
+    // 仮出庫+入庫予定の補完カード
+    let orphanHtml = '';
+    if(orphanList.length > 0){
+      orphanHtml = '<div style="margin-top:16px;font-size:13px;font-weight:700;color:var(--amber);margin-bottom:8px;">📋 入庫予定あり（仮出庫連携）</div>';
+      orphanHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">';
+      orphanList.forEach(g=>{
+        const ischItemRows = g.items.map(s=>{
+          const p = products.find(x=>x.id===s.productId);
+          const nm = p ? cleanName(p.name) : (s.productName||'不明');
+          const sp = p ? (p.spec||'') : (s.spec||'');
+          return '<div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;">'
+            +'<div style="flex:1;"><div style="font-size:13px;font-weight:600;">'+escapeHtml(nm)+'</div>'+(sp?'<div style="font-size:11px;color:var(--text-3);">'+escapeHtml(sp)+'</div>':'')+'</div>'
+            +'<div style="font-weight:700;color:var(--amber);white-space:nowrap;">'+s.qty+'本</div>'
+            +'<div style="font-size:11px;color:var(--text-2);white-space:nowrap;">'+(s.expectedDate||'未定')+'</div>'
+            +'</div>';
+        }).join('');
+        orphanHtml += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;">'
+          +'<div style="padding:14px 16px;border-bottom:1px solid var(--line-soft);">'
+          +'<div style="font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:4px;">'+escapeHtml(g.customerName)+' 様</div>'
+          +(g.carName?'<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(g.carName)+'</div>':'')
+          +'</div>'
+          +'<div style="padding:12px 16px;">'+ischItemRows+'</div>'
+          +'</div>';
+      });
+      orphanHtml += '</div>';
+    }
+    wrap.innerHTML = header + (pending.length > 0 ? grid : '') + orphanHtml;
 
     // 連絡済みトグル
     wrap.querySelectorAll('.co-notify-toggle-btn').forEach(btn=>{
