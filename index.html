@@ -12688,28 +12688,13 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     const _coBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch);
-    // 仮出庫と同時に入庫予定登録したエントリ（customerOrders に対応なし）を補完
-    const coIdSet2 = new Set(customerOrders.map(o=>o.id));
-    const orphanIsch = incomingSchedules.filter(s=>
-      s.status==='pending' && s.branchId===_coBranch &&
-      s.customerName && !s.customerOrderId &&
-      s.inboundType!=='stock' && s.inboundType!=='customerOrder'
-    );
-    // customerName+carName でグループ化
-    const orphanGroups = {};
-    orphanIsch.forEach(s=>{
-      const key = (s.customerName||'')+'__'+(s.carName||'');
-      if(!orphanGroups[key]) orphanGroups[key] = { customerName:s.customerName, carName:s.carName||'', items:[], expectedDate:s.expectedDate||'' };
-      orphanGroups[key].items.push(s);
-    });
-    const orphanList = Object.values(orphanGroups);
-    const totalCount = pending.length + orphanList.length;
+    const totalCount = pending.length;
 
     let header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
       + '<div style="font-size:14px;font-weight:700;color:var(--teal);">🛒 客注品入庫リスト'+(totalCount>0?' ('+totalCount+'件)':'')+'</div>'
       + '</div>';
 
-    if(pending.length===0 && orphanList.length===0){
+    if(pending.length===0){
       wrap.innerHTML = header + '<div style="font-size:13px;color:var(--text-3);padding:6px 2px;">客注品はありません</div>';
       return;
     }
@@ -12778,38 +12763,7 @@ window.addEventListener('storageReady', function(){
         + '</div>';
     }).join('');
 
-    // 仮出庫連携エントリを客注品カードと同じ形式で追加
-    let orphanRows = orphanList.map(g=>{
-      const ischIds = g.items.map(s=>s.id).join(',');
-      const ischItemRows = g.items.map(s=>{
-        const p = products.find(x=>x.id===s.productId);
-        const nm = p ? cleanName(p.name) : (s.productName||'不明');
-        const sp = p ? (p.spec||'') : (s.spec||'');
-        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;">'
-          +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(nm)+'</div>'+(sp?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(sp)+'</div>':'')+'</div>'
-          +'<div style="background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber);border-radius:6px;font-size:11px;font-weight:700;padding:1px 8px;white-space:nowrap;">'+s.qty+'本</div>'
-          +'</div>';
-      }).join('');
-      const expectedDateStr = g.items[0] ? (g.items[0].expectedDate||'未定') : '未定';
-      return '<div style="border:1.5px solid var(--teal);border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
-        +'<div style="padding:14px 16px;flex:1;">'
-        +'<div style="margin-bottom:8px;">'
-        +'<div style="font-size:17px;font-weight:700;color:var(--text-1);line-height:1.3;">'+escapeHtml(g.customerName)+'<span style="font-size:13px;font-weight:400;color:var(--text-2);">　様</span></div>'
-        +(g.carName?'<div style="font-size:13px;color:var(--text-2);margin-top:2px;">車種：'+escapeHtml(g.carName)+'</div>':'')
-        +'</div>'
-        +ischItemRows
-        +'<div style="margin-top:8px;display:flex;align-items:center;gap:6px;">'
-        +'<span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-dim);border:1px solid var(--teal);border-radius:4px;padding:1px 6px;white-space:nowrap;">入庫予定日</span>'
-        +'<span style="font-size:13px;font-weight:700;color:var(--teal);">'+escapeHtml(expectedDateStr)+'</span>'
-        +'</div>'
-        +'</div>'
-        +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-        +'<button class="btn btn-teal btn-sm orphan-arrive-btn" data-isch-ids="'+escapeHtml(ischIds)+'" style="flex:1;font-size:12px;">✅ 入荷確定</button>'
-        +'<button class="btn btn-ghost btn-sm orphan-cancel-btn" data-isch-ids="'+escapeHtml(ischIds)+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">取消</button>'
-        +'</div>'
-        +'</div>';
-    }).join('');
-    const allRows = rows + orphanRows;
+    const allRows = rows;
     const grid = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+allRows+'</div>';
     wrap.innerHTML = header + grid;
 
