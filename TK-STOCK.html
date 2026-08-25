@@ -4102,7 +4102,8 @@ window.addEventListener('storageReady', function(){
       return {code:'delivered', label:'納品済み', color:'#888'};
     }
     // 仮出庫が存在する場合：この注文分の数量が在庫で賄えるかチェック
-    if(provItem && provItem.status === 'pending'){
+    // status が 'pending' または未設定（旧データ）を対象とする
+    if(provItem && provItem.status !== 'done'){
       const provItems = provItem.items || [];
       const hasOverStock = provItems.some(pi=>{
         const p = products.find(x=>x.id===pi.productId);
