@@ -7625,7 +7625,7 @@ window.addEventListener('storageReady', function(){
       switchTab('out');
     });
     // 客注品登録（一括）→ 入庫予定登録モーダルを客注品モードで開く
-    document.getElementById('bulkCoBtn').addEventListener('click', ()=>{
+    document.getElementById('bulkCoBtn')?.addEventListener('click', ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
       if(ps.length===0) return;
       // bulkInschBtn のクリックを再利用するため、一時的に selectedProducts をそのままにして呼び出す
