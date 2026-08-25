@@ -12710,7 +12710,9 @@ window.addEventListener('storageReady', function(){
       const _diffDays = _expD ? Math.round((_expD - _coToday)/(1000*60*60*24)) : null;
       const _isOver = _diffDays !== null && _diffDays < 0;
       const _borderCol = _isOver ? 'var(--red)' : 'var(--line)';
-      // 商品リスト表示
+      // 商品リスト表示（incomingSchedules があれば個別入荷確定ボタンを表示）
+      const _linkedIschAll = incomingSchedules.filter(s=>s.customerOrderId===order.id);
+      const _hasLinkedIsch = _linkedIschAll.length > 0;
       const _itemsHtml = _srcItems.map(si=>{
         const p = products.find(x=>x.id===si.productId);
         const nm = p ? cleanName(p.name) : (si.productName||'不明');
@@ -12718,12 +12720,17 @@ window.addEventListener('storageReady', function(){
         const _majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
         const _siIsTire = (_majorCat && _majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
         const _unit = _siIsTire ? '本' : '個';
-        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;">'
+        // 対応 incomingSchedules を探す
+        const _linkedIsch = _linkedIschAll.find(s=>s.productId===si.productId && s.status==='pending');
+        const _isItemArrived = !_linkedIsch && _linkedIschAll.some(s=>s.productId===si.productId && (s.status==='done'||s.status==='arrived'||s.status==='completed'));
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;">'
           +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(nm)+'</div>'
           +(sp?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(sp)+'</div>':'')
           +'</div>'
-          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;text-align:center;flex-shrink:0;font-size:13px;font-weight:700;color:var(--amber);">'+si.qty+_unit+'</div>'
+          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;text-align:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--amber);">'+si.qty+_unit+'</div>'
+          +(_isItemArrived ? '<div style="font-size:11px;font-weight:700;color:var(--teal);white-space:nowrap;">✅入荷済</div>'
+            : (_linkedIsch ? '<button class="btn btn-teal btn-sm co-item-arrive-btn" data-co-id="'+order.id+'" data-isch-id="'+_linkedIsch.id+'" data-product-id="'+si.productId+'" data-qty="'+si.qty+'" data-unit="'+_unit+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;">入荷確定</button>' : ''))
           +'</div>';
       }).join('');
       return '<div style="border:1.5px solid '+_borderCol+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
@@ -12756,7 +12763,7 @@ window.addEventListener('storageReady', function(){
         + '</div>'
         /* ── カード下部ボタン ── */
         + '<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-        + '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;font-size:12px;">✅ 入荷確定</button>'
+        + (!_hasLinkedIsch ? '<button class="btn btn-teal btn-sm co-arrive-btn" data-co-id="'+order.id+'" style="flex:1;font-size:12px;">✅ 入荷確定</button>' : '')
         + '<button class="btn btn-ghost btn-sm co-delete-btn" data-co-id="'+order.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">取消</button>'
         + '</div>'
         + '</div>';
@@ -12850,6 +12857,45 @@ window.addEventListener('storageReady', function(){
         if(_detailInschRefresh) _detailInschRefresh();
         const msgEl = document.getElementById('inBranchBanner');
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入荷確定・仮出庫登録が完了しました。</div>'; setTimeout(()=>{ const e=document.getElementById('inBranchBanner'); if(e) e.innerHTML=''; },3000); }
+      });
+    });
+
+    // 商品ごとの入荷確定
+    wrap.querySelectorAll('.co-item-arrive-btn').forEach(btn=>{
+      btn.addEventListener('click', async()=>{
+        const orderId = btn.dataset.coId;
+        const ischId = btn.dataset.ischId;
+        const productId = btn.dataset.productId;
+        const qty = parseInt(btn.dataset.qty, 10);
+        const unit = btn.dataset.unit || '個';
+        const order = customerOrders.find(o=>o.id===orderId);
+        const isch = incomingSchedules.find(s=>s.id===ischId);
+        const p = products.find(x=>x.id===productId);
+        if(!order || !isch || !p) return;
+        const ok = await showConfirm('「'+cleanName(p.name)+'」×'+qty+unit+'\nを入荷確定しますか？\n在庫に追加します。');
+        if(!ok) return;
+        const _coBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        if(!p.branchStock) p.branchStock = {};
+        p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + qty;
+        transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, note:'客注品入荷 ('+order.customerName+')' });
+        isch.status = 'done';
+        await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+        // 全 incomingSchedules が完了したら注文を completed に
+        const _allForOrder = incomingSchedules.filter(s=>s.customerOrderId===orderId);
+        const _allDone = _allForOrder.length > 0 && _allForOrder.every(s=>s.status==='done'||s.status==='arrived'||s.status==='completed');
+        if(_allDone){
+          order.status = 'completed';
+          order.completedAt = new Date().toISOString();
+          await saveCustomerOrders();
+          showToast('全商品入荷済み → 入庫完了');
+        } else {
+          showToast('入荷確定しました');
+        }
+        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+' × '+qty+'枚');
+        if(doPrint) _printReceiveLabel(p, qty, { customerName: order.customerName, installDate: order.installDate });
+        renderProductTable(); renderCustomerOrderList(); renderProvisionalList();
+        if(_detailProvRefresh) _detailProvRefresh();
+        if(_detailInschRefresh) _detailInschRefresh();
       });
     });
 
