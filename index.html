@@ -1079,6 +1079,7 @@
   <button class="btn-bulk btn-bulk-teal" id="bulkInBtn">📥 入庫登録</button>
   <button class="btn-bulk btn-bulk-out" id="bulkOutBtn">📤 出庫登録</button>
   <button class="btn-bulk btn-bulk-prov" id="bulkProvBtn">🔖 仮出庫登録</button>
+  <button class="btn-bulk" id="bulkCoBtn" style="background:#1a6e4a;color:#fff;">🛒 客注品登録</button>
   <button class="btn-bulk" id="bulkInschBtn" style="background:#1a7a5e;color:#fff;">📦 入庫予定登録</button>
   <button class="btn-bulk btn-bulk-qr" id="bulkQrBtn">🖨 QR印刷</button>
   <button class="btn-bulk btn-bulk-order" id="bulkOrderBtn">📋 発注書作成</button>
@@ -7247,6 +7248,40 @@ window.addEventListener('storageReady', function(){
       renderProductTable();
       switchTab('out');
     });
+    // 客注品登録（一括）
+    document.getElementById('bulkCoBtn').addEventListener('click', ()=>{
+      const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
+      if(ps.length===0) return;
+      // 選択商品をモーダルの _coItems にセットしてから開く
+      _coItems = ps.map(p=>({ product: p, qty: 4 }));
+      _coEditOrderId = null;
+      const modal = document.getElementById('customerOrderModal');
+      const titleEl = modal.querySelector('h3');
+      if(titleEl) titleEl.textContent = '🛒 客注品の登録';
+      document.getElementById('co_save').textContent = '登録する';
+      document.getElementById('co_product_search').value = '';
+      document.getElementById('co_product_result').style.display = 'none';
+      document.getElementById('co_customer').value = '';
+      document.getElementById('co_car').value = '';
+      document.getElementById('co_date').value = '';
+      document.getElementById('co_date_tbd').checked = false;
+      document.getElementById('co_date').disabled = false;
+      document.getElementById('co_install_date').value = '';
+      document.getElementById('co_install_date_tbd').checked = false;
+      document.getElementById('co_install_date').disabled = false;
+      document.getElementById('co_notify_yes').checked = true;
+      document.getElementById('co_notify_no').checked = false;
+      const _f = document.getElementById('co_inbound_now_field');
+      const _cb = document.getElementById('co_inbound_now');
+      if(_f) _f.style.display = 'block';
+      if(_cb) _cb.checked = false;
+      document.getElementById('co_error').style.display = 'none';
+      _renderCoItemsList();
+      modal.classList.add('show');
+      selectedProducts.clear(); updateBulkBar();
+      setTimeout(()=>{ document.getElementById('co_customer').focus(); }, 100);
+    });
+
     // QR一括印刷 → 設定モーダルを開く
     document.getElementById('bulkQrBtn').addEventListener('click', ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
