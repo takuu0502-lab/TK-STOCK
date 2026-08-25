@@ -9530,10 +9530,11 @@ window.addEventListener('storageReady', function(){
       let detected = false;
       let stream = null;
       let rafId = null;
+      let currentFacingMode = 'environment';
 
       try{
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal:1920 }, height: { ideal:1080 } }
+          video: { facingMode: currentFacingMode, width: { ideal:1920 }, height: { ideal:1080 } }
         });
 
         const track = stream.getVideoTracks()[0];
@@ -9586,6 +9587,83 @@ window.addEventListener('storageReady', function(){
               torchBtn.style.background = torchOn ? 'rgba(230,160,32,0.85)' : 'rgba(0,0,0,0.55)';
             };
             readerEl.appendChild(torchBtn);
+          }
+        }catch(_){}
+
+        // カメラ切替ボタン（複数カメラがある端末のみ）
+        try{
+          const _devs = await navigator.mediaDevices.enumerateDevices();
+          const _vDevs = _devs.filter(d=>d.kind==='videoinput');
+          if(_vDevs.length > 1){
+            const flipBtn = document.createElement('button');
+            flipBtn.innerHTML = '🔄';
+            flipBtn.title = 'カメラ切り替え（インカメラ↔アウトカメラ）';
+            flipBtn.style.cssText = 'position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:20px;cursor:pointer;z-index:99;';
+            flipBtn.onclick = async () => {
+              if(detected || flipBtn.disabled) return;
+              flipBtn.disabled = true;
+              if(rafId) cancelAnimationFrame(rafId);
+              rafId = null;
+              if(stream) stream.getTracks().forEach(t=>t.stop());
+              stream = null;
+              currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+              try{
+                stream = await navigator.mediaDevices.getUserMedia({
+                  video: { facingMode: currentFacingMode, width:{ideal:1920}, height:{ideal:1080} }
+                });
+                const _nt = stream.getVideoTracks()[0];
+                if(_nt && _nt.applyConstraints){
+                  _nt.applyConstraints({ advanced:[{focusMode:'continuous'}] }).catch(()=>{});
+                }
+                video.srcObject = stream;
+                await video.play();
+                // 検出ループ再開
+                if(barcodeDetector){
+                  let _det2 = false;
+                  const _tick2 = async () => {
+                    if(detected) return;
+                    if(video.readyState >= video.HAVE_ENOUGH_DATA && !_det2){
+                      _det2 = true;
+                      try{
+                        const _codes = await barcodeDetector.detect(video);
+                        const _hit = _codes.find(b=>b.rawValue);
+                        if(_hit && !detected){ detected=true; try{navigator.vibrate&&navigator.vibrate(80);}catch(_){} onDecoded(_hit.rawValue); return; }
+                      }catch(_){}
+                      _det2 = false;
+                    }
+                    rafId = requestAnimationFrame(_tick2);
+                  };
+                  rafId = requestAnimationFrame(_tick2);
+                } else {
+                  const _cv2 = document.createElement('canvas');
+                  const _cx2 = _cv2.getContext('2d',{willReadFrequently:true});
+                  let _ls2 = 0;
+                  const _tick2b = () => {
+                    if(detected) return;
+                    if(video.readyState >= video.HAVE_ENOUGH_DATA && Date.now()-_ls2>100){
+                      _ls2 = Date.now();
+                      _cv2.width = video.videoWidth; _cv2.height = video.videoHeight;
+                      _cx2.drawImage(video,0,0);
+                      if(typeof jsQR !== 'undefined'){
+                        try{
+                          const _d2=_cx2.getImageData(0,0,_cv2.width,_cv2.height);
+                          const _qr2=jsQR(_d2.data,_d2.width,_d2.height,{inversionAttempts:'dontInvert'});
+                          if(_qr2&&_qr2.data&&!detected){ detected=true; try{navigator.vibrate&&navigator.vibrate(80);}catch(_){} onDecoded(_qr2.data); return; }
+                        }catch(_){}
+                      }
+                    }
+                    rafId = requestAnimationFrame(_tick2b);
+                  };
+                  rafId = requestAnimationFrame(_tick2b);
+                }
+              }catch(e){
+                // 失敗したら元のカメラに戻す
+                currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+                showToast('カメラの切り替えに失敗しました');
+              }
+              flipBtn.disabled = false;
+            };
+            readerEl.appendChild(flipBtn);
           }
         }catch(_){}
 
