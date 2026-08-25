@@ -5690,7 +5690,9 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     updateBulkBar();
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
-      tr.addEventListener('click', ()=>{
+      tr.addEventListener('click', (e)=>{
+        // バッジ要素クリックは商品詳細に遷移しない（iPad対応）
+        if(e.target.closest('[data-price-tip],[data-prov-badge],[data-insch-badge]')) return;
         // 出庫タブがアクティブな場合はカートに追加
         if(document.getElementById('tab-out').style.display !== 'none'){
           const p = products.find(x=>x.id===tr.dataset.detail);
@@ -9298,6 +9300,16 @@ window.addEventListener('storageReady', function(){
       if(!badge) return;
       _hideTimer = setTimeout(()=>{ tip.style.display='none'; }, 150);
     });
+    // タッチデバイス（iPad等）対応：タップでツールチップ表示
+    document.addEventListener('click', e=>{
+      const badge = e.target.closest('[data-prov-badge]');
+      if(!badge) return;
+      e.stopPropagation();
+      clearTimeout(_hideTimer);
+      // 既存のmouseover処理を再利用して内容を生成・表示
+      badge.dispatchEvent(new MouseEvent('mouseover', {bubbles:true}));
+      _hideTimer = setTimeout(()=>{ tip.style.display='none'; }, 3000);
+    });
   })();
 
   // ---------- 入庫予定ツールチップ ----------
@@ -9350,17 +9362,16 @@ window.addEventListener('storageReady', function(){
       if(!badge) return;
       _hideTimer = setTimeout(()=>{ tip.style.display='none'; }, 150);
     });
+    // タッチデバイス（iPad等）対応：タップでツールチップ表示
+    document.addEventListener('click', e=>{
+      const badge = e.target.closest('[data-insch-badge]');
+      if(!badge) return;
+      e.stopPropagation();
+      clearTimeout(_hideTimer);
+      badge.dispatchEvent(new MouseEvent('mouseover', {bubbles:true}));
+      _hideTimer = setTimeout(()=>{ tip.style.display='none'; }, 3000);
+    });
   })();
-
-  // ---------- 入庫予定バッジクリック → 商品詳細を開く ----------
-  document.addEventListener('click', e=>{
-    const badge = e.target.closest('[data-insch-badge]');
-    if(!badge) return;
-    e.stopPropagation();
-    const productId = badge.dataset.inschBadge;
-    const p = products.find(x=>x.id===productId);
-    if(p) openDetailModal(p.id);
-  });
 
   // ---------- カメラ起動の共通処理（エラー診断つき） ----------
   function inIframe(){
@@ -15052,6 +15063,16 @@ window.addEventListener('storageReady', function(){
   _tipEl.id = 'priceTip';
   _tipEl.style.cssText = 'position:fixed;z-index:9999;background:#fff;color:#333;font-size:12px;line-height:1.8;padding:8px 14px;border-radius:10px;pointer-events:none;display:none;white-space:pre;box-shadow:0 3px 16px rgba(0,0,0,.15);border:1px solid #e0ddd6;';
   document.body.appendChild(_tipEl);
+  let _priceTipHideTimer = null;
+  const _showPriceTip = (txt, cx, cy) => {
+    if(!txt) return;
+    _tipEl.textContent = txt;
+    _tipEl.style.display = 'block';
+    const w = _tipEl.offsetWidth, h = _tipEl.offsetHeight;
+    const x = cx + 14, y = cy + 14;
+    _tipEl.style.left = (x + w > window.innerWidth ? cx - w - 6 : x) + 'px';
+    _tipEl.style.top  = (y + h > window.innerHeight ? cy - h - 6 : y) + 'px';
+  };
   document.addEventListener('mouseover', e=>{
     const el = e.target.closest('[data-price-tip]');
     if(!el) return;
@@ -15071,6 +15092,18 @@ window.addEventListener('storageReady', function(){
     _tipEl.style.left = (x + w > window.innerWidth ? e.clientX - w - 6 : x) + 'px';
     _tipEl.style.top  = (y + h > window.innerHeight ? e.clientY - h - 6 : y) + 'px';
   });
+  // タッチデバイス（iPad等）対応：タップでtooltip表示
+  document.addEventListener('click', e=>{
+    const el = e.target.closest('[data-price-tip]');
+    if(!el) return;
+    e.stopPropagation();
+    const txt = el.getAttribute('data-price-tip');
+    if(!txt) return;
+    clearTimeout(_priceTipHideTimer);
+    const rect = el.getBoundingClientRect();
+    _showPriceTip(txt, rect.left, rect.bottom);
+    _priceTipHideTimer = setTimeout(()=>{ _tipEl.style.display='none'; }, 3000);
+  }, true); // capture=trueで確実にstopPropagation前に動作
 });
 </script>
 </body>
