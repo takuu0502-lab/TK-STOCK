@@ -667,6 +667,9 @@
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
               <input type="checkbox" id="qrShowCode" checked style="accent-color:var(--amber);width:15px;height:15px;"> コード値
             </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding-top:4px;border-top:1px solid var(--line-soft);margin-top:4px;">
+              <input type="checkbox" id="qrShowBarcode" checked style="accent-color:var(--amber);width:15px;height:15px;"> 📶 1Dバーコードも印刷する<br><span style="font-size:10px;color:var(--text-3);">（SHバーコード発行済み商品のみ）</span>
+            </label>
           </div>
         </div>
       </div>
@@ -8502,7 +8505,8 @@ window.addEventListener('storageReady', function(){
     showName: true,
     showSpec: true,
     showPartno: false,
-    showCode: true
+    showCode: true,
+    showBarcode: true
   };
 
   function loadQrSettings(){
@@ -8558,12 +8562,14 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('#qrSizeGroup .qr-opt-btn').forEach(b=>{
       b.onclick = ()=>{ qrSettings.size = Number(b.dataset.qrSize); applySizeUI(); onSettingChange(); };
     });
-    ['qrShowName','qrShowSpec','qrShowPartno','qrShowCode'].forEach(id=>{
+    document.getElementById('qrShowBarcode').checked = !!qrSettings.showBarcode;
+    ['qrShowName','qrShowSpec','qrShowPartno','qrShowCode','qrShowBarcode'].forEach(id=>{
       document.getElementById(id).onchange = ()=>{
-        qrSettings.showName = document.getElementById('qrShowName').checked;
-        qrSettings.showSpec = document.getElementById('qrShowSpec').checked;
-        qrSettings.showPartno = document.getElementById('qrShowPartno').checked;
-        qrSettings.showCode = document.getElementById('qrShowCode').checked;
+        qrSettings.showName    = document.getElementById('qrShowName').checked;
+        qrSettings.showSpec    = document.getElementById('qrShowSpec').checked;
+        qrSettings.showPartno  = document.getElementById('qrShowPartno').checked;
+        qrSettings.showCode    = document.getElementById('qrShowCode').checked;
+        qrSettings.showBarcode = document.getElementById('qrShowBarcode').checked;
         onSettingChange();
       };
     });
@@ -8590,12 +8596,15 @@ window.addEventListener('storageReady', function(){
     grid.style.cssText = 'display:grid;grid-template-columns:repeat('+qrSettings.cols+',auto);gap:8px;padding:8px;';
     printArea.appendChild(grid);
 
+    const barcodeDivs = []; // JsBarcode後処理用
+
     ps.forEach(p=>{
-      const qrValue = p.barcode || p.id;
+      const qrValue = p.barcode || p.internalBarcode || p.id;
       const name = cleanName(p.name);
       const spec = p.spec || '';
       const partno = p.partno || '';
       const labelSize = qrSettings.size;
+      const safeId = p.id.replace(/[^a-zA-Z0-9]/g,'_');
 
       const wrapper = document.createElement('div');
       wrapper.className = 'qr-label';
@@ -8604,8 +8613,15 @@ window.addEventListener('storageReady', function(){
       if(qrSettings.showName) inner += '<div class="qr-label-name" style="font-size:'+(labelSize>=160?'15':'13')+'px;">'+escapeHtml(name)+'</div>';
       if(qrSettings.showSpec && spec) inner += '<div class="qr-label-spec" style="font-size:'+(labelSize>=160?'12':'10')+'px;">'+escapeHtml(spec)+'</div>';
       if(qrSettings.showPartno && partno) inner += '<div style="font-size:10px;color:#888;margin-bottom:4px;">'+escapeHtml(partno)+'</div>';
-      inner += '<div id="qrBulkG_'+p.id.replace(/[^a-zA-Z0-9]/g,'_')+'"></div>';
+      inner += '<div id="qrBulkG_'+safeId+'"></div>';
       if(qrSettings.showCode) inner += '<div class="qr-label-code" style="font-size:10px;">'+escapeHtml(qrValue)+'</div>';
+      // SHバーコード（1D）エリア
+      if(qrSettings.showBarcode && p.internalBarcode){
+        inner += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;">'
+          +'<svg id="bcSvg_'+safeId+'" style="max-width:100%;"></svg>'
+          +'</div>';
+        barcodeDivs.push({ id: safeId, code: p.internalBarcode });
+      }
       wrapper.innerHTML = inner;
       grid.appendChild(wrapper);
 
@@ -8613,10 +8629,21 @@ window.addEventListener('storageReady', function(){
       new QRCode(qrDiv, { text: qrValue, width: labelSize, height: labelSize, correctLevel: QRCode.CorrectLevel.M });
     });
 
+    // JsBarcode はDOM挿入後に呼ぶ必要があるため次のtickで実行
     setTimeout(()=>{
-      document.body.dataset.printing = 'qr';
-      window.print();
-    }, 600);
+      barcodeDivs.forEach(({id, code})=>{
+        try{
+          JsBarcode('#bcSvg_'+id, code, {
+            format:'CODE128', width:1.8, height:45,
+            displayValue:true, fontSize:10, margin:3
+          });
+        }catch(_){}
+      });
+      setTimeout(()=>{
+        document.body.dataset.printing = 'qr';
+        window.print();
+      }, 400);
+    }, 300);
   }
 
   window.addEventListener('afterprint', ()=>{
