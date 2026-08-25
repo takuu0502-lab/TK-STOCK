@@ -3726,6 +3726,9 @@ window.addEventListener('storageReady', function(){
   async function saveProvisionalOutbounds(){
     try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
     catch(e){ console.error('save provisionalOutbounds failed', e); }
+    // 予約タブが表示中なら自動更新
+    const _resPanel = document.getElementById('tab-reservation');
+    if(_resPanel && _resPanel.style.display !== 'none'){ renderReservationTab(); }
   }
   async function saveCustomerOrders(){
     try{ await window.storage.set('customerOrders', JSON.stringify(customerOrders), SHARED); }
@@ -4091,10 +4094,14 @@ window.addEventListener('storageReady', function(){
   let _resSearchText = '';
 
   function _getOrderStatus(order){
+    // 仮出庫が完了（お渡し済み）なら納品済み
+    const provItem = provisionalOutbounds.find(p=>p.customerOrderId === order.id);
+    if(order.status === 'delivered' || (provItem && provItem.status === 'done')){
+      return {code:'delivered', label:'納品済み', color:'#888'};
+    }
     // 入庫予定（複数）を確認
     const ischItems = incomingSchedules.filter(i=>i.customerOrderId === order.id);
     const allArrived = ischItems.length > 0 && ischItems.every(i=>i.status==='arrived'||i.status==='done');
-    if(order.status === 'delivered') return {code:'delivered', label:'納品済み', color:'#888'};
     if(allArrived || order.status === 'arrived') return {code:'arrived', label:'入荷済み', color:'#1a7a5e'};
     if(ischItems.length > 0) return {code:'ordered', label:'発注済み', color:'#d97706'};
     return {code:'pending', label:'注文待ち', color:'#e53e3e'};
