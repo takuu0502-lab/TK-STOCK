@@ -2030,6 +2030,18 @@
           <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="co_install_date_tbd" style="width:16px;height:16px;">未定</label>
         </div>
       </div>
+      <!-- お客様連絡要否 -->
+      <div style="padding:10px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;">📞 入荷時のお客様への連絡</div>
+        <div style="display:flex;gap:20px;">
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;">
+            <input type="radio" name="co_notify" id="co_notify_yes" value="yes" checked style="width:15px;height:15px;accent-color:var(--amber);"> 連絡が必要
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-2);">
+            <input type="radio" name="co_notify" id="co_notify_no" value="no" style="width:15px;height:15px;accent-color:var(--text-3);"> 連絡不要
+          </label>
+        </div>
+      </div>
       <!-- 入庫・仮出庫同時登録オプション（新規登録時のみ表示） -->
       <div id="co_inbound_now_field" style="padding:10px 14px;background:var(--teal-dim);border:1px solid rgba(26,122,94,0.25);border-radius:10px;">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
@@ -12418,6 +12430,10 @@ window.addEventListener('storageReady', function(){
       document.getElementById('co_install_date_tbd').checked = isInstTbd;
       document.getElementById('co_install_date').value = isInstTbd ? '' : (editOrder.installDate||'');
       document.getElementById('co_install_date').disabled = isInstTbd;
+      // 連絡要否を復元
+      const _needsNtf = editOrder.needsNotification !== false;
+      document.getElementById('co_notify_yes').checked = _needsNtf;
+      document.getElementById('co_notify_no').checked  = !_needsNtf;
     } else {
       document.getElementById('co_product_selected').style.display = 'none';
       document.getElementById('co_customer').value = '';
@@ -12429,6 +12445,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('co_install_date').value = '';
       document.getElementById('co_install_date_tbd').checked = false;
       document.getElementById('co_install_date').disabled = false;
+      document.getElementById('co_notify_yes').checked = true;
+      document.getElementById('co_notify_no').checked  = false;
     }
     // 入庫・仮出庫同時登録オプションは新規登録時のみ表示
     const _coInboundNowField = document.getElementById('co_inbound_now_field');
@@ -12718,6 +12736,7 @@ window.addEventListener('storageReady', function(){
       const installDate = isInstallTbd ? '' : (document.getElementById('co_install_date').value||'');
       const carName = (document.getElementById('co_car').value||'').trim();
       const _coBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const _coNeedsNotify = document.getElementById('co_notify_yes').checked;
       if(_coEditOrderId){
         // 編集モード：既存レコードを上書き
         const existing = customerOrders.find(o=>o.id===_coEditOrderId);
@@ -12730,6 +12749,7 @@ window.addEventListener('storageReady', function(){
           existing.qty = qty;
           existing.expectedDate = expectedDate;
           existing.installDate = installDate;
+          existing.needsNotification = _coNeedsNotify;
           existing.updatedAt = new Date().toISOString();
           existing.updatedBy = currentUser?currentUser.displayName:'';
         }
@@ -12748,6 +12768,8 @@ window.addEventListener('storageReady', function(){
           qty,
           expectedDate,
           installDate,
+          needsNotification: _coNeedsNotify,
+          notified: false,
           status: _coStatus,
           createdAt: new Date().toISOString(),
           createdBy: currentUser?currentUser.displayName:''
