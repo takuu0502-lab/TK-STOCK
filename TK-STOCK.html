@@ -11656,26 +11656,33 @@ window.addEventListener('storageReady', function(){
         const formResult = await showProvisionalForm();
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
+        const _dpBr = _detPobOwnBranch;
+        const _dpUser = currentUser ? currentUser.displayName : '';
+        const _dpCoId = customerName ? uid('co') : null;
+        if(_dpCoId){
+          customerOrders.push({ id:_dpCoId, branchId:_dpBr, customerName, carName:carName||'', installDate:scheduledDate||'', status:'pending', items:[{ productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', qty }], needsNotification:formResult.needsNotification!==false, notified:false, notifiedAt:null, createdAt:new Date().toISOString(), createdBy:_dpUser });
+          await saveCustomerOrders();
+        }
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
           type: formResult.type||'custody',
-          branchId: _detPobOwnBranch,
+          branchId: _dpBr,
           customerName,
           scheduledDate,
           carName: carName||'',
-          staff: currentUser ? currentUser.displayName : '',
+          staff: _dpUser,
           items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty }],
           needsNotification: formResult.needsNotification !== false,
           notified: false,
           notifiedAt: null,
-          status: 'pending'
+          status: 'pending',
+          ...(_dpCoId ? { customerOrderId: _dpCoId } : {})
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
         if(formResult.inboundDate){
-          const _dpBr = _detPobOwnBranch;
-          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_dpBr, qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_dpBr, qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_dpCoId||'', createdAt:new Date().toISOString(), createdBy:_dpUser, status:'pending' });
           await saveIncomingSchedules();
         }
         renderProductTable();
@@ -11698,6 +11705,12 @@ window.addEventListener('storageReady', function(){
         const formResult = await showProvisionalForm({ defaultType:'custody', lockType:true });
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
+        const _custUser = currentUser ? currentUser.displayName : '';
+        const _custCoId = customerName ? uid('co') : null;
+        if(_custCoId){
+          customerOrders.push({ id:_custCoId, branchId:_custBranch, customerName, carName:carName||'', installDate:scheduledDate||'', status:'pending', items:[{ productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', qty }], needsNotification:formResult.needsNotification!==false, notified:false, notifiedAt:null, createdAt:new Date().toISOString(), createdBy:_custUser });
+          await saveCustomerOrders();
+        }
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
@@ -11706,14 +11719,15 @@ window.addEventListener('storageReady', function(){
           customerName,
           scheduledDate,
           carName: carName||'',
-          staff: currentUser ? currentUser.displayName : '',
+          staff: _custUser,
           items: [{ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty }],
-          status: 'pending'
+          status: 'pending',
+          ...(_custCoId ? { customerOrderId: _custCoId } : {})
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
         if(formResult.inboundDate){
-          incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+          incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_custCoId||'', createdAt:new Date().toISOString(), createdBy:_custUser, status:'pending' });
           await saveIncomingSchedules();
         }
         renderProductTable(); renderHistory(); renderProvisionalList(); renderDetailProvList();
@@ -12625,29 +12639,36 @@ window.addEventListener('storageReady', function(){
         const formResult = await showProvisionalForm();
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
+        const _opBr = _batchPobOwnBranch;
+        const _opUser = currentUser ? currentUser.displayName : '';
+        const _opCoId = customerName ? uid('co') : null;
+        if(_opCoId){
+          customerOrders.push({ id:_opCoId, branchId:_opBr, customerName, carName:carName||'', installDate:scheduledDate||'', status:'pending', items: outboundCart.map(item=>({ productId:item.productId, productName:item.name, brand:item.brand||'', spec:item.spec||'', qty:item.qty })), needsNotification:formResult.needsNotification!==false, notified:false, notifiedAt:null, createdAt:new Date().toISOString(), createdBy:_opUser });
+          await saveCustomerOrders();
+        }
         const entry = {
           id: uid('pob'),
           date: new Date().toISOString(),
           type: formResult.type||'custody',
-          branchId: _batchPobOwnBranch,
+          branchId: _opBr,
           customerName,
           scheduledDate,
           carName: carName||'',
-          staff: currentUser ? currentUser.displayName : '',
+          staff: _opUser,
           items: outboundCart.map(item=>({ productId:item.productId, name:item.name, brand:item.brand||'', spec:item.spec||'', partno:item.partno||'', qty:item.qty })),
           needsNotification: formResult.needsNotification !== false,
           notified: false,
           notifiedAt: null,
-          status: 'pending'
+          status: 'pending',
+          ...(_opCoId ? { customerOrderId: _opCoId } : {})
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
         if(formResult.inboundDate){
-          const _opBr = _batchPobOwnBranch;
           for(const item of entry.items){
             const _op = products.find(x=>x.id===item.productId);
             if(!_op) continue;
-            incomingSchedules.push({ id:uid('isch'), productId:_op.id, productName:_op.name, brand:_op.brand||'', spec:_op.spec||'', branchId:_opBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+            incomingSchedules.push({ id:uid('isch'), productId:_op.id, productName:_op.name, brand:_op.brand||'', spec:_op.spec||'', branchId:_opBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_opCoId||'', createdAt:new Date().toISOString(), createdBy:_opUser, status:'pending' });
           }
           await saveIncomingSchedules();
         }
