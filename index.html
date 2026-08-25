@@ -4096,7 +4096,8 @@ window.addEventListener('storageReady', function(){
 
   function _getOrderStatus(order){
     // 仮出庫が完了（お渡し済み）なら納品済み
-    const provItem = provisionalOutbounds.find(p=>p.customerOrderId === order.id);
+    // customerOrderId または prov.id で照合（旧フロー対応）
+    const provItem = provisionalOutbounds.find(p=>p.customerOrderId === order.id || p.id === order.id || (order._provId && p.id === order._provId));
     if(order.status === 'delivered' || (provItem && provItem.status === 'done')){
       return {code:'delivered', label:'納品済み', color:'#888'};
     }
