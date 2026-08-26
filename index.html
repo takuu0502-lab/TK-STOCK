@@ -3479,19 +3479,30 @@ window.addEventListener('storageReady', function(){
     document.getElementById('qrModal').classList.add('show');
 
     // SHバーコード発行ボタン
-    document.getElementById('issueShBarcodeBtn').onclick = async () => {
+    // ボタン状態をリセット（モーダルを開くたびに初期化）
+    const _issuBtn = document.getElementById('issueShBarcodeBtn');
+    _issuBtn.disabled = false;
+    _issuBtn.textContent = '📶 SHバーコードを発行する';
+
+    _issuBtn.onclick = async () => {
       const btn = document.getElementById('issueShBarcodeBtn');
       btn.disabled = true;
       btn.textContent = '発行中...';
-      const code = await generateShBarcode();
-      p.internalBarcode = code;
-      p.updatedAt = Date.now();
-      await saveProducts();
-      barcodeArea.style.display = 'block';
-      issueArea.style.display   = 'none';
-      _renderBarcodeSvg(code);
-      document.getElementById('qrModalCode').textContent = code;
-      showToast('SHバーコードを発行しました：'+code);
+      try {
+        const code = await generateShBarcode();
+        p.internalBarcode = code;
+        p.updatedAt = Date.now();
+        await saveProducts();
+        barcodeArea.style.display = 'block';
+        issueArea.style.display   = 'none';
+        _renderBarcodeSvg(code);
+        document.getElementById('qrModalCode').textContent = code;
+        showToast('SHバーコードを発行しました：'+code);
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = '📶 SHバーコードを発行する';
+        showToast('発行に失敗しました。もう一度お試しください。');
+      }
     };
 
     // 印刷
