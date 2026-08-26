@@ -4314,6 +4314,7 @@ window.addEventListener('storageReady', function(){
               + '<div style="font-size:10px;color:var(--text-3);margin-top:3px;">仮出庫が必要です</div>';
           }
         }
+        html += '<br><button class="btn btn-ghost btn-sm res-delete-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red);margin-top:4px;">🗑 削除</button>';
         html += '</td>';
         html += '</tr>';
       });
@@ -4358,6 +4359,25 @@ window.addEventListener('storageReady', function(){
         const prov = provisionalOutbounds.find(p=>p.customerOrderId===oid||p.id===oid);
         if(prov){ prov.status='done'; await saveProvisionalOutbounds(); }
         renderReservationTab(); renderCustomerOrderList(); showToast('作業完了にしました');
+      });
+    });
+    // 予約削除
+    container.querySelectorAll('.res-delete-btn').forEach(btn=>{
+      btn.addEventListener('click', async()=>{
+        const oid = btn.dataset.orderId;
+        const ord = customerOrders.find(o=>o.id===oid);
+        const label = ord ? (ord.customerName||'') + (ord.carName ? ' / '+ord.carName : '') : '';
+        const confirmed = await showConfirm('🗑 この予約を削除しますか？'+(label?'\n\n'+label:'')
+          +'\n\n※ 関連する仮出庫データも合わせて削除されます。');
+        if(!confirmed) return;
+        // customerOrders から削除
+        const idx = customerOrders.findIndex(o=>o.id===oid);
+        if(idx !== -1) customerOrders.splice(idx, 1);
+        await saveCustomerOrders();
+        // 関連する仮出庫も削除
+        const provIdx = provisionalOutbounds.findIndex(p=>p.customerOrderId===oid||p.id===oid);
+        if(provIdx !== -1){ provisionalOutbounds.splice(provIdx, 1); await saveProvisionalOutbounds(); }
+        renderReservationTab(); renderCustomerOrderList(); showToast('予約を削除しました');
       });
     });
     // カテゴリー変更（インラインセレクト）
