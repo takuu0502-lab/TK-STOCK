@@ -3793,6 +3793,9 @@ window.addEventListener('storageReady', function(){
   async function saveCustomerOrders(){
     try{ await window.storage.set('customerOrders', JSON.stringify(customerOrders), SHARED); }
     catch(e){ console.error('save customerOrders failed', e); }
+    // 予約タブが表示中なら自動更新
+    const _resPanel2 = document.getElementById('tab-reservation');
+    if(_resPanel2 && _resPanel2.style.display !== 'none'){ renderReservationTab(); }
   }
   async function saveReservationCategories(){
     try{ await window.storage.set('reservationCategories', JSON.stringify(reservationCategories), SHARED); }
@@ -4323,7 +4326,7 @@ window.addEventListener('storageReady', function(){
         const rowBg = st.code==='delivered' ? 'rgba(0,0,0,0.03)' : 'transparent';
         html += '<tr style="border-bottom:1px solid var(--line);background:'+rowBg+';transition:background 0.1s;" class="res-row" data-order-id="'+order.id+'">';
         html += '<td style="padding:11px 14px;"><span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;background:'+st.color+'22;color:'+st.color+';">'+st.label+'</span></td>';
-        html += '<td style="padding:11px 14px;font-weight:700;font-size:15px;color:var(--text-1);">'+escapeHtml(order.customerName||'-')+'<span style="font-size:12px;font-weight:400;color:var(--text-2);"> 様</span></td>';
+        html += '<td style="padding:11px 14px;font-weight:700;font-size:15px;color:var(--text-1);white-space:nowrap;">'+escapeHtml(order.customerName||'-')+'<span style="font-size:12px;font-weight:400;color:var(--text-2);"> 様</span></td>';
         html += '<td style="padding:11px 14px;font-size:14px;color:var(--text-1);">'+escapeHtml(order.carName||'-')+'</td>';
         html += '<td style="padding:11px 14px;">'+itemsHtml+'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">'+_dateCellHtml(expectedDateStr==='未定'?'':expectedDateStr, st.code)+'</td>';
@@ -4351,7 +4354,8 @@ window.addEventListener('storageReady', function(){
           +'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">';
         if(st.code !== 'delivered' && st.code !== 'sold'){
-          const _hasProv = provisionalOutbounds.some(p => p.status === 'pending' && (p.customerOrderId === order.id || p.id === order.id));
+          const _hpBr = (order.branchId||'taniyabe');
+          const _hasProv = provisionalOutbounds.some(p => p.status === 'pending' && (p.branchId||'taniyabe') === _hpBr && (p.customerOrderId === order.id || p.id === order.id));
           if(_hasProv){
             html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:12px;padding:5px 10px;">✅ 作業完了</button>';
           } else {
