@@ -6612,7 +6612,7 @@ window.addEventListener('storageReady', function(){
     h += '<select id="'+prefix+'Aspect">';
     h += '<option value="">—</option>';
     h += '<option value="NOASPECT"'+(aVal==='NOASPECT'?' selected':'')+'>LT</option>';
-    for(let aa=25;aa<=80;aa+=5){
+    for(let aa=25;aa<=90;aa+=5){
       const v='/'+aa;
       h += '<option value="'+v+'"'+(aVal===v?' selected':'')+'>'+aa+'</option>';
     }
@@ -9244,7 +9244,7 @@ window.addEventListener('storageReady', function(){
           html += '<div class="tire-size-col"><label>扁平率</label>';
           html += '<select id="specTireAspect"><option value="">-</option>';
           html += '<option value="NOASPECT"'+(selectedTireAspect==='NOASPECT'?' selected':'')+'>なし(LT)</option>';
-          for(let a=25; a<=80; a+=5){
+          for(let a=25; a<=90; a+=5){
             const val='/'+a;
             html += '<option value="'+val+'"'+(selectedTireAspect===val?' selected':'')+'>'+a+'</option>';
           }
@@ -10402,7 +10402,7 @@ window.addEventListener('storageReady', function(){
     wSel.innerHTML = wOpts;
     const aSel = document.getElementById('f_spec_aspect');
     let aOpts = '<option value=""></option>';
-    for(let a=25; a<=80; a+=5){ aOpts += '<option value="/'+a+'">'+a+'</option>'; }
+    for(let a=25; a<=90; a+=5){ aOpts += '<option value="/'+a+'">'+a+'</option>'; }
     aSel.innerHTML = aOpts;
     const iSel = document.getElementById('f_spec_inch');
     let iOpts = '<option value="">-</option>';
