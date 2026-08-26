@@ -4192,6 +4192,20 @@ window.addEventListener('storageReady', function(){
       const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
       return m ? m[1]+'年'+m[2]+'月'+m[3]+'日' : s;
     };
+    // 超過判定ヘルパー（日付文字列が今日より前かどうか）
+    const _todayStr = (()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+    const _isOverdue = s => { if(!s || s==='未定' || s==='') return false; return s < _todayStr; };
+    // 超過表示セルHTML生成
+    const _dateCellHtml = (rawDate, activeStatus) => {
+      const isActive = activeStatus !== 'delivered' && activeStatus !== 'sold';
+      const overdue = isActive && _isOverdue(rawDate);
+      const formatted = _fmtDate(rawDate);
+      if(overdue){
+        return '<span style="color:#e53e3e;font-weight:700;font-size:14px;">'+escapeHtml(formatted)+'</span>'
+          +'<span style="display:inline-block;margin-left:6px;padding:2px 7px;background:#e53e3e22;color:#e53e3e;border:1px solid #e53e3e88;border-radius:10px;font-size:11px;font-weight:700;vertical-align:middle;">⚠ 超過</span>';
+      }
+      return '<span style="color:var(--text-1);font-weight:600;font-size:14px;">'+escapeHtml(formatted)+'</span>';
+    };
 
     let html = '';
     // ヘッダーバー
@@ -4256,8 +4270,8 @@ window.addEventListener('storageReady', function(){
         html += '<td style="padding:11px 14px;font-weight:700;font-size:15px;color:var(--text-1);">'+escapeHtml(order.customerName||'-')+'</td>';
         html += '<td style="padding:11px 14px;font-size:14px;color:var(--text-1);">'+escapeHtml(order.carName||'-')+'</td>';
         html += '<td style="padding:11px 14px;">'+itemsHtml+'</td>';
-        html += '<td style="padding:11px 14px;color:var(--text-1);white-space:nowrap;font-size:14px;font-weight:600;">'+escapeHtml(_fmtDate(expectedDateStr))+'</td>';
-        html += '<td style="padding:11px 14px;color:var(--text-1);white-space:nowrap;font-size:14px;font-weight:600;">'+escapeHtml(_fmtDate(order.installDate||''))+'</td>';
+        html += '<td style="padding:11px 14px;white-space:nowrap;">'+_dateCellHtml(expectedDateStr==='未定'?'':expectedDateStr, st.code)+'</td>';
+        html += '<td style="padding:11px 14px;white-space:nowrap;">'+_dateCellHtml(order.installDate||'', st.code)+'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">';
         if(order.needsNotification === false){
           html += '<span style="font-size:13px;color:#888;">連絡不要</span> '
