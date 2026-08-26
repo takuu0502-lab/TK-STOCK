@@ -4186,6 +4186,13 @@ window.addEventListener('storageReady', function(){
       });
     }
 
+    // 日付フォーマットヘルパー（YYYY-MM-DD → YYYY年MM月DD日）
+    const _fmtDate = s => {
+      if(!s || s === '未定' || s === '') return s || '未定';
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? m[1]+'年'+m[2]+'月'+m[3]+'日' : s;
+    };
+
     let html = '';
     // ヘッダーバー
     html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">';
@@ -4209,18 +4216,18 @@ window.addEventListener('storageReady', function(){
       html += '<div style="text-align:center;padding:40px;color:var(--text-3);font-size:14px;">予約がありません</div>';
     } else {
       html += '<div style="overflow-x:auto;">';
-      html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-      html += '<thead><tr style="background:var(--bg-3);color:var(--text-2);text-align:left;">';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">状況</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">お客様名</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">車種</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">商品</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">入荷予定</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">取付予定</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">連絡</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">カテゴリー</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">登録日・担当</th>';
-      html += '<th style="padding:10px 12px;white-space:nowrap;border-bottom:2px solid var(--line);">操作</th>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
+      html += '<thead><tr style="background:var(--bg-3);color:var(--text-1);text-align:left;font-size:13px;font-weight:700;">';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">状況</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">お客様名</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">車種</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">商品</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">入荷予定</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">取付予定</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">連絡</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">カテゴリー</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">登録日・担当</th>';
+      html += '<th style="padding:11px 14px;white-space:nowrap;border-bottom:2px solid var(--line);">操作</th>';
       html += '</tr></thead><tbody>';
       orders.forEach(order=>{
         const st = _getOrderStatus(order);
@@ -4234,45 +4241,47 @@ window.addEventListener('storageReady', function(){
           const majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
           const isTire = (majorCat && majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
           return '<div style="padding:3px 0;">'
-            +(sp ? '<div style="font-size:14px;font-weight:800;color:var(--text-1);letter-spacing:0.3px;">'+escapeHtml(sp)+'</div>' : '')
-            +'<div style="font-size:11px;color:var(--text-2);margin-top:1px;">'+escapeHtml(nm)+'</div>'
-            +(isTire ? '<div style="font-size:12px;font-weight:700;color:var(--amber);">×'+i.qty+'本</div>' : '')
+            +(sp ? '<div style="font-size:15px;font-weight:800;color:var(--text-1);letter-spacing:0.3px;">'+escapeHtml(sp)+'</div>' : '')
+            +'<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(nm)+'</div>'
+            +(isTire
+              ? '<div style="font-size:13px;font-weight:700;color:var(--amber);">×'+i.qty+'本</div>'
+              : (i.qty > 1 ? '<div style="font-size:13px;font-weight:700;color:var(--text-2);">×'+i.qty+'個</div>' : ''))
             +'</div>';
         }).join('<div style="border-top:1px dashed var(--line);margin:2px 0;"></div>');
         const ischItems = incomingSchedules.filter(i=>i.customerOrderId===order.id);
         const expectedDateStr = ischItems.length ? ischItems.map(i=>i.expectedDate||'').filter(Boolean).sort()[0]||'未定' : (order.expectedDate||'未定');
         const rowBg = st.code==='delivered' ? 'rgba(0,0,0,0.03)' : 'transparent';
         html += '<tr style="border-bottom:1px solid var(--line);background:'+rowBg+';transition:background 0.1s;" class="res-row" data-order-id="'+order.id+'">';
-        html += '<td style="padding:10px 12px;"><span style="display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;background:'+st.color+'22;color:'+st.color+';">'+st.label+'</span></td>';
-        html += '<td style="padding:10px 12px;font-weight:600;color:var(--text-1);">'+escapeHtml(order.customerName||'-')+'</td>';
-        html += '<td style="padding:10px 12px;color:var(--text-2);">'+escapeHtml(order.carName||'-')+'</td>';
-        html += '<td style="padding:10px 12px;">'+itemsHtml+'</td>';
-        html += '<td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(expectedDateStr)+'</td>';
-        html += '<td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;">'+escapeHtml(order.installDate||'未定')+'</td>';
-        html += '<td style="padding:10px 12px;white-space:nowrap;">';
+        html += '<td style="padding:11px 14px;"><span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;background:'+st.color+'22;color:'+st.color+';">'+st.label+'</span></td>';
+        html += '<td style="padding:11px 14px;font-weight:700;font-size:15px;color:var(--text-1);">'+escapeHtml(order.customerName||'-')+'</td>';
+        html += '<td style="padding:11px 14px;font-size:14px;color:var(--text-1);">'+escapeHtml(order.carName||'-')+'</td>';
+        html += '<td style="padding:11px 14px;">'+itemsHtml+'</td>';
+        html += '<td style="padding:11px 14px;color:var(--text-1);white-space:nowrap;font-size:14px;font-weight:600;">'+escapeHtml(_fmtDate(expectedDateStr))+'</td>';
+        html += '<td style="padding:11px 14px;color:var(--text-1);white-space:nowrap;font-size:14px;font-weight:600;">'+escapeHtml(_fmtDate(order.installDate||''))+'</td>';
+        html += '<td style="padding:11px 14px;white-space:nowrap;">';
         if(order.needsNotification === false){
-          html += '<span style="font-size:11px;color:#888;">連絡不要</span> '
-            +'<button class="btn btn-ghost btn-sm res-notify-need-btn" data-order-id="'+order.id+'" style="font-size:10px;padding:2px 6px;">要に変更</button>';
+          html += '<span style="font-size:13px;color:#888;">連絡不要</span> '
+            +'<button class="btn btn-ghost btn-sm res-notify-need-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">要に変更</button>';
         } else if(order.notified){
-          html += '<span style="font-size:11px;font-weight:700;color:#1a7a5e;">✅ 連絡済み</span> '
-            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:10px;padding:2px 6px;">未連絡に戻す</button>'
-            +' <button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:10px;padding:2px 6px;color:#888;">不要にする</button>';
+          html += '<span style="font-size:13px;font-weight:700;color:#1a7a5e;">✅ 連絡済み</span><br>'
+            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;">未連絡に戻す</button>'
+            +' <button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;color:#888;">不要にする</button>';
         } else {
-          html += '<span style="font-size:11px;font-weight:700;color:#e53e3e;">📞 未連絡</span> '
-            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:10px;padding:2px 6px;">連絡済みにする</button>'
-            +' <button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:10px;padding:2px 6px;color:#888;">不要にする</button>';
+          html += '<span style="font-size:13px;font-weight:700;color:#e53e3e;">📞 未連絡</span><br>'
+            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;">連絡済みにする</button>'
+            +' <button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;color:#888;">不要にする</button>';
         }
         html += '</td>';
         const _catOptions = ['未分類',...reservationCategories].map(c=>'<option value="'+escapeHtml(c)+'"'+(( order.category||'未分類')===c?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
-        html += '<td style="padding:8px 12px;"><select class="res-cat-select" data-order-id="'+order.id+'" style="font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);max-width:140px;">'+_catOptions+'</select></td>';
-        const _createdDateStr = order.createdAt ? (()=>{ const d=new Date(order.createdAt); return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0'); })() : '';
-        html += '<td style="padding:10px 12px;white-space:nowrap;font-size:12px;color:var(--text-2);">'
-          +(_createdDateStr ? '<div>'+escapeHtml(_createdDateStr)+'</div>' : '')
-          +(order.createdBy ? '<div style="color:var(--text-3);">'+escapeHtml(order.createdBy)+'</div>' : '')
+        html += '<td style="padding:8px 14px;"><select class="res-cat-select" data-order-id="'+order.id+'" style="font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);max-width:140px;">'+_catOptions+'</select></td>';
+        const _createdDateStr = order.createdAt ? (()=>{ const d=new Date(order.createdAt); return d.getFullYear()+'年'+String(d.getMonth()+1).padStart(2,'0')+'月'+String(d.getDate()).padStart(2,'0')+'日'; })() : '';
+        html += '<td style="padding:11px 14px;white-space:nowrap;font-size:13px;color:var(--text-2);">'
+          +(_createdDateStr ? '<div style="font-weight:600;color:var(--text-1);">'+escapeHtml(_createdDateStr)+'</div>' : '')
+          +(order.createdBy ? '<div style="color:var(--text-2);margin-top:2px;">'+escapeHtml(order.createdBy)+'</div>' : '')
           +'</td>';
-        html += '<td style="padding:10px 12px;white-space:nowrap;">';
+        html += '<td style="padding:11px 14px;white-space:nowrap;">';
         if(st.code !== 'delivered' && st.code !== 'sold'){
-          html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">✅ 作業完了</button>';
+          html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:12px;padding:5px 10px;">✅ 作業完了</button>';
         }
         html += '</td>';
         html += '</tr>';
