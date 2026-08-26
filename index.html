@@ -6102,6 +6102,9 @@ window.addEventListener('storageReady', function(){
     const _wheelCatId2 = (_sharedWheelCat||{}).id;
     const _isTireWheelCat = selectedMajor === null || selectedMajor === _tireCatId || selectedMajor === _wheelCatId2;
     const _isWheelCat = selectedMajor === _wheelCatId2; // ホイールカテゴリのみ選択中
+    const _isTireCat  = selectedMajor === _tireCatId;   // タイヤカテゴリのみ選択中
+    // タイヤ以外の特定カテゴリ選択時：規格・サイズ列を省略して品番列のみ表示
+    const _partnoOnlyMode = selectedMajor !== null && !_isTireCat && !_isWheelCat;
     const _showMultiCols = _visibleBranches.length > 1
       && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null)
       && _isTireWheelCat;
@@ -6138,8 +6141,12 @@ window.addEventListener('storageReady', function(){
               +(colorStr ? '<span style="font-family:var(--font-sans);font-size:11px;color:var(--text-3);margin-left:6px;">'+escapeHtml(colorStr)+'</span>' : '')
               +'</td>';
           })()
-          : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
-          + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'\u2014')+'</td>')
+          : _partnoOnlyMode
+            // タイヤ以外の特定カテゴリ：品番のみ1列表示
+            ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
+            // 全カテゴリ・タイヤ選択時：品番＋規格（非タイヤの規格は—）
+            : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
+              + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+(_isTire ? escapeHtml(p.spec||'—') : '—')+'</td>')
         + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
         + (()=>{
           if(_showMultiCols){
@@ -6239,7 +6246,9 @@ window.addEventListener('storageReady', function(){
       : '<th>在庫</th>';
     const _midHeaders = _isWheelCat
       ? '<th>ホイールスペック</th>'
-      : '<th>品番</th><th>規格・サイズ</th>';
+      : _partnoOnlyMode
+        ? '<th>品番</th>'
+        : '<th>品番</th><th>規格・サイズ</th>';
     // 最近の登録順では列数を抑えるため品番を省略
     const _midHeadersRecent = _isWheelCat
       ? '<th>ホイールスペック</th>'
