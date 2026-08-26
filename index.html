@@ -1991,8 +1991,8 @@
   </div>
 </div>
 
-<!-- 客注品登録モーダル（削除済み） -->
-<div class="modal-overlay" id="customerOrderModal" style="display:none!important;">
+<!-- 客注品登録モーダル -->
+<div class="modal-overlay" id="customerOrderModal">
   <div class="modal" style="max-width:400px;width:95%;">
     <h3 style="margin-top:0;font-size:16px;">🛒 客注品の登録</h3>
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
@@ -13630,7 +13630,7 @@ window.addEventListener('storageReady', function(){
     // customerName があるエントリは客注品入庫リスト（orphan）で管理するため除外
     const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.inboundType!=='customerOrder'&&s.inboundType!=='co'&&!s.customerOrderId&&!s.customerName);
     if(pending.length===0){ wrap.innerHTML=''; return; }
-    pending.sort((a,b)=>a.expectedDate.localeCompare(b.expectedDate));
+    pending.sort((a,b)=>(a.expectedDate||'').localeCompare(b.expectedDate||''));
     const today = new Date(); today.setHours(0,0,0,0);
     function _fmtJpDateIS(str){
       if(!str) return '未定';
@@ -13744,15 +13744,26 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-insch-tab-edit]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschTabEdit);
-        if(!sched) return;
+        if(!sched){ showToast('データが見つかりません'); return; }
         const modal = document.getElementById('incomingSchedModal');
-        document.querySelector('#incomingSchedModal h3').textContent = '📦 入庫予定の編集';
-        document.getElementById('incomingSchedSave').textContent = '更新する';
-        document.getElementById('incomingSchedModalProductName').textContent = cleanName(sched.productName)+(sched.spec?' / '+sched.spec:'');
-        document.getElementById('incomingSchedDate').value = sched.expectedDate;
-        document.getElementById('incomingSchedQty').value = sched.qty;
+        if(!modal){ showToast('モーダルが見つかりません'); return; }
+        const h3 = modal.querySelector('h3');
+        if(h3) h3.textContent = '📦 入庫予定の編集';
+        const saveBtn = document.getElementById('incomingSchedSave');
+        if(saveBtn) saveBtn.textContent = '更新する';
+        const nameEl = document.getElementById('incomingSchedModalProductName');
+        if(nameEl) nameEl.textContent = cleanName(sched.productName)+(sched.spec?' / '+sched.spec:'');
+        const dateEl = document.getElementById('incomingSchedDate');
+        if(dateEl) dateEl.value = sched.expectedDate||'';
+        const qtyEl = document.getElementById('incomingSchedQty');
+        if(qtyEl) qtyEl.value = sched.qty||1;
         modal.dataset.editId = sched.id;
         delete modal.dataset.targetProductId;
+        // 種別ラジオを在庫品に戻す（編集時は種別変更不可）
+        const stockRadio = document.getElementById('isch_type_stock');
+        if(stockRadio) stockRadio.checked = true;
+        const coFields = document.getElementById('isch_co_fields');
+        if(coFields) coFields.style.display = 'none';
         modal.classList.add('show');
       });
     });
