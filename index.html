@@ -5417,7 +5417,8 @@ window.addEventListener('storageReady', function(){
         const cKey = r.b+'||'+r.m+'||'+r.s+'||'+cp.id; // idも含めてユニーク化
         const checked = catalogQuoteSelection.has(cKey);
         const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t);
-        const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+        const _indivSellFixed = getBranchFixedSell(cp, _catOwnBranchId);
+        const sell = _indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         const _yearBadgeForBranch = (brId) => {
           const _yr = getBranchManufactureYear(cp, brId);
           return _yr ? '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:9px;font-weight:600;padding:1px 5px;border-radius:6px;white-space:nowrap;">🗓 '+_yr+'年製</div>' : '';
@@ -5463,7 +5464,13 @@ window.addEventListener('storageReady', function(){
           const _bfc = getBranchFixedCost(_cp, _catOwnBranchId);
           if(_bfc !== null){ cost = _bfc; break; }
         }
-        const sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+        // 自支店の支店別固定販売価格を優先表示
+        let sell = null;
+        for(const _cp of _catProds){
+          const _sf = getBranchFixedSell(_cp, _catOwnBranchId);
+          if(_sf !== null){ sell = _sf; break; }
+        }
+        if(sell === null) sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         // 製造年tooltip（在庫がある支店のみ、支店別製造年を使用）
         const _yearTooltip = (brId)=>{
           const _tipBrId = brId || _catOwnBranchId;
@@ -5525,7 +5532,8 @@ window.addEventListener('storageReady', function(){
       } else {
         const p=item.p, j=item.origIdx; _manI++;
         const cost = getBranchFixedCost(p, _catOwnBranchId) ?? (p.costPrice || 0);
-        const sell = p.sellPrice || 0;
+        const _manSellFixed = getBranchFixedSell(p, _catOwnBranchId);
+        const sell = _manSellFixed !== null ? _manSellFixed : (p.sellPrice || 0);
         const cKey = _chkPrefixManual + p.id;
         const checked = catalogQuoteSelection.has(cKey);
         const _manYearBadgeForBranch = (brId)=>{ const _yr=getBranchManufactureYear(p,brId); return _yr?'<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_yr+'年製</span>':''; };
