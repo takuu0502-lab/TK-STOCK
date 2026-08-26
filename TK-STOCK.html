@@ -4314,7 +4314,11 @@ window.addEventListener('storageReady', function(){
               + '<div style="font-size:10px;color:var(--text-3);margin-top:3px;">仮出庫が必要です</div>';
           }
         }
-        html += '<br><button class="btn btn-ghost btn-sm res-delete-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red);margin-top:4px;">🗑 削除</button>';
+        if(isAdminUser()){
+          html += '<br><button class="btn btn-ghost btn-sm res-delete-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red);margin-top:4px;">🗑 削除</button>';
+        } else {
+          html += '<div style="font-size:10px;color:var(--text-3);margin-top:6px;">削除は管理者まで</div>';
+        }
         html += '</td>';
         html += '</tr>';
       });
@@ -9316,6 +9320,13 @@ window.addEventListener('storageReady', function(){
           });
           html += '</select></div>';
           html += '</div>';
+          // サイズクリアボタン
+          const _anySizeSelected = selectedTireWidth || selectedTireAspect || selectedTireInch || selectedCatalogModelKey;
+          if(_anySizeSelected){
+            html += '<button id="specTireClearBtn" class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;color:var(--red);border-color:var(--red);">✕ サイズをクリア</button>';
+          } else {
+            html += '<button id="specTireClearBtn" class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;color:var(--text-3);">✕ サイズをクリア</button>';
+          }
         } else {
           let specOptions;
           if(isWheel){
@@ -9389,6 +9400,11 @@ window.addEventListener('storageReady', function(){
     if(_selInch){ _selInch.addEventListener('change', ()=>{ selectedTireInch = _selInch.value || null; renderProductTable(); }); }
     const _selModel = document.getElementById('specCatalogModel');
     if(_selModel){ _selModel.addEventListener('change', ()=>{ selectedCatalogModelKey = _selModel.value || null; renderProductTable(); }); }
+    const _clearBtn = document.getElementById('specTireClearBtn');
+    if(_clearBtn){ _clearBtn.addEventListener('click', ()=>{
+      selectedTireWidth = null; selectedTireAspect = null; selectedTireInch = null; selectedCatalogModelKey = null;
+      renderSpecSearchPanel(); renderProductTable();
+    }); }
 
     document.getElementById('specSearchGo').addEventListener('click', ()=>{
       renderCatTree();
