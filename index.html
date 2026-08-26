@@ -9312,6 +9312,12 @@ window.addEventListener('storageReady', function(){
             html += '<option value="'+val+'"'+(selectedTireInch===val?' selected':'')+'>'+inch+'</option>';
           });
           html += '</select></div>';
+          // サイズクリアボタン（インチの横）
+          const _anySizeSelected = selectedTireWidth || selectedTireAspect || selectedTireInch || selectedCatalogModelKey;
+          html += '<div class="tire-size-col" style="justify-content:flex-end;padding-bottom:2px;">'
+            + '<button id="specTireClearBtn" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 10px;'
+            + (_anySizeSelected ? 'color:var(--red);border-color:var(--red);' : 'color:var(--text-3);')
+            + '" title="サイズをクリア">✕ クリア</button></div>';
           const catalogModels = Array.from(new Set(getCatalog().map(r=>r.b+'||'+r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
           html += '<div class="tire-size-col" style="margin-left:16px;border-left:1px solid var(--line);padding-left:16px;"><label>銘柄</label>';
           html += '<select id="specCatalogModel" style="width:180px;"><option value="">指定しない</option>';
@@ -9320,13 +9326,6 @@ window.addEventListener('storageReady', function(){
           });
           html += '</select></div>';
           html += '</div>';
-          // サイズクリアボタン
-          const _anySizeSelected = selectedTireWidth || selectedTireAspect || selectedTireInch || selectedCatalogModelKey;
-          if(_anySizeSelected){
-            html += '<button id="specTireClearBtn" class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;color:var(--red);border-color:var(--red);">✕ サイズをクリア</button>';
-          } else {
-            html += '<button id="specTireClearBtn" class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;color:var(--text-3);">✕ サイズをクリア</button>';
-          }
         } else {
           let specOptions;
           if(isWheel){
