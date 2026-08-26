@@ -4351,7 +4351,7 @@ window.addEventListener('storageReady', function(){
           +'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">';
         if(st.code !== 'delivered' && st.code !== 'sold'){
-          const _hasProv = provisionalOutbounds.some(p => p.customerOrderId === order.id || p.id === order.id);
+          const _hasProv = provisionalOutbounds.some(p => p.status === 'pending' && (p.customerOrderId === order.id || p.id === order.id));
           if(_hasProv){
             html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:12px;padding:5px 10px;">✅ 作業完了</button>';
           } else {
@@ -4397,7 +4397,7 @@ window.addEventListener('storageReady', function(){
         const oid = btn.dataset.orderId;
         const ord = customerOrders.find(o=>o.id===oid);
         // 仮出庫未登録の場合は作業完了不可
-        const _provCheck = provisionalOutbounds.some(p => p.customerOrderId === oid || p.id === oid);
+        const _provCheck = provisionalOutbounds.some(p => p.status === 'pending' && (p.customerOrderId === oid || p.id === oid));
         if(!_provCheck){ showToast('先に仮出庫を登録してから作業完了にしてください。'); return; }
         const customerLabel = ord ? escapeHtml(ord.customerName||'') : '';
         const confirmed = await showConfirm('✅ 作業完了にしますか？'+(customerLabel?'\n\nお客様：'+customerLabel:''));
