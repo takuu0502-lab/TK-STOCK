@@ -4355,12 +4355,12 @@ window.addEventListener('storageReady', function(){
         html += '<td style="padding:11px 14px;white-space:nowrap;">';
         if(st.code !== 'delivered' && st.code !== 'sold'){
           const _hpBr = (order.branchId||'taniyabe');
-          const _hasProv = provisionalOutbounds.some(p => p.status === 'pending' && (p.branchId||'taniyabe') === _hpBr && (p.customerOrderId === order.id || p.id === order.id));
+          const _hasProv = provisionalOutbounds.some(p => p.status === 'confirmed' && (p.branchId||'taniyabe') === _hpBr && (p.customerOrderId === order.id || p.id === order.id));
           if(_hasProv){
             html += '<button class="btn btn-teal btn-sm res-deliver-btn" data-order-id="'+order.id+'" style="font-size:12px;padding:5px 10px;">✅ 作業完了</button>';
           } else {
-            html += '<button class="btn btn-ghost btn-sm" disabled title="先に仮出庫を登録してください" style="font-size:12px;padding:5px 10px;opacity:0.45;cursor:not-allowed;">✅ 作業完了</button>'
-              + '<div style="font-size:10px;color:var(--text-3);margin-top:3px;">仮出庫が必要です</div>';
+            html += '<button class="btn btn-ghost btn-sm" disabled title="先に出庫確定してください" style="font-size:12px;padding:5px 10px;opacity:0.45;cursor:not-allowed;">✅ 作業完了</button>'
+              + '<div style="font-size:10px;color:var(--text-3);margin-top:3px;">出庫確定が必要です</div>';
           }
         }
         if(isAdminUser()){
@@ -4401,8 +4401,8 @@ window.addEventListener('storageReady', function(){
         const oid = btn.dataset.orderId;
         const ord = customerOrders.find(o=>o.id===oid);
         // 仮出庫未登録の場合は作業完了不可
-        const _provCheck = provisionalOutbounds.some(p => p.status === 'pending' && (p.customerOrderId === oid || p.id === oid));
-        if(!_provCheck){ showToast('先に仮出庫を登録してから作業完了にしてください。'); return; }
+        const _provCheck = provisionalOutbounds.some(p => p.status === 'confirmed' && (p.customerOrderId === oid || p.id === oid));
+        if(!_provCheck){ showToast('先に出庫確定してから作業完了にしてください。'); return; }
         const customerLabel = ord ? escapeHtml(ord.customerName||'') : '';
         const confirmed = await showConfirm('✅ 作業完了にしますか？'+(customerLabel?'\n\nお客様：'+customerLabel:''));
         if(!confirmed) return;
