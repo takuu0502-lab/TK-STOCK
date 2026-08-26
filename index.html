@@ -1047,6 +1047,7 @@
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch" style="display:none;">商品検索</button>
 <button class="btn btn-amber btn-sm" id="openAddProduct">＋ 新規商品登録</button>
+      <button class="btn btn-ghost btn-sm" id="invCheckModeBtn" style="border-color:var(--teal);color:var(--teal);">📋 在庫確認</button>
       <button class="btn btn-amber btn-sm" id="quickScanBtn">スキャン</button>
     </div>
   </div>
@@ -2519,6 +2520,50 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="accountsCancel">閉じる</button>
     </div>
+  </div>
+</div>
+
+<!-- 在庫確認モード モーダル -->
+<div class="modal-overlay" id="invCheckModal">
+  <div class="modal" style="max-width:860px;width:96vw;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
+      <h3 style="margin:0;font-size:17px;">📋 在庫確認モード</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="invCheckTireOnly" checked style="accent-color:var(--teal);"> タイヤのみ
+        </label>
+        <button class="btn btn-ghost btn-sm" id="invCheckClearBtn" style="color:var(--red);border-color:var(--red);">リセット</button>
+        <button class="btn btn-ghost btn-sm" id="invCheckClose">閉じる</button>
+      </div>
+    </div>
+    <!-- スキャン入力 -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
+      <input type="text" id="invCheckInput" placeholder="バーコードをスキャン または 入力…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="none"
+        style="flex:1;font-size:18px;padding:12px 14px;border:2px solid var(--teal);border-radius:10px;background:var(--bg-1);color:var(--text-1);outline:none;">
+      <button class="btn btn-ghost btn-sm" id="invCheckCameraBtn" style="font-size:13px;padding:0 14px;">📷</button>
+    </div>
+    <div id="invCheckMsg" style="font-size:13px;min-height:20px;margin-bottom:8px;flex-shrink:0;"></div>
+    <!-- 差異サマリー -->
+    <div id="invCheckSummaryBar" style="display:none;flex-shrink:0;padding:8px 12px;border-radius:8px;background:var(--bg-2);border:1px solid var(--line);margin-bottom:10px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap;"></div>
+    <!-- 結果テーブル -->
+    <div style="overflow-y:auto;flex:1;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead style="position:sticky;top:0;background:var(--bg-2);z-index:1;">
+          <tr>
+            <th style="padding:8px 10px;text-align:left;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--line);">商品名</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--line);">サイズ</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap;">登録数</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap;">仮出庫</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap;">実質在庫</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--teal);font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap;">スキャン数</th>
+            <th style="padding:8px 6px;text-align:center;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--line);">差異</th>
+          </tr>
+        </thead>
+        <tbody id="invCheckTbody"></tbody>
+      </table>
+      <div id="invCheckEmpty" style="padding:32px;text-align:center;color:var(--text-3);font-size:13px;">スキャンすると商品が表示されます</div>
+    </div>
+    <div id="invCheckReaderWrap" style="margin-top:10px;flex-shrink:0;"></div>
   </div>
 </div>
 
@@ -4535,6 +4580,194 @@ window.addEventListener('storageReady', function(){
     stopAllScanners();
     startScanner('in');
   });
+
+  // ── 在庫確認モード ──────────────────────────────────────────
+  (()=>{
+    const _modal   = document.getElementById('invCheckModal');
+    const _input   = document.getElementById('invCheckInput');
+    const _tbody   = document.getElementById('invCheckTbody');
+    const _emptyEl = document.getElementById('invCheckEmpty');
+    const _msgEl   = document.getElementById('invCheckMsg');
+    const _sumBar  = document.getElementById('invCheckSummaryBar');
+    const _tireChk = document.getElementById('invCheckTireOnly');
+
+    // スキャン数記録：Map<productId, number>
+    let _counts = new Map();
+
+    // 自支店ID取得
+    const _ownBr = () => currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+
+    // 仮出庫数（pending）を取得
+    function _provQty(productId, branchId){
+      return provisionalOutbounds
+        .filter(po => po.status === 'pending' && (po.branchId||'taniyabe') === branchId
+          && (po.items||[]).some(i => i.productId === productId))
+        .reduce((s, po) => s + (po.items||[]).filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0), 0);
+    }
+
+    // タイヤカテゴリIDを返す
+    function _tireCatId(){
+      return (categories.find(c=>c.name==='タイヤ')||{}).id || null;
+    }
+
+    // 対象商品リストを返す（タイヤonly or 全商品）
+    function _targetProducts(){
+      const brId = _ownBr();
+      const onlyTire = _tireChk && _tireChk.checked;
+      const tireCid  = _tireCatId();
+      return products.filter(p => {
+        if(onlyTire && tireCid && p.majorId !== tireCid) return false;
+        // 自支店在庫または他支店でも登録あり
+        const stk = p.branchStock ? (p.branchStock[brId]||0) : (p.stock||0);
+        return stk > 0 || _counts.has(p.id);
+      });
+    }
+
+    // テーブル再描画
+    function _render(){
+      const brId = _ownBr();
+      const list = _targetProducts();
+      // スキャン済みで一覧に載っていない商品を追加
+      _counts.forEach((cnt, pid) => {
+        if(!list.find(p=>p.id===pid)){
+          const p = products.find(x=>x.id===pid);
+          if(p) list.push(p);
+        }
+      });
+      if(list.length === 0 && _counts.size === 0){
+        _tbody.innerHTML = '';
+        _emptyEl.style.display = 'block';
+        _sumBar.style.display = 'none';
+        return;
+      }
+      _emptyEl.style.display = 'none';
+
+      let totalDiff = 0, diffOver = 0, diffUnder = 0, scannedCount = 0;
+
+      // スキャン済み → 未スキャン の順でソート
+      list.sort((a,b)=>{
+        const aScanned = _counts.has(a.id) ? 1 : 0;
+        const bScanned = _counts.has(b.id) ? 1 : 0;
+        return bScanned - aScanned || (a.name||'').localeCompare(b.name||'','ja');
+      });
+
+      _tbody.innerHTML = list.map(p=>{
+        const stk    = p.branchStock ? (p.branchStock[brId]||0) : (p.stock||0);
+        const prov   = _provQty(p.id, brId);
+        const net    = stk - prov;          // 実質在庫
+        const scan   = _counts.get(p.id) || 0;
+        const diff   = scan - net;          // 差異（プラス=多い, マイナス=少ない）
+        const hasScanned = _counts.has(p.id);
+        if(hasScanned){ scannedCount++; totalDiff += Math.abs(diff); if(diff>0) diffOver++; else if(diff<0) diffUnder++; }
+        const diffColor = !hasScanned ? 'var(--text-3)' : diff === 0 ? 'var(--teal)' : 'var(--red)';
+        const diffStr   = !hasScanned ? '—' : (diff > 0 ? '+'+diff : String(diff));
+        const rowBg     = !hasScanned ? '' : diff === 0 ? 'background:#f0faf6;' : 'background:#fff5f5;';
+        return `<tr style="border-bottom:1px solid var(--line-soft);${rowBg}">
+          <td style="padding:8px 10px;font-weight:600;">${escapeHtml(cleanName(p.name))}</td>
+          <td style="padding:8px 10px;font-size:12px;color:var(--text-2);font-family:var(--font-mono);">${escapeHtml(p.spec||'—')}</td>
+          <td style="padding:8px 6px;text-align:center;">${stk}</td>
+          <td style="padding:8px 6px;text-align:center;color:${prov>0?'var(--amber)':'var(--text-3)'};">${prov>0?prov:'—'}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;">${net}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--teal);">
+            ${hasScanned ? scan : '<span style="color:var(--text-3);">—</span>'}
+            ${hasScanned ? `<button data-inv-minus="${p.id}" style="margin-left:4px;font-size:11px;padding:1px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg-2);cursor:pointer;color:var(--text-2);">−</button>` : ''}
+          </td>
+          <td style="padding:8px 6px;text-align:center;font-weight:700;color:${diffColor};">${diffStr}</td>
+        </tr>`;
+      }).join('');
+
+      // − ボタン
+      _tbody.querySelectorAll('[data-inv-minus]').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          e.stopPropagation();
+          const pid = btn.dataset.invMinus;
+          const cur = _counts.get(pid)||0;
+          if(cur <= 1) _counts.delete(pid); else _counts.set(pid, cur-1);
+          _render();
+        });
+      });
+
+      // サマリーバー
+      _sumBar.style.display = 'flex';
+      _sumBar.innerHTML = `<span>確認済み：<strong>${scannedCount}</strong>件</span>`
+        + `<span style="color:var(--teal);">✅ 一致：<strong>${scannedCount - diffOver - diffUnder}</strong>件</span>`
+        + (diffUnder > 0 ? `<span style="color:var(--red);">⚠ 不足：<strong>${diffUnder}</strong>件</span>` : '')
+        + (diffOver  > 0 ? `<span style="color:var(--amber);">⚠ 超過：<strong>${diffOver}</strong>件</span>` : '');
+    }
+
+    // バーコードでスキャン処理
+    function _doScan(barcode){
+      const bc = (barcode||'').trim().toLowerCase();
+      if(!bc) return;
+      // SHバーコード（sh-...）または通常JANコードで検索
+      const p = products.find(x =>
+        (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
+        || (x.barcode && x.barcode.toLowerCase() === bc)
+      );
+      if(!p){
+        _msgEl.style.color='var(--red)';
+        _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
+        return;
+      }
+      _counts.set(p.id, (_counts.get(p.id)||0) + 1);
+      _msgEl.style.color='var(--teal)';
+      _msgEl.textContent = '✅ '+cleanName(p.name)+(p.spec?' ('+p.spec+')':'')+'　→ '+_counts.get(p.id)+'本';
+      _render();
+    }
+
+    // 開く
+    document.getElementById('invCheckModeBtn').addEventListener('click', ()=>{
+      _render();
+      _modal.classList.add('show');
+      setTimeout(()=>_input.focus(), 150);
+    });
+
+    // スキャン入力
+    _input.addEventListener('keydown', e=>{
+      if(e.key === 'Enter'){
+        _doScan(_input.value);
+        _input.value = '';
+      }
+    });
+    _input.addEventListener('input', ()=>{
+      // ハンディスキャナー（Enterなしで自動確定）対応
+      const v = _input.value;
+      if(v.length >= 8 && /^[a-z0-9\-]+$/.test(v)){
+        setTimeout(()=>{
+          if(_input.value === v){ _doScan(_input.value); _input.value = ''; }
+        }, 80);
+      }
+    });
+
+    // カメラスキャン
+    document.getElementById('invCheckCameraBtn').addEventListener('click', ()=>{
+      const wrap = document.getElementById('invCheckReaderWrap');
+      if(wrap.children.length > 0){ wrap.innerHTML = ''; return; }
+      startScannerInElement('invCheckReaderWrap', (code)=>{
+        _doScan(code);
+        _input.value = '';
+      });
+    });
+
+    // リセット
+    document.getElementById('invCheckClearBtn').addEventListener('click', async ()=>{
+      const ok = await showConfirm('スキャンデータをリセットしますか？');
+      if(!ok) return;
+      _counts.clear();
+      _msgEl.textContent = '';
+      _render();
+    });
+
+    // タイヤのみ切替
+    if(_tireChk){ _tireChk.addEventListener('change', ()=>{ _render(); }); }
+
+    // 閉じる
+    document.getElementById('invCheckClose').addEventListener('click', ()=>{
+      _modal.classList.remove('show');
+      document.getElementById('invCheckReaderWrap').innerHTML = '';
+    });
+    _modal.addEventListener('click', e=>{ if(e.target===_modal){ _modal.classList.remove('show'); document.getElementById('invCheckReaderWrap').innerHTML=''; } });
+  })();
 
   function showProvisionalEditForm(entry){
     return new Promise((resolve)=>{
@@ -14079,6 +14312,20 @@ window.addEventListener('storageReady', function(){
     startCameraInto('reader', wrap, (decodedText)=>{
       stopAllScanners();
       _handleStockcountBarcode(decodedText);
+    }).then(scanner=>{
+      activeScanner = scanner;
+      if(!scanner) activeScannerKind = null;
+    });
+  }
+
+  // 任意のラッパー要素にカメラスキャナーを起動する汎用ヘルパー
+  function startScannerInElement(wrapperId, callback){
+    stopAllScanners();
+    const wrap = document.getElementById(wrapperId);
+    if(!wrap) return;
+    startCameraInto('reader', wrap, (decodedText)=>{
+      stopAllScanners();
+      callback(decodedText);
     }).then(scanner=>{
       activeScanner = scanner;
       if(!scanner) activeScannerKind = null;
