@@ -13489,7 +13489,7 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('provisionalListWrap');
     if(!wrap) return;
     const _plOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    const pending = provisionalOutbounds.filter(p=>(p.status==='pending'||p.status==='confirmed')&&(p.branchId||'taniyabe')===_plOwnBranch);
+    const pending = provisionalOutbounds.filter(p=>p.status==='pending'&&(p.branchId||'taniyabe')===_plOwnBranch);
     if(pending.length===0){ wrap.innerHTML=''; return; }
     const provList = pending.filter(e=>(e.type||'custody')==='provisional');
     const custList = pending.filter(e=>(e.type||'custody')==='custody');
@@ -13573,14 +13573,9 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           /* カード下部ボタン */
           +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-          +(entry.status==='confirmed'
-            ? '<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1a7a5e;background:#e6f7f1;border:1px solid #1a7a5e55;border-radius:6px;padding:6px 10px;">✅ 出庫確定済み</span>'
-              +'<button class="btn btn-teal btn-sm prov-done-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">作業完了</button>'
-              +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
-            : '<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">出庫確定</button>'
-              +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
-              +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
-          )
+          +'<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">出庫確定</button>'
+          +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
+          +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
           +'</div>'
           +'</div>';
       }).join('');
