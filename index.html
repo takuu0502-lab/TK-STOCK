@@ -4331,20 +4331,21 @@ window.addEventListener('storageReady', function(){
         html += '<td style="padding:11px 14px;">'+itemsHtml+'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">'+_dateCellHtml(expectedDateStr==='未定'?'':expectedDateStr, st.code)+'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">'+_dateCellHtml(order.installDate||'', st.code)+'</td>';
-        html += '<td style="padding:11px 14px;white-space:nowrap;">';
+        html += '<td style="padding:8px 12px;">';
+        html += '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">';
         if(order.needsNotification === false){
-          html += '<span style="font-size:13px;color:#888;">連絡不要</span> '
-            +'<button class="btn btn-ghost btn-sm res-notify-need-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;">要に変更</button>';
+          html += '<span style="font-size:12px;color:#888;white-space:nowrap;">連絡不要</span>'
+            +'<button class="btn btn-ghost btn-sm res-notify-need-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;">要に変更</button>';
         } else if(order.notified){
-          html += '<span style="font-size:13px;font-weight:700;color:#1a7a5e;">✅ 連絡済み</span><br>'
-            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;">未連絡に戻す</button>'
-            +' <button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;color:#888;">不要にする</button>';
+          html += '<span style="font-size:12px;font-weight:700;color:#1a7a5e;white-space:nowrap;">✅ 連絡済み</span>'
+            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;">未連絡に戻す</button>'
+            +'<button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;color:#888;">不要にする</button>';
         } else {
-          html += '<span style="font-size:13px;font-weight:700;color:#e53e3e;">📞 未連絡</span><br>'
-            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;">連絡済みにする</button>'
-            +' <button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;margin-top:3px;color:#888;">不要にする</button>';
+          html += '<span style="font-size:12px;font-weight:700;color:#e53e3e;white-space:nowrap;">📞 未連絡</span>'
+            +'<button class="btn btn-ghost btn-sm res-notify-toggle-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;">連絡済みにする</button>'
+            +'<button class="btn btn-ghost btn-sm res-no-notify-btn" data-order-id="'+order.id+'" style="font-size:11px;padding:3px 8px;white-space:nowrap;color:#888;">不要にする</button>';
         }
-        html += '</td>';
+        html += '</div></td>';
         const _catOptions = ['未分類',...reservationCategories].map(c=>'<option value="'+escapeHtml(c)+'"'+(( order.category||'未分類')===c?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
         html += '<td style="padding:8px 14px;"><select class="res-cat-select" data-order-id="'+order.id+'" style="font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);max-width:140px;">'+_catOptions+'</select></td>';
         const _createdDateStr = order.createdAt ? (()=>{ const d=new Date(order.createdAt); return d.getFullYear()+'年'+String(d.getMonth()+1).padStart(2,'0')+'月'+String(d.getDate()).padStart(2,'0')+'日'; })() : '';
