@@ -6203,10 +6203,17 @@ window.addEventListener('storageReady', function(){
           // 自支店タブ: 自支店所有の商品 + 他支店のタイヤ・ホイールのみ
           const isOwnedByBranch = (p.branchId || 'taniyabe') === selectedBranchFilter;
           if(!isOwnedByBranch){
+            // キーワード検索中は全商品を対象（他支店商品も検索可能）
+            if(keywordFilter && keywordFilter.trim()){
+              // キーワード検索時はここではフィルターしない（後段のキーワードフィルターに委ねる）
+            } else {
             const isTire = p.majorId === _tireCatId;
             const isWheelAlumSteel = _sharedWheelCat && p.majorId === _sharedWheelCat.id
               && _sharedWheelSubIds.includes(p.subId);
-            if(!isTire && !isWheelAlumSteel) return false;
+            // 他支店に在庫がある商品も表示
+            const hasStockHere = p.branchStock && (p.branchStock[selectedBranchFilter]||0) > 0;
+            if(!isTire && !isWheelAlumSteel && !hasStockHere) return false;
+            }
             // 他支店のカタログ自動登録品（_fromCatalog）で全支店在庫0のものは非表示
             // （カタログ行と重複するゴースト商品を除去）ただしキーワード検索中は表示して削除可能にする
             if((p._fromCatalog || p.catalogKey) && !keywordFilter){
