@@ -4357,7 +4357,7 @@ window.addEventListener('storageReady', function(){
           +(order.createdBy ? '<div style="color:var(--text-2);margin-top:2px;">'+escapeHtml(order.createdBy)+'</div>' : '')
           +'</td>';
         html += '<td style="padding:11px 14px;white-space:nowrap;">';
-        if(st.code !== 'delivered' && st.code !== 'sold'){
+        if(st.code !== 'delivered'){
           const _hpBr = (order.branchId||'taniyabe');
           const _hasProv = provisionalOutbounds.some(p => p.status === 'confirmed' && (p.branchId||'taniyabe') === _hpBr && (p.customerOrderId === order.id || p.id === order.id));
           if(_hasProv){
@@ -8342,9 +8342,10 @@ window.addEventListener('storageReady', function(){
           const _checkedCO   = [..._lnkArea2.querySelectorAll('.lnk-co-chk:checked')].map(el=>el.dataset.coId);
           const _checkedISch = [..._lnkArea2.querySelectorAll('.lnk-isch-chk:checked')].map(el=>el.dataset.ischId);
           let _linked = 0;
+          let _linkedCo = null;
           for(const coId of _checkedCO){
             const co = customerOrders.find(o=>o.id===coId);
-            if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); _linked++; }
+            if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); _linked++; if(!_linkedCo) _linkedCo = co; }
           }
           for(const ischId of _checkedISch){
             const isch = incomingSchedules.find(s=>s.id===ischId);
@@ -8359,8 +8360,9 @@ window.addEventListener('storageReady', function(){
           }
           _lnkArea2.style.display = 'none';
         }
+        const _scanPrintOpts = _linkedCo ? { customerName: _linkedCo.customerName, installDate: _linkedCo.installDate||'' } : {};
         const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'枚');
-        if(doPrint) _printReceiveLabel(p, qty);
+        if(doPrint) _printReceiveLabel(p, qty, _scanPrintOpts);
       }catch(e){
         document.getElementById('receiveScanMsg').textContent = '⚠️ 保存失敗: '+e.message;
         btn.disabled = false;
@@ -11936,8 +11938,11 @@ window.addEventListener('storageReady', function(){
             user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
           sched.status='done';
           await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+          const _schedCo = sched.customerOrderId ? customerOrders.find(o=>o.id===sched.customerOrderId) : null;
+          const _schedOpts = _schedCo ? { customerName: _schedCo.customerName, installDate: _schedCo.installDate||'' }
+            : (sched.customerName ? { customerName: sched.customerName, installDate: sched.scheduledDate||'' } : {});
           const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
-          if(doPrint) _printReceiveLabel(p2, sched.qty);
+          if(doPrint) _printReceiveLabel(p2, sched.qty, _schedOpts);
           renderProductTable(); renderHistory(); renderIncomingScheduleList();
           renderDetailInschList();
           const msgEl = document.getElementById('detailActionMsg');
@@ -13484,7 +13489,7 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('provisionalListWrap');
     if(!wrap) return;
     const _plOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    const pending = provisionalOutbounds.filter(p=>p.status==='pending'&&(p.branchId||'taniyabe')===_plOwnBranch);
+    const pending = provisionalOutbounds.filter(p=>(p.status==='pending'||p.status==='confirmed')&&(p.branchId||'taniyabe')===_plOwnBranch);
     if(pending.length===0){ wrap.innerHTML=''; return; }
     const provList = pending.filter(e=>(e.type||'custody')==='provisional');
     const custList = pending.filter(e=>(e.type||'custody')==='custody');
@@ -13568,9 +13573,14 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           /* カード下部ボタン */
           +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-          +'<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">出庫確定</button>'
-          +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
-          +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
+          +(entry.status==='confirmed'
+            ? '<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1a7a5e;background:#e6f7f1;border:1px solid #1a7a5e55;border-radius:6px;padding:6px 10px;">✅ 出庫確定済み</span>'
+              +'<button class="btn btn-teal btn-sm prov-done-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">作業完了</button>'
+              +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
+            : '<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">出庫確定</button>'
+              +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
+              +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
+          )
           +'</div>'
           +'</div>';
       }).join('');
@@ -13611,6 +13621,23 @@ window.addEventListener('storageReady', function(){
         entry.status = 'confirmed';
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
         renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
+      });
+    });
+
+    wrap.querySelectorAll('.prov-done-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
+        if(!entry) return;
+        const ok = await showConfirm('✅ 作業完了にしますか？\n\nお客様: '+entry.customerName+'様');
+        if(!ok) return;
+        entry.status = 'done';
+        // 対応するcustomerOrderも完了に
+        const co = entry.customerOrderId ? customerOrders.find(o=>o.id===entry.customerOrderId) : null;
+        if(co){ co.status='delivered'; await saveCustomerOrders(); }
+        await saveProvisionalOutbounds();
+        renderProvisionalList(); renderCustomerOrderList();
+        showToast('作業完了にしました');
       });
     });
 
