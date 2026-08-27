@@ -5089,10 +5089,12 @@ window.addEventListener('storageReady', function(){
           return isTire || isWheelAlumSteel;
         });
       }
-      // 自支店タブ: 自支店所有 + 他支店のタイヤ・ホイール
+      // 自支店タブ: 自支店所有 + 自支店に在庫あり + 他支店のタイヤ・ホイール
       return products.filter(p => {
         const isOwned = (p.branchId || 'taniyabe') === selectedBranchFilter;
         if(isOwned) return true;
+        // 他支店登録商品でもこの支店に在庫があれば表示
+        if(p.branchStock && (p.branchStock[selectedBranchFilter]||0) > 0) return true;
         const isTire = p.majorId === _ctTireId;
         const isWheelAlumSteel = _ctWheelCat && p.majorId === _ctWheelCat.id && _ctWheelSubIds.includes(p.subId);
         return isTire || isWheelAlumSteel;
