@@ -4230,7 +4230,7 @@ window.addEventListener('storageReady', function(){
     if(!_resShowDelivered){
       baseOrders = baseOrders.filter(o=>{
         const st = _getOrderStatus(o);
-        return st.code !== 'delivered' && st.code !== 'sold';
+        return st.code !== 'delivered';
       });
     }
     // カテゴリーごとに集計（進行中のみ）
