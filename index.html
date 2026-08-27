@@ -14000,7 +14000,7 @@ window.addEventListener('storageReady', function(){
         +'</div>';
     }).join('');
     let html = '<div style="margin-top:4px;">'
-      +'<div style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;">📦 入庫予定リスト（'+pending.length+'件）</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;">📦 入庫予定リスト（在庫分）（'+pending.length+'件）</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+cards+'</div>'
       +'</div>';
     wrap.innerHTML = html;
