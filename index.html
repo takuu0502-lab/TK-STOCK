@@ -13587,7 +13587,8 @@ window.addEventListener('storageReady', function(){
     };
     let html = '<div style="margin-top:4px;">';
     if(provList.length>0){
-      html += '<div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:10px;">🔖 仮出庫リスト（予約一覧）（'+provList.length+'件）</div>';
+      html += '<div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:6px;">🔖 仮出庫リスト（予約一覧）（'+provList.length+'件）</div>';
+      html += '<div style="font-size:12px;color:var(--text-2);line-height:1.7;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;">📌 売上入力した日に<strong>出庫確定</strong>をお願いします。その日の売上履歴・出庫履歴を確認するためです。</div>';
       html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+buildCards(provList, false)+'</div>';
     }
     if(custList.length>0){
