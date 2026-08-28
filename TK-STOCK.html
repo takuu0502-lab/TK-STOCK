@@ -14685,12 +14685,20 @@ window.addEventListener('storageReady', function(){
             : '';
           const p = products.find(x=>x.id===t.productId);
           const sub = [p&&p.brand?p.brand:'', p&&p.partno?'品番:'+p.partno:'', p&&p.spec?p.spec:''].filter(Boolean).join(' ・ ');
-          const _canDetail = t.productId && products.find(x=>x.id===t.productId);
+          const _canDetail = t.productId && p;
+          const _showCostHist = !isExternalUser() && batch.type==='out' && p;
+          const _supplierName = _showCostHist && p.supplierId ? (suppliers.find(s=>s.id===p.supplierId)||{}).name||'' : '';
+          const _costPriceVal = _showCostHist ? (()=>{ const _br=currentUser&&currentUser.branchId||'taniyabe'; return (p._branchFixedCost&&p._branchFixedCost[_br]>0)?p._branchFixedCost[_br]:(p.costPrice||0); })() : 0;
+          const _costLine = _showCostHist ? '<div class="hist-sub" style="color:var(--amber);">'
+            +(_supplierName?'仕入先：'+escapeHtml(_supplierName)+'　':'')
+            +(_costPriceVal?'仕入原価：¥'+Number(_costPriceVal).toLocaleString('ja-JP'):'')
+            +'</div>' : '';
           return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+';'+(_canDetail?'cursor:pointer;':'')+'" '+(_canDetail?'onclick="openProductDetail(\''+t.productId+'\')"':'')+' title="'+(_canDetail?'クリックして商品詳細を表示':'')+'">'
             +'<div class="hist-info">'
             +'<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+(_canDetail?'<span style="font-size:10px;color:var(--text-3);margin-left:5px;">🔍</span>':'')+'</div>'
             +(sub?'<div class="hist-sub">'+escapeHtml(sub)+'</div>':'')
             +resLine
+            +_costLine
             +'</div>'
             +'<div class="hist-qty" style="color:'+typeColor+';">'+typeSign+t.qty+'</div>'
             +'</div>';
