@@ -13060,8 +13060,13 @@ window.addEventListener('storageReady', function(){
     const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch);
     const totalCount = pending.length;
 
-    let header = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+    let header = '<div style="margin-bottom:12px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
       + '<div style="font-size:14px;font-weight:700;color:var(--teal);">🛒 客注品入庫リスト'+(totalCount>0?' ('+totalCount+'件)':'')+'</div>'
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--text-2);line-height:1.7;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;">'
+      + '📌 予約を受けた際は<strong>入庫予定登録</strong>をお願いします。商品登録がない場合は<strong>新規商品登録</strong>してから入庫予定登録をお願いします。'
+      + '</div>'
       + '</div>';
 
     if(pending.length===0){
