@@ -14636,9 +14636,10 @@ window.addEventListener('storageReady', function(){
             : timeStr+' の仮出庫';
           const rows = po.items.map(item=>{
             const sub = [item.brand||'', item.partno?'品番:'+item.partno:'', item.spec||''].filter(Boolean).join(' ・ ');
-            return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+'">'
+            const _canDetailProv = item.productId && products.find(x=>x.id===item.productId);
+            return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+';'+(_canDetailProv?'cursor:pointer;':'')+'" '+(_canDetailProv?'onclick="openProductDetail(\''+item.productId+'\')"':'')+' title="'+(_canDetailProv?'クリックして商品詳細を表示':'')+'">'
               +'<div class="hist-info">'
-              +'<div class="hist-name">'+escapeHtml(cleanName(item.name))+'</div>'
+              +'<div class="hist-name">'+escapeHtml(cleanName(item.name))+(_canDetailProv?'<span style="font-size:10px;color:var(--text-3);margin-left:5px;">🔍</span>':'')+'</div>'
               +(sub?'<div class="hist-sub">'+escapeHtml(sub)+'</div>':'')
               +'</div>'
               +'<div class="hist-qty" style="color:var(--amber);">'+item.qty+'本</div>'
@@ -14680,9 +14681,10 @@ window.addEventListener('storageReady', function(){
             : '';
           const p = products.find(x=>x.id===t.productId);
           const sub = [p&&p.brand?p.brand:'', p&&p.partno?'品番:'+p.partno:'', p&&p.spec?p.spec:''].filter(Boolean).join(' ・ ');
-          return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+'">'
+          const _canDetail = t.productId && products.find(x=>x.id===t.productId);
+          return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+';'+(_canDetail?'cursor:pointer;':'')+'" '+(_canDetail?'onclick="openProductDetail(\''+t.productId+'\')"':'')+' title="'+(_canDetail?'クリックして商品詳細を表示':'')+'">'
             +'<div class="hist-info">'
-            +'<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+'</div>'
+            +'<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+(_canDetail?'<span style="font-size:10px;color:var(--text-3);margin-left:5px;">🔍</span>':'')+'</div>'
             +(sub?'<div class="hist-sub">'+escapeHtml(sub)+'</div>':'')
             +resLine
             +'</div>'
