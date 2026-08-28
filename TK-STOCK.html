@@ -14556,7 +14556,7 @@ window.addEventListener('storageReady', function(){
     list = list.slice().sort((a,b)=>(new Date(b.date)||0)-(new Date(a.date)||0));
 
     // 仮出庫リスト（フィルター適用）
-    let provList = (historyFilter === 'all' || historyFilter === 'out' || historyFilter === 'provisional') ? provisionalOutbounds.slice() : [];
+    let provList = (historyFilter === 'all' || historyFilter === 'provisional') ? provisionalOutbounds.slice() : [];
     // 自支店の仮出庫のみ表示
     if(currentUser){
       const ownBranch = currentUser.branchId || 'taniyabe';
