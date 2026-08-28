@@ -1198,6 +1198,7 @@
         <span class="chip active" data-htype="all">すべて</span>
         <span class="chip" data-htype="in">入庫のみ</span>
         <span class="chip" data-htype="out">出庫のみ</span>
+        <span class="chip" data-htype="provisional">仮出庫のみ</span>
         <span class="chip" data-htype="delete">削除のみ</span>
       </div>
     </div>
@@ -14516,7 +14517,7 @@ window.addEventListener('storageReady', function(){
 
   function renderHistory(){
     const el = document.getElementById('historyList');
-    let list = transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
+    let list = (historyFilter === 'provisional') ? [] : transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
     // 全ユーザー: 自支店の取引履歴のみ表示（管理者も含む）
     // branchIdなしの旧データは谷田部店扱い
     if(currentUser){
@@ -14555,7 +14556,7 @@ window.addEventListener('storageReady', function(){
     list = list.slice().sort((a,b)=>(new Date(b.date)||0)-(new Date(a.date)||0));
 
     // 仮出庫リスト（フィルター適用）
-    let provList = (historyFilter === 'all' || historyFilter === 'out') ? provisionalOutbounds.slice() : [];
+    let provList = (historyFilter === 'all' || historyFilter === 'out' || historyFilter === 'provisional') ? provisionalOutbounds.slice() : [];
     // 自支店の仮出庫のみ表示
     if(currentUser){
       const ownBranch = currentUser.branchId || 'taniyabe';
