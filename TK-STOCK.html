@@ -1100,9 +1100,6 @@
   </div>
 
   <div class="panel" id="tab-in" style="display:none;">
-    <div style="font-size:12px;color:var(--text-2);line-height:1.8;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
-      📌 <strong>在庫がある場合</strong>は出庫タブから<strong>仮出庫登録</strong>をお願いします。<strong>在庫がない場合</strong>は<strong>入庫予定を登録</strong>したあと、同時に<strong>仮出庫も登録</strong>してください。
-    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <h2 class="section-title" style="margin:0;">入庫処理</h2>
       <button class="btn btn-ghost btn-sm" id="handyToggleInBtn">📱 ハンディモード</button>
@@ -1168,9 +1165,6 @@
   </div>
 
   <div class="panel" id="tab-out" style="display:none;">
-    <div style="font-size:12px;color:var(--text-2);line-height:1.8;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
-      📌 <strong>在庫がある場合</strong>は<strong>仮出庫登録</strong>をお願いします。<strong>在庫がない場合</strong>は入庫タブから<strong>入庫予定を登録</strong>したあと、同時に<strong>仮出庫も登録</strong>してください。
-    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <h2 class="section-title" style="margin:0;">出庫処理</h2>
       <button class="btn btn-ghost btn-sm" id="handyToggleOutBtn">📱 ハンディモード</button>
@@ -11716,7 +11710,8 @@ window.addEventListener('storageReady', function(){
         + '<button class="btn btn-teal detail-action-btn" id="detailStockIn">入庫する</button>'
         + '<button class="btn btn-red detail-action-btn" id="detailStockOut">出庫する</button>'
         + '</div>'
-        + '<button class="btn btn-ghost detail-action-btn" id="detailProvisionalOut" style="width:100%;margin-top:8px;border:2px solid var(--amber);color:var(--amber);font-size:13px;">🔖 仮出庫として登録</button>'
+        + '<div style="font-size:11px;color:var(--text-2);line-height:1.7;background:var(--bg-2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;margin-top:10px;margin-bottom:2px;">📌 <strong>在庫がある場合</strong>は仮出庫登録 / <strong>在庫がない場合</strong>は入庫予定を登録後に仮出庫も登録</div>'
+        + '<button class="btn btn-ghost detail-action-btn" id="detailProvisionalOut" style="width:100%;margin-top:6px;border:2px solid var(--amber);color:var(--amber);font-size:13px;">🔖 仮出庫として登録</button>'
         + (['katsuta','iwama'].includes(currentUser&&currentUser.branchId) ? '<button class="btn btn-ghost detail-action-btn" id="detailCustodyOut" style="width:100%;margin-top:6px;border:2px solid var(--amber);color:var(--amber);font-size:13px;">📦 預かり出庫として登録</button>' : '')
         + '<button class="btn btn-ghost detail-action-btn" id="detailInschAddBtn" style="width:100%;margin-top:6px;border:2px solid var(--teal);color:var(--teal);font-size:13px;">📦 入庫予定の登録</button>'
         + '<div id="detailActionMsg"></div>'
