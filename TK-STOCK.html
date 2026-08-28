@@ -421,6 +421,16 @@
   .brand-rule-row select{width:160px;font-size:12px;}
   .pricing-section-title{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text-1);margin:0 0 4px;}
   .pricing-section-divider{height:1px;background:var(--line);margin:28px 0 24px;}
+  /* アコーディオン */
+  .admin-accordion-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;user-select:none;transition:background 0.15s;}
+  .admin-accordion-header:hover{background:var(--bg-3);}
+  .admin-accordion-header.open{background:var(--teal-dim);border-color:var(--teal);}
+  .admin-accordion-header .acc-title{font-size:14px;font-weight:700;color:var(--text-1);}
+  .admin-accordion-header.open .acc-title{color:var(--teal);}
+  .admin-accordion-header .acc-arrow{font-size:12px;color:var(--text-3);transition:transform 0.2s;}
+  .admin-accordion-header.open .acc-arrow{transform:rotate(180deg);}
+  .admin-accordion-body{overflow:hidden;transition:max-height 0.25s ease;padding:0 4px;}
+  .admin-accordion-wrap{margin-bottom:10px;}
   .brand-rule-row input{width:70px;}
   .brand-model-list{font-size:12px;color:var(--text-2);background:var(--bg-1);border-radius:6px;padding:10px 10px 2px;margin:-2px 0 10px 98px;line-height:1.6;}
   .model-rule-row{margin-bottom:8px;}
@@ -4622,6 +4632,80 @@ window.addEventListener('storageReady', function(){
       }catch(e){ console.warn('switchTab panel error', t, e); }
     });
     if(tabName === 'out'){ renderProvisionalList(); }
+    if(tabName === 'pricing'){ initPricingAccordion(); }
+  }
+
+  let _pricingAccordionInit = false;
+  function initPricingAccordion(){
+    if(_pricingAccordionInit) return;
+    _pricingAccordionInit = true;
+    const panel = document.getElementById('tab-pricing');
+    if(!panel) return;
+
+    // グループ定義：タイトルの先頭テキストでセクションをグループ化
+    const groups = [
+      { label:'💰 価格設定', open:true, keywords:['販売価格の設定','仕入れ価格の設定','外部向け'] },
+      { label:'📦 価格表・商品データ', open:false, keywords:['価格表取込','商品一括インポート','JANコードデータベース','JANコード自動付与','JANコード一括入力','スキャンして登録','重複商品','カタログ連動'] },
+      { label:'⚙️ その他設定', open:false, keywords:['保管場所','入庫済みラベル','ホイールメニュー','ホイールカタログ','商品URL'] },
+    ];
+
+    // すべての pricing-section-title を取得
+    const titles = [...panel.querySelectorAll('.pricing-section-title')];
+    const dividers = [...panel.querySelectorAll('.pricing-section-divider')];
+
+    // タイトル+その後のコンテンツをセクション単位で収集
+    const sections = titles.map((title, i)=>{
+      const nodes = [title];
+      let el = title.nextElementSibling;
+      while(el && !el.classList.contains('pricing-section-title') && !el.classList.contains('pricing-section-divider')){
+        nodes.push(el);
+        el = el.nextElementSibling;
+      }
+      return { title: title.textContent.trim(), nodes };
+    });
+
+    // divider を非表示に（グループヘッダーで代替）
+    dividers.forEach(d=>{ d.style.display='none'; });
+
+    // グループごとにアコーディオンを生成し、タイトルの前に挿入
+    const firstTitle = titles[0];
+    groups.forEach(group=>{
+      const matched = sections.filter(s=>group.keywords.some(k=>s.title.includes(k)));
+      if(!matched.length) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'admin-accordion-wrap';
+
+      const header = document.createElement('div');
+      header.className = 'admin-accordion-header'+(group.open?' open':'');
+      header.innerHTML = '<span class="acc-title">'+group.label+'</span><span class="acc-arrow">▼</span>';
+
+      const body = document.createElement('div');
+      body.className = 'admin-accordion-body';
+      body.style.padding = '16px 8px 8px';
+
+      matched.forEach(s=>{ s.nodes.forEach(n=>body.appendChild(n)); });
+
+      wrap.appendChild(header);
+      wrap.appendChild(body);
+
+      if(!group.open){ body.style.maxHeight = '0'; body.style.padding = '0 8px'; }
+      else { body.style.maxHeight = body.scrollHeight+'px'; }
+
+      header.addEventListener('click', ()=>{
+        const isOpen = header.classList.contains('open');
+        header.classList.toggle('open', !isOpen);
+        if(isOpen){
+          body.style.maxHeight = '0';
+          body.style.padding = '0 8px';
+        } else {
+          body.style.padding = '16px 8px 8px';
+          body.style.maxHeight = body.scrollHeight+'px';
+        }
+      });
+
+      panel.insertBefore(wrap, firstTitle);
+    });
   }
 
   function showHomeState(){
