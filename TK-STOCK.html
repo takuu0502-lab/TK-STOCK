@@ -4646,7 +4646,7 @@ window.addEventListener('storageReady', function(){
     const groups = [
       { label:'💰 価格設定', open:true, keywords:['販売価格の設定','仕入れ価格の設定','外部向け'] },
       { label:'📦 価格表・商品データ', open:false, keywords:['価格表取込','商品一括インポート','JANコードデータベース','JANコード自動付与','JANコード一括入力','スキャンして登録','重複商品','カタログ連動'] },
-      { label:'⚙️ その他設定', open:false, keywords:['保管場所','入庫済みラベル','ホイールメニュー','ホイールカタログ','商品URL'] },
+      { label:'⚙️ その他設定', open:false, keywords:['保管場所','入庫済みラベル','ホイールメニュー','ホイールカタログ','商品URL','POP印刷テンプレート'] },
     ];
 
     // すべての pricing-section-title を取得
@@ -4690,7 +4690,7 @@ window.addEventListener('storageReady', function(){
       wrap.appendChild(body);
 
       if(!group.open){ body.style.maxHeight = '0'; body.style.padding = '0 8px'; }
-      else { body.style.maxHeight = body.scrollHeight+'px'; }
+      else { body.style.maxHeight = '9999px'; }
 
       header.addEventListener('click', ()=>{
         const isOpen = header.classList.contains('open');
@@ -4700,7 +4700,7 @@ window.addEventListener('storageReady', function(){
           body.style.padding = '0 8px';
         } else {
           body.style.padding = '16px 8px 8px';
-          body.style.maxHeight = body.scrollHeight+'px';
+          body.style.maxHeight = '9999px';
         }
       });
 
