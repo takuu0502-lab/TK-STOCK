@@ -1100,6 +1100,9 @@
   </div>
 
   <div class="panel" id="tab-in" style="display:none;">
+    <div style="font-size:12px;color:var(--text-2);line-height:1.8;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
+      📌 <strong>在庫がある場合</strong>は出庫タブから<strong>仮出庫登録</strong>をお願いします。<strong>在庫がない場合</strong>は<strong>入庫予定を登録</strong>したあと、同時に<strong>仮出庫も登録</strong>してください。
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <h2 class="section-title" style="margin:0;">入庫処理</h2>
       <button class="btn btn-ghost btn-sm" id="handyToggleInBtn">📱 ハンディモード</button>
@@ -1165,6 +1168,9 @@
   </div>
 
   <div class="panel" id="tab-out" style="display:none;">
+    <div style="font-size:12px;color:var(--text-2);line-height:1.8;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;">
+      📌 <strong>在庫がある場合</strong>は<strong>仮出庫登録</strong>をお願いします。<strong>在庫がない場合</strong>は入庫タブから<strong>入庫予定を登録</strong>したあと、同時に<strong>仮出庫も登録</strong>してください。
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <h2 class="section-title" style="margin:0;">出庫処理</h2>
       <button class="btn btn-ghost btn-sm" id="handyToggleOutBtn">📱 ハンディモード</button>
@@ -11986,7 +11992,7 @@ window.addEventListener('storageReady', function(){
       document.getElementById('incomingSchedModalProductName').textContent = cleanName(p2.name)+(p2.spec?' / '+p2.spec:'');
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
       document.getElementById('incomingSchedDate').value = tomorrow.toISOString().slice(0,10);
-      document.getElementById('incomingSchedQty').value = 4;
+      document.getElementById('incomingSchedQty').value = 1;
       document.getElementById('incomingSchedModal').dataset.targetProductId = id;
       document.getElementById('incomingSchedModal').classList.add('show');
     };
@@ -12492,7 +12498,7 @@ window.addEventListener('storageReady', function(){
         document.getElementById('incomingSchedModalProductName').textContent = cleanName(_savedProductForOrder.name) + (_savedProductForOrder.spec ? ' / ' + _savedProductForOrder.spec : '');
         const _defDate = orderDueDate || (()=>{ const t=new Date(); t.setDate(t.getDate()+1); return t.toISOString().slice(0,10); })();
         document.getElementById('incomingSchedDate').value = _defDate;
-        document.getElementById('incomingSchedQty').value = 4;
+        document.getElementById('incomingSchedQty').value = 1;
         // 客注品タイプに切替（クリックでUIも更新）
         document.getElementById('isch_type_co_label').click();
         // お客様名・車種を自動入力
