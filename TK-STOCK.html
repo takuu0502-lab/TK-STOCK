@@ -664,7 +664,10 @@
               <input type="checkbox" id="ptShowSpec" checked style="accent-color:var(--amber);width:15px;height:15px;"> 規格・サイズ
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
-              <input type="checkbox" id="ptShowPrice" checked style="accent-color:var(--amber);width:15px;height:15px;"> 販売価格
+              <input type="checkbox" id="ptShowPartno" style="accent-color:var(--amber);width:15px;height:15px;"> 品番
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="ptShowPrice" checked style="accent-color:var(--amber);width:15px;height:15px;"> 販売価格（税込）
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
               <input type="checkbox" id="ptShowBarcode" checked style="accent-color:var(--amber);width:15px;height:15px;"> JANバーコード
@@ -8089,7 +8092,7 @@ window.addEventListener('storageReady', function(){
       modal.classList.add('show');
 
       // 設定状態
-      let ptSettings = { cols:3, showName:true, showSpec:true, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24 };
+      let ptSettings = { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24 };
 
       // ボタントグル
       modal.querySelectorAll('[data-pt-cols]').forEach(btn=>{
@@ -8107,7 +8110,7 @@ window.addEventListener('storageReady', function(){
           document.getElementById('ptPvPrice').style.fontSize = ptSettings.priceSize+'px';
         });
       });
-      ['ptShowName','ptShowSpec','ptShowPrice','ptShowBarcode','ptShowTaxNote'].forEach(id=>{
+      ['ptShowName','ptShowSpec','ptShowPartno','ptShowPrice','ptShowBarcode','ptShowTaxNote'].forEach(id=>{
         const cb = document.getElementById(id);
         const key = id.replace('ptShow','show').replace('pt','');
         cb.addEventListener('change', ()=>{ ptSettings[id.replace('ptShow','show')] = cb.checked; updatePtPreview(); });
@@ -9617,7 +9620,7 @@ window.addEventListener('storageReady', function(){
   }
 
   function executePriceTagPrint(ps, cfg){
-    cfg = cfg || { cols:3, showName:true, showSpec:true, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24 };
+    cfg = cfg || { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24 };
     const printArea = document.getElementById('priceTagPrintArea');
     printArea.innerHTML = '';
     printArea.style.display = 'block';
@@ -9633,7 +9636,9 @@ window.addEventListener('storageReady', function(){
       const name = cleanName(p.name);
       const jan = p.barcode || '';
       const spec = p.spec || '';
-      const sell = p.branchSellPrice && p.branchSellPrice[ownBranch] ? p.branchSellPrice[ownBranch] : (p.sellPrice||0);
+      const partno = p.partno || '';
+      const sellEx = p.branchSellPrice && p.branchSellPrice[ownBranch] ? p.branchSellPrice[ownBranch] : (p.sellPrice||0);
+      const sell = sellEx ? Math.floor(sellEx * 1.1) : 0; // 税抜→税込（10%）
       const safeId = p.id.replace(/[^a-zA-Z0-9]/g,'_');
 
       const card = document.createElement('div');
@@ -9642,6 +9647,7 @@ window.addEventListener('storageReady', function(){
       let inner = '';
       if(cfg.showName) inner += '<div class="price-tag-name">'+escapeHtml(name)+'</div>';
       if(cfg.showSpec && spec) inner += '<div style="font-size:10px;color:#555;line-height:1.3;">'+escapeHtml(spec)+'</div>';
+      if(cfg.showPartno && partno) inner += '<div style="font-size:10px;color:#888;">品番: '+escapeHtml(partno)+'</div>';
       if(cfg.showPrice && sell) inner += '<div class="price-tag-price" style="font-size:'+cfg.priceSize+'px;"><span style="font-size:'+(cfg.priceSize*0.55|0)+'px;">¥</span>'+Number(sell).toLocaleString('ja-JP')+(cfg.showTaxNote?'<span style="font-size:'+(cfg.priceSize*0.45|0)+'px;"> 税込</span>':'')+'</div>';
       if(cfg.showBarcode){
         if(jan){
