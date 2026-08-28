@@ -11087,7 +11087,7 @@ window.addEventListener('storageReady', function(){
     updateProductTypeLabels();
     document.getElementById('modalMsg').innerHTML = '';
     document.getElementById('janLookupMsg').innerHTML = '';
-    document.getElementById('modalDelete').style.display = 'inline-block';
+    document.getElementById('modalDelete').style.display = isSuperAdminUser() ? 'inline-block' : 'none';
     modal.classList.add('show');
     // バーコード未設定かつ自動付与抑制フラグがない場合、JANルックアップから候補を提案（即時保存しない）
     if(!p.barcode && !p._suppressAutoJan && p.spec){
