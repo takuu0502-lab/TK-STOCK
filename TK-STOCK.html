@@ -4642,69 +4642,56 @@ window.addEventListener('storageReady', function(){
     const panel = document.getElementById('tab-pricing');
     if(!panel) return;
 
-    // グループ定義：タイトルの先頭テキストでセクションをグループ化
     const groups = [
-      { label:'💰 価格設定', open:true, keywords:['販売価格の設定','仕入れ価格の設定','外部向け'] },
+      { label:'💰 価格設定', open:true,  keywords:['販売価格の設定','仕入れ価格の設定','外部向け'] },
       { label:'📦 価格表・商品データ', open:false, keywords:['価格表取込','商品一括インポート','JANコードデータベース','JANコード自動付与','JANコード一括入力','スキャンして登録','重複商品','カタログ連動'] },
       { label:'⚙️ その他設定', open:false, keywords:['保管場所','入庫済みラベル','ホイールメニュー','ホイールカタログ','商品URL','POP印刷テンプレート'] },
     ];
 
-    // すべての pricing-section-title を取得
     const titles = [...panel.querySelectorAll('.pricing-section-title')];
     const dividers = [...panel.querySelectorAll('.pricing-section-divider')];
 
-    // タイトル+その後のコンテンツをセクション単位で収集
-    const sections = titles.map((title, i)=>{
-      const nodes = [title];
-      let el = title.nextElementSibling;
-      while(el && !el.classList.contains('pricing-section-title') && !el.classList.contains('pricing-section-divider')){
-        nodes.push(el);
-        el = el.nextElementSibling;
-      }
-      return { title: title.textContent.trim(), nodes };
+    // 各タイトルにグループラベルを付与（DOM移動なし）
+    titles.forEach(title=>{
+      const txt = title.textContent.trim();
+      const g = groups.find(g=>g.keywords.some(k=>txt.includes(k)));
+      if(g) title.dataset.accGroup = g.label;
     });
 
-    // divider を非表示に（グループヘッダーで代替）
+    // タイトルに続くコンテンツ要素にも同じグループラベルを伝播
+    titles.forEach(title=>{
+      const gLabel = title.dataset.accGroup;
+      if(!gLabel) return;
+      let el = title.nextElementSibling;
+      while(el && !el.classList.contains('pricing-section-title') && !el.classList.contains('admin-accordion-header')){
+        if(!el.classList.contains('pricing-section-divider')) el.dataset.accGroup = gLabel;
+        el = el.nextElementSibling;
+      }
+    });
+
     dividers.forEach(d=>{ d.style.display='none'; });
 
-    // グループごとにアコーディオンを生成し、タイトルの前に挿入
-    const firstTitle = titles[0];
+    // 各グループの最初のタイトルの直前にヘッダーを挿入
     groups.forEach(group=>{
-      const matched = sections.filter(s=>group.keywords.some(k=>s.title.includes(k)));
-      if(!matched.length) return;
-
-      const wrap = document.createElement('div');
-      wrap.className = 'admin-accordion-wrap';
+      const firstEl = titles.find(t=>t.dataset.accGroup===group.label);
+      if(!firstEl) return;
 
       const header = document.createElement('div');
       header.className = 'admin-accordion-header'+(group.open?' open':'');
       header.innerHTML = '<span class="acc-title">'+group.label+'</span><span class="acc-arrow">▼</span>';
+      panel.insertBefore(header, firstEl);
 
-      const body = document.createElement('div');
-      body.className = 'admin-accordion-body';
-      body.style.padding = '16px 8px 8px';
-
-      matched.forEach(s=>{ s.nodes.forEach(n=>body.appendChild(n)); });
-
-      wrap.appendChild(header);
-      wrap.appendChild(body);
-
-      if(!group.open){ body.style.maxHeight = '0'; body.style.padding = '0 8px'; }
-      else { body.style.maxHeight = '9999px'; }
+      if(!group.open){
+        panel.querySelectorAll('[data-acc-group="'+group.label+'"]').forEach(el=>{ el.style.display='none'; });
+      }
 
       header.addEventListener('click', ()=>{
         const isOpen = header.classList.contains('open');
         header.classList.toggle('open', !isOpen);
-        if(isOpen){
-          body.style.maxHeight = '0';
-          body.style.padding = '0 8px';
-        } else {
-          body.style.padding = '16px 8px 8px';
-          body.style.maxHeight = '9999px';
-        }
+        panel.querySelectorAll('[data-acc-group="'+group.label+'"]').forEach(el=>{
+          el.style.display = isOpen ? 'none' : '';
+        });
       });
-
-      panel.insertBefore(wrap, firstTitle);
     });
   }
 
