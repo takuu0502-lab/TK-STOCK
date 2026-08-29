@@ -4402,17 +4402,22 @@ window.addEventListener('storageReady', function(){
         // 記録セル
         +'<td style="padding:8px 10px;border:1px solid var(--line);vertical-align:top;">'
           +'<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">預かり'+row.initialQty+'本</div>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:5px;">'
+          +'<div style="display:flex;flex-direction:column;gap:6px;">'
           +logs.map(l=>{
             const isSale=l.type==='sale';
-            return '<div style="font-size:12px;padding:3px 7px;border-radius:5px;border:1px solid '
-              +(isSale?'#fbbf24;background:#fffbeb;color:#92400e;':'#86efac;background:#f0fdf4;color:#166534;')
-              +'">'
-              +'<span style="font-weight:700;">'+(isSale?'売':'使')+'</span> '
-              +l.date.slice(5,10)+' '
-              +'<span style="font-weight:700;">'+l.qty+'本</span>'
-              +(l.vehicleNo?'<br><span style="font-size:11px;">'+escapeHtml(l.vehicleNo)+'</span>':'')
-              +(l.note&&!l.vehicleNo?'<span style="font-size:11px;"> '+escapeHtml(l.note)+'</span>':'')
+            const d=l.date?l.date.split('-'):['','',''];
+            const dateStr=d[0]+'年 '+parseInt(d[1])+'月 '+parseInt(d[2])+'日';
+            const labelColor=isSale?'#b45309':'#2e7d32';
+            const labelBg=isSale?'#fffbeb':'#f0fdf4';
+            const border=isSale?'#fbbf24':'#86efac';
+            return '<div style="border:1px solid '+border+';border-radius:7px;padding:6px 10px;background:'+labelBg+';font-size:12px;">'
+              +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">'
+              +'<span style="font-size:11px;font-weight:700;color:#fff;background:'+labelColor+';border-radius:4px;padding:1px 6px;">'+(isSale?'売上':'使用')+'</span>'
+              +'<span style="color:var(--text-2);">'+dateStr+'</span>'
+              +'</div>'
+              +'<div style="color:'+labelColor+';font-weight:700;font-size:13px;">'+l.qty+'本</div>'
+              +(l.vehicleNo?'<div style="color:var(--text-2);font-size:11px;">車番：'+escapeHtml(l.vehicleNo)+'</div>':'')
+              +(l.note?'<div style="color:var(--text-3);font-size:11px;">'+escapeHtml(l.note)+'</div>':'')
               +'</div>';
           }).join('')
           +'</div>'
