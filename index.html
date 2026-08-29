@@ -4576,6 +4576,13 @@ window.addEventListener('storageReady', function(){
     await saveCustodyContracts();
     renderCustodyTab();
   }
+
+  // グローバルスコープに公開（onclick属性から呼び出せるようにする）
+  window.custodyAddRow    = custodyAddRow;
+  window.custodyEditRow   = custodyEditRow;
+  window.custodyLogUse    = custodyLogUse;
+  window.custodyLogSale   = custodyLogSale;
+  window.custodyDeleteRow = custodyDeleteRow;
   // ═══════════════════════════════════════════════════════
 
   function renderReservationTab(){
