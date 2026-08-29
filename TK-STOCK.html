@@ -4470,6 +4470,14 @@ window.addEventListener('storageReady', function(){
       +'</select>'
       +'<input id="car_customer_new" class="input" placeholder="取引先名を入力" style="width:100%;margin-top:8px;display:'+(existingCustomers.length?'none':'block')+';">'
       +'</div>'
+      +'<div class="field"><label>TK-STOCK商品検索（任意）</label>'
+      +'<div style="display:flex;gap:6px;align-items:center;">'
+      +'<input id="car_prod_search" class="input" placeholder="品番・商品名・サイズで検索" style="flex:1;" oninput="custodySearchProducts()">'
+      +'</div>'
+      +'<div id="car_prod_list" style="margin-top:6px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;display:none;"></div>'
+      +'<div id="car_prod_selected" style="margin-top:6px;display:none;padding:8px 10px;background:var(--bg-3);border-radius:8px;font-size:13px;"></div>'
+      +'<input type="hidden" id="car_product_id" value="">'
+      +'</div>'
       +'<div class="field"><label>パターン</label><input id="car_pattern" class="input" placeholder="例：M746" style="width:100%;"></div>'
       +'<div class="field"><label>タイヤサイズ</label><input id="car_size" class="input" placeholder="例：11R22.5 14PR" style="width:100%;"></div>'
       +'<div class="field"><label>預かり本数 *</label><input id="car_qty" class="input" type="number" min="1" value="1" style="width:120px;"></div>'
@@ -4487,9 +4495,11 @@ window.addEventListener('storageReady', function(){
       if(!customerName){ alert('取引先名を入力または選択してください'); return; }
       const qty=parseInt(document.getElementById('car_qty').value)||0;
       if(qty<1){ alert('預かり本数を入力してください'); return; }
+      const productId=((document.getElementById('car_product_id')||{}).value||'').trim()||null;
       const row={
         id:uid('cc'), branchId:_custodyBranchId(),
         customerName,
+        productId,
         pattern:(document.getElementById('car_pattern').value||'').trim(),
         size:(document.getElementById('car_size').value||'').trim(),
         initialQty:qty,
@@ -4506,6 +4516,67 @@ window.addEventListener('storageReady', function(){
       if(sel) sel.style.display='none';
     }
   }
+
+  function custodySearchProducts(){
+    const kw=((document.getElementById('car_prod_search')||{}).value||'').trim();
+    const list=document.getElementById('car_prod_list');
+    if(!list) return;
+    if(!kw){ list.style.display='none'; list.innerHTML=''; return; }
+    const lower=kw.toLowerCase();
+    const matches=products.filter(p=>
+      (p.name||'').toLowerCase().includes(lower)||
+      (p.partno||'').toLowerCase().includes(lower)||
+      (p.spec||'').toLowerCase().includes(lower)||
+      (p.brand||'').toLowerCase().includes(lower)||
+      (p.barcode||'').toLowerCase().includes(lower)
+    ).slice(0,10);
+    if(!matches.length){
+      list.innerHTML='<div style="padding:8px 12px;color:var(--text-3);font-size:13px;">見つかりません</div>';
+      list.style.display='block'; return;
+    }
+    list.innerHTML=matches.map((p,i)=>{
+      const stk=getStock(p);
+      return '<button type="button" data-cpidx="'+i+'" style="width:100%;text-align:left;padding:8px 12px;border:none;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;font-size:13px;">'
+        +'<div style="font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+        +(p.spec?'<div style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.spec)+'</div>':'')
+        +'<div style="color:'+(stk>0?'var(--teal)':'var(--text-3)')+';font-size:12px;">在庫: '+stk+'本</div>'
+        +'</button>';
+    }).join('');
+    list.style.display='block';
+    list._custodyMatches=matches;
+    list.querySelectorAll('[data-cpidx]').forEach(btn=>{
+      btn.addEventListener('click',()=>{ custodySelectProduct(matches[parseInt(btn.dataset.cpidx)]); });
+    });
+  }
+  window.custodySearchProducts = custodySearchProducts;
+
+  function custodySelectProduct(p){
+    const pidInput=document.getElementById('car_product_id');
+    if(pidInput) pidInput.value=p.id;
+    const patEl=document.getElementById('car_pattern');
+    const sizeEl=document.getElementById('car_size');
+    if(patEl && !patEl.value) patEl.value=p.name||'';
+    if(sizeEl && !sizeEl.value) sizeEl.value=p.spec||'';
+    const sel=document.getElementById('car_prod_selected');
+    if(sel){
+      sel.style.display='block';
+      sel.innerHTML='✅ <b>'+escapeHtml(cleanName(p.name))+'</b>'+(p.spec?' '+escapeHtml(p.spec):'')
+        +'&nbsp;<button type="button" class="btn btn-ghost btn-sm" onclick="custodyClearProduct()">解除</button>';
+    }
+    const list=document.getElementById('car_prod_list');
+    if(list){ list.style.display='none'; }
+    const searchEl=document.getElementById('car_prod_search');
+    if(searchEl) searchEl.value='';
+  }
+  window.custodySelectProduct = custodySelectProduct;
+
+  function custodyClearProduct(){
+    const pidInput=document.getElementById('car_product_id');
+    if(pidInput) pidInput.value='';
+    const sel=document.getElementById('car_prod_selected');
+    if(sel) sel.style.display='none';
+  }
+  window.custodyClearProduct = custodyClearProduct;
 
   function custodyToggleNewCustomer(){
     const sel=document.getElementById('car_customer_sel');
@@ -6952,6 +7023,13 @@ window.addEventListener('storageReady', function(){
                 }
                 badges += '<div data-price-tip="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
               }
+              // 預かり在庫バッジ（custodyContracts連動）
+              if(brId === 'katsuta'){
+                const _cstQty = custodyContracts.filter(c=>c.productId===p.id&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0);
+                if(_cstQty > 0){
+                  badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565c0;font-size:'+(isOwn?'10':'9')+'px;font-weight:700;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🏪 預かり '+_cstQty+'本</div>';
+                }
+              }
               cell += '<td style="padding:6px 10px;vertical-align:top;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
                 + '<div class="gauge-bar"><div class="gauge-fill" style="width:'+bPct+'%;background:'+bColor+';"></div></div>'
@@ -6970,7 +7048,8 @@ window.addEventListener('storageReady', function(){
             const provOver=_scProvQtyCust>stk;
             const _provTipSc=_scPoPend.map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮出庫]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
             const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
-            return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="custody" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+_makeInschBadges(_ownBr ? p.id : '', _ownBr, 11, true)+  '</td>';
+            const _cstQtySingle=(isSuperAdminUser()||_ownBr==='katsuta')?custodyContracts.filter(c=>c.productId===p.id&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0):0;
+            return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="custody" title="'+_provTipSc+'" style="cursor:help;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+_makeInschBadges(_ownBr ? p.id : '', _ownBr, 11, true)+(_cstQtySingle>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🏪 預かり '+_cstQtySingle+'本</div>':'')+  '</td>';
           }
         })()
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
