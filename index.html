@@ -4334,7 +4334,7 @@ window.addEventListener('storageReady', function(){
     return custodyContracts.filter(c=> isSuperAdminUser() ? c.branchId==='katsuta' : c.branchId===br);
   }
 
-  // ── メインビュー ──
+  // ── メインビュー（表形式） ──
   function renderCustodyTab(){
     const el = document.getElementById('custodyContent');
     if(!el) return;
@@ -4351,66 +4351,85 @@ window.addEventListener('storageReady', function(){
       +'<h2 class="section-title" style="margin:0;">預かり在庫</h2>'
       +'<button class="btn btn-amber" onclick="custodyAddRow()">＋ 新規登録</button>'
       +'</div>'
-      // サマリーバナー
       +'<div style="background:var(--teal-dim);border:1px solid var(--teal);border-radius:10px;padding:12px 16px;margin-bottom:18px;">'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-      +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 現在の預かり残数合計</span>'
+      +'<span style="font-size:13px;font-weight:700;color:var(--teal);">📦 預かり残数合計</span>'
       +'<span style="font-size:18px;font-weight:700;color:var(--teal);">'+totalRemaining+'本</span>'
       +'</div>'
       +(custSummary?'<div style="font-size:12px;color:var(--text-2);margin-top:4px;">'+custSummary+'</div>':'')
       +'<div style="font-size:11px;color:var(--text-3);margin-top:4px;">※ 棚卸し時は店舗在庫の実数からこの本数を差し引いてください</div>'
       +'</div>';
+
     if(!rows.length){
       html+='<div style="color:var(--text-3);padding:40px 0;text-align:center;font-size:14px;">預かり在庫はありません</div>';
-    } else {
-      html += rows.map(row=>{
-        const rem = _custodyRemaining(row);
-        const logs = (row.logs||[]).slice().reverse();
-        return '<div class="custody-card">'
-          // ヘッダー行
-          +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">'
-          +'<div>'
-          +'<div class="custody-customer-name">'+escapeHtml(row.customerName)+'</div>'
-          +'<div style="font-size:13px;color:var(--text-2);margin-top:2px;">'
-          +(row.pattern?escapeHtml(row.pattern):'')
-          +(row.pattern&&row.size?' ':'')
-          +(row.size?escapeHtml(row.size):'')
-          +(row.note?' <span style="color:var(--text-3);">（'+escapeHtml(row.note)+'）</span>':'')
-          +'</div>'
-          +'</div>'
-          +'<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
-          +'<div style="text-align:right;">'
-          +'<div style="font-size:11px;color:var(--text-3);">預かり'+row.initialQty+'本</div>'
-          +'<span class="custody-remaining-badge'+(rem===0?' zero':'')+'">残'+rem+'本</span>'
-          +'</div>'
-          +'</div>'
-          +'</div>'
-          // ログ一覧
-          +(logs.length
-            ? '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;">'
-              +logs.map(l=>{
-                const isSale=l.type==='sale';
-                return '<span style="font-size:12px;padding:3px 8px;border-radius:6px;'
-                  +(isSale?'background:var(--amber-dim);color:#b45309;':'background:#e8f5e9;color:#2e7d32;')+'">'
-                  +(isSale?'売':'使')
-                  +(l.vehicleNo?' '+escapeHtml(l.vehicleNo):'')
-                  +' '+l.qty+'本 '
-                  +l.date.slice(5,10)
-                  +(l.note?' ('+escapeHtml(l.note)+')':'')
-                  +'</span>';
-              }).join('')
-              +'</div>'
-            : '')
-          // ボタン
-          +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-          +'<button class="btn btn-ghost btn-sm" onclick="custodyLogUse(\''+row.id+'\')">🔧 使用記録</button>'
-          +'<button class="btn btn-amber btn-sm" onclick="custodyLogSale(\''+row.id+'\')">💴 売上記録</button>'
-          +'<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="custodyEditRow(\''+row.id+'\')">✏️ 編集</button>'
-          +'<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="custodyDeleteRow(\''+row.id+'\')">🗑</button>'
-          +'</div>'
-          +'</div>';
-      }).join('');
+      el.innerHTML=html; return;
     }
+
+    // 表形式
+    html += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px;">';
+    // ヘッダー
+    html += '<thead><tr style="background:var(--bg-2);">'
+      +'<th style="padding:8px 10px;text-align:left;border:1px solid var(--line);white-space:nowrap;font-size:12px;color:var(--text-2);font-weight:600;">ユーザー名</th>'
+      +'<th style="padding:8px 10px;text-align:left;border:1px solid var(--line);white-space:nowrap;font-size:12px;color:var(--text-2);font-weight:600;">パターン</th>'
+      +'<th style="padding:8px 10px;text-align:left;border:1px solid var(--line);white-space:nowrap;font-size:12px;color:var(--text-2);font-weight:600;">タイヤサイズ</th>'
+      +'<th style="padding:8px 10px;text-align:left;border:1px solid var(--line);font-size:12px;color:var(--text-2);font-weight:600;">使用・売上記録</th>'
+      +'<th style="padding:8px 10px;text-align:center;border:1px solid var(--line);white-space:nowrap;font-size:12px;color:var(--text-2);font-weight:600;">残本数</th>'
+      +'<th style="padding:8px 6px;border:1px solid var(--line);font-size:12px;color:var(--text-2);font-weight:600;min-width:120px;"></th>'
+      +'</tr></thead>';
+    html += '<tbody>';
+
+    rows.forEach(row=>{
+      const rem = _custodyRemaining(row);
+      const logs = (row.logs||[]).slice().sort((a,b)=>a.date>b.date?1:-1);
+      html += '<tr style="background:var(--bg-1);">'
+        // ユーザー名
+        +'<td style="padding:10px;border:1px solid var(--line);font-weight:700;white-space:nowrap;vertical-align:top;">'
+          +escapeHtml(row.customerName)
+          +(row.note?'<div style="font-size:11px;color:var(--text-3);font-weight:400;">'+escapeHtml(row.note)+'</div>':'')
+        +'</td>'
+        // パターン
+        +'<td style="padding:10px;border:1px solid var(--line);white-space:nowrap;vertical-align:top;">'+escapeHtml(row.pattern||'—')+'</td>'
+        // サイズ
+        +'<td style="padding:10px;border:1px solid var(--line);white-space:nowrap;vertical-align:top;">'+escapeHtml(row.size||'—')+'</td>'
+        // 記録セル
+        +'<td style="padding:8px 10px;border:1px solid var(--line);vertical-align:top;">'
+          +'<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">預かり'+row.initialQty+'本</div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:5px;">'
+          +logs.map(l=>{
+            const isSale=l.type==='sale';
+            return '<div style="font-size:12px;padding:3px 7px;border-radius:5px;border:1px solid '
+              +(isSale?'#fbbf24;background:#fffbeb;color:#92400e;':'#86efac;background:#f0fdf4;color:#166534;')
+              +'">'
+              +'<span style="font-weight:700;">'+(isSale?'売':'使')+'</span> '
+              +l.date.slice(5,10)+' '
+              +'<span style="font-weight:700;">'+l.qty+'本</span>'
+              +(l.vehicleNo?'<br><span style="font-size:11px;">'+escapeHtml(l.vehicleNo)+'</span>':'')
+              +(l.note&&!l.vehicleNo?'<span style="font-size:11px;"> '+escapeHtml(l.note)+'</span>':'')
+              +'</div>';
+          }).join('')
+          +'</div>'
+        +'</td>'
+        // 残本数
+        +'<td style="padding:10px;border:1px solid var(--line);text-align:center;vertical-align:middle;white-space:nowrap;">'
+          +'<span style="font-size:18px;font-weight:700;color:'+(rem===0?'var(--text-3)':'var(--teal)')+';">'+rem+'</span>'
+          +'<span style="font-size:12px;color:var(--text-3);">本</span>'
+        +'</td>'
+        // 操作ボタン
+        +'<td style="padding:6px;border:1px solid var(--line);vertical-align:middle;">'
+          +'<div style="display:flex;flex-direction:column;gap:4px;">'
+          +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 8px;" onclick="custodyLogUse(\''+row.id+'\')">🔧 使用</button>'
+          +'<button class="btn btn-amber btn-sm" style="font-size:11px;padding:4px 8px;" onclick="custodyLogSale(\''+row.id+'\')">💴 売上</button>'
+          +'<div style="display:flex;gap:4px;margin-top:2px;">'
+          +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;flex:1;" onclick="custodyEditRow(\''+row.id+'\')">✏️</button>'
+          +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;flex:1;color:var(--red);" onclick="custodyDeleteRow(\''+row.id+'\')">🗑</button>'
+          +'</div>'
+          +'</div>'
+        +'</td>'
+        +'</tr>';
+    });
+
+    html += '</tbody></table></div>';
     el.innerHTML = html;
   }
 
