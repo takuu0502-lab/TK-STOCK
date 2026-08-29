@@ -2768,6 +2768,7 @@ window.addEventListener('storageReady', function(){
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
   let custodyContracts = []; // 預かり在庫
+  let custodyCustomers = []; // 取引先マスター
   let popTemplates = []; // POP印刷テンプレート
   let customerOrders = []; // 客注品入庫リスト
   let reservationCategories = ['夏タイヤ・ホイール予約', 'スタッドレス予約', '用品予約']; // 予約カテゴリー
@@ -3797,6 +3798,8 @@ window.addEventListener('storageReady', function(){
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
       const ccr = await window.storage.get('custodyContracts', SHARED);
       custodyContracts = (ccr && ccr.value) ? (JSON.parse(ccr.value) || []) : [];
+      const ccu = await window.storage.get('custodyCustomers', SHARED);
+      custodyCustomers = (ccu && ccu.value) ? (JSON.parse(ccu.value) || []) : [];
       const co = await window.storage.get('customerOrders', SHARED);
       customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
       const rc = await window.storage.get('reservationCategories', SHARED);
@@ -3907,6 +3910,10 @@ window.addEventListener('storageReady', function(){
   async function saveCustodyContracts(){
     try{ await window.storage.set('custodyContracts', JSON.stringify(custodyContracts), SHARED); }
     catch(e){ console.error('save custodyContracts failed', e); }
+  }
+  async function saveCustodyCustomers(){
+    try{ await window.storage.set('custodyCustomers', JSON.stringify(custodyCustomers), SHARED); }
+    catch(e){ console.error('save custodyCustomers failed', e); }
   }
 
   async function saveProvisionalOutbounds(){
@@ -4457,23 +4464,26 @@ window.addEventListener('storageReady', function(){
 
   // ── 新規行登録 ──
   function custodyAddRow(){
-    // 既存の取引先名リストを収集
-    const existingCustomers = [...new Set(_custodyRows().map(r=>r.customerName))].sort((a,b)=>a.localeCompare(b,'ja'));
-    const selectOptions = existingCustomers.map(n=>'<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>').join('');
+    // 取引先マスター：全custodyContractsから収集 + custodyCustomersマスター
+    const _allNames = [...new Set([
+      ...(custodyCustomers||[]),
+      ...custodyContracts.filter(c=>c.branchId==='katsuta').map(r=>r.customerName)
+    ])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'ja'));
+
+    const selectOptions = _allNames.map(n=>'<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>').join('');
 
     const bodyHTML=
       '<div style="display:flex;flex-direction:column;gap:12px;">'
       +'<div class="field"><label>取引先 *</label>'
       +'<select id="car_customer_sel" class="input" style="width:100%;" onchange="custodyToggleNewCustomer()">'
-      +(existingCustomers.length ? '<option value="">選択してください</option>'+selectOptions : '')
+      +'<option value="">選択してください</option>'
+      +selectOptions
       +'<option value="__new__">＋ 新規取引先を追加</option>'
       +'</select>'
-      +'<input id="car_customer_new" class="input" placeholder="取引先名を入力" style="width:100%;margin-top:8px;display:'+(existingCustomers.length?'none':'block')+';">'
+      +'<input id="car_customer_new" class="input" placeholder="新規取引先名を入力" style="width:100%;margin-top:8px;display:none;">'
       +'</div>'
       +'<div class="field"><label>TK-STOCK商品検索（任意）</label>'
-      +'<div style="display:flex;gap:6px;align-items:center;">'
-      +'<input id="car_prod_search" class="input" placeholder="品番・商品名・サイズで検索" style="flex:1;" oninput="custodySearchProducts()">'
-      +'</div>'
+      +'<input id="car_prod_search" class="input" placeholder="品番・商品名・サイズで検索" style="width:100%;" oninput="custodySearchProducts()">'
       +'<div id="car_prod_list" style="margin-top:6px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;display:none;"></div>'
       +'<div id="car_prod_selected" style="margin-top:6px;display:none;padding:8px 10px;background:var(--bg-3);border-radius:8px;font-size:13px;"></div>'
       +'<input type="hidden" id="car_product_id" value="">'
@@ -4487,12 +4497,18 @@ window.addEventListener('storageReady', function(){
       const sel=document.getElementById('car_customer_sel');
       const newInput=document.getElementById('car_customer_new');
       let customerName='';
-      if(!sel || sel.value==='__new__' || !existingCustomers.length){
+      if(sel && sel.value==='__new__'){
         customerName=(newInput?newInput.value||'':'').trim();
+        // 新規取引先をマスターに追加
+        if(customerName && !(custodyCustomers||[]).includes(customerName)){
+          if(!custodyCustomers) custodyCustomers=[];
+          custodyCustomers.push(customerName);
+          await saveCustodyCustomers();
+        }
       } else {
-        customerName=sel.value.trim();
+        customerName=(sel?sel.value:'').trim();
       }
-      if(!customerName){ alert('取引先名を入力または選択してください'); return; }
+      if(!customerName){ alert('取引先を選択または入力してください'); return; }
       const qty=parseInt(document.getElementById('car_qty').value)||0;
       if(qty<1){ alert('預かり本数を入力してください'); return; }
       const productId=((document.getElementById('car_product_id')||{}).value||'').trim()||null;
@@ -4510,11 +4526,6 @@ window.addEventListener('storageReady', function(){
       await saveCustodyContracts();
       ov.remove(); renderCustodyTab();
     }, '登録する');
-    // 初回登録時（既存なし）はすぐ新規入力欄を表示
-    if(!existingCustomers.length){
-      const sel=document.getElementById('car_customer_sel');
-      if(sel) sel.style.display='none';
-    }
   }
 
   function custodySearchProducts(){
