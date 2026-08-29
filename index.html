@@ -4402,6 +4402,13 @@ window.addEventListener('storageReady', function(){
         // 記録セル
         +'<td style="padding:8px 10px;border:1px solid var(--line);vertical-align:top;">'
           +'<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">預かり'+row.initialQty+'本</div>'
+          +(row.saleDate?(()=>{
+            const sd=row.saleDate.split('-');
+            return '<div style="margin-bottom:6px;padding:5px 8px;background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:12px;">'
+              +'<span style="font-size:11px;font-weight:700;color:#fff;background:#b45309;border-radius:4px;padding:1px 6px;">売上日</span>'
+              +'<span style="color:#92400e;font-weight:600;margin-left:6px;">'+sd[0]+'年 '+parseInt(sd[1])+'月 '+parseInt(sd[2])+'日</span>'
+              +'</div>';
+          })():'')
           +'<div style="display:flex;flex-direction:column;gap:6px;">'
           +logs.map(l=>{
             const isSale=l.type==='sale';
@@ -4431,8 +4438,7 @@ window.addEventListener('storageReady', function(){
         +'<td style="padding:6px;border:1px solid var(--line);vertical-align:middle;">'
           +'<div style="display:flex;flex-direction:column;gap:4px;">'
           +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 8px;" onclick="custodyLogUse(\''+row.id+'\')">🔧 使用</button>'
-          +'<button class="btn btn-amber btn-sm" style="font-size:11px;padding:4px 8px;" onclick="custodyLogSale(\''+row.id+'\')">💴 売上</button>'
-          +'<div style="display:flex;gap:4px;margin-top:2px;">'
+          +'<div style="display:flex;gap:4px;margin-top:4px;">'
           +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;flex:1;" onclick="custodyEditRow(\''+row.id+'\')">✏️</button>'
           +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;flex:1;color:var(--red);" onclick="custodyDeleteRow(\''+row.id+'\')">🗑</button>'
           +'</div>'
@@ -4495,6 +4501,7 @@ window.addEventListener('storageReady', function(){
       +'</div>'
       +'<div class="field"><label>パターン</label><input id="car_pattern" class="input" placeholder="例：M746" style="width:100%;"></div>'
       +'<div class="field"><label>タイヤサイズ</label><input id="car_size" class="input" placeholder="例：11R22.5 14PR" style="width:100%;"></div>'
+      +'<div class="field"><label>売上日 *</label><input id="car_saledate" class="input" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:180px;"></div>'
       +'<div class="field"><label>預かり本数 *</label><input id="car_qty" class="input" type="number" min="1" value="1" style="width:120px;"></div>'
       +'<div class="field"><label>メモ</label><input id="car_note" class="input" placeholder="備考など" style="width:100%;"></div>'
       +'</div>';
@@ -4517,10 +4524,12 @@ window.addEventListener('storageReady', function(){
       const qty=parseInt(document.getElementById('car_qty').value)||0;
       if(qty<1){ alert('預かり本数を入力してください'); return; }
       const productId=((document.getElementById('car_product_id')||{}).value||'').trim()||null;
+      const saleDate=(document.getElementById('car_saledate').value||'').trim();
       const row={
         id:uid('cc'), branchId:_custodyBranchId(),
         customerName,
         productId,
+        saleDate,
         pattern:(document.getElementById('car_pattern').value||'').trim(),
         size:(document.getElementById('car_size').value||'').trim(),
         initialQty:qty,
@@ -4616,6 +4625,7 @@ window.addEventListener('storageReady', function(){
       +'<div class="field"><label>取引先名 *</label><input id="cer_customer" class="input" value="'+escapeHtml(row.customerName)+'" style="width:100%;"></div>'
       +'<div class="field"><label>パターン</label><input id="cer_pattern" class="input" value="'+escapeHtml(row.pattern||'')+'" style="width:100%;"></div>'
       +'<div class="field"><label>タイヤサイズ</label><input id="cer_size" class="input" value="'+escapeHtml(row.size||'')+'" style="width:100%;"></div>'
+      +'<div class="field"><label>売上日</label><input id="cer_saledate" class="input" type="date" value="'+(row.saleDate||'')+'" style="width:180px;"></div>'
       +'<div class="field"><label>預かり本数 *</label><input id="cer_qty" class="input" type="number" min="1" value="'+row.initialQty+'" style="width:120px;"></div>'
       +'<div class="field"><label>メモ</label><input id="cer_note" class="input" value="'+escapeHtml(row.note||'')+'" style="width:100%;"></div>'
       +'</div>';
@@ -4627,6 +4637,7 @@ window.addEventListener('storageReady', function(){
       row.customerName=customerName;
       row.pattern=(document.getElementById('cer_pattern').value||'').trim();
       row.size=(document.getElementById('cer_size').value||'').trim();
+      row.saleDate=(document.getElementById('cer_saledate').value||'').trim();
       row.initialQty=qty;
       row.note=(document.getElementById('cer_note').value||'').trim();
       await saveCustodyContracts();
