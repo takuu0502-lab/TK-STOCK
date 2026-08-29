@@ -16711,9 +16711,9 @@ window.addEventListener('storageReady', function(){
             let sizeVal=null, priceVal=null, modelVal=null;
             for(let i=0;i<row.length;i++){
               const v=row[i];
-              if(v!==null && /\d+\/\d+R\d+/.test(String(v))){
-                const m=String(v).match(/\d+\/\d+R\d+[A-Z0-9]*/);
-                if(m) sizeVal=m[0];
+              if(v!==null && /\d+\/\d+\s*R\d+/.test(String(v))){
+                const m=String(v).match(/\d+\/\d+\s*R\d+[A-Z0-9]*/);
+                if(m) sizeVal=m[0].replace(/\s+/g,'');  // スペースを除去して正規化
               }
             }
             for(let i=0;i<row.length;i++){
