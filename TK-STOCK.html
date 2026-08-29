@@ -10696,7 +10696,7 @@ window.addEventListener('storageReady', function(){
           spec: r.s,
           stock: 0,
           minStock: 0,
-          costPrice: cost!==null ? cost : r.w,
+          costPrice: r.c ? r.c : (cost!==null ? cost : r.w),
           sellPrice: sell!==null ? sell : 0,
           _fromCatalog: true,
           branchId: _newBrId,
@@ -16698,7 +16698,7 @@ window.addEventListener('storageReady', function(){
           items = parseSeiberling(wb);
           document.getElementById('importBrandName').value = 'SEIBERLING';
         } else {
-          // 汎用パーサー（既存ロジック）
+          // 汎用パーサー
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
           function toNum(v){
@@ -16706,28 +16706,68 @@ window.addEventListener('storageReady', function(){
             if(typeof v==='string'){ const n=Number(v.replace(/[¥,\s]/g,'')); if(!isNaN(n)) return n; }
             return null;
           }
-          for(const row of rows){
+          // ヘッダー行を検出してA表・仕入れ価格・サイズ・品番の列インデックスを特定
+          let _colSize=-1, _colA=-1, _colCost=-1, _colModel=-1, _colPartno=-1, _dataStartRow=0;
+          for(let ri=0;ri<Math.min(rows.length,10);ri++){
+            const row=rows[ri]||[];
+            const labels=row.map(v=>typeof v==='string'?v.trim():'');
+            const _aIdx=labels.findIndex(l=>l.includes('A表')||l==='卸価格'||l==='販売価格');
+            const _cIdx=labels.findIndex(l=>l.includes('仕入'));
+            const _sIdx=labels.findIndex(l=>l.includes('サイズ')||l==='SIZE'||l==='size');
+            const _mIdx=labels.findIndex(l=>l.includes('商品名')||l.includes('品名')||l==='名称');
+            const _pIdx=labels.findIndex(l=>l.includes('コード')&&ri>=0||l.includes('品番'));
+            if(_aIdx>=0||_cIdx>=0){
+              _colA=_aIdx; _colCost=_cIdx; _colSize=_sIdx; _colModel=_mIdx; _colPartno=_pIdx;
+              _dataStartRow=ri+1; break;
+            }
+          }
+          for(let ri=_dataStartRow;ri<rows.length;ri++){
+            const row=rows[ri];
             if(!row || row.every(c=>c===null)) continue;
-            let sizeVal=null, priceVal=null, modelVal=null;
-            for(let i=0;i<row.length;i++){
-              const v=row[i];
-              if(v!==null && /\d+\/\d+\s*R\d+/.test(String(v))){
-                const m=String(v).match(/\d+\/\d+\s*R\d+[A-Z0-9]*/);
-                if(m) sizeVal=m[0].replace(/\s+/g,'');  // スペースを除去して正規化
+            let sizeVal=null, priceVal=null, costVal=null, modelVal=null;
+            // サイズ列が特定できている場合はそこから読む
+            if(_colSize>=0 && row[_colSize]!=null){
+              const m=String(row[_colSize]).match(/\d+\/\d+\s*R\d+[A-Z0-9]*/);
+              if(m) sizeVal=m[0].replace(/\s+/g,'');
+            }
+            // サイズ列不明 or 未検出 → 全列スキャン
+            if(!sizeVal){
+              for(let i=0;i<row.length;i++){
+                const v=row[i];
+                if(v!==null && /\d+\/\d+\s*R\d+/.test(String(v))){
+                  const m=String(v).match(/\d+\/\d+\s*R\d+[A-Z0-9]*/);
+                  if(m){ sizeVal=m[0].replace(/\s+/g,''); break; }
+                }
               }
             }
-            for(let i=0;i<row.length;i++){
-              const v=row[i];
-              if(typeof v==='string'){
-                const t=v.trim();
-                if(/^[A-Za-z][A-Za-z0-9\-_ ]{1,14}$/.test(t) && !/\//.test(t) && !/^\d+$/.test(t)) modelVal=t;
+            // A表価格
+            if(_colA>=0) priceVal=toNum(row[_colA]);
+            // 仕入れ価格
+            if(_colCost>=0) costVal=toNum(row[_colCost]);
+            // 両列不明 → 最後の数値をA表とみなす
+            if(priceVal===null){
+              for(let i=row.length-1;i>=0;i--){
+                const n=toNum(row[i]);
+                if(n!==null && n>1000 && n<500000){ priceVal=n; break; }
               }
             }
-            for(let i=row.length-1;i>=0;i--){
-              const n=toNum(row[i]);
-              if(n!==null && n>1000 && n<500000){ priceVal=n; break; }
+            // 商品名列
+            if(_colModel>=0 && row[_colModel]!=null){
+              modelVal=String(row[_colModel]).trim();
+            } else {
+              for(let i=0;i<row.length;i++){
+                const v=row[i];
+                if(typeof v==='string'){
+                  const t=v.trim();
+                  if(/^[A-Za-z][A-Za-z0-9\-_ ]{1,14}$/.test(t) && !/\//.test(t) && !/^\d+$/.test(t)) modelVal=t;
+                }
+              }
             }
-            if(sizeVal && priceVal) items.push({s:sizeVal, m:modelVal||'', w:priceVal, t:null});
+            if(sizeVal && priceVal && priceVal>1000 && priceVal<500000){
+              const entry={s:sizeVal, m:(modelVal||'').trim(), w:Math.round(priceVal), t:null};
+              if(costVal && costVal>0) entry.c=Math.round(costVal);
+              items.push(entry);
+            }
           }
         }
 
@@ -16760,8 +16800,8 @@ window.addEventListener('storageReady', function(){
             '<div class="msg msg-ok">'+items.length+'件のデータを検出しました。</div>'
             + '<div style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;">'
             + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
-            + '<tr style="background:var(--bg-1);"><th style="padding:6px 8px;text-align:left;">銘柄</th><th style="padding:6px 8px;text-align:left;">サイズ</th><th style="padding:6px 8px;text-align:right;">卸価格</th></tr>'
-            + items.slice(0,20).map(r=>'<tr style="border-top:1px solid var(--line-soft);"><td style="padding:5px 8px;">'+escapeHtml(r.m||'—')+'</td><td style="padding:5px 8px;">'+escapeHtml(r.s)+'</td><td style="padding:5px 8px;text-align:right;">¥'+Math.round(r.w).toLocaleString('ja-JP')+'</td></tr>').join('')
+            + '<tr style="background:var(--bg-1);"><th style="padding:6px 8px;text-align:left;">銘柄</th><th style="padding:6px 8px;text-align:left;">サイズ</th><th style="padding:6px 8px;text-align:right;">A表価格</th><th style="padding:6px 8px;text-align:right;">仕入れ価格</th></tr>'
+            + items.slice(0,20).map(r=>'<tr style="border-top:1px solid var(--line-soft);"><td style="padding:5px 8px;">'+escapeHtml(r.m||'—')+'</td><td style="padding:5px 8px;">'+escapeHtml(r.s)+'</td><td style="padding:5px 8px;text-align:right;">¥'+Math.round(r.w).toLocaleString('ja-JP')+'</td><td style="padding:5px 8px;text-align:right;">'+(r.c?'¥'+Math.round(r.c).toLocaleString('ja-JP'):'—')+'</td></tr>').join('')
             + (items.length>20 ? '<tr><td colspan="3" style="padding:5px 8px;color:var(--text-3);">... 他 '+(items.length-20)+' 件</td></tr>' : '')
             + '</table></div>';
           document.getElementById('importExecBtn').disabled = false;
