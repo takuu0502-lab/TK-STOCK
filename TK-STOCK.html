@@ -4457,17 +4457,34 @@ window.addEventListener('storageReady', function(){
 
   // ── 新規行登録 ──
   function custodyAddRow(){
+    // 既存の取引先名リストを収集
+    const existingCustomers = [...new Set(_custodyRows().map(r=>r.customerName))].sort((a,b)=>a.localeCompare(b,'ja'));
+    const selectOptions = existingCustomers.map(n=>'<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>').join('');
+
     const bodyHTML=
       '<div style="display:flex;flex-direction:column;gap:12px;">'
-      +'<div class="field"><label>取引先名 *</label><input id="car_customer" class="input" placeholder="例：三友" style="width:100%;"></div>'
+      +'<div class="field"><label>取引先 *</label>'
+      +'<select id="car_customer_sel" class="input" style="width:100%;" onchange="custodyToggleNewCustomer()">'
+      +(existingCustomers.length ? '<option value="">選択してください</option>'+selectOptions : '')
+      +'<option value="__new__">＋ 新規取引先を追加</option>'
+      +'</select>'
+      +'<input id="car_customer_new" class="input" placeholder="取引先名を入力" style="width:100%;margin-top:8px;display:'+(existingCustomers.length?'none':'block')+';">'
+      +'</div>'
       +'<div class="field"><label>パターン</label><input id="car_pattern" class="input" placeholder="例：M746" style="width:100%;"></div>'
       +'<div class="field"><label>タイヤサイズ</label><input id="car_size" class="input" placeholder="例：11R22.5 14PR" style="width:100%;"></div>'
       +'<div class="field"><label>預かり本数 *</label><input id="car_qty" class="input" type="number" min="1" value="1" style="width:120px;"></div>'
       +'<div class="field"><label>メモ</label><input id="car_note" class="input" placeholder="備考など" style="width:100%;"></div>'
       +'</div>';
     _custodyOverlay('新規預かり登録', bodyHTML, async(ov)=>{
-      const customerName=(document.getElementById('car_customer').value||'').trim();
-      if(!customerName){ alert('取引先名を入力してください'); return; }
+      const sel=document.getElementById('car_customer_sel');
+      const newInput=document.getElementById('car_customer_new');
+      let customerName='';
+      if(!sel || sel.value==='__new__' || !existingCustomers.length){
+        customerName=(newInput?newInput.value||'':'').trim();
+      } else {
+        customerName=sel.value.trim();
+      }
+      if(!customerName){ alert('取引先名を入力または選択してください'); return; }
       const qty=parseInt(document.getElementById('car_qty').value)||0;
       if(qty<1){ alert('預かり本数を入力してください'); return; }
       const row={
@@ -4483,7 +4500,25 @@ window.addEventListener('storageReady', function(){
       await saveCustodyContracts();
       ov.remove(); renderCustodyTab();
     }, '登録する');
+    // 初回登録時（既存なし）はすぐ新規入力欄を表示
+    if(!existingCustomers.length){
+      const sel=document.getElementById('car_customer_sel');
+      if(sel) sel.style.display='none';
+    }
   }
+
+  function custodyToggleNewCustomer(){
+    const sel=document.getElementById('car_customer_sel');
+    const newInput=document.getElementById('car_customer_new');
+    if(!sel||!newInput) return;
+    if(sel.value==='__new__'){
+      newInput.style.display='block';
+      newInput.focus();
+    } else {
+      newInput.style.display='none';
+    }
+  }
+  window.custodyToggleNewCustomer = custodyToggleNewCustomer;
 
   // ── 行編集 ──
   function custodyEditRow(rowId){
