@@ -156,6 +156,21 @@
   .chip.active.chip-amber{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
   .chip.active.chip-gray{background:#efefef;border-color:#aaa;color:#666;}
 
+  /* ── 預かり在庫 ── */
+  .custody-card{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px;cursor:pointer;transition:box-shadow .15s;}
+  .custody-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08);}
+  .custody-customer-name{font-size:16px;font-weight:700;color:var(--text-1);}
+  .custody-remaining-badge{background:var(--teal);color:#fff;font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px;}
+  .custody-remaining-badge.zero{background:var(--text-3);}
+  .custody-item-chip{font-size:12px;background:var(--bg-3,#f0f0f0);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--text-2);}
+  .custody-item-chip.zero{color:var(--text-3);text-decoration:line-through;}
+  .custody-log-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .custody-log-row:last-child{border-bottom:none;}
+  .custody-log-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0;}
+  .custody-log-badge.use{background:#e8f5e9;color:#2e7d32;}
+  .custody-log-badge.sale{background:var(--amber-dim);color:#b45309;}
+  .custody-section-title{font-size:13px;font-weight:700;color:var(--text-2);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.5px;}
+
   /* category tree */
   .list-layout{display:flex;gap:18px;margin-top:16px;align-items:flex-start;}
   .cat-tree{width:230px;flex:0 0 230px;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:8px 6px;}
@@ -1136,6 +1151,7 @@
       <button class="tab-btn" data-tab="history">入出庫履歴</button>
       <button class="tab-btn" data-tab="pricing">管理</button>
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
+      <button class="tab-btn" data-tab="custody" id="custodyTabBtn" style="display:none;">預かり在庫</button>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch" style="display:none;">商品検索</button>
@@ -2076,6 +2092,10 @@
   <div id="stockcountContent"></div>
 </div>
 
+<div class="panel" id="tab-custody" style="display:none;">
+  <div id="custodyContent"></div>
+</div>
+
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirmTitle">確認</h3>
@@ -2747,6 +2767,7 @@ window.addEventListener('storageReady', function(){
   let outboundCart = [];  // スキャン済み・未確定リスト（一括出庫用）
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
+  let custodyContracts = []; // 預かり在庫
   let popTemplates = []; // POP印刷テンプレート
   let customerOrders = []; // 客注品入庫リスト
   let reservationCategories = ['夏タイヤ・ホイール予約', 'スタッドレス予約', '用品予約']; // 予約カテゴリー
@@ -3774,6 +3795,8 @@ window.addEventListener('storageReady', function(){
       transactions = t ? JSON.parse(t.value) : [];
       const pob = await window.storage.get('provisionalOutbounds', SHARED);
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
+      const ccr = await window.storage.get('custodyContracts', SHARED);
+      custodyContracts = (ccr && ccr.value) ? (JSON.parse(ccr.value) || []) : [];
       const co = await window.storage.get('customerOrders', SHARED);
       customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
       const rc = await window.storage.get('reservationCategories', SHARED);
@@ -3881,6 +3904,11 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('transactions', JSON.stringify(transactions), SHARED); }
     catch(e){ console.error('save transactions failed', e); }
   }
+  async function saveCustodyContracts(){
+    try{ await window.storage.set('custodyContracts', JSON.stringify(custodyContracts), SHARED); }
+    catch(e){ console.error('save custodyContracts failed', e); }
+  }
+
   async function saveProvisionalOutbounds(){
     try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
     catch(e){ console.error('save provisionalOutbounds failed', e); }
@@ -4290,6 +4318,313 @@ window.addEventListener('storageReady', function(){
     return {label:'連絡未', color:'#e53e3e'};
   }
 
+  // ═══════════════════════════════════════════════════════
+  // 預かり在庫タブ
+  // ═══════════════════════════════════════════════════════
+  function _custodyBranchId(){
+    return currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+  }
+  function _custodyRemainingQty(item){
+    const used = (item.logs||[]).reduce((s,l)=>s+(l.qty||0), 0);
+    return Math.max(0, (item.initialQty||0) - used);
+  }
+  function _custodyMyContracts(){
+    const br = _custodyBranchId();
+    return custodyContracts.filter(c=>
+      isSuperAdminUser() ? c.branchId==='katsuta' : c.branchId===br
+    );
+  }
+
+  function renderCustodyTab(){
+    const el = document.getElementById('custodyContent');
+    if(!el) return;
+    const list = _custodyMyContracts();
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">'
+      +'<h2 class="section-title" style="margin:0;">預かり在庫管理</h2>'
+      +'<button class="btn btn-amber" onclick="custodyOpenAddContract()">＋ 新規預かり登録</button>'
+      +'</div>'
+      + (list.length===0
+        ? '<div style="color:var(--text-3);padding:40px 0;text-align:center;font-size:14px;">預かり在庫はありません</div>'
+        : list.map(c=>{
+            const totalRem = (c.items||[]).reduce((s,it)=>s+_custodyRemainingQty(it),0);
+            return '<div class="custody-card" onclick="custodyOpenDetail(\''+c.id+'\')">'
+              +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+              +'<div class="custody-customer-name">'+escapeHtml(c.customerName)+'</div>'
+              +'<div style="display:flex;align-items:center;gap:8px;">'
+              +'<span class="custody-remaining-badge'+(totalRem===0?' zero':'')+'">残'+totalRem+'本</span>'
+              +'<span style="font-size:18px;color:var(--text-3);">›</span>'
+              +'</div></div>'
+              +'<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">'
+              +(c.items||[]).map(it=>{
+                const rem=_custodyRemainingQty(it);
+                return '<span class="custody-item-chip'+(rem===0?' zero':'')+'">'+escapeHtml(it.productName||it.size||'商品')+'：残'+rem+'本</span>';
+              }).join('')
+              +'</div>'
+              +(c.note?'<div style="font-size:12px;color:var(--text-3);margin-top:6px;">'+escapeHtml(c.note)+'</div>':'')
+              +'</div>';
+          }).join('')
+      );
+  }
+
+  // ── 汎用カスタムオーバーレイ ──
+  function _custodyOverlay(title, bodyHTML, onOk){
+    const existing=document.getElementById('custodyFormOverlay');
+    if(existing) existing.remove();
+    const overlay=document.createElement('div');
+    overlay.id='custodyFormOverlay';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--bg-1);border-radius:14px;padding:24px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;';
+    box.innerHTML='<div style="font-size:16px;font-weight:700;margin-bottom:16px;">'+escapeHtml(title)+'</div>'
+      +'<div id="custodyFormBody">'+bodyHTML+'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">'
+      +'<button class="btn btn-ghost" id="custodyFormCancel">キャンセル</button>'
+      +'<button class="btn btn-amber" id="custodyFormOk">OK</button>'
+      +'</div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    document.getElementById('custodyFormCancel').onclick=()=>overlay.remove();
+    document.getElementById('custodyFormOk').onclick=async()=>{ await onOk(); };
+    // Escキーで閉じる
+    overlay._keyHandler=(e)=>{ if(e.key==='Escape') overlay.remove(); };
+    document.addEventListener('keydown', overlay._keyHandler);
+    overlay.addEventListener('remove', ()=>document.removeEventListener('keydown', overlay._keyHandler));
+    return overlay;
+  }
+
+  // ── 新規預かり契約登録 ──
+  function custodyOpenAddContract(){
+    const bodyHTML=
+      '<div style="display:flex;flex-direction:column;gap:14px;">'
+      +'<div class="field"><label>取引先名</label><input id="ccd_customer" class="input" placeholder="例：三友" style="width:100%;"></div>'
+      +'<div class="field"><label>メモ（任意）</label><input id="ccd_note" class="input" placeholder="備考" style="width:100%;"></div>'
+      +'</div>';
+    _custodyOverlay('新規預かり登録', bodyHTML, async()=>{
+      const customerName=(document.getElementById('ccd_customer').value||'').trim();
+      if(!customerName){ alert('取引先名を入力してください'); return; }
+      const note=(document.getElementById('ccd_note').value||'').trim();
+      const br=_custodyBranchId();
+      const newContract={id:uid('cc'),branchId:br,customerName,note,items:[],createdAt:new Date().toISOString()};
+      custodyContracts.unshift(newContract);
+      await saveCustodyContracts();
+      document.getElementById('custodyFormOverlay').remove();
+      renderCustodyTab();
+      custodyOpenDetail(newContract.id);
+    });
+  }
+
+  // ── 預かり詳細モーダル ──
+  async function custodyOpenDetail(contractId){
+    const c = custodyContracts.find(x=>x.id===contractId);
+    if(!c) return;
+
+    function buildDetailHTML(){
+      const totalRem=(c.items||[]).reduce((s,it)=>s+_custodyRemainingQty(it),0);
+      let html=
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">'
+        +'<div style="font-size:18px;font-weight:700;">'+escapeHtml(c.customerName)+'</div>'
+        +'<span class="custody-remaining-badge'+(totalRem===0?' zero':'')+'">合計残'+totalRem+'本</span>'
+        +'</div>';
+      if(c.note) html+='<div style="font-size:12px;color:var(--text-3);margin-bottom:14px;">'+escapeHtml(c.note)+'</div>';
+
+      html+='<div style="text-align:right;margin-bottom:12px;">'
+        +'<button class="btn btn-teal btn-sm" onclick="custodyAddItem(\''+c.id+'\')">＋ 商品を追加</button>'
+        +'</div>';
+
+      if(!c.items||c.items.length===0){
+        html+='<div style="color:var(--text-3);text-align:center;padding:24px 0;font-size:13px;">商品がまだ登録されていません</div>';
+      } else {
+        html+=c.items.map(it=>{
+          const rem=_custodyRemainingQty(it);
+          const totalUsed=(it.logs||[]).filter(l=>l.type==='use').reduce((s,l)=>s+l.qty,0);
+          const totalSale=(it.logs||[]).filter(l=>l.type==='sale').reduce((s,l)=>s+l.qty,0);
+          return '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;">'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">'
+            +'<div><div style="font-weight:700;">'+escapeHtml(it.productName||it.size||'商品')+'</div>'
+            +(it.size&&it.productName?'<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(it.size)+'</div>':'')
+            +'</div>'
+            +'<div style="display:flex;align-items:center;gap:6px;">'
+            +'<span style="font-size:12px;color:var(--text-2);">預かり'+it.initialQty+'本</span>'
+            +'<span class="custody-remaining-badge'+(rem===0?' zero':'')+'">残'+rem+'本</span>'
+            +'</div></div>'
+            +'<div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">使用: '+totalUsed+'本　売上: '+totalSale+'本</div>'
+            +'<div style="display:flex;gap:8px;margin-bottom:10px;">'
+            +'<button class="btn btn-ghost btn-sm" style="flex:1;" onclick="custodyAddLog(\''+c.id+'\',\''+it.id+'\',\'use\')">🔧 使用記録</button>'
+            +'<button class="btn btn-amber btn-sm" style="flex:1;" onclick="custodyAddLog(\''+c.id+'\',\''+it.id+'\',\'sale\')">💴 売上記録</button>'
+            +'</div>'
+            +(it.logs&&it.logs.length>0
+              ? '<div class="custody-section-title">記録履歴</div>'
+                +(it.logs.slice().reverse().map(l=>
+                  '<div class="custody-log-row">'
+                  +'<span class="custody-log-badge '+(l.type==='use'?'use':'sale')+'">'+(l.type==='use'?'使用':'売上')+'</span>'
+                  +'<div style="flex:1;">'
+                  +(l.vehicleNo?'<div style="font-size:13px;">🚛 '+escapeHtml(l.vehicleNo)+'</div>':'')
+                  +'<div style="font-size:13px;font-weight:700;">'+l.qty+'本</div>'
+                  +(l.note?'<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(l.note)+'</div>':'')
+                  +'</div>'
+                  +'<div style="font-size:12px;color:var(--text-3);white-space:nowrap;">'+l.date.slice(0,10)+'</div>'
+                  +'</div>'
+                ).join(''))
+              : '<div style="font-size:12px;color:var(--text-3);">記録なし</div>'
+            )
+            +'</div>';
+        }).join('');
+      }
+      html+='<div style="margin-top:16px;display:flex;gap:8px;">'
+        +'<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="custodyDeleteContract(\''+c.id+'\')">🗑 削除</button>'
+        +'</div>';
+      return html;
+    }
+
+    // モーダルを開く（単純なalert-styleでなくフルコンテンツ表示）
+    const overlay=document.createElement('div');
+    overlay.id='custodyDetailOverlay';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--bg-1);border-radius:14px;padding:24px;width:100%;max-width:540px;margin:auto;';
+    box.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'
+      +'<div style="font-size:16px;font-weight:700;">預かり在庫詳細</div>'
+      +'<button onclick="document.getElementById(\'custodyDetailOverlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-2);">✕</button>'
+      +'</div>'
+      +'<div id="custodyDetailBody"></div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    function refreshDetail(){
+      const body=document.getElementById('custodyDetailBody');
+      if(body) body.innerHTML=buildDetailHTML();
+    }
+    refreshDetail();
+    window._custodyRefreshDetail=refreshDetail;
+  }
+
+  // ── 商品追加 ──
+  function custodyAddItem(contractId){
+    const c=custodyContracts.find(x=>x.id===contractId);
+    if(!c) return;
+    const bodyHTML=
+      '<div style="display:flex;flex-direction:column;gap:12px;">'
+      +'<div class="field"><label>商品を検索</label>'
+      +'<input id="cai_search" class="input" placeholder="商品名・品番・JANで検索" style="width:100%;" oninput="custodySearchProducts()">'
+      +'</div>'
+      +'<div id="cai_results" style="max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;min-height:40px;"></div>'
+      +'<div id="cai_selected" style="display:none;background:var(--teal-dim);border:1px solid var(--teal);border-radius:8px;padding:10px;font-size:13px;"></div>'
+      +'<div class="field"><label>預かり本数</label><input id="cai_qty" class="input" type="number" min="1" value="1" style="width:120px;"></div>'
+      +'</div>';
+    _custodyOverlay('商品を追加', bodyHTML, async()=>{
+      const selEl=document.getElementById('cai_selected');
+      const productId=selEl&&selEl.dataset.productId?selEl.dataset.productId:'';
+      const productName=selEl?selEl.dataset.productName||'':'';
+      const size=selEl?selEl.dataset.size||'':'';
+      const qty=parseInt((document.getElementById('cai_qty')||{}).value)||0;
+      if(!productId||qty<1){ alert('商品を選択して本数を入力してください'); return; }
+      const newItem={id:uid('ci'),productId,productName,size,initialQty:qty,logs:[],addedAt:new Date().toISOString()};
+      if(!c.items) c.items=[];
+      c.items.push(newItem);
+      await saveCustodyContracts();
+      document.getElementById('custodyFormOverlay').remove();
+      if(window._custodyRefreshDetail) window._custodyRefreshDetail();
+      renderCustodyTab();
+    });
+  }
+
+  function custodySearchProducts(){
+    const q=(document.getElementById('cai_search').value||'').toLowerCase();
+    const results=document.getElementById('cai_results');
+    if(!results) return;
+    if(!q){results.innerHTML='<div style="padding:10px;font-size:13px;color:var(--text-3);">商品名・品番で検索してください</div>';return;}
+    const matches=products.filter(p=>{
+      const n=(p.name||'').toLowerCase(); const s=(p.spec||'').toLowerCase();
+      const b=(p.barcode||'').toLowerCase(); const pn=(p.productNo||'').toLowerCase();
+      return n.includes(q)||s.includes(q)||b.includes(q)||pn.includes(q);
+    }).slice(0,20);
+    if(!matches.length){results.innerHTML='<div style="padding:10px;font-size:13px;color:var(--text-3);">見つかりません</div>';return;}
+    results.innerHTML=matches.map(p=>'<div style="padding:10px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;" onclick="custodySelectProduct(\''+p.id+'\',\''+escapeHtml(p.name).replace(/'/g,"\\'")+'\',\''+escapeHtml(p.spec||'').replace(/'/g,"\\'")+'\')"><div style="font-weight:600;">'+escapeHtml(p.name)+'</div><div style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.spec||'')+(p.productNo?' / '+p.productNo:'')+'</div></div>').join('');
+  }
+
+  function custodySelectProduct(id,name,size){
+    const sel=document.getElementById('cai_selected');
+    if(!sel) return;
+    sel.style.display='block';
+    sel.dataset.productId=id;
+    sel.dataset.productName=name;
+    sel.dataset.size=size;
+    sel.innerHTML='<div style="font-weight:700;">✔ '+escapeHtml(name)+'</div><div style="font-size:12px;color:var(--text-2);">'+escapeHtml(size)+'</div>';
+    const results=document.getElementById('cai_results');
+    if(results) results.innerHTML='';
+    const search=document.getElementById('cai_search');
+    if(search) search.value=name;
+  }
+
+  // ── 使用・売上記録 ──
+  function custodyAddLog(contractId, itemId, type){
+    const c=custodyContracts.find(x=>x.id===contractId);
+    if(!c) return;
+    const item=c.items.find(x=>x.id===itemId);
+    if(!item) return;
+    const rem=_custodyRemainingQty(item);
+    const isSale=type==='sale';
+    const label=isSale?'売上記録':'使用記録';
+
+    const bodyHTML='<div style="display:flex;flex-direction:column;gap:12px;">'
+      +'<div style="background:var(--bg-2);border-radius:8px;padding:10px;font-size:13px;">'
+      +'<div style="font-weight:700;">'+escapeHtml(item.productName||item.size||'商品')+'</div>'
+      +'<div style="color:var(--text-2);">現在残数：'+rem+'本</div>'
+      +'</div>'
+      +(!isSale?'<div class="field"><label>車番</label><input id="cal_vehicle" class="input" placeholder="例：茨城 200 か 1234" style="width:100%;"></div>':'')
+      +'<div class="field"><label>本数</label><input id="cal_qty" class="input" type="number" min="1" max="'+rem+'" value="1" style="width:120px;"></div>'
+      +'<div class="field"><label>日付</label><input id="cal_date" class="input" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:160px;"></div>'
+      +'<div class="field"><label>メモ（任意）</label><input id="cal_note" class="input" placeholder="" style="width:100%;"></div>'
+      +'</div>';
+
+    _custodyOverlay(label, bodyHTML, async()=>{
+      const qty=parseInt((document.getElementById('cal_qty')||{}).value)||0;
+      const date=(document.getElementById('cal_date')||{}).value||new Date().toISOString().slice(0,10);
+      const note=((document.getElementById('cal_note')||{}).value||'').trim();
+      const vehicleNo=!isSale?(((document.getElementById('cal_vehicle')||{}).value||'').trim()):'';
+      if(qty<1){alert('本数を入力してください');return;}
+      if(qty>rem){alert('残数('+rem+'本)を超えています');return;}
+      // TK-STOCK在庫を減らす
+      const p=products.find(x=>x.id===item.productId);
+      if(p){
+        const opBranch=_custodyBranchId();
+        if(!p.branchStock) p.branchStock={};
+        const cur=p.branchStock[opBranch]||0;
+        p.branchStock[opBranch]=Math.max(0,cur-qty);
+        p.stock=p.branchStock[opBranch];
+        transactions.unshift({
+          id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
+          type:'out', qty:qty, date:new Date(date+'T00:00:00').toISOString(),
+          user:currentUser?currentUser.displayName:'', itemType:'stock',
+          reservation:null, branchId:opBranch,
+          custodyNote:(isSale?'[預かり売上]':'[預かり使用'+(vehicleNo?' '+vehicleNo:'')+ ']')
+        });
+        await saveProducts();
+        await saveTransactions();
+      }
+      // 預かりログに記録
+      if(!item.logs) item.logs=[];
+      item.logs.push({id:uid('cl'),type,qty,vehicleNo,date,note,createdAt:new Date().toISOString()});
+      await saveCustodyContracts();
+      document.getElementById('custodyFormOverlay').remove();
+      if(window._custodyRefreshDetail) window._custodyRefreshDetail();
+      renderCustodyTab();
+    });
+  }
+
+  // ── 削除 ──
+  async function custodyDeleteContract(contractId){
+    const ok=await showConfirm('この取引先の預かり在庫データをすべて削除しますか？\n（在庫数・入出庫履歴には影響しません）');
+    if(!ok) return;
+    custodyContracts=custodyContracts.filter(x=>x.id!==contractId);
+    await saveCustodyContracts();
+    const ov=document.getElementById('custodyDetailOverlay');
+    if(ov) ov.remove();
+    renderCustodyTab();
+  }
+  // ═══════════════════════════════════════════════════════
+
   function renderReservationTab(){
     const container = document.getElementById('reservationContent');
     if(!container) return;
@@ -4625,7 +4960,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
-    ['list','estimate','in','out','history','pricing','stockcount','reservation'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody'].forEach(t=>{
       try{
         const el = document.getElementById('tab-'+t);
         if(el) el.style.display = (t === tabName) ? 'block' : 'none';
@@ -4697,7 +5032,7 @@ window.addEventListener('storageReady', function(){
 
   function showHomeState(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    ['list','estimate','in','out','history','pricing','stockcount','reservation'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = 'none';
     });
   }
@@ -4715,6 +5050,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
       if(tab === 'stockcount'){ renderStockcountTab(); }
       if(tab === 'reservation'){ renderReservationTab(); }
+      if(tab === 'custody'){ renderCustodyTab(); }
       if(tab === 'list'){
         specPanelOpen = true;
         document.getElementById('openSpecSearch').classList.add('active');
@@ -15169,6 +15505,8 @@ window.addEventListener('storageReady', function(){
     document.querySelector('.tab-btn[data-tab="out"]').style.display = writable ? 'inline-block' : 'none';
     document.querySelector('.tab-btn[data-tab="history"]').style.display = writable ? 'inline-block' : 'none';
     document.querySelector('.tab-btn[data-tab="stockcount"]').style.display = writable ? 'inline-block' : 'none';
+    const _custodyBtn = document.getElementById('custodyTabBtn');
+    if(_custodyBtn) _custodyBtn.style.display = (isSuperAdminUser() || (currentUser && currentUser.branchId === 'katsuta')) ? 'inline-block' : 'none';
     document.getElementById('quickScanBtn').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('openAddProduct').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('inventoryPrintBtn').style.display = admin ? 'inline-block' : 'none';
