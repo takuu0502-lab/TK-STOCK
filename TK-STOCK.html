@@ -1355,32 +1355,10 @@
 
     <!-- お知らせ管理 -->
     <div class="pricing-section-title">📢 お知らせ管理</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを設定します。オフにすると非表示になります。</p>
-    <div style="display:flex;flex-direction:column;gap:12px;max-width:620px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <label style="cursor:pointer;">
-          <input type="radio" name="ann_type" id="ann_type_info" value="info" style="display:none;">
-          <span id="ann_type_info_btn" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:2px solid #fbbf24;background:#fffbeb;color:#92400e;font-size:12.5px;font-weight:600;cursor:pointer;">📢 お知らせ</span>
-        </label>
-        <label style="cursor:pointer;">
-          <input type="radio" name="ann_type" id="ann_type_important" value="important" style="display:none;">
-          <span id="ann_type_important_btn" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;">🚨 重要</span>
-        </label>
-        <label style="cursor:pointer;">
-          <input type="radio" name="ann_type" id="ann_type_new" value="new" style="display:none;">
-          <span id="ann_type_new_btn" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;">✨ 新機能</span>
-        </label>
-      </div>
-      <textarea id="announcementTextInput" class="input" rows="3" placeholder="お知らせ文を入力してください" style="width:100%;resize:vertical;font-size:13px;"></textarea>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
-          <input type="checkbox" id="announcementActiveChk" style="width:16px;height:16px;">
-          表示する
-        </label>
-        <button class="btn btn-teal btn-sm" id="saveAnnouncementBtn">💾 保存する</button>
-        <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;">保存しました</span>
-      </div>
-    </div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを複数登録できます。表示するにチェックが入っているものだけ表示されます。</p>
+    <div id="announcementList" style="display:flex;flex-direction:column;gap:8px;max-width:640px;margin-bottom:12px;"></div>
+    <button class="btn btn-teal btn-sm" id="addAnnouncementBtn">＋ お知らせを追加</button>
+    <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;margin-left:10px;">保存しました</span>
 
     <div class="pricing-section-divider"></div>
 
@@ -2803,7 +2781,7 @@ window.addEventListener('storageReady', function(){
   let provisionalOutbounds = []; // 仮出庫リスト
   let custodyContracts = []; // 預かり在庫
   let custodyCustomers = []; // 取引先マスター
-  let siteAnnouncement = {text:'', active:false}; // お知らせ
+  let siteAnnouncements = []; // お知らせ（複数）
   let popTemplates = []; // POP印刷テンプレート
   let customerOrders = []; // 客注品入庫リスト
   let reservationCategories = ['夏タイヤ・ホイール予約', 'スタッドレス予約', '用品予約']; // 予約カテゴリー
@@ -3835,8 +3813,8 @@ window.addEventListener('storageReady', function(){
       custodyContracts = (ccr && ccr.value) ? (JSON.parse(ccr.value) || []) : [];
       const ccu = await window.storage.get('custodyCustomers', SHARED);
       custodyCustomers = (ccu && ccu.value) ? (JSON.parse(ccu.value) || []) : [];
-      const ann = await window.storage.get('siteAnnouncement', SHARED);
-      siteAnnouncement = (ann && ann.value) ? (JSON.parse(ann.value) || {text:'',active:false}) : {text:'',active:false};
+      const ann = await window.storage.get('siteAnnouncements', SHARED);
+      siteAnnouncements = (ann && ann.value) ? (JSON.parse(ann.value) || []) : [];
       renderSiteAnnouncement();
       const co = await window.storage.get('customerOrders', SHARED);
       customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
@@ -3954,33 +3932,32 @@ window.addEventListener('storageReady', function(){
     catch(e){ console.error('save custodyCustomers failed', e); }
   }
   async function saveSiteAnnouncement(){
-    try{ await window.storage.set('siteAnnouncement', JSON.stringify(siteAnnouncement), SHARED); }
-    catch(e){ console.error('save siteAnnouncement failed', e); }
+    try{ await window.storage.set('siteAnnouncements', JSON.stringify(siteAnnouncements), SHARED); }
+    catch(e){ console.error('save siteAnnouncements failed', e); }
   }
+  const _annTypeMap = {
+    info:      { icon:'📢', bg:'#fffbeb', border:'#fbbf24', color:'#92400e', labelBg:'#f59e0b', labelText:'お知らせ' },
+    important: { icon:'🚨', bg:'#fef2f2', border:'#f87171', color:'#991b1b', labelBg:'#dc2626', labelText:'重要' },
+    new:       { icon:'✨', bg:'#f0fdf4', border:'#4ade80', color:'#166534', labelBg:'#16a34a', labelText:'新機能' },
+  };
   function renderSiteAnnouncement(){
     const el = document.getElementById('siteAnnouncementBanner');
     if(!el) return;
-    if(siteAnnouncement.active && siteAnnouncement.text){
-      const typeMap = {
-        info:      { icon:'📢', bg:'#fffbeb', border:'#fbbf24', color:'#92400e', labelBg:'#f59e0b', labelText:'お知らせ' },
-        important: { icon:'🚨', bg:'#fef2f2', border:'#f87171', color:'#991b1b', labelBg:'#dc2626', labelText:'重要' },
-        new:       { icon:'✨', bg:'#f0fdf4', border:'#4ade80', color:'#166534', labelBg:'#16a34a', labelText:'新機能' },
-      };
-      const t = typeMap[siteAnnouncement.type || 'info'];
-      el.style.display = '';
-      el.style.padding = '6px 14px';
-      el.style.background = t.bg;
-      el.style.border = '1px solid ' + t.border;
-      el.style.borderRadius = '8px';
-      el.style.fontSize = '12px';
-      el.style.color = t.color;
-      el.style.lineHeight = '1.6';
-      el.innerHTML = '<span style="display:inline-block;background:'+t.labelBg+';color:#fff;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700;margin-right:7px;">'+t.icon+' '+t.labelText+'</span>'
-                   + escapeHtml(siteAnnouncement.text);
-    } else {
-      el.style.display = 'none';
-      el.innerHTML = '';
-    }
+    const active = siteAnnouncements.filter(a=>a.active && a.text);
+    if(active.length === 0){ el.style.display='none'; el.innerHTML=''; return; }
+    el.style.display = '';
+    el.style.padding = '0';
+    el.style.background = 'transparent';
+    el.style.border = 'none';
+    el.style.borderRadius = '0';
+    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:4px;">'
+      + active.map(a=>{
+          const t = _annTypeMap[a.type||'info'];
+          return '<div style="padding:5px 12px;background:'+t.bg+';border:1px solid '+t.border+';border-radius:7px;font-size:12px;color:'+t.color+';line-height:1.5;">'
+            +'<span style="display:inline-block;background:'+t.labelBg+';color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;margin-right:6px;">'+t.icon+' '+t.labelText+'</span>'
+            +escapeHtml(a.text)+'</div>';
+        }).join('')
+      +'</div>';
   }
   window.renderSiteAnnouncement = renderSiteAnnouncement;
 
@@ -5135,55 +5112,77 @@ window.addEventListener('storageReady', function(){
   function initAnnouncementEditor(){
     if(_announcementEditorInit) return;
     _announcementEditorInit = true;
-    const textEl  = document.getElementById('announcementTextInput');
-    const chkEl   = document.getElementById('announcementActiveChk');
-    const saveBtn = document.getElementById('saveAnnouncementBtn');
-    const msgEl   = document.getElementById('announcementSaveMsg');
-    if(!textEl || !chkEl || !saveBtn) return;
+    renderAnnouncementList();
+    const addBtn = document.getElementById('addAnnouncementBtn');
+    if(addBtn) addBtn.addEventListener('click', ()=>{
+      siteAnnouncements.push({id: uid('ann'), type:'info', text:'', active:true});
+      renderAnnouncementList();
+    });
+  }
 
-    const typeStyles = {
-      info:      { border:'#fbbf24', bg:'#fffbeb', color:'#92400e' },
-      important: { border:'#f87171', bg:'#fef2f2', color:'#991b1b' },
-      new:       { border:'#4ade80', bg:'#f0fdf4', color:'#166534' },
-    };
-    function updateTypeBtns(selected){
-      ['info','important','new'].forEach(v=>{
-        const btn = document.getElementById('ann_type_'+v+'_btn');
-        const s = typeStyles[v];
-        if(v === selected){
-          btn.style.border = '2px solid '+s.border;
-          btn.style.background = s.bg;
-          btn.style.color = s.color;
-        } else {
-          btn.style.border = '2px solid #e0e0e0';
-          btn.style.background = '#fff';
-          btn.style.color = '#888';
-        }
-      });
+  function renderAnnouncementList(){
+    const listEl = document.getElementById('announcementList');
+    if(!listEl) return;
+    const msgEl = document.getElementById('announcementSaveMsg');
+    const typeOpts = [
+      {value:'info',      label:'📢 お知らせ', border:'#fbbf24', bg:'#fffbeb', color:'#92400e'},
+      {value:'important', label:'🚨 重要',     border:'#f87171', bg:'#fef2f2', color:'#991b1b'},
+      {value:'new',       label:'✨ 新機能',   border:'#4ade80', bg:'#f0fdf4', color:'#166534'},
+    ];
+    if(siteAnnouncements.length === 0){
+      listEl.innerHTML = '<p style="font-size:13px;color:var(--text-3);">お知らせはまだ登録されていません。</p>';
+      return;
     }
-
-    // 初期値セット
-    const curType = siteAnnouncement.type || 'info';
-    const radio = document.getElementById('ann_type_'+curType);
-    if(radio) radio.checked = true;
-    updateTypeBtns(curType);
-    textEl.value  = siteAnnouncement.text || '';
-    chkEl.checked = !!siteAnnouncement.active;
-
-    // ラジオ切替
-    ['info','important','new'].forEach(v=>{
-      const r = document.getElementById('ann_type_'+v);
-      if(r) r.addEventListener('change', ()=>{ if(r.checked) updateTypeBtns(v); });
+    listEl.innerHTML = '';
+    siteAnnouncements.forEach((ann, idx)=>{
+      const curType = typeOpts.find(t=>t.value===(ann.type||'info')) || typeOpts[0];
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid '+curType.border+';background:'+curType.bg+';border-radius:10px;padding:12px 14px;';
+      card.innerHTML =
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'
+        + typeOpts.map(t=>'<button data-annidx="'+idx+'" data-anntype="'+t.value+'" class="ann-type-btn" style="padding:3px 12px;border-radius:16px;border:2px solid '+(ann.type===t.value?t.border:'#ddd')+';background:'+(ann.type===t.value?t.bg:'#fff')+';color:'+(ann.type===t.value?t.color:'#999')+';font-size:12px;font-weight:600;cursor:pointer;">'+t.label+'</button>').join('')
+        +'</div>'
+        +'<textarea class="input ann-text" data-annidx="'+idx+'" rows="2" style="width:100%;font-size:13px;resize:vertical;margin-bottom:8px;">'+escapeHtml(ann.text||'')+'</textarea>'
+        +'<div style="display:flex;align-items:center;gap:12px;">'
+        +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">'
+        +'<input type="checkbox" class="ann-active" data-annidx="'+idx+'" style="width:15px;height:15px;"'+(ann.active?' checked':'')+'> 表示する</label>'
+        +'<button class="btn btn-teal btn-sm ann-save" data-annidx="'+idx+'">💾 保存</button>'
+        +'<button class="btn btn-sm ann-delete" data-annidx="'+idx+'" style="background:#fee2e2;color:#dc2626;border:none;">🗑 削除</button>'
+        +'</div>';
+      listEl.appendChild(card);
     });
 
-    saveBtn.addEventListener('click', async ()=>{
-      const checkedRadio = document.querySelector('input[name="ann_type"]:checked');
-      siteAnnouncement.type   = checkedRadio ? checkedRadio.value : 'info';
-      siteAnnouncement.text   = textEl.value.trim();
-      siteAnnouncement.active = chkEl.checked;
-      await saveSiteAnnouncement();
-      renderSiteAnnouncement();
-      if(msgEl){ msgEl.style.display=''; setTimeout(()=>{ msgEl.style.display='none'; }, 2000); }
+    // タイプ切替
+    listEl.querySelectorAll('.ann-type-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = parseInt(btn.dataset.annidx);
+        siteAnnouncements[idx].type = btn.dataset.anntype;
+        renderAnnouncementList();
+      });
+    });
+    // 保存
+    listEl.querySelectorAll('.ann-save').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const idx = parseInt(btn.dataset.annidx);
+        const textEl = listEl.querySelector('.ann-text[data-annidx="'+idx+'"]');
+        const chkEl  = listEl.querySelector('.ann-active[data-annidx="'+idx+'"]');
+        siteAnnouncements[idx].text   = textEl ? textEl.value.trim() : '';
+        siteAnnouncements[idx].active = chkEl ? chkEl.checked : false;
+        await saveSiteAnnouncement();
+        renderSiteAnnouncement();
+        renderAnnouncementList();
+        if(msgEl){ msgEl.style.display=''; setTimeout(()=>{ msgEl.style.display='none'; }, 2000); }
+      });
+    });
+    // 削除
+    listEl.querySelectorAll('.ann-delete').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const idx = parseInt(btn.dataset.annidx);
+        siteAnnouncements.splice(idx, 1);
+        await saveSiteAnnouncement();
+        renderSiteAnnouncement();
+        renderAnnouncementList();
+      });
     });
   }
 
