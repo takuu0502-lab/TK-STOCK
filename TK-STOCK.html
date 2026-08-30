@@ -12487,7 +12487,7 @@ window.addEventListener('storageReady', function(){
       + '<div class="detail-hist-list">'+histHtml+'</div>'
       + (showCost ? (()=>{
           const _ownBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
-          const priceLogs = productEditLog.filter(e=>e.productId===id && (!e.branchId || e.branchId===_ownBranchId)).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+          const priceLogs = productEditLog.filter(e=>e.productId===id && e.branchId===_ownBranchId).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
           if(priceLogs.length === 0) return '';
           const logsHtml = priceLogs.map(e=>{
             const d = new Date(e.date);
