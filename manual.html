@@ -218,7 +218,7 @@
     <div class="nav-group"><a href="#intro">はじめに</a></div>
     <div class="nav-group"><a href="#login">ログイン</a></div>
     <div class="nav-group"><a href="#products">商品一覧</a></div>
-    <div class="nav-group"><a href="#inbound">入庫処理</a></div>
+    <div class="nav-group"><a href="#inbound">入庫（予約）</a></div>
     <div class="nav-group"><a href="#outbound">出庫処理</a></div>
     <div class="nav-group"><a href="#provisional">仮出庫</a></div>
     <div class="nav-group"><a href="#estimate">タイヤ見積</a></div>
@@ -249,7 +249,7 @@
 
         <div class="toc-grid" style="margin-top: 20px;">
           <a class="toc-card" href="#products"><span class="toc-icon">📦</span><div><div class="toc-label">商品一覧</div><div class="toc-desc">在庫の確認・検索</div></div></a>
-          <a class="toc-card" href="#inbound"><span class="toc-icon">📥</span><div><div class="toc-label">入庫</div><div class="toc-desc">商品の受入登録</div></div></a>
+          <a class="toc-card" href="#inbound"><span class="toc-icon">📥</span><div><div class="toc-label">入庫（予約）</div><div class="toc-desc">予約受付〜入荷確定・ラベル貼付</div></div></a>
           <a class="toc-card" href="#outbound"><span class="toc-icon">📤</span><div><div class="toc-label">出庫</div><div class="toc-desc">商品の払出登録</div></div></a>
           <a class="toc-card" href="#provisional"><span class="toc-icon">🔖</span><div><div class="toc-label">仮出庫</div><div class="toc-desc">取り置き予約管理</div></div></a>
           <a class="toc-card" href="#estimate"><span class="toc-icon">📝</span><div><div class="toc-label">タイヤ見積</div><div class="toc-desc">見積書の作成・印刷</div></div></a>
@@ -388,50 +388,69 @@
       <div class="section-header">
         <div class="section-icon icon-teal">📥</div>
         <div>
-          <h2>入庫処理</h2>
-          <div class="section-desc">商品の受入・在庫数の増加登録</div>
+          <h2>入庫（予約）</h2>
+          <div class="section-desc">予約受付〜入荷確定・ラベル貼付までの流れ</div>
         </div>
       </div>
       <div class="section-body">
-        <p>商品が入荷したときに行う操作です。バーコードをスキャンするか、商品コードを手入力して登録します。</p>
+        <p>タイヤ・用品など予約を受けた時点で、必ず入庫予定の登録を行ってください。入荷後は商品を特定してラベルを貼付し、入庫確定します。</p>
 
         <hr class="divider">
+
+        <p style="font-weight:700;font-size:14px;margin-bottom:12px;">▌ 予約受付時の作業</p>
         <div class="steps">
           <div class="step">
             <div class="step-num">1</div>
             <div class="step-content">
-              <strong>「入庫」タブを開く</strong>
-              <p>上部メニューの <span class="ui-label">入庫</span> タブをクリックします。</p>
+              <strong>在庫一覧で商品を検索する</strong>
+              <p>ブランド名・品番・サイズなどで検索し、すでに登録があるか確認します。<br>
+              過去に仕入れ実績がある場合は新規登録は不要です。登録がある場合は仕入れ価格に変更がないか確認し、変更があれば更新してください。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">2</div>
             <div class="step-content">
-              <strong>バーコードを読み取る または 手入力</strong>
-              <p>入力欄にバーコードを読み取らせるか、商品コードを入力して <span class="ui-label">Enterキー</span> を押します。<br>
-              カメラを使う場合は <span class="ui-label">カメラでスキャン</span> ボタンを押してください。</p>
+              <strong>登録がなければ新規登録する</strong>
+              <p>在庫一覧に該当商品がない場合は新規登録します。登録時は必ず以下の項目を入力してください。</p>
+              <ul style="margin-top:8px;padding-left:18px;line-height:2;">
+                <li><span class="badge badge-amber">客注品</span> として区分を選択</li>
+                <li>仕入先（発注先）</li>
+                <li>仕入原価（サプコ・仕入帳への反映に必要）</li>
+              </ul>
             </div>
           </div>
           <div class="step">
             <div class="step-num">3</div>
             <div class="step-content">
-              <strong>商品区分を選択</strong>
-              <p>商品カードが表示されたら <span class="badge badge-teal">在庫品</span> か <span class="badge badge-amber">客注品</span> を選択します。<br>
-              客注品の場合はお客様名・車種・引き渡し日を入力してください。</p>
+              <strong>入庫予定を登録する</strong>
+              <p>商品の確認・登録が完了したら、入庫タブから <span class="ui-label">入庫予定を追加</span> して登録します。予約受付の時点で必ず登録してください。</p>
             </div>
           </div>
+        </div>
+
+        <hr class="divider">
+
+        <p style="font-weight:700;font-size:14px;margin-bottom:12px;">▌ 入荷時の作業</p>
+        <div class="steps">
           <div class="step">
             <div class="step-num">4</div>
             <div class="step-content">
-              <strong>数量を設定して確定</strong>
-              <p><span class="ui-label">＋</span>/<span class="ui-label">−</span> ボタンで数量を調整し、<span class="ui-label">入庫確定</span> を押します。</p>
+              <strong>入庫予定一覧で商品・お客様を確認する</strong>
+              <p>商品が届いたら、入庫タブの <span class="ui-label">入庫予定一覧</span> を開き、どのお客様の商品かを特定します。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-num">5</div>
             <div class="step-content">
-              <strong>リストに追加 → まとめて登録</strong>
-              <p>複数商品を続けてスキャンするとリストに追加されます。最後に <span class="ui-label">📥 入庫登録</span> ボタンを押してまとめて確定します。</p>
+              <strong>入庫確定・ラベルを印刷して貼付する</strong>
+              <p>対象商品の <span class="ui-label">入庫確定</span> を押し、ラベルを印刷します。印刷したラベルを商品に貼り付けてください。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">6</div>
+            <div class="step-content">
+              <strong>倉庫へ保管する</strong>
+              <p>ラベル貼付が完了したら、倉庫や指定の保管場所へ片付けてOKです。</p>
             </div>
           </div>
         </div>
