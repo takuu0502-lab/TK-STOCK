@@ -1354,11 +1354,13 @@
     <h2 class="section-title">価格調整（ブリヂストン価格表）</h2>
 
     <!-- お知らせ管理 -->
+    <div id="announcementEditorSection">
     <div class="pricing-section-title">📢 お知らせ管理</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを複数登録できます。表示するにチェックが入っているものだけ表示されます。</p>
     <div id="announcementList" style="display:flex;flex-direction:column;gap:8px;max-width:640px;margin-bottom:12px;"></div>
     <button class="btn btn-teal btn-sm" id="addAnnouncementBtn">＋ お知らせを追加</button>
     <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;margin-left:10px;">保存しました</span>
+    </div><!-- /announcementEditorSection -->
 
     <div class="pricing-section-divider"></div>
 
@@ -3943,7 +3945,11 @@ window.addEventListener('storageReady', function(){
   function renderSiteAnnouncement(){
     const el = document.getElementById('siteAnnouncementBanner');
     if(!el) return;
-    const active = siteAnnouncements.filter(a=>a.active && a.text);
+    const userBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const active = siteAnnouncements.filter(a=>
+      a.active && a.text &&
+      (!a.branches || a.branches.length===0 || a.branches.includes('all') || a.branches.includes(userBranch))
+    );
     if(active.length === 0){ el.style.display='none'; el.innerHTML=''; return; }
     el.style.display = '';
     el.style.padding = '0';
@@ -5112,6 +5118,10 @@ window.addEventListener('storageReady', function(){
   function initAnnouncementEditor(){
     if(_announcementEditorInit) return;
     _announcementEditorInit = true;
+    // 総管理者以外は非表示
+    const annSection = document.getElementById('announcementEditorSection');
+    if(annSection) annSection.style.display = isSuperAdminUser() ? '' : 'none';
+    if(!isSuperAdminUser()) return;
     renderAnnouncementList();
     const addBtn = document.getElementById('addAnnouncementBtn');
     if(addBtn) addBtn.addEventListener('click', ()=>{
@@ -5136,6 +5146,13 @@ window.addEventListener('storageReady', function(){
     listEl.innerHTML = '';
     siteAnnouncements.forEach((ann, idx)=>{
       const curType = typeOpts.find(t=>t.value===(ann.type||'info')) || typeOpts[0];
+      const annBranches = ann.branches || ['all'];
+      const branchOpts = [
+        {id:'all',      name:'全支店'},
+        {id:'taniyabe', name:'谷田部店'},
+        {id:'iwama',    name:'岩間店'},
+        {id:'katsuta',  name:'勝田店'},
+      ];
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid '+curType.border+';background:'+curType.bg+';border-radius:10px;padding:12px 14px;';
       card.innerHTML =
@@ -5143,6 +5160,11 @@ window.addEventListener('storageReady', function(){
         + typeOpts.map(t=>'<button data-annidx="'+idx+'" data-anntype="'+t.value+'" class="ann-type-btn" style="padding:3px 12px;border-radius:16px;border:2px solid '+(ann.type===t.value?t.border:'#ddd')+';background:'+(ann.type===t.value?t.bg:'#fff')+';color:'+(ann.type===t.value?t.color:'#999')+';font-size:12px;font-weight:600;cursor:pointer;">'+t.label+'</button>').join('')
         +'</div>'
         +'<textarea class="input ann-text" data-annidx="'+idx+'" rows="2" style="width:100%;font-size:13px;resize:vertical;margin-bottom:8px;">'+escapeHtml(ann.text||'')+'</textarea>'
+        +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px;">'
+        +'<span style="font-size:12px;font-weight:600;color:var(--text-2);">表示支店：</span>'
+        + branchOpts.map(b=>'<label style="display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer;">'
+          +'<input type="checkbox" class="ann-branch" data-annidx="'+idx+'" data-branchid="'+b.id+'" style="width:14px;height:14px;"'+(annBranches.includes(b.id)?' checked':'')+'>'+b.name+'</label>').join('')
+        +'</div>'
         +'<div style="display:flex;align-items:center;gap:12px;">'
         +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">'
         +'<input type="checkbox" class="ann-active" data-annidx="'+idx+'" style="width:15px;height:15px;"'+(ann.active?' checked':'')+'> 表示する</label>'
@@ -5164,10 +5186,13 @@ window.addEventListener('storageReady', function(){
     listEl.querySelectorAll('.ann-save').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const idx = parseInt(btn.dataset.annidx);
-        const textEl = listEl.querySelector('.ann-text[data-annidx="'+idx+'"]');
-        const chkEl  = listEl.querySelector('.ann-active[data-annidx="'+idx+'"]');
-        siteAnnouncements[idx].text   = textEl ? textEl.value.trim() : '';
-        siteAnnouncements[idx].active = chkEl ? chkEl.checked : false;
+        const textEl    = listEl.querySelector('.ann-text[data-annidx="'+idx+'"]');
+        const chkEl     = listEl.querySelector('.ann-active[data-annidx="'+idx+'"]');
+        const branchChks= listEl.querySelectorAll('.ann-branch[data-annidx="'+idx+'"]');
+        siteAnnouncements[idx].text    = textEl ? textEl.value.trim() : '';
+        siteAnnouncements[idx].active  = chkEl ? chkEl.checked : false;
+        siteAnnouncements[idx].branches = Array.from(branchChks).filter(c=>c.checked).map(c=>c.dataset.branchid);
+        if(siteAnnouncements[idx].branches.length === 0) siteAnnouncements[idx].branches = ['all'];
         await saveSiteAnnouncement();
         renderSiteAnnouncement();
         renderAnnouncementList();
