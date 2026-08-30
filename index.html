@@ -1354,13 +1354,13 @@
     <h2 class="section-title">価格調整（ブリヂストン価格表）</h2>
 
     <!-- お知らせ管理 -->
-    <div id="announcementEditorSection">
-    <div class="pricing-section-title">📢 お知らせ管理</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを複数登録できます。表示するにチェックが入っているものだけ表示されます。</p>
-    <div id="announcementList" style="display:flex;flex-direction:column;gap:8px;max-width:640px;margin-bottom:12px;"></div>
-    <button class="btn btn-teal btn-sm" id="addAnnouncementBtn">＋ お知らせを追加</button>
-    <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;margin-left:10px;">保存しました</span>
-    </div><!-- /announcementEditorSection -->
+    <div class="pricing-section-title ann-editor-el">📢 お知らせ管理</div>
+    <p class="ann-editor-el" style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを複数登録できます。表示するにチェックが入っているものだけ表示されます。</p>
+    <div id="announcementList" class="ann-editor-el" style="display:flex;flex-direction:column;gap:8px;max-width:640px;margin-bottom:12px;"></div>
+    <div class="ann-editor-el" style="display:flex;align-items:center;gap:10px;">
+      <button class="btn btn-teal btn-sm" id="addAnnouncementBtn">＋ お知らせを追加</button>
+      <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;">保存しました</span>
+    </div>
 
     <div class="pricing-section-divider"></div>
 
@@ -5111,23 +5111,26 @@ window.addEventListener('storageReady', function(){
       }catch(e){ console.warn('switchTab panel error', t, e); }
     });
     if(tabName === 'out'){ renderProvisionalList(); }
-    if(tabName === 'pricing'){ initPricingAccordion(); initAnnouncementEditor(); }
+    if(tabName === 'pricing'){ initPricingAccordion(); initAnnouncementEditor(); renderAnnouncementList(); }
   }
 
-  let _announcementEditorInit = false;
+  let _announcementAddBtnBound = false;
   function initAnnouncementEditor(){
-    if(_announcementEditorInit) return;
-    _announcementEditorInit = true;
-    // 総管理者以外は非表示
-    const annSection = document.getElementById('announcementEditorSection');
-    if(annSection) annSection.style.display = isSuperAdminUser() ? '' : 'none';
-    if(!isSuperAdminUser()) return;
-    renderAnnouncementList();
-    const addBtn = document.getElementById('addAnnouncementBtn');
-    if(addBtn) addBtn.addEventListener('click', ()=>{
-      siteAnnouncements.push({id: uid('ann'), type:'info', text:'', active:true});
-      renderAnnouncementList();
+    // 総管理者以外は全要素を非表示
+    const isSA = isSuperAdminUser();
+    document.querySelectorAll('.ann-editor-el').forEach(el=>{
+      el.style.display = isSA ? '' : 'none';
     });
+    if(!isSA) return;
+    renderAnnouncementList();
+    if(!_announcementAddBtnBound){
+      _announcementAddBtnBound = true;
+      const addBtn = document.getElementById('addAnnouncementBtn');
+      if(addBtn) addBtn.addEventListener('click', ()=>{
+        siteAnnouncements.push({id: uid('ann'), type:'info', text:'', active:true, branches:['all']});
+        renderAnnouncementList();
+      });
+    }
   }
 
   function renderAnnouncementList(){
