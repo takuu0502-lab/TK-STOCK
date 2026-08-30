@@ -1126,9 +1126,7 @@
   <div class="header">
     <div class="brand-row">
       <div class="brand" id="brandHome" style="cursor:pointer;" title="ホームに戻る"><span class="dot"></span>TK-STOCK</div>
-      <div style="flex:1;margin:0 16px;padding:7px 16px;background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;font-size:12px;color:#92400e;line-height:1.6;">
-        📢 <strong>９月より仮運用開始・１０月より正式スタート</strong>　予約を受けた際には入庫予定と仮出庫登録をお願いします。在庫分でタイヤ販売した際は出庫も忘れずにお願いします。
-      </div>
+      <div id="siteAnnouncementBanner" style="flex:1;margin:0 16px;display:none;"></div>
       <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
           <div style="display:flex;gap:8px;align-items:center;">
@@ -1354,6 +1352,23 @@
 
   <div class="panel" id="tab-pricing" style="display:none;">
     <h2 class="section-title">価格調整（ブリヂストン価格表）</h2>
+
+    <!-- お知らせ管理 -->
+    <div class="pricing-section-title">📢 お知らせ管理</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを設定します。オフにすると非表示になります。</p>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:600px;">
+      <textarea id="announcementTextInput" class="input" rows="3" placeholder="お知らせ文を入力してください" style="width:100%;resize:vertical;font-size:13px;"></textarea>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="announcementActiveChk" style="width:16px;height:16px;">
+          表示する
+        </label>
+        <button class="btn btn-teal btn-sm" id="saveAnnouncementBtn">💾 保存する</button>
+        <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;">保存しました</span>
+      </div>
+    </div>
+
+    <div class="pricing-section-divider"></div>
 
     <!-- 支店切替タブ -->
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
@@ -2774,6 +2789,7 @@ window.addEventListener('storageReady', function(){
   let provisionalOutbounds = []; // 仮出庫リスト
   let custodyContracts = []; // 預かり在庫
   let custodyCustomers = []; // 取引先マスター
+  let siteAnnouncement = {text:'', active:false}; // お知らせ
   let popTemplates = []; // POP印刷テンプレート
   let customerOrders = []; // 客注品入庫リスト
   let reservationCategories = ['夏タイヤ・ホイール予約', 'スタッドレス予約', '用品予約']; // 予約カテゴリー
@@ -3805,6 +3821,9 @@ window.addEventListener('storageReady', function(){
       custodyContracts = (ccr && ccr.value) ? (JSON.parse(ccr.value) || []) : [];
       const ccu = await window.storage.get('custodyCustomers', SHARED);
       custodyCustomers = (ccu && ccu.value) ? (JSON.parse(ccu.value) || []) : [];
+      const ann = await window.storage.get('siteAnnouncement', SHARED);
+      siteAnnouncement = (ann && ann.value) ? (JSON.parse(ann.value) || {text:'',active:false}) : {text:'',active:false};
+      renderSiteAnnouncement();
       const co = await window.storage.get('customerOrders', SHARED);
       customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
       const rc = await window.storage.get('reservationCategories', SHARED);
@@ -3920,6 +3939,29 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('custodyCustomers', JSON.stringify(custodyCustomers), SHARED); }
     catch(e){ console.error('save custodyCustomers failed', e); }
   }
+  async function saveSiteAnnouncement(){
+    try{ await window.storage.set('siteAnnouncement', JSON.stringify(siteAnnouncement), SHARED); }
+    catch(e){ console.error('save siteAnnouncement failed', e); }
+  }
+  function renderSiteAnnouncement(){
+    const el = document.getElementById('siteAnnouncementBanner');
+    if(!el) return;
+    if(siteAnnouncement.active && siteAnnouncement.text){
+      el.style.display = '';
+      el.style.padding = '7px 16px';
+      el.style.background = '#fffbeb';
+      el.style.border = '1px solid #fbbf24';
+      el.style.borderRadius = '8px';
+      el.style.fontSize = '12px';
+      el.style.color = '#92400e';
+      el.style.lineHeight = '1.6';
+      el.innerHTML = '📢 ' + escapeHtml(siteAnnouncement.text);
+    } else {
+      el.style.display = 'none';
+      el.innerHTML = '';
+    }
+  }
+  window.renderSiteAnnouncement = renderSiteAnnouncement;
 
   async function saveProvisionalOutbounds(){
     try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
@@ -5065,7 +5107,28 @@ window.addEventListener('storageReady', function(){
       }catch(e){ console.warn('switchTab panel error', t, e); }
     });
     if(tabName === 'out'){ renderProvisionalList(); }
-    if(tabName === 'pricing'){ initPricingAccordion(); }
+    if(tabName === 'pricing'){ initPricingAccordion(); initAnnouncementEditor(); }
+  }
+
+  let _announcementEditorInit = false;
+  function initAnnouncementEditor(){
+    if(_announcementEditorInit) return;
+    _announcementEditorInit = true;
+    const textEl = document.getElementById('announcementTextInput');
+    const chkEl  = document.getElementById('announcementActiveChk');
+    const saveBtn = document.getElementById('saveAnnouncementBtn');
+    const msgEl  = document.getElementById('announcementSaveMsg');
+    if(!textEl || !chkEl || !saveBtn) return;
+    // 初期値セット
+    textEl.value = siteAnnouncement.text || '';
+    chkEl.checked = !!siteAnnouncement.active;
+    saveBtn.addEventListener('click', async ()=>{
+      siteAnnouncement.text   = textEl.value.trim();
+      siteAnnouncement.active = chkEl.checked;
+      await saveSiteAnnouncement();
+      renderSiteAnnouncement();
+      if(msgEl){ msgEl.style.display=''; setTimeout(()=>{ msgEl.style.display='none'; }, 2000); }
+    });
   }
 
   let _pricingAccordionInit = false;
@@ -5076,7 +5139,8 @@ window.addEventListener('storageReady', function(){
     if(!panel) return;
 
     const groups = [
-      { label:'💰 価格設定', open:true,  keywords:['販売価格の設定','仕入れ価格の設定','外部向け'] },
+      { label:'📢 お知らせ', open:true,  keywords:['お知らせ管理'] },
+      { label:'💰 価格設定', open:false,  keywords:['販売価格の設定','仕入れ価格の設定','外部向け'] },
       { label:'📦 価格表・商品データ', open:false, keywords:['価格表取込','商品一括インポート','JANコードデータベース','JANコード自動付与','JANコード一括入力','スキャンして登録','重複商品','カタログ連動'] },
       { label:'⚙️ その他設定', open:false, keywords:['保管場所','入庫済みラベル','ホイールメニュー','ホイールカタログ','商品URL','POP印刷テンプレート'] },
     ];
