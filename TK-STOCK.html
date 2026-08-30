@@ -1356,7 +1356,21 @@
     <!-- お知らせ管理 -->
     <div class="pricing-section-title">📢 お知らせ管理</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">トップページのロゴ横に表示するお知らせを設定します。オフにすると非表示になります。</p>
-    <div style="display:flex;flex-direction:column;gap:10px;max-width:600px;">
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:620px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="cursor:pointer;">
+          <input type="radio" name="ann_type" id="ann_type_info" value="info" style="display:none;">
+          <span id="ann_type_info_btn" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:2px solid #fbbf24;background:#fffbeb;color:#92400e;font-size:12.5px;font-weight:600;cursor:pointer;">📢 お知らせ</span>
+        </label>
+        <label style="cursor:pointer;">
+          <input type="radio" name="ann_type" id="ann_type_important" value="important" style="display:none;">
+          <span id="ann_type_important_btn" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;">🚨 重要</span>
+        </label>
+        <label style="cursor:pointer;">
+          <input type="radio" name="ann_type" id="ann_type_new" value="new" style="display:none;">
+          <span id="ann_type_new_btn" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;color:#888;font-size:12.5px;font-weight:600;cursor:pointer;">✨ 新機能</span>
+        </label>
+      </div>
       <textarea id="announcementTextInput" class="input" rows="3" placeholder="お知らせ文を入力してください" style="width:100%;resize:vertical;font-size:13px;"></textarea>
       <div style="display:flex;align-items:center;gap:12px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
@@ -3947,15 +3961,22 @@ window.addEventListener('storageReady', function(){
     const el = document.getElementById('siteAnnouncementBanner');
     if(!el) return;
     if(siteAnnouncement.active && siteAnnouncement.text){
+      const typeMap = {
+        info:      { icon:'📢', bg:'#fffbeb', border:'#fbbf24', color:'#92400e', labelBg:'#f59e0b', labelText:'お知らせ' },
+        important: { icon:'🚨', bg:'#fef2f2', border:'#f87171', color:'#991b1b', labelBg:'#dc2626', labelText:'重要' },
+        new:       { icon:'✨', bg:'#f0fdf4', border:'#4ade80', color:'#166534', labelBg:'#16a34a', labelText:'新機能' },
+      };
+      const t = typeMap[siteAnnouncement.type || 'info'];
       el.style.display = '';
-      el.style.padding = '7px 16px';
-      el.style.background = '#fffbeb';
-      el.style.border = '1px solid #fbbf24';
+      el.style.padding = '6px 14px';
+      el.style.background = t.bg;
+      el.style.border = '1px solid ' + t.border;
       el.style.borderRadius = '8px';
       el.style.fontSize = '12px';
-      el.style.color = '#92400e';
+      el.style.color = t.color;
       el.style.lineHeight = '1.6';
-      el.innerHTML = '📢 ' + escapeHtml(siteAnnouncement.text);
+      el.innerHTML = '<span style="display:inline-block;background:'+t.labelBg+';color:#fff;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700;margin-right:7px;">'+t.icon+' '+t.labelText+'</span>'
+                   + escapeHtml(siteAnnouncement.text);
     } else {
       el.style.display = 'none';
       el.innerHTML = '';
@@ -5114,15 +5135,50 @@ window.addEventListener('storageReady', function(){
   function initAnnouncementEditor(){
     if(_announcementEditorInit) return;
     _announcementEditorInit = true;
-    const textEl = document.getElementById('announcementTextInput');
-    const chkEl  = document.getElementById('announcementActiveChk');
+    const textEl  = document.getElementById('announcementTextInput');
+    const chkEl   = document.getElementById('announcementActiveChk');
     const saveBtn = document.getElementById('saveAnnouncementBtn');
-    const msgEl  = document.getElementById('announcementSaveMsg');
+    const msgEl   = document.getElementById('announcementSaveMsg');
     if(!textEl || !chkEl || !saveBtn) return;
+
+    const typeStyles = {
+      info:      { border:'#fbbf24', bg:'#fffbeb', color:'#92400e' },
+      important: { border:'#f87171', bg:'#fef2f2', color:'#991b1b' },
+      new:       { border:'#4ade80', bg:'#f0fdf4', color:'#166534' },
+    };
+    function updateTypeBtns(selected){
+      ['info','important','new'].forEach(v=>{
+        const btn = document.getElementById('ann_type_'+v+'_btn');
+        const s = typeStyles[v];
+        if(v === selected){
+          btn.style.border = '2px solid '+s.border;
+          btn.style.background = s.bg;
+          btn.style.color = s.color;
+        } else {
+          btn.style.border = '2px solid #e0e0e0';
+          btn.style.background = '#fff';
+          btn.style.color = '#888';
+        }
+      });
+    }
+
     // 初期値セット
-    textEl.value = siteAnnouncement.text || '';
+    const curType = siteAnnouncement.type || 'info';
+    const radio = document.getElementById('ann_type_'+curType);
+    if(radio) radio.checked = true;
+    updateTypeBtns(curType);
+    textEl.value  = siteAnnouncement.text || '';
     chkEl.checked = !!siteAnnouncement.active;
+
+    // ラジオ切替
+    ['info','important','new'].forEach(v=>{
+      const r = document.getElementById('ann_type_'+v);
+      if(r) r.addEventListener('change', ()=>{ if(r.checked) updateTypeBtns(v); });
+    });
+
     saveBtn.addEventListener('click', async ()=>{
+      const checkedRadio = document.querySelector('input[name="ann_type"]:checked');
+      siteAnnouncement.type   = checkedRadio ? checkedRadio.value : 'info';
       siteAnnouncement.text   = textEl.value.trim();
       siteAnnouncement.active = chkEl.checked;
       await saveSiteAnnouncement();
