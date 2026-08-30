@@ -1195,6 +1195,7 @@
   <button class="btn-bulk" id="bulkPriceTagBtn" style="background:#2563a8;color:#fff;">💴 プライスタグ</button>
   <button class="btn-bulk btn-bulk-order" id="bulkOrderBtn">📋 発注書作成</button>
   <button class="btn-bulk" id="bulkEditFromBarBtn" style="background:#555;color:#fff;">✏️ 一括編集</button>
+  <button class="btn-bulk" id="bulkDeleteBtn" style="background:#c0392b;color:#fff;display:none;">🗑 一括削除</button>
   <button class="btn-bulk btn-bulk-clear" id="bulkClearBtn">選択解除</button>
 </div>
 
@@ -7166,13 +7167,29 @@ window.addEventListener('storageReady', function(){
   function updateBulkBar(){
     const bar = document.getElementById('bulkActionBar');
     const count = document.getElementById('bulkCount');
+    const delBtn = document.getElementById('bulkDeleteBtn');
     if(selectedProducts.size > 0){
       bar.classList.add('show');
       count.textContent = selectedProducts.size + '件選択中';
+      if(delBtn) delBtn.style.display = isSuperAdminUser() ? 'inline-block' : 'none';
     } else {
       bar.classList.remove('show');
     }
   }
+
+  document.getElementById('bulkDeleteBtn').addEventListener('click', async ()=>{
+    const ids = [...selectedProducts];
+    if(!ids.length) return;
+    const ok = await showConfirm(ids.length+'件の商品を削除しますか？\nこの操作は取り消せません。');
+    if(!ok) return;
+    products = products.filter(p=>!ids.includes(p.id));
+    selectedProducts.clear();
+    await saveProducts();
+    updateBulkBar();
+    renderCatTree();
+    renderProductTable();
+    showToast(ids.length+'件の商品を削除しました');
+  });
 
   // ---------- 見積書 ----------
   // quoteGroups = [{productId, name, spec, qty, unitPrice}]
@@ -10674,7 +10691,18 @@ window.addEventListener('storageReady', function(){
     window._bulkRegisterCatalog = async (sourceItems)=>{
       const matches = sourceItems || window._lastCatalogMatches || [];
       const unregistered = matches.filter(r=>!findProductForCatalogEntry(r));
-      if(!unregistered.length){ alert('未登録の商品はありません。'); return; }
+      // 既存商品のうちr.cを持つカタログエントリと紐づくものは仕入れ価格を更新
+      const toUpdateCost = matches.filter(r=>r.c && findProductForCatalogEntry(r));
+      let updatedCount = 0;
+      for(const r of toUpdateCost){
+        const p = findProductForCatalogEntry(r);
+        if(p && p.costPrice !== r.c){ p.costPrice = r.c; updatedCount++; }
+      }
+      if(updatedCount > 0){ await saveProducts(); showToast(updatedCount+'件の仕入れ価格を更新しました'); }
+      if(!unregistered.length){
+        if(updatedCount===0) alert('未登録の商品はありません。');
+        return;
+      }
       const ok = await showConfirm(unregistered.length+'件の商品を一括登録しますか？\n中分類: サマータイヤ\n（在庫数0・価格は価格調整ルールから自動計算）');
       if(!ok) return;
       const tireCat = categories.find(c=>c.name==='タイヤ');
@@ -16711,8 +16739,8 @@ window.addEventListener('storageReady', function(){
           for(let ri=0;ri<Math.min(rows.length,10);ri++){
             const row=rows[ri]||[];
             const labels=row.map(v=>typeof v==='string'?v.trim():'');
-            const _aIdx=labels.findIndex(l=>l.includes('A表')||l==='卸価格'||l==='販売価格');
-            const _cIdx=labels.findIndex(l=>l.includes('仕入'));
+            const _aIdx=labels.findIndex(l=>(l.includes('A表')&&l.length<=6)||l==='卸価格'||l==='販売価格');
+            const _cIdx=labels.findIndex(l=>l.includes('仕入')&&l.length<=8);
             const _sIdx=labels.findIndex(l=>l.includes('サイズ')||l==='SIZE'||l==='size');
             const _mIdx=labels.findIndex(l=>l.includes('商品名')||l.includes('品名')||l==='名称');
             const _pIdx=labels.findIndex(l=>l.includes('コード')&&ri>=0||l.includes('品番'));
@@ -16779,12 +16807,16 @@ window.addEventListener('storageReady', function(){
             const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
             // ブランド名の自動検出：全角文字行をスキップしてASCII大文字が含まれる行を探す
             let detectedBrand = '';
-            for(const row of rows.slice(0, 10)){
+            // モデル名からブランド候補を取得（取込データに商品名がある場合）
+            if(items.length > 0 && items[0].m){
+              detectedBrand = items[0].m.trim();
+            }
+            // モデル名がない場合はファイルの先頭行から検出（単独セルのASCII大文字のみ）
+            if(!detectedBrand) for(const row of rows.slice(0, 10)){
               if(!row) continue;
               for(const c of row){
-                if(typeof c==='string'){
-                  const match = c.match(/([A-Z]{3,}(?:\s*[A-Z0-9Ⅱ]+)*)/);
-                  if(match){ detectedBrand = match[1].trim(); break; }
+                if(typeof c==='string' && c.length <= 20 && /^[A-Z][A-Z0-9\-_ ]{2,19}$/.test(c.trim())){
+                  detectedBrand = c.trim(); break;
                 }
               }
               if(detectedBrand) break;
