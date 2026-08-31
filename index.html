@@ -4486,13 +4486,14 @@ window.addEventListener('storageReady', function(){
           +'<span style="font-size:12px;color:var(--text-3);">本</span>'
         +'</td>'
         // 操作ボタン
-        +'<td style="padding:6px;border:1px solid var(--line);vertical-align:middle;">'
-          +'<div style="display:flex;flex-direction:column;gap:4px;">'
-          +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 8px;" onclick="custodyLogUse(\''+row.id+'\')">使用</button>'
-          +'<div style="display:flex;gap:4px;margin-top:4px;">'
-          +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;flex:1;" onclick="custodyEditRow(\''+row.id+'\')">編集</button>'
-          +'<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 6px;flex:1;color:var(--red);" onclick="custodyDeleteRow(\''+row.id+'\')">削除</button>'
+        +'<td style="padding:8px;border:1px solid var(--line);vertical-align:top;">'
+          +'<div style="display:flex;flex-direction:column;gap:5px;">'
+          +'<button onclick="custodyLogUse(\''+row.id+'\')" style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;border:2px solid #1a7a5e;background:#e8f4f0;color:#1a7a5e;cursor:pointer;">使用</button>'
+          +'<div style="display:flex;gap:5px;">'
+          +'<button onclick="custodyEditRow(\''+row.id+'\')" style="font-size:11px;font-weight:600;padding:4px 0;flex:1;border-radius:6px;border:2px solid #2563a8;background:#eff6ff;color:#2563a8;cursor:pointer;">編集</button>'
+          +'<button onclick="custodyDeleteRow(\''+row.id+'\')" style="font-size:11px;font-weight:600;padding:4px 0;flex:1;border-radius:6px;border:2px solid #dc2626;background:#fef2f2;color:#dc2626;cursor:pointer;">削除</button>'
           +'</div>'
+          +(row.note?'<div style="margin-top:4px;font-size:11px;color:var(--text-3);border-top:1px solid var(--line);padding-top:4px;">📝 '+escapeHtml(row.note)+'</div>':'')
           +'</div>'
         +'</td>'
         +'</tr>';
