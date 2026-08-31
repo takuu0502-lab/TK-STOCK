@@ -4456,7 +4456,7 @@ window.addEventListener('storageReady', function(){
           +(row.saleDate?(()=>{
             const sd=row.saleDate.split('-');
             return '<div style="margin-bottom:6px;padding:5px 8px;background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:12px;">'
-              +'<span style="font-size:11px;font-weight:700;color:#fff;background:#b45309;border-radius:4px;padding:1px 6px;">売上日</span>'
+              +'<span style="font-size:11px;font-weight:700;color:#fff;background:#6d28d9;border-radius:4px;padding:1px 6px;">預かり出庫</span>'
               +'<span style="color:#92400e;font-weight:600;margin-left:6px;">'+sd[0]+'年 '+parseInt(sd[1])+'月 '+parseInt(sd[2])+'日</span>'
               +'</div>';
           })():'')
@@ -4556,7 +4556,7 @@ window.addEventListener('storageReady', function(){
       +'</div>'
       +'<div class="field"><label>パターン</label><input id="car_pattern" class="input" placeholder="例：M746" style="width:100%;"></div>'
       +'<div class="field"><label>タイヤサイズ</label><input id="car_size" class="input" placeholder="例：11R22.5 14PR" style="width:100%;"></div>'
-      +'<div class="field"><label>売上日 *</label><input id="car_saledate" class="input" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:180px;"></div>'
+      +'<div class="field"><label>預かり出庫日 *</label><input id="car_saledate" class="input" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:180px;"></div>'
       +'<div class="field"><label>預かり本数 *</label><input id="car_qty" class="input" type="number" min="1" value="1" style="width:120px;"></div>'
       +'<div class="field"><label>メモ</label><input id="car_note" class="input" placeholder="備考など" style="width:100%;"></div>'
       +'</div>';
@@ -4680,7 +4680,7 @@ window.addEventListener('storageReady', function(){
       +'<div class="field"><label>取引先名 *</label><input id="cer_customer" class="input" value="'+escapeHtml(row.customerName)+'" style="width:100%;"></div>'
       +'<div class="field"><label>パターン</label><input id="cer_pattern" class="input" value="'+escapeHtml(row.pattern||'')+'" style="width:100%;"></div>'
       +'<div class="field"><label>タイヤサイズ</label><input id="cer_size" class="input" value="'+escapeHtml(row.size||'')+'" style="width:100%;"></div>'
-      +'<div class="field"><label>売上日</label><input id="cer_saledate" class="input" type="date" value="'+(row.saleDate||'')+'" style="width:180px;"></div>'
+      +'<div class="field"><label>預かり出庫日</label><input id="cer_saledate" class="input" type="date" value="'+(row.saleDate||'')+'" style="width:180px;"></div>'
       +'<div class="field"><label>預かり本数 *</label><input id="cer_qty" class="input" type="number" min="1" value="'+row.initialQty+'" style="width:120px;"></div>'
       +'<div class="field"><label>メモ</label><input id="cer_note" class="input" value="'+escapeHtml(row.note||'')+'" style="width:100%;"></div>'
       +'</div>';
@@ -4710,7 +4710,7 @@ window.addEventListener('storageReady', function(){
       +'<br><span style="color:var(--text-2);">現在の預かり本数：'+row.initialQty+'本</span></div>'
       +'<div style="display:flex;flex-direction:column;gap:12px;">'
       +'<div class="field"><label>追加本数 *</label><input id="caq_qty" class="input" type="number" min="1" value="1" style="width:110px;"></div>'
-      +'<div class="field"><label>売上日</label><input id="caq_date" class="input" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:160px;"></div>'
+      +'<div class="field"><label>預かり出庫日</label><input id="caq_date" class="input" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:160px;"></div>'
       +'<div class="field"><label>メモ</label><input id="caq_note" class="input" placeholder="" style="width:100%;"></div>'
       +'</div>';
     _custodyOverlay('預かり出庫（本数追加）', bodyHTML, async(ov)=>{
