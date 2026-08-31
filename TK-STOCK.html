@@ -4440,16 +4440,19 @@ window.addEventListener('storageReady', function(){
     rows.forEach(row=>{
       const rem = _custodyRemaining(row);
       const logs = (row.logs||[]).slice().sort((a,b)=>a.date>b.date?1:-1);
+      const _canEdit = isAdminUser();
+      const _clickCell = _canEdit ? 'onclick="custodyEditRow(\''+row.id+'\')" style="cursor:pointer;" title="クリックして編集"' : '';
+      const _tdBase = 'padding:10px;border:1px solid var(--line);vertical-align:top;'+(_canEdit?'cursor:pointer;':'');
       html += '<tr style="background:var(--bg-1);">'
         // ユーザー名
-        +'<td style="padding:10px;border:1px solid var(--line);font-weight:700;white-space:nowrap;vertical-align:top;">'
+        +'<td '+_clickCell+' style="'+_tdBase+'font-weight:700;white-space:nowrap;">'
           +escapeHtml(row.customerName)
           +(row.note?'<div style="font-size:11px;color:var(--text-3);font-weight:400;">'+escapeHtml(row.note)+'</div>':'')
         +'</td>'
         // パターン
-        +'<td style="padding:10px;border:1px solid var(--line);white-space:nowrap;vertical-align:top;">'+escapeHtml(row.pattern||'—')+'</td>'
+        +'<td '+_clickCell+' style="'+_tdBase+'white-space:nowrap;">'+escapeHtml(row.pattern||'—')+'</td>'
         // サイズ
-        +'<td style="padding:10px;border:1px solid var(--line);white-space:nowrap;vertical-align:top;">'+escapeHtml(row.size||'—')+'</td>'
+        +'<td '+_clickCell+' style="'+_tdBase+'white-space:nowrap;">'+escapeHtml(row.size||'—')+'</td>'
         // 記録セル
         +'<td style="padding:8px 10px;border:1px solid var(--line);vertical-align:top;">'
           +'<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:6px;">預かり出庫 '+row.initialQty+'本</div>'
