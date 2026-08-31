@@ -4458,9 +4458,10 @@ window.addEventListener('storageReady', function(){
           +'<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:6px;">預かり出庫 '+row.initialQty+'本</div>'
           +(row.saleDate?(()=>{
             const sd=row.saleDate.split('-');
-            return '<div style="margin-bottom:6px;padding:5px 8px;background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:12px;">'
-              +'<span style="font-size:11px;font-weight:700;color:#fff;background:#6d28d9;border-radius:4px;padding:1px 6px;">預かり出庫</span>'
-              +'<span style="color:#92400e;font-weight:600;margin-left:6px;">'+sd[0]+'年 '+parseInt(sd[1])+'月 '+parseInt(sd[2])+'日</span>'
+            return '<div style="margin-bottom:6px;padding:6px 10px;background:#f5f3ff;border:1px solid #c4b5fd;border-radius:6px;font-size:12px;display:flex;flex-direction:column;gap:2px;">'
+              +'<span style="font-size:11px;font-weight:700;color:#fff;background:#6d28d9;border-radius:4px;padding:1px 6px;align-self:flex-start;">預かり出庫</span>'
+              +'<span style="color:#6d28d9;font-weight:700;font-size:14px;">'+row.initialQty+'本</span>'
+              +'<span style="color:#5b21b6;font-size:12px;">'+sd[0]+'年 '+parseInt(sd[1])+'月 '+parseInt(sd[2])+'日</span>'
               +'</div>';
           })():'')
           +'<div style="display:flex;flex-direction:column;gap:6px;">'
