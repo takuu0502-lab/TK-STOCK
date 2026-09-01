@@ -4947,7 +4947,8 @@ window.addEventListener('storageReady', function(){
     const _isOverdue = s => { if(!s || s==='未定' || s==='') return false; return s < _todayStr; };
     // 超過表示セルHTML生成
     const _dateCellHtml = (rawDate, activeStatus) => {
-      const isActive = activeStatus !== 'delivered' && activeStatus !== 'sold';
+      const _doneStatuses = ['delivered','sold','arrived','done','completed'];
+      const isActive = !_doneStatuses.includes(activeStatus);
       const overdue = isActive && _isOverdue(rawDate);
       const formatted = _fmtDate(rawDate);
       if(overdue){
