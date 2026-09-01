@@ -13118,7 +13118,8 @@ window.addEventListener('storageReady', function(){
         const { customerName, scheduledDate, carName } = formResult;
         const _dpBr = _detPobOwnBranch;
         const _dpUser = currentUser ? currentUser.displayName : '';
-        const _dpCoId = customerName ? uid('co') : null;
+        // 在庫が足りている場合は客注品（入庫待ち）登録不要
+        const _dpCoId = (customerName && curStk2 < qty) ? uid('co') : null;
         if(_dpCoId){
           customerOrders.push({ id:_dpCoId, branchId:_dpBr, customerName, carName:carName||'', installDate:scheduledDate||'', status:'pending', items:[{ productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', qty }], needsNotification:formResult.needsNotification!==false, notified:false, notifiedAt:null, createdAt:new Date().toISOString(), createdBy:_dpUser });
           await saveCustomerOrders();
@@ -13168,7 +13169,8 @@ window.addEventListener('storageReady', function(){
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
         const _custUser = currentUser ? currentUser.displayName : '';
-        const _custCoId = customerName ? uid('co') : null;
+        // 在庫が足りている場合は客注品（入庫待ち）登録不要
+        const _custCoId = (customerName && _custStk < qty) ? uid('co') : null;
         if(_custCoId){
           customerOrders.push({ id:_custCoId, branchId:_custBranch, customerName, carName:carName||'', installDate:scheduledDate||'', status:'pending', items:[{ productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', qty }], needsNotification:formResult.needsNotification!==false, notified:false, notifiedAt:null, createdAt:new Date().toISOString(), createdBy:_custUser });
           await saveCustomerOrders();
@@ -14134,7 +14136,8 @@ window.addEventListener('storageReady', function(){
         const { customerName, scheduledDate, carName } = formResult;
         const _opBr = _batchPobOwnBranch;
         const _opUser = currentUser ? currentUser.displayName : '';
-        const _opCoId = customerName ? uid('co') : null;
+        // 在庫が足りている場合は客注品（入庫待ち）登録不要
+        const _opCoId = (customerName && overItems.length > 0) ? uid('co') : null;
         if(_opCoId){
           customerOrders.push({ id:_opCoId, branchId:_opBr, customerName, carName:carName||'', installDate:scheduledDate||'', status:'pending', items: outboundCart.map(item=>({ productId:item.productId, productName:item.name, brand:item.brand||'', spec:item.spec||'', qty:item.qty })), needsNotification:formResult.needsNotification!==false, notified:false, notifiedAt:null, createdAt:new Date().toISOString(), createdBy:_opUser });
           await saveCustomerOrders();
