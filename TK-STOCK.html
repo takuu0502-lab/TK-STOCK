@@ -6633,18 +6633,29 @@ window.addEventListener('storageReady', function(){
 
     // カタログ + 自社登録を統合ソート
     const _chkPrefixManual = '_prod_';
-    // 銘柄+サイズをキーに重複除去（同一データが複数カタログに存在する場合）
+    // 銘柄+サイズをキーに重複除去（同一データが複数カタログ or カタログ+自社登録で重複する場合）
     const _tiSeen = new Set();
     const allTireItems = [
       ...matches.map((r,origIdx)=>({type:'catalog',r,origIdx})),
       ...manualMatched.map((p,origIdx)=>({type:'manual',p,origIdx}))
     ].filter(item=>{
-      const key = item.type==='catalog'
-        ? (item.r.m||'')+'||'+(item.r.s||'')
-        : (item.p.name||'')+'||'+(item.p.spec||'');
-      if(_tiSeen.has(key)) return false;
-      _tiSeen.add(key);
-      return true;
+      if(item.type === 'catalog'){
+        const key = (item.r.m||'')+'||'+(item.r.s||'');
+        if(_tiSeen.has(key)) return false;
+        _tiSeen.add(key);
+        return true;
+      } else {
+        // 自社登録品：対応カタログエントリがすでに_tiSeenにあれば除外
+        const _ce = findCatalogEntryForProduct(item.p);
+        if(_ce){
+          const _ceKey = (_ce.m||'')+'||'+(_ce.s||'');
+          if(_tiSeen.has(_ceKey)) return false;
+        }
+        const key = (item.p.name||'')+'||'+(item.p.spec||'');
+        if(_tiSeen.has(key)) return false;
+        _tiSeen.add(key);
+        return true;
+      }
     });
     if(forceTire){
       allTireItems.sort((a,b)=>{
