@@ -7981,17 +7981,6 @@ window.addEventListener('storageReady', function(){
     const panel = document.getElementById('estimateSearchPanel');
     let html = '<div class="spec-search-panel">';
 
-    // シーズンフィルター
-    const _sfBtnBase = 'border:1.5px solid var(--line);border-radius:20px;padding:5px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;';
-    const _sfActive  = 'background:var(--amber);color:#fff;border-color:var(--amber);';
-    const _sfInact   = 'background:var(--bg-1);color:var(--text-2);';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
-      + '<span style="font-size:12px;color:var(--text-3);font-weight:600;">タイヤ種別：</span>'
-      + '<button id="estSeason_all" style="'+_sfBtnBase+(estimateSeasonFilter==='all'?_sfActive:_sfInact)+'">すべて</button>'
-      + '<button id="estSeason_summer" style="'+_sfBtnBase+(estimateSeasonFilter==='summer'?_sfActive:_sfInact)+'">☀️ サマータイヤ</button>'
-      + '<button id="estSeason_studless" style="'+_sfBtnBase+(estimateSeasonFilter==='studless'?_sfActive:_sfInact)+'">❄️ スタッドレス</button>'
-      + '</div>';
-
     // 前後サイズ違いチェックボックス
     html += '<div style="margin-bottom:10px;">'
       + '<label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--text-2);cursor:pointer;">'
@@ -8015,6 +8004,17 @@ window.addEventListener('storageReady', function(){
       html += buildSizeSelectors('est', estWidth, estAspect, estInch);
       html += '</div>';
     }
+
+    // シーズンフィルター
+    const _sfBtnBase = 'border:1.5px solid var(--line);border-radius:20px;padding:5px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;';
+    const _sfActive  = 'background:var(--amber);color:#fff;border-color:var(--amber);';
+    const _sfInact   = 'background:var(--bg-1);color:var(--text-2);';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      + '<span style="font-size:12px;color:var(--text-3);font-weight:600;">タイヤ種別：</span>'
+      + '<button id="estSeason_all" style="'+_sfBtnBase+(estimateSeasonFilter==='all'?_sfActive:_sfInact)+'">すべて</button>'
+      + '<button id="estSeason_summer" style="'+_sfBtnBase+(estimateSeasonFilter==='summer'?_sfActive:_sfInact)+'">☀️ サマータイヤ</button>'
+      + '<button id="estSeason_studless" style="'+_sfBtnBase+(estimateSeasonFilter==='studless'?_sfActive:_sfInact)+'">❄️ スタッドレス</button>'
+      + '</div>';
 
     html += '<div class="spec-search-actions" style="justify-content:space-between;align-items:center;">'
       + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
