@@ -14950,6 +14950,17 @@ window.addEventListener('storageReady', function(){
           existing.needsNotification = _coNeedsNotify;
           existing.updatedAt = new Date().toISOString();
           existing.updatedBy = currentUser?currentUser.displayName:'';
+          // 紐づくincomingSchedulesの日付・お客様名も同期更新
+          let _ischChanged = false;
+          incomingSchedules.filter(s => s.customerOrderId === _coEditOrderId && s.status === 'pending').forEach(s => {
+            const matchItem = _coItems.find(ci => ci.product && ci.product.id === s.productId);
+            const newDate = (matchItem && matchItem.expectedDate) ? matchItem.expectedDate : expectedDate;
+            if(newDate) s.expectedDate = newDate;
+            s.customerName = customerName;
+            s.carName = carName || '';
+            _ischChanged = true;
+          });
+          if(_ischChanged) await saveIncomingSchedules();
         }
       } else {
         // 新規登録
