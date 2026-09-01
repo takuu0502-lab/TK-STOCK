@@ -5806,8 +5806,18 @@ window.addEventListener('storageReady', function(){
       // Lock type selector if specified (hide toggle)
       const _typeRow = typeProvLabel.parentElement.parentElement;
       _typeRow.style.display = (opts&&opts.lockType) ? 'none' : '';
+      // 在庫ある場合は入庫予定オプションを非表示
+      const _inboundRow = inboundCheck.closest('label') || inboundCheck.parentElement;
+      const _inboundSection = _inboundRow.parentElement;
+      if(opts && opts.hideInbound){
+        _inboundSection.style.display = 'none';
+        inboundCheck.checked = false;
+        inboundWrap.style.display = 'none';
+      } else {
+        _inboundSection.style.display = '';
+      }
       // Auto-expand 入庫予定 for custody type
-      if(_defType==='custody'){
+      if(_defType==='custody' && !(opts && opts.hideInbound)){
         inboundCheck.checked = true;
         inboundWrap.style.display = 'block';
       }
@@ -8861,10 +8871,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('bulkProvBtn').addEventListener('click', async ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
       if(ps.length===0) return;
-      const formResult = await showProvisionalForm();
-      if(!formResult) return;
-      const { customerName, scheduledDate, carName } = formResult;
-      // 在庫超過チェック
+      // 在庫超過チェック（フォーム表示前）
       const overItems = ps.filter(p=>{
         const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id))
           .reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
@@ -8875,6 +8882,9 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('以下の商品は在庫数を超えた仮出庫になります：' + names + '\nそれでも登録しますか？');
         if(!ok) return;
       }
+      const formResult = await showProvisionalForm({ hideInbound: overItems.length === 0 });
+      if(!formResult) return;
+      const { customerName, scheduledDate, carName } = formResult;
       const entry = {
         id: uid('pob'),
         date: new Date().toISOString(),
@@ -13101,7 +13111,7 @@ window.addEventListener('storageReady', function(){
           const ok = await showConfirm('⚠️ 在庫数を超えています。\n\n現在庫: '+curStk2+'　仮出庫済: '+existingProvQty+'　今回: '+qty+'\n'+over+' 不足します。\n\nそれでも登録しますか？');
           if(!ok) return;
         }
-        const formResult = await showProvisionalForm();
+        const formResult = await showProvisionalForm({ hideInbound: curStk2 >= qty });
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
         const _dpBr = _detPobOwnBranch;
@@ -13150,7 +13160,8 @@ window.addEventListener('storageReady', function(){
         const msgEl = document.getElementById('detailActionMsg');
         if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
         const _custBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-        const formResult = await showProvisionalForm({ defaultType:'custody', lockType:true });
+        const _custStk = getStock(p);
+        const formResult = await showProvisionalForm({ defaultType:'custody', lockType:true, hideInbound: _custStk >= qty });
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
         const _custUser = currentUser ? currentUser.displayName : '';
@@ -14113,7 +14124,8 @@ window.addEventListener('storageReady', function(){
           if(!ok) return;
         }
         // お客様名・予定日入力フォームをモーダルで表示
-        const formResult = await showProvisionalForm();
+        // 全商品が在庫範囲内なら入庫予定オプションを非表示
+        const formResult = await showProvisionalForm({ hideInbound: overItems.length === 0 });
         if(!formResult) return;
         const { customerName, scheduledDate, carName } = formResult;
         const _opBr = _batchPobOwnBranch;
