@@ -15171,10 +15171,16 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('incomingSchedWrap');
     if(!wrap) return;
     const _ownBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    // 在庫補充のみ表示（客注品は客注品入庫リストで管理）
-    // inboundType: 'co' は旧フォーマットの客注品（後方互換）
-    // customerName があるエントリは客注品入庫リスト（orphan）で管理するため除外
-    const pending = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_ownBr&&s.inboundType!=='customerOrder'&&s.inboundType!=='co'&&!s.customerOrderId&&!s.customerName);
+    // 在庫補充 + orphanな客注品入庫予定（customerOrdersに紐づかないもの）を表示
+    // customerOrdersに紐づいている客注品は客注品入庫リストで管理
+    const pending = incomingSchedules.filter(s => {
+      if(s.status !== 'pending' || (s.branchId||'taniyabe') !== _ownBr) return false;
+      const isCoType = s.inboundType === 'customerOrder' || s.inboundType === 'co' || s.customerOrderId || s.customerName;
+      if(!isCoType) return true; // 通常の在庫補充
+      // 客注品系：customerOrdersに紐づいていないorphanのみ表示
+      const hasLinkedOrder = s.customerOrderId && customerOrders.some(o => o.id === s.customerOrderId && o.status === 'pending');
+      return !hasLinkedOrder;
+    });
     if(pending.length===0){ wrap.innerHTML=''; return; }
     pending.sort((a,b)=>(a.expectedDate||'').localeCompare(b.expectedDate||''));
     const today = new Date(); today.setHours(0,0,0,0);
@@ -15195,6 +15201,7 @@ window.addEventListener('storageReady', function(){
       return '<div id="isch-entry-'+s.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
         /* カード上部 */
         +'<div style="padding:14px 16px;flex:1;">'
+        +(s.customerName?'<div style="font-size:11px;font-weight:700;color:#4caf7d;background:rgba(76,175,125,0.1);border:1px solid #4caf7d;border-radius:5px;padding:2px 8px;display:inline-block;margin-bottom:6px;">🛒 客注品　'+escapeHtml(s.customerName)+'様'+(s.carName?' / '+escapeHtml(s.carName):'')+'</div>':'')
         +(diff<0?'<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;">⚠️ 入庫日超過（'+Math.abs(diff)+'日）</div>':'')
         /* 商品名・規格・数量 */
         +'<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
