@@ -2922,6 +2922,7 @@ window.addEventListener('storageReady', function(){
   }
   // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
   const _BS_BRAND_LOOKUP = [
+    [['BLIZZAK','WZ-1','VRX','VL10','DM-V','REVO9','W300','ICEPEAK'],'BLIZZAK'],
     [['GR-X','GRV'],'REGNO'],
     [['RE-71','RE-12','RE-10','RE-11','RE050','S007','Adrenalin','SPORT','S001'],'POTENZA'],
     [['ECOPIA','NH200','EP5','EP1','EP0','R710','M812','R214','R201'],'ECOPIA'],
@@ -17009,6 +17010,9 @@ window.addEventListener('storageReady', function(){
         // ── ブリヂストンA表専用パーサー（全シート対応）──
         // モデル名→ブランド名のフォールバックテーブル（XLSX.jsのブランド行検出が失敗した場合に使用）
   const _BS_MODEL_BRAND = {
+    'WZ-1':'BLIZZAK','WZ-1(SUV)':'BLIZZAK','VRX3':'BLIZZAK','VRX3(SUV)':'BLIZZAK','VRX2':'BLIZZAK','VRX':'BLIZZAK',
+    'DM-V3':'BLIZZAK','DM-V2':'BLIZZAK','VL10':'BLIZZAK','VL10A':'BLIZZAK','REVO969':'BLIZZAK','W300':'BLIZZAK',
+    'ICEPEAK':'BLIZZAK',
     'GR-XⅢ':'REGNO','GR-XⅢ TYPE RV':'REGNO','GR-XⅡ':'REGNO','GRVⅡ':'REGNO',
     'RE-71RZ':'POTENZA','RE-71RS':'POTENZA','RE-12D TYPE A':'POTENZA','RE-10D':'POTENZA','RE-11S':'POTENZA',
     'S007A':'POTENZA','S007(OE)':'POTENZA','Adrenalin RE005':'POTENZA','Adrenalin RE004':'POTENZA',
@@ -17030,6 +17034,7 @@ window.addEventListener('storageReady', function(){
     if(_BS_MODEL_BRAND[modelName]) return _BS_MODEL_BRAND[modelName];
     // 部分一致フォールバック
     const m = modelName;
+    if(m.includes('BLIZZAK') || m.includes('WZ-1') || m.includes('VRX') || m.includes('VL10') || m.includes('DM-V') || m.includes('REVO9') || m.includes('W300') || m.includes('ICEPEAK')) return 'BLIZZAK';
     if(m.includes('GR-X') || m.includes('GRV')) return 'REGNO';
     if(m.includes('POTENZA') || m.includes('RE-') || m.includes('S007') || m.includes('Adrenalin')) return 'POTENZA';
     if(m.includes('ECOPIA') || m.includes('NH') || m.includes('EP')) return 'ECOPIA';
@@ -17048,7 +17053,8 @@ window.addEventListener('storageReady', function(){
   function parseBridgestone(wb){
           const items = [];
           for(const sn of wb.SheetNames){
-            if(!sn.startsWith('P_')) continue;
+            // スキップ：表紙・印刷レイアウトシート（データシートは構造チェックで自動判定）
+            if(sn === '表紙' || /^\d+背/.test(sn)) continue;
             const ws = wb.Sheets[sn];
             const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
             // シート全体を走査して複数ヘッダーセクション（65/70/80シリーズ等）に対応
