@@ -6592,6 +6592,12 @@ window.addEventListener('storageReady', function(){
       const _wantStudless = estimateSeasonFilter === 'studless';
       matches = matches.filter(r => _isStudlessCatalogEntry(r) === _wantStudless);
     }
+    // モデル+サイズで重複除去（複数カタログ取込による重複を確実に排除）
+    {
+      const _mdd = {};
+      for(const r of matches) _mdd[(r.m||'')+'||'+(r.s||'')] = r;
+      matches = Object.values(_mdd);
+    }
     const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
     // 自社登録タイヤを取得（統合表示用）
     const _tireCatM = categories.find(c => c.name === 'タイヤ');
