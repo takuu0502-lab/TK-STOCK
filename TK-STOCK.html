@@ -6633,10 +6633,19 @@ window.addEventListener('storageReady', function(){
 
     // カタログ + 自社登録を統合ソート
     const _chkPrefixManual = '_prod_';
+    // 銘柄+サイズをキーに重複除去（同一データが複数カタログに存在する場合）
+    const _tiSeen = new Set();
     const allTireItems = [
       ...matches.map((r,origIdx)=>({type:'catalog',r,origIdx})),
       ...manualMatched.map((p,origIdx)=>({type:'manual',p,origIdx}))
-    ];
+    ].filter(item=>{
+      const key = item.type==='catalog'
+        ? (item.r.m||'')+'||'+(item.r.s||'')
+        : (item.p.name||'')+'||'+(item.p.spec||'');
+      if(_tiSeen.has(key)) return false;
+      _tiSeen.add(key);
+      return true;
+    });
     if(forceTire){
       allTireItems.sort((a,b)=>{
         const sa = a.type==='catalog' ? getEffectiveSellPrice(a.r.b,a.r.m,a.r.w,a.r.t) : (a.p.sellPrice||null);
@@ -6853,7 +6862,7 @@ window.addEventListener('storageReady', function(){
       : '';
     const _catalogEditBtn = canWriteData() ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openCatalogBulkEdit(window._lastCatalogMatches||[])">✏️ 一括編集</button>' : '';
     window._lastCatalogMatches = matches;
-    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+(matches.length+manualMatched.length)+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
+    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+allTireItems.length+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
