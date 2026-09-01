@@ -13245,6 +13245,7 @@ window.addEventListener('storageReady', function(){
   function _labelStyle(lw, lh, fn, fs, fm, extraCSS){
     return `:root{--label-w:${lw}mm;--label-h:${lh}mm;--font-size-name:${fn}pt;--font-size-spec:${fs}pt;--font-size-small:${fm}pt;}`
       + `*{margin:0;padding:0;box-sizing:border-box;}`
+      + `html,body{height:auto!important;min-height:0!important;}`
       + `body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#fff;}`
       + `.label{width:var(--label-w);height:var(--label-h);border:1px solid #000;padding:2mm 3mm;`
       + `display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;overflow:hidden;}`
