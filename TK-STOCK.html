@@ -6450,6 +6450,7 @@ window.addEventListener('storageReady', function(){
   let showCostInList = false;    // 在庫一覧の価格表で仕入れ価格を表示するか（常に非表示）
   let showCostInEstimate = true; // タイヤ見積タブで仕入れ価格を表示するか
   let estimateSortOrder = 'price_asc'; // 見積タブのソート順
+  let estimateSeasonFilter = 'all';   // 'all' | 'summer' | 'studless'
 
   // 選択済みタイヤの常時表示バー（前後異サイズ対応）
   function renderEstSelectionBar(){
@@ -6572,6 +6573,11 @@ window.addEventListener('storageReady', function(){
       const [fb, fm] = useModel.split('||');
       matches = matches.filter(r => r.b === fb && r.m === fm);
     }
+    // シーズンフィルター（見積タブのみ）
+    if(forceTire && estimateSeasonFilter !== 'all'){
+      const _wantStudless = estimateSeasonFilter === 'studless';
+      matches = matches.filter(r => _isStudlessCatalogEntry(r) === _wantStudless);
+    }
     const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
     // 自社登録タイヤを取得（統合表示用）
     const _tireCatM = categories.find(c => c.name === 'タイヤ');
@@ -6585,6 +6591,11 @@ window.addEventListener('storageReady', function(){
       if(useAspect === 'NOASPECT' && /\//.test(p.spec)) return false;
       if(!useAspect && useWidth && useInch && /\//.test(p.spec)) return false; // 扁平率空欄時はスラッシュなしのみ
       if(findCatalogEntryForProduct(p)) return false;
+      // シーズンフィルター
+      if(forceTire && estimateSeasonFilter !== 'all'){
+        const _wantSt = estimateSeasonFilter === 'studless';
+        if(_isStudlessProduct(p) !== _wantSt) return false;
+      }
       return true;
     }) : [];
     if(matches.length === 0 && manualMatched.length === 0){
@@ -7954,9 +7965,32 @@ window.addEventListener('storageReady', function(){
     el.textContent = wPart + aPart + iPart;
   }
 
+  function _isStudlessCatalogEntry(r){
+    if(r.season === 'studless') return true;
+    if(r.season === 'summer')   return false;
+    return r.b === 'BLIZZAK'; // フォールバック：BLIZZAKブランド＝スタッドレス
+  }
+  function _isStudlessProduct(p){
+    const cat = categories.find(c => c.id === p.majorId);
+    if(!cat) return false;
+    const sub = (cat.subs||[]).find(s => s.id === p.subId);
+    return !!(sub && /スタッドレス|冬タイヤ/.test(sub.name));
+  }
+
   function renderEstimateTab(){
     const panel = document.getElementById('estimateSearchPanel');
     let html = '<div class="spec-search-panel">';
+
+    // シーズンフィルター
+    const _sfBtnBase = 'border:1.5px solid var(--line);border-radius:20px;padding:5px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;';
+    const _sfActive  = 'background:var(--amber);color:#fff;border-color:var(--amber);';
+    const _sfInact   = 'background:var(--bg-1);color:var(--text-2);';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      + '<span style="font-size:12px;color:var(--text-3);font-weight:600;">タイヤ種別：</span>'
+      + '<button id="estSeason_all" style="'+_sfBtnBase+(estimateSeasonFilter==='all'?_sfActive:_sfInact)+'">すべて</button>'
+      + '<button id="estSeason_summer" style="'+_sfBtnBase+(estimateSeasonFilter==='summer'?_sfActive:_sfInact)+'">☀️ サマータイヤ</button>'
+      + '<button id="estSeason_studless" style="'+_sfBtnBase+(estimateSeasonFilter==='studless'?_sfActive:_sfInact)+'">❄️ スタッドレス</button>'
+      + '</div>';
 
     // 前後サイズ違いチェックボックス
     html += '<div style="margin-bottom:10px;">'
@@ -8009,6 +8043,19 @@ window.addEventListener('storageReady', function(){
       });
       if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
       if(window._lastEstRearOpts)  renderPriceCatalog(window._lastEstRearOpts);
+    });
+
+    // シーズンフィルター切り替え
+    ['all','summer','studless'].forEach(key=>{
+      const btn = document.getElementById('estSeason_'+key);
+      if(btn) btn.addEventListener('click', ()=>{
+        estimateSeasonFilter = key;
+        renderEstimateTab(); // ボタンのアクティブ状態を更新
+        // 現在の検索結果を再描画
+        if(window._lastEstOpts) renderPriceCatalog(window._lastEstOpts);
+        if(window._lastEstFrontOpts) renderPriceCatalog(window._lastEstFrontOpts);
+        if(window._lastEstRearOpts)  renderPriceCatalog(window._lastEstRearOpts);
+      });
     });
 
     // チェックボックス切り替え
