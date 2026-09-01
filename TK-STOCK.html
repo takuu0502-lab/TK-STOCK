@@ -2246,6 +2246,11 @@
           <button type="button" id="incomingSchedQtyPlus">＋</button>
         </div>
       </div>
+      <!-- メモ -->
+      <div>
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">メモ</label>
+        <textarea id="incomingSchedNote" rows="2" placeholder="仕入先・備考など" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);resize:vertical;"></textarea>
+      </div>
       <!-- 客注品フィールド（客注品選択時のみ表示） -->
       <div id="isch_co_fields" style="display:none;flex-direction:column;gap:10px;padding:12px;background:var(--amber-dim);border-radius:10px;border:1px solid rgba(184,101,12,0.2);">
         <div>
@@ -15031,6 +15036,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('isch_co_car').value = '';
       document.getElementById('isch_co_install_date').value = '';
       document.getElementById('isch_co_install_tbd').checked = false;
+      const _noteEl = document.getElementById('incomingSchedNote');
+      if(_noteEl) _noteEl.value = '';
       const _ischProvNow = document.getElementById('isch_co_prov_now');
       if(_ischProvNow) _ischProvNow.checked = false;
       document.getElementById('isch_co_install_date').disabled = false;
@@ -15086,11 +15093,12 @@ window.addEventListener('storageReady', function(){
       if(!dateVal){ alert('入荷予定日を入力してください。'); return; }
       if(!qty||qty<1){ alert('数量を入力してください。'); return; }
       const ischType = document.querySelector('input[name="isch_type"]:checked')?.value || 'stock';
+      const noteVal = (document.getElementById('incomingSchedNote').value||'').trim();
       const editId = modal.dataset.editId;
       if(editId){
         // 編集モード
         const sched = incomingSchedules.find(x=>x.id===editId);
-        if(sched){ sched.expectedDate = dateVal; sched.qty = qty; }
+        if(sched){ sched.expectedDate = dateVal; sched.qty = qty; sched.note = noteVal; }
         _ischResetForm();
       } else {
         // 新規登録モード
@@ -15108,6 +15116,7 @@ window.addEventListener('storageReady', function(){
           qty,
           expectedDate: dateVal,
           inboundType: ischType,
+          note: noteVal,
           createdAt: new Date().toISOString(),
           createdBy: currentUser ? currentUser.displayName : '',
           status: 'pending'
@@ -15228,6 +15237,7 @@ window.addEventListener('storageReady', function(){
         +'</div>'
         /* 在庫情報 */
         +'<div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">現在庫: <strong style="color:var(--text-1);">'+stk+'本</strong>　→　入荷後: <strong style="color:var(--teal);">'+(stk==='?'?'?':stk+s.qty)+'本</strong></div>'
+        +(s.note?'<div style="font-size:12px;color:var(--text-2);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;margin-bottom:10px;white-space:pre-wrap;">📝 '+escapeHtml(s.note)+'</div>':'')
         /* 入荷予定日 */
         +'<div style="display:flex;flex-direction:column;gap:5px;">'
         +'<div style="display:flex;align-items:center;gap:8px;">'
@@ -15321,6 +15331,8 @@ window.addEventListener('storageReady', function(){
         if(dateEl) dateEl.value = sched.expectedDate||'';
         const qtyEl = document.getElementById('incomingSchedQty');
         if(qtyEl) qtyEl.value = sched.qty||1;
+        const noteEl2 = document.getElementById('incomingSchedNote');
+        if(noteEl2) noteEl2.value = sched.note||'';
         modal.dataset.editId = sched.id;
         delete modal.dataset.targetProductId;
         // 種別ラジオを在庫品に戻す（編集時は種別変更不可）
