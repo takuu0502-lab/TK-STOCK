@@ -4768,18 +4768,16 @@ window.addEventListener('storageReady', function(){
       return d[0]+'年'+parseInt(d[1])+'月'+parseInt(d[2])+'日';
     }
     const saleDateStr = row.saleDate ? fmtDate(row.saleDate) : '';
-    const labelHtml = '<div class="label">'
-      +'<div class="label-status">預かり在庫</div>'
-      +'<div class="label-customer">'+escapeHtml(row.customerName||'')+'　様</div>'
-      +'<div class="label-name">'+escapeHtml(row.pattern||'—')+'</div>'
-      +'<div class="label-spec">'+escapeHtml(row.size||'')+'</div>'
-      +'<div class="label-qty">預かり：'+row.initialQty+'本　残：'+rem+'本</div>'
-      +(saleDateStr?'<div class="label-install">預かり出庫：'+escapeHtml(saleDateStr)+'</div>':'')
-      +'<div class="label-footer">印刷日：'+todayStr+'　'+escapeHtml(brLabel)+'</div>'
-      +'</div>';
-    const extraCSS = '.label-status{background:#6d28d9;}.label-customer{font-size:var(--font-size-name);font-weight:700;color:#000;}.label-qty{font-size:var(--font-size-small);font-weight:700;color:#6d28d9;}';
-    const styleStr = _labelStyle(labelSettings.w, labelSettings.h, labelSettings.fontName, labelSettings.fontSpec, labelSettings.fontSmall, extraCSS);
-    _labelWinOpen(styleStr, labelHtml, '預かり在庫ラベル');
+    const item = _makeLabelHtmlInline({
+      status:'預かり在庫', statusBg:'#6d28d9',
+      customer:(row.customerName||'')+'　様',
+      name:row.pattern||'—',
+      spec:row.size||'',
+      qty:'預かり：'+row.initialQty+'本　残：'+rem+'本',
+      installDate:saleDateStr?'預かり出庫：'+saleDateStr:'',
+      footer:'印刷日：'+todayStr+'　'+brLabel
+    });
+    _printLabelsPDF([item], '預かり在庫ラベル');
   }
   window.custodyPrintLabel=custodyPrintLabel;
 
@@ -13241,34 +13239,79 @@ window.addEventListener('storageReady', function(){
     detailModal.classList.add('show');
   }
 
-  // ラベル共通スタイル生成
-  function _labelStyle(lw, lh, fn, fs, fm, extraCSS){
-    return `:root{--label-w:${lw}mm;--label-h:${lh}mm;--font-size-name:${fn}pt;--font-size-spec:${fs}pt;--font-size-small:${fm}pt;}`
-      + `*{margin:0;padding:0;box-sizing:border-box;}`
-      + `html,body{width:${lw}mm;height:auto!important;min-height:0!important;overflow:visible!important;}`
-      + `body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#fff;}`
-      + `.label{width:${lw}mm;height:${lh}mm;max-height:${lh}mm;border:1px solid #000;padding:2mm 3mm;`
-      + `display:flex;flex-direction:column;justify-content:space-between;`
-      + `page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;overflow:hidden;}`
-      + `.label:last-child{page-break-after:auto;break-after:auto;}`
-      + `.label-status{font-size:7pt;font-weight:900;color:#fff;background:#000;display:inline-block;padding:0.5mm 2mm;border-radius:2mm;margin-bottom:1mm;width:fit-content;}`
-      + `.label-name{font-size:var(--font-size-name);font-weight:700;line-height:1.2;}`
-      + `.label-spec{font-size:var(--font-size-spec);color:#333;line-height:1.2;}`
-      + `.label-partno{font-size:var(--font-size-small);color:#555;}`
-      + `.label-customer{font-size:var(--font-size-small);font-weight:700;color:#000;}`
-      + `.label-install{font-size:var(--font-size-small);color:#000;}`
-      + `.label-footer{font-size:var(--font-size-small);color:#555;text-align:right;}`
-      + (extraCSS||'')
-      + `@media print{@page{size:${lw}mm ${lh}mm;margin:0;}html,body{width:${lw}mm;height:auto!important;}body{margin:0;}.label{border:none;page-break-after:always;break-after:page;}}`;
+  // スクリプト動的ロード
+  async function _loadScript(url, globalKey){
+    if(globalKey && window[globalKey]) return;
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = resolve;
+      s.onerror = ()=>reject(new Error('読み込み失敗: '+url));
+      document.head.appendChild(s);
+    });
   }
-  function _labelWinOpen(styleStr, bodyHtml, title){
-    title = title||'入庫済みラベル';
-    const vpW = Math.round(62*96/25.4); // 62mm in CSS px
-    const meta = '<meta charset="utf-8"><meta name="viewport" content="width='+vpW+',initial-scale=1">';
-    const win = window.open('','_blank','width=700,height=500');
-    if(!win){ alert('ポップアップがブロックされています。許可してから再度お試しください。'); return; }
-    win.document.write('<!DOCTYPE html><html><head>'+meta+'<title>'+title+'</title><style>'+styleStr+'</style></head><body>'+bodyHtml+'<script>window.onload=()=>window.print();<\/script></body></html>');
-    win.document.close();
+
+  // ラベル1枚分のインラインスタイルHTML生成
+  function _makeLabelHtmlInline(opts){
+    const LW=labelSettings.w, LH=labelSettings.h;
+    const px=96/25.4;
+    const w=Math.round(LW*px), h=Math.round(LH*px);
+    const pv=Math.round(2*px), ph=Math.round(3*px);
+    const fnPx=Math.round(labelSettings.fontName*96/72);
+    const fsPx=Math.round(labelSettings.fontSpec*96/72);
+    const fmPx=Math.round(labelSettings.fontSmall*96/72);
+    const stPx=Math.round(7*96/72);
+    const ff="'Hiragino Kaku Gothic ProN','Meiryo',sans-serif";
+    const bg=opts.statusBg||'#000';
+    const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    let mid='';
+    if(opts.customer) mid+=`<div style="font-size:${fmPx}px;font-weight:700;">${esc(opts.customer)}</div>`;
+    if(opts.name)     mid+=`<div style="font-size:${fnPx}px;font-weight:700;line-height:1.2;">${esc(opts.name)}</div>`;
+    if(opts.spec)     mid+=`<div style="font-size:${fsPx}px;color:#333;line-height:1.2;">${esc(opts.spec)}</div>`;
+    if(opts.partno)   mid+=`<div style="font-size:${fmPx}px;color:#555;">${esc(opts.partno)}</div>`;
+    if(opts.qty)      mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#6d28d9;">${esc(opts.qty)}</div>`;
+    if(opts.installDate) mid+=`<div style="font-size:${fmPx}px;">${esc(opts.installDate)}</div>`;
+    return `<div style="width:${w}px;height:${h}px;border:1px solid #000;padding:${pv}px ${ph}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${ff};">`
+      +`<div style="font-size:${stPx}px;font-weight:900;color:#fff;background:${bg};display:inline-block;padding:1px 4px;border-radius:3px;">${esc(opts.status||'')}</div>`
+      +`<div>${mid}</div>`
+      +`<div style="font-size:${fmPx}px;color:#555;text-align:right;">${esc(opts.footer||'')}</div>`
+      +'</div>';
+  }
+
+  // PDF形式でラベル印刷（PC/iPad共通）
+  async function _printLabelsPDF(labelItems, title){
+    try{
+      await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js','html2canvas');
+      await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','jspdf');
+      const {jsPDF}=window.jspdf;
+      const LW=labelSettings.w, LH=labelSettings.h;
+      const px=96/25.4;
+      const wPx=Math.round(LW*px), hPx=Math.round(LH*px);
+      const SCALE=3;
+      const wrap=document.createElement('div');
+      wrap.style.cssText=`position:fixed;left:-9999px;top:0;width:${wPx}px;height:${hPx}px;overflow:hidden;z-index:-9999;`;
+      document.body.appendChild(wrap);
+      const doc=new jsPDF({orientation:'landscape',unit:'mm',format:[LW,LH]});
+      for(let i=0;i<labelItems.length;i++){
+        wrap.innerHTML=labelItems[i];
+        await new Promise(r=>setTimeout(r,80));
+        const canvas=await html2canvas(wrap,{scale:SCALE,backgroundColor:'#ffffff',width:wPx,height:hPx,logging:false,useCORS:false});
+        if(i>0) doc.addPage([LW,LH],'landscape');
+        doc.addImage(canvas.toDataURL('image/png'),'PNG',0,0,LW,LH);
+      }
+      document.body.removeChild(wrap);
+      const blob=doc.output('blob');
+      const url=URL.createObjectURL(blob);
+      const win=window.open(url,'_blank');
+      if(!win){
+        const a=document.createElement('a');
+        a.href=url; a.download=(title||'label')+'.pdf'; a.click();
+      }
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(e){
+      console.error(e);
+      alert('PDF生成に失敗しました: '+e.message);
+    }
   }
 
   function _printReceiveLabel(p, qty, opts){
@@ -13290,19 +13333,16 @@ window.addEventListener('storageReady', function(){
       return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
     }
     const installStr = fmtDate(installDate);
-    const labelHtml = Array.from({length:qty}).map(()=>
-      '<div class="label">'
-      +'<div class="label-status">入庫済み</div>'
-      +'<div class="label-name">'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+'</div>'
-      +'<div class="label-spec">'+escapeHtml(specStr)+'</div>'
-      +'<div class="label-partno">品番：'+escapeHtml(p.partno||'—')+'</div>'
-      +(customerName?'<div class="label-customer">'+escapeHtml(customerName)+'　様</div>':'')
-      +(installStr?'<div class="label-install">取付日：'+escapeHtml(installStr)+'</div>':'')
-      +'<div class="label-footer">入庫日：'+escapeHtml(dateStr)+'　'+escapeHtml(brLabel)+'</div>'
-      +'</div>'
-    ).join('');
-    const styleStr = _labelStyle(labelSettings.w, labelSettings.h, labelSettings.fontName, labelSettings.fontSpec, labelSettings.fontSmall);
-    _labelWinOpen(styleStr, labelHtml, '入庫済みラベル');
+    const items = Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
+      status:'入庫済み', statusBg:'#000',
+      name:(p.brand||'')+' '+(p.name||''),
+      spec:specStr,
+      partno:'品番：'+(p.partno||'—'),
+      customer:customerName?customerName+'　様':'',
+      installDate:installStr?'取付日：'+installStr:'',
+      footer:'入庫日：'+dateStr+'　'+brLabel
+    }));
+    _printLabelsPDF(items, '入庫済みラベル');
   }
 
   function _printReceiveLabelBatch(targets){
@@ -13310,25 +13350,19 @@ window.addEventListener('storageReady', function(){
     const brLabel = branchName(brId);
     const today = new Date();
     const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
-    const allLabels = targets.map(function(t){
-      const p = t.p, qty = t.qty;
-      const ws = p.wheelSpec;
-      const specStr = ws ? [
-        ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'',
-        ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''
-      ].filter(Boolean).join('  ') : (p.spec||'');
-      return Array.from({length:qty}).map(function(){
-        return '<div class="label">'
-          + '<div class="label-status">入庫済み</div>'
-          + '<div class="label-name">'+escapeHtml(p.brand||'')+' '+escapeHtml(p.name||'')+'</div>'
-          + '<div class="label-spec">'+escapeHtml(specStr)+'</div>'
-          + '<div class="label-partno">品番：'+escapeHtml(p.partno||'—')+'</div>'
-          + '<div class="label-footer">'+escapeHtml(dateStr)+'　'+escapeHtml(brLabel)+'</div>'
-          + '</div>';
-      }).join('');
-    }).join('');
-    const styleStr = _labelStyle(labelSettings.w, labelSettings.h, labelSettings.fontName, labelSettings.fontSpec, labelSettings.fontSmall);
-    _labelWinOpen(styleStr, allLabels, '入庫済みラベル');
+    const items = targets.flatMap(function(t){
+      const p=t.p, qty=t.qty;
+      const ws=p.wheelSpec;
+      const specStr=ws?[ws.inch?ws.inch+'インチ':'',ws.j?ws.j+'J':'',ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'',ws.offset?'+'+ws.offset:'',ws.color?ws.color:''].filter(Boolean).join('  '):(p.spec||'');
+      return Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
+        status:'入庫済み', statusBg:'#000',
+        name:(p.brand||'')+' '+(p.name||''),
+        spec:specStr,
+        partno:'品番：'+(p.partno||'—'),
+        footer:dateStr+'　'+brLabel
+      }));
+    });
+    _printLabelsPDF(items, '入庫済みラベル');
   }
 
   async function doDetailStockChange(id, kind){
