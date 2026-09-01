@@ -2953,16 +2953,18 @@ window.addEventListener('storageReady', function(){
     return 'ブリヂストン';
   }
   function rebuildImportedItems(){
+    // 全角半角・スペース正規化ヘルパー
+    const _hwNorm = s => (s||'').replace(/[Ａ-Ｚａ-ｚ０-９（）　]/g, c => c==='　'?' ':String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/\s+/g,'').trim();
     const _raw = importedCatalogs.flatMap(c=>c.items||[]).map(item=>{
       if(!item.b || item.b==='ブリヂストン'){
         return Object.assign({}, item, {b: _normalizeBsBrand(item.m||'')});
       }
       return item;
     });
-    // 同一ブランド+銘柄+サイズの重複除去（後勝ち）
+    // 同一銘柄+サイズの重複除去（ブランド・全角半角差異を無視して後勝ち）
     const _dedup = {};
     for(const item of _raw){
-      const key = (item.b||'')+'||'+(item.m||'')+'||'+(item.s||'');
+      const key = _hwNorm(item.m||'')+'||'+_hwNorm(item.s||'');
       _dedup[key] = item;
     }
     importedItems = Object.values(_dedup);
@@ -6367,7 +6369,16 @@ window.addEventListener('storageReady', function(){
   function _matchesCatalogEntry(p, r){
     // catalogKey（商品登録時に保存したキー）で優先照合 → 商品名変更後も追跡できる
     const cKey = r.b+'||'+r.m+'||'+r.s;
-    if(p.catalogKey && p.catalogKey === cKey) return true;
+    if(p.catalogKey && p.catalogKey === cKey){
+      // catalogKeyが一致していても、商品名にマッチするより具体的なカタログエントリがある場合はスキップ
+      // 例: catalogKey='BLIZZAK||VRX3||...' の商品名が'BLIZZAK VRX3(SUV)'の場合、VRX3(SUV)エントリに委ねる
+      const _moreSpecificForKey = getCatalog().find(r2 =>
+        r2 !== r && r2.b === r.b && r2.m.length > r.m.length && r2.m.includes(r.m) &&
+        _specMatchesCatalog(p.spec, r2.s) && _nameMatchesCatalog(p.name, r2.b, r2.m)
+      );
+      if(!_moreSpecificForKey) return true;
+      // より具体的なエントリがある場合はcatalogKeyマッチをスキップして名前マッチへ
+    }
     // _fromCatalogなし＋製造年あり → 年別手動商品として別行表示
     const _hasMfYear = p.manufactureYear || (p._branchManufactureYear && Object.values(p._branchManufactureYear).some(v=>v));
     if(!p._fromCatalog && _hasMfYear) return false;
@@ -6592,10 +6603,11 @@ window.addEventListener('storageReady', function(){
       const _wantStudless = estimateSeasonFilter === 'studless';
       matches = matches.filter(r => _isStudlessCatalogEntry(r) === _wantStudless);
     }
-    // モデル+サイズで重複除去（複数カタログ取込による重複を確実に排除）
+    // モデル+サイズで重複除去（全角半角・スペース差異を正規化して確実に排除）
     {
+      const _hw = s => (s||'').replace(/[Ａ-Ｚａ-ｚ０-９（）　]/g, c => c === '　' ? ' ' : String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/\s+/g,'').trim();
       const _mdd = {};
-      for(const r of matches) _mdd[(r.m||'')+'||'+(r.s||'')] = r;
+      for(const r of matches) _mdd[_hw(r.m)+'||'+_hw(r.s)] = r;
       matches = Object.values(_mdd);
     }
     const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
