@@ -1479,7 +1479,11 @@
     <div id="importedCatalogsPreview" style="margin-bottom:12px;"></div>
     <button class="btn btn-amber" id="openImportCatalogBtn">価格表を取込む（Excel）</button>
     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-teal btn-sm" id="catalogBulkRegisterBtn">📥 取込済み価格表から全件一括登録（サマータイヤ）</button>
+      <select id="catalogBulkRegisterType" class="input" style="width:auto;font-size:12.5px;padding:4px 8px;">
+        <option value="summer">サマータイヤ</option>
+        <option value="studless">スタッドレスタイヤ</option>
+      </select>
+      <button class="btn btn-teal btn-sm" id="catalogBulkRegisterBtn" data-studless="0">📥 取込済み価格表から全件一括登録</button>
     </div>
     <div id="catalogBulkRegisterMsg" style="margin-top:8px;font-size:13px;"></div>
 
@@ -11066,8 +11070,15 @@ window.addEventListener('storageReady', function(){
       const sub = (tireCat.subs||[]).find(s=>s.name==='サマータイヤ'||s.name==='夏タイヤ'||s.name==='夏用タイヤ');
       return sub ? sub.id : null;
     }
+    function _getStudlessTireSubId(majorId){
+      const tireCat = categories.find(c=>c.id===majorId);
+      if(!tireCat) return null;
+      const sub = (tireCat.subs||[]).find(s=>s.name==='スタッドレスタイヤ'||s.name==='スタッドレス'||s.name==='冬タイヤ'||s.name==='冬用タイヤ');
+      return sub ? sub.id : null;
+    }
 
-    window._bulkRegisterCatalog = async (sourceItems)=>{
+    window._bulkRegisterCatalog = async (sourceItems, opts)=>{
+      const _isStudless = opts && opts.studless;
       const matches = sourceItems || window._lastCatalogMatches || [];
       const unregistered = matches.filter(r=>!findProductForCatalogEntry(r));
       // 既存商品のうちr.cを持つカタログエントリと紐づくものは仕入れ価格を更新
@@ -11082,11 +11093,12 @@ window.addEventListener('storageReady', function(){
         if(updatedCount===0) alert('未登録の商品はありません。');
         return;
       }
-      const ok = await showConfirm(unregistered.length+'件の商品を一括登録しますか？\n中分類: サマータイヤ\n（在庫数0・価格は価格調整ルールから自動計算）');
+      const _subLabel = _isStudless ? 'スタッドレスタイヤ' : 'サマータイヤ';
+      const ok = await showConfirm(unregistered.length+'件の商品を一括登録しますか？\n中分類: '+_subLabel+'\n（在庫数0・価格は価格調整ルールから自動計算）');
       if(!ok) return;
       const tireCat = categories.find(c=>c.name==='タイヤ');
       const majorId = tireCat ? tireCat.id : (categories[0]&&categories[0].id);
-      const subId = _getSummerTireSubId(majorId);
+      const subId = _isStudless ? _getStudlessTireSubId(majorId) : _getSummerTireSubId(majorId);
       const _newBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       for(const r of unregistered){
         if(findProductForCatalogEntry(r)) continue;
@@ -16951,6 +16963,9 @@ window.addEventListener('storageReady', function(){
     setTimeout(()=>{ document.getElementById('yahooAppIdMsg').innerHTML = ''; }, 3000);
   });
 
+  document.getElementById('catalogBulkRegisterType').addEventListener('change', function(){
+    document.getElementById('catalogBulkRegisterBtn').dataset.studless = this.value === 'studless' ? '1' : '0';
+  });
   document.getElementById('catalogBulkRegisterBtn').addEventListener('click', async ()=>{
     const msgEl = document.getElementById('catalogBulkRegisterMsg');
     const allCatalog = getCatalog();
@@ -16963,9 +16978,11 @@ window.addEventListener('storageReady', function(){
       msgEl.innerHTML = '<div class="msg msg-ok">✅ 全商品（'+allCatalog.length+'件）はすでに登録済みです。</div>';
       return;
     }
-    msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">カタログ全'+allCatalog.length+'件 / 未登録: '+unregistered.length+'件 を中分類「サマータイヤ」で一括登録します。</div>';
-    await window._bulkRegisterCatalog(allCatalog);
-    msgEl.innerHTML = '<div class="msg msg-ok">✅ '+unregistered.length+'件をサマータイヤとして一括登録しました。</div>';
+    const _isSt = document.getElementById('catalogBulkRegisterBtn').dataset.studless === '1';
+    const _subLbl = _isSt ? 'スタッドレスタイヤ' : 'サマータイヤ';
+    msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">カタログ全'+allCatalog.length+'件 / 未登録: '+unregistered.length+'件 を中分類「'+_subLbl+'」で一括登録します。</div>';
+    await window._bulkRegisterCatalog(allCatalog, {studless: _isSt});
+    msgEl.innerHTML = '<div class="msg msg-ok">✅ '+unregistered.length+'件を'+_subLbl+'として一括登録しました。</div>';
   });
 
   document.getElementById('openImportCatalogBtn').addEventListener('click', ()=>{
