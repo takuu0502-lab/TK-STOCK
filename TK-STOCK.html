@@ -6684,9 +6684,16 @@ window.addEventListener('storageReady', function(){
     for(const item of allTireItems){
       if(item.type === 'catalog'){
         const _eps = findAllProductsForCatalogEntry(item.r);
-        if(_eps.length > 1){
+        // 同名・同スペック商品の重複除去（二重登録対策）
+        const _epDedup = {};
+        for(const cp of _eps){
+          const k = (cp.name||'')+'||'+(cp.spec||'');
+          if(!_epDedup[k]) _epDedup[k] = cp;
+        }
+        const _epsUniq = Object.values(_epDedup);
+        if(_epsUniq.length > 1){
           // 複数商品：各商品を個別行として展開
-          _eps.forEach(cp => _expandedItems.push({type:'catalog_prod', r:item.r, origIdx:item.origIdx, cp}));
+          _epsUniq.forEach(cp => _expandedItems.push({type:'catalog_prod', r:item.r, origIdx:item.origIdx, cp}));
         } else {
           _expandedItems.push(item);
         }
