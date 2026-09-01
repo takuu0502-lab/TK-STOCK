@@ -8902,11 +8902,13 @@ window.addEventListener('storageReady', function(){
       };
       provisionalOutbounds.push(entry);
       await saveProvisionalOutbounds();
-      if(formResult.inboundDate){
+      // 在庫が不足している商品のみ入庫予定を登録
+      if(formResult.inboundDate && overItems.length > 0){
         const _bpBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         for(const item of entry.items){
           const _bp = products.find(x=>x.id===item.productId);
           if(!_bp) continue;
+          if(getStock(_bp) >= item.qty) continue; // 在庫あるものはスキップ
           incomingSchedules.push({ id:uid('isch'), productId:_bp.id, productName:_bp.name, brand:_bp.brand||'', spec:_bp.spec||'', branchId:_bpBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
         }
         await saveIncomingSchedules();
@@ -13139,7 +13141,8 @@ window.addEventListener('storageReady', function(){
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
-        if(formResult.inboundDate){
+        // 在庫が不足している場合のみ入庫予定を登録
+        if(formResult.inboundDate && curStk2 < qty){
           incomingSchedules.push({ id:uid('isch'), productId:p2.id, productName:p2.name, brand:p2.brand||'', spec:p2.spec||'', branchId:_dpBr, qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_dpCoId||'', createdAt:new Date().toISOString(), createdBy:_dpUser, status:'pending' });
           await saveIncomingSchedules();
         }
@@ -13185,7 +13188,8 @@ window.addEventListener('storageReady', function(){
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
-        if(formResult.inboundDate){
+        // 在庫が不足している場合のみ入庫予定を登録
+        if(formResult.inboundDate && _custStk < qty){
           incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_custCoId||'', createdAt:new Date().toISOString(), createdBy:_custUser, status:'pending' });
           await saveIncomingSchedules();
         }
@@ -14153,10 +14157,12 @@ window.addEventListener('storageReady', function(){
         };
         provisionalOutbounds.unshift(entry);
         await saveProvisionalOutbounds();
-        if(formResult.inboundDate){
+        // 在庫が不足している商品のみ入庫予定を登録
+        if(formResult.inboundDate && overItems.length > 0){
           for(const item of entry.items){
             const _op = products.find(x=>x.id===item.productId);
             if(!_op) continue;
+            if(getStock(_op) >= item.qty) continue; // 在庫あるものはスキップ
             incomingSchedules.push({ id:uid('isch'), productId:_op.id, productName:_op.name, brand:_op.brand||'', spec:_op.spec||'', branchId:_opBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_opCoId||'', createdAt:new Date().toISOString(), createdBy:_opUser, status:'pending' });
           }
           await saveIncomingSchedules();
