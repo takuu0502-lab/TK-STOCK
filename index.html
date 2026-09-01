@@ -2918,7 +2918,11 @@ window.addEventListener('storageReady', function(){
     // インポート済みデータがある場合、同じ銘柄+サイズのPRICE_CATALOGエントリを除外（新価格優先）
     const _importedKeys = new Set(importedItems.map(r=>r.m+'||'+r.s));
     const _filteredBase = PRICE_CATALOG.filter(r => !_importedKeys.has(r.m+'||'+r.s));
-    return [..._filteredBase, ...importedItems];
+    const _all = [..._filteredBase, ...importedItems];
+    // 最終デdup（ブランド+銘柄+サイズで一意化）
+    const _dd = {};
+    for(const r of _all) _dd[(r.b||'')+'||'+(r.m||'')+'||'+(r.s||'')] = r;
+    return Object.values(_dd);
   }
   function getBrands(){
     if(!importedItems.length) return DISTINCT_BRANDS;
@@ -6408,7 +6412,10 @@ window.addEventListener('storageReady', function(){
     return getCatalog().find(r => {
       if(r.s.indexOf(spec) === -1 && spec.indexOf(r.s) === -1) return false;
       const catalogName = r.b === r.m ? r.b : r.b + ' ' + r.m;
-      return nameTrim === catalogName;
+      if(nameTrim === catalogName) return true;
+      // ブリヂストン系ブランド名の揺れに対応（BLIZZAK等に正規化前に登録された商品）
+      const _altNames = ['ブリヂストン '+r.m, 'BRIDGESTONE '+r.m];
+      return _altNames.some(n => nameTrim === n);
     }) || null;
   }
   async function ensureProductForCatalogEntry(r){
