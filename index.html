@@ -2114,6 +2114,21 @@
   <div id="custodyContent"></div>
 </div>
 
+<div class="modal-overlay" id="outCustomerModal">
+  <div class="modal" style="max-width:360px;">
+    <h3 style="margin-top:0;">📤 出庫確認</h3>
+    <p id="outCustomerMsg" style="font-size:13.5px;color:var(--text-2);line-height:1.6;margin-top:0;white-space:pre-wrap;"></p>
+    <div class="field" style="margin-bottom:12px;">
+      <label style="font-size:13px;font-weight:600;">お客様名<span style="font-size:11px;color:var(--text-3);margin-left:6px;">（任意）</span></label>
+      <input id="outCustomerName" class="input" type="text" placeholder="例) 田中様" style="width:100%;margin-top:4px;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="outCustomerCancelBtn">キャンセル</button>
+      <button class="btn btn-red" id="outCustomerOkBtn">出庫する</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirmTitle">確認</h3>
@@ -5512,9 +5527,9 @@ window.addEventListener('storageReady', function(){
       _tbody.innerHTML = list.map(p=>{
         const stk    = p.branchStock ? (p.branchStock[brId]||0) : (p.stock||0);
         const prov   = _provQty(p.id, brId);
-        const net    = stk - prov;          // 実質在庫
+        const net    = stk - prov;          // 実質在庫（参考表示用）
         const scan   = _counts.get(p.id) || 0;
-        const diff   = scan - net;          // 差異（プラス=多い, マイナス=少ない）
+        const diff   = scan - stk;          // 差異：仮出庫品は物理的にまだあるのでstkを基準に
         const hasScanned = _counts.has(p.id);
         if(hasScanned){ scannedCount++; totalDiff += Math.abs(diff); if(diff>0) diffOver++; else if(diff<0) diffUnder++; }
         const diffColor = !hasScanned ? 'var(--text-3)' : diff === 0 ? 'var(--teal)' : 'var(--red)';
@@ -5533,7 +5548,7 @@ window.addEventListener('storageReady', function(){
           </td>
           <td style="padding:8px 6px;text-align:center;font-weight:700;color:${diffColor};">
             ${diffStr}
-            ${canFix ? `<br><button data-inv-fix="${p.id}" data-inv-scan="${scan}" data-inv-newstk="${scan+prov}" style="margin-top:4px;font-size:11px;padding:2px 8px;border:1px solid var(--red);border-radius:4px;background:#fff5f5;cursor:pointer;color:var(--red);font-weight:600;white-space:nowrap;">在庫修正</button>` : ''}
+            ${canFix ? `<br><button data-inv-fix="${p.id}" data-inv-scan="${scan}" data-inv-newstk="${scan}" style="margin-top:4px;font-size:11px;padding:2px 8px;border:1px solid var(--red);border-radius:4px;background:#fff5f5;cursor:pointer;color:var(--red);font-weight:600;white-space:nowrap;">在庫修正</button>` : ''}
           </td>
         </tr>`;
       }).join('');
@@ -5887,6 +5902,33 @@ window.addEventListener('storageReady', function(){
       function onCancel(){ cleanup(false); }
       okBtn.addEventListener('click', onOk);
       cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
+  function showOutCustomerForm(msg){
+    return new Promise((resolve)=>{
+      const overlay = document.getElementById('outCustomerModal');
+      const msgEl = document.getElementById('outCustomerMsg');
+      const input = document.getElementById('outCustomerName');
+      if(msgEl) msgEl.textContent = msg || '';
+      input.value = '';
+      overlay.classList.add('show');
+      input.focus();
+      const okBtn = document.getElementById('outCustomerOkBtn');
+      const cancelBtn = document.getElementById('outCustomerCancelBtn');
+      function cleanup(result){
+        overlay.classList.remove('show');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        input.removeEventListener('keydown', onKey);
+        resolve(result);
+      }
+      function onOk(){ cleanup({ confirmed: true, customerName: input.value.trim() }); }
+      function onCancel(){ cleanup(null); }
+      function onKey(e){ if(e.key==='Enter'){ e.preventDefault(); onOk(); } }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      input.addEventListener('keydown', onKey);
     });
   }
 
@@ -13391,13 +13433,21 @@ window.addEventListener('storageReady', function(){
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
     if(kind === 'out' && qty > getStock(p)){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return; }
     const label = kind === 'in' ? '入庫' : '出庫';
-    const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' '+label+' します。よろしいですか？');
-    if(!confirmed) return;
+    let outCustomerName = '';
+    if(kind === 'out'){
+      const outResult = await showOutCustomerForm('「'+cleanName(p.name)+'」を '+qty+' 出庫 します。');
+      if(!outResult) return;
+      outCustomerName = outResult.customerName || '';
+    } else {
+      const confirmed = await showConfirm('「'+cleanName(p.name)+'」を '+qty+' 入庫 します。よろしいですか？');
+      if(!confirmed) return;
+    }
     const opBranch = getOperationBranch(); if(!p.branchStock) p.branchStock={}; p.branchStock[opBranch] = (p.branchStock[opBranch]||0) + (kind==='in' ? qty : -qty); p.stock = p.branchStock[opBranch];
     transactions.unshift({
       id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
       date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
-      itemType: 'stock', reservation: null, branchId: getOperationBranch()
+      itemType: 'stock', reservation: null, branchId: getOperationBranch(),
+      customerName: outCustomerName
     });
     await saveProducts();
     await saveTransactions();
@@ -15820,11 +15870,15 @@ window.addEventListener('storageReady', function(){
             +(_supplierName?'仕入先：'+escapeHtml(_supplierName)+'　':'')
             +(_costPriceVal?'仕入原価：¥'+Number(_costPriceVal).toLocaleString('ja-JP'):'')
             +'</div>' : '';
+          const _outCustomerLine = (batch.type==='out' && t.customerName && t.itemType!=='reserved')
+            ? '<div class="hist-sub" style="color:var(--teal);">お客様：'+escapeHtml(t.customerName)+'</div>'
+            : '';
           return '<div class="hist-row" style="padding-left:'+(isBulk?'12px':'0')+';'+(_canDetail?'cursor:pointer;':'')+'" '+(_canDetail?'onclick="openProductDetail(\''+t.productId+'\')"':'')+' title="'+(_canDetail?'クリックして商品詳細を表示':'')+'">'
             +'<div class="hist-info">'
             +'<div class="hist-name">'+escapeHtml(cleanName(t.name))+resTag+(_canDetail?'<span style="font-size:10px;color:var(--text-3);margin-left:5px;">🔍</span>':'')+'</div>'
             +(sub?'<div class="hist-sub">'+escapeHtml(sub)+'</div>':'')
             +resLine
+            +_outCustomerLine
             +_costLine
             +'</div>'
             +'<div class="hist-qty" style="color:'+typeColor+';">'+typeSign+t.qty+'</div>'
