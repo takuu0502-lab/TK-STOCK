@@ -13247,40 +13247,46 @@ window.addEventListener('storageReady', function(){
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
   // ラベル共通スタイル生成（iOS対応）
-  // iOS/iPad は AirPrint で縦向き(29×62mm portrait)として認識するため
-  // 縦向きレイアウト(W=29mm, H=62mm)に切り替え、フォントを調整する
+  // iOS AirPrint は Brother QL の 29×62mm ラベルを縦向き(portrait)で認識する
+  // → 縦向きレイアウト(29mm幅×62mm高さ)専用スタイルを生成する
   function _labelStyle(lw, lh, fn, fs, fm, extraCSS){
     const ios = _isIOS();
-    let W, H, FN, FS, FM, pad, pageRule;
     if(ios){
-      // 縦向き（AirPrint portrait）: 幅と高さを入れ替え
-      W = lh; H = lw;
-      // 幅が狭くなるのでフォントを小さめに
-      const fScale = lh / lw; // 29/62 ≈ 0.47
-      FN = +(fn * fScale * 1.6).toFixed(1); // 視認性確保のため補正
-      FS = +(fs * fScale * 1.6).toFixed(1);
-      FM = +(fm * fScale * 1.6).toFixed(1);
-      pad = '2mm 2mm';
-      pageRule = `@media print{@page{size:${W}mm ${H}mm;margin:0;}body{margin:0;}.label{border:none;page-break-after:always;}}`;
-    } else {
-      W = lw; H = lh; FN = fn; FS = fs; FM = fm;
-      pad = '2mm 3mm';
-      pageRule = `@media print{@page{size:${W}mm ${H}mm;margin:0;}body{margin:0;}.label{border:none;page-break-after:always;}}`;
+      // ── iOS 縦向き用 (29mm × 62mm) ──
+      // 29mm幅に収まるよう小さめフォント、折り返し許可
+      const W = lh, H = lw; // 29mm × 62mm
+      return `*{margin:0;padding:0;box-sizing:border-box;}`
+        + `body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#fff;}`
+        + `.label{width:${W}mm;min-height:${H}mm;border:1px solid #000;padding:1.5mm 2mm;`
+        + `display:flex;flex-direction:column;gap:1mm;page-break-after:always;}`
+        + `.label:last-child{page-break-after:auto;}`
+        + `.label-status{font-size:5.5pt;font-weight:900;color:#fff;background:#000;`
+        + `display:inline-block;padding:0.3mm 1.5mm;border-radius:1mm;width:fit-content;}`
+        + `.label-name{font-size:6.5pt;font-weight:700;line-height:1.4;word-break:break-all;white-space:normal;}`
+        + `.label-spec{font-size:6pt;color:#333;line-height:1.4;word-break:break-all;white-space:normal;}`
+        + `.label-partno{font-size:5pt;color:#555;white-space:normal;word-break:break-all;}`
+        + `.label-customer{font-size:6pt;font-weight:700;color:#000;word-break:break-all;}`
+        + `.label-install{font-size:5pt;color:#000;}`
+        + `.label-footer{font-size:5pt;color:#555;margin-top:auto;}`
+        + (extraCSS||'')
+        + `@media print{@page{size:${W}mm ${H}mm;margin:0;}body{margin:0;}.label{border:none;page-break-after:always;}}`;
     }
-    return `:root{--label-w:${W}mm;--label-h:${H}mm;--font-size-name:${FN}pt;--font-size-spec:${FS}pt;--font-size-small:${FM}pt;--label-pad:${pad};}`
+    // ── PC 横向き用 (62mm × 29mm) ──
+    return `:root{--label-w:${lw}mm;--label-h:${lh}mm;--font-size-name:${fn}pt;--font-size-spec:${fs}pt;--font-size-small:${fm}pt;}`
       + `*{margin:0;padding:0;box-sizing:border-box;}`
       + `body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#fff;}`
-      + `.label{width:var(--label-w);height:var(--label-h);border:1px solid #000;padding:var(--label-pad);display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;overflow:hidden;}`
+      + `.label{width:var(--label-w);height:var(--label-h);border:1px solid #000;padding:2mm 3mm;`
+      + `display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;overflow:hidden;}`
       + `.label:last-child{page-break-after:auto;}`
-      + `.label-status{font-size:${ios?Math.round(5.5*1):'7'}pt;font-weight:900;color:#fff;background:#000;display:inline-block;padding:0.3mm 1.5mm;border-radius:1.5mm;margin-bottom:0.5mm;width:fit-content;}`
-      + `.label-name{font-size:var(--font-size-name);font-weight:700;line-height:1.3;word-break:break-all;}`
-      + `.label-spec{font-size:var(--font-size-spec);color:#333;line-height:1.3;word-break:break-all;}`
+      + `.label-status{font-size:7pt;font-weight:900;color:#fff;background:#000;display:inline-block;padding:0.5mm 2mm;border-radius:2mm;margin-bottom:1mm;width:fit-content;}`
+      + `.label-name{font-size:var(--font-size-name);font-weight:700;line-height:1.3;}`
+      + `.label-spec{font-size:var(--font-size-spec);color:#333;line-height:1.3;}`
       + `.label-partno{font-size:var(--font-size-small);color:#555;}`
       + `.label-customer{font-size:var(--font-size-small);font-weight:700;color:#000;}`
       + `.label-install{font-size:var(--font-size-small);color:#000;}`
       + `.label-footer{font-size:var(--font-size-small);color:#555;text-align:right;}`
       + (extraCSS||'')
-      + pageRule;
+      + `@media print{@page{size:${lw}mm ${lh}mm;margin:0;}body{margin:0;}.label{border:none;page-break-after:always;}}`;
   }
   function _labelWinOpen(styleStr, bodyHtml, title){
     title = title||'入庫済みラベル';
