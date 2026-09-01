@@ -13241,37 +13241,8 @@ window.addEventListener('storageReady', function(){
     detailModal.classList.add('show');
   }
 
-  // iOS/iPad検出
-  function _isIOS(){
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  }
-  // ラベル共通スタイル生成（iOS対応）
-  // iOS AirPrint は Brother QL の 29×62mm ラベルを縦向き(portrait)で認識する
-  // → 縦向きレイアウト(29mm幅×62mm高さ)専用スタイルを生成する
+  // ラベル共通スタイル生成
   function _labelStyle(lw, lh, fn, fs, fm, extraCSS){
-    const ios = _isIOS();
-    if(ios){
-      // ── iOS 縦向き用 (29mm × 62mm) ──
-      // 29mm幅に収まるよう小さめフォント、折り返し許可
-      const W = lh, H = lw; // 29mm × 62mm
-      return `*{margin:0;padding:0;box-sizing:border-box;}`
-        + `body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#fff;}`
-        + `.label{width:${W}mm;min-height:${H}mm;border:1px solid #000;padding:1.5mm 2mm;`
-        + `display:flex;flex-direction:column;gap:1mm;page-break-after:always;}`
-        + `.label:last-child{page-break-after:auto;}`
-        + `.label-status{font-size:5.5pt;font-weight:900;color:#fff;background:#000;`
-        + `display:inline-block;padding:0.3mm 1.5mm;border-radius:1mm;width:fit-content;}`
-        + `.label-name{font-size:6.5pt;font-weight:700;line-height:1.4;word-break:break-all;white-space:normal;}`
-        + `.label-spec{font-size:6pt;color:#333;line-height:1.4;word-break:break-all;white-space:normal;}`
-        + `.label-partno{font-size:5pt;color:#555;white-space:normal;word-break:break-all;}`
-        + `.label-customer{font-size:6pt;font-weight:700;color:#000;word-break:break-all;}`
-        + `.label-install{font-size:5pt;color:#000;}`
-        + `.label-footer{font-size:5pt;color:#555;margin-top:auto;}`
-        + (extraCSS||'')
-        + `@media print{@page{size:${W}mm ${H}mm;margin:0;}body{margin:0;}.label{border:none;page-break-after:always;}}`;
-    }
-    // ── PC 横向き用 (62mm × 29mm) ──
     return `:root{--label-w:${lw}mm;--label-h:${lh}mm;--font-size-name:${fn}pt;--font-size-spec:${fs}pt;--font-size-small:${fm}pt;}`
       + `*{margin:0;padding:0;box-sizing:border-box;}`
       + `body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#fff;}`
