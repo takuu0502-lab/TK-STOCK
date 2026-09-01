@@ -6369,16 +6369,7 @@ window.addEventListener('storageReady', function(){
   function _matchesCatalogEntry(p, r){
     // catalogKey（商品登録時に保存したキー）で優先照合 → 商品名変更後も追跡できる
     const cKey = r.b+'||'+r.m+'||'+r.s;
-    if(p.catalogKey && p.catalogKey === cKey){
-      // catalogKeyが一致していても、商品名にマッチするより具体的なカタログエントリがある場合はスキップ
-      // 例: catalogKey='BLIZZAK||VRX3||...' の商品名が'BLIZZAK VRX3(SUV)'の場合、VRX3(SUV)エントリに委ねる
-      const _moreSpecificForKey = getCatalog().find(r2 =>
-        r2 !== r && r2.b === r.b && r2.m.length > r.m.length && r2.m.includes(r.m) &&
-        _specMatchesCatalog(p.spec, r2.s) && _nameMatchesCatalog(p.name, r2.b, r2.m)
-      );
-      if(!_moreSpecificForKey) return true;
-      // より具体的なエントリがある場合はcatalogKeyマッチをスキップして名前マッチへ
-    }
+    if(p.catalogKey && p.catalogKey === cKey) return true;
     // _fromCatalogなし＋製造年あり → 年別手動商品として別行表示
     const _hasMfYear = p.manufactureYear || (p._branchManufactureYear && Object.values(p._branchManufactureYear).some(v=>v));
     if(!p._fromCatalog && _hasMfYear) return false;
@@ -6719,9 +6710,16 @@ window.addEventListener('storageReady', function(){
         _expandedItems.push(item);
       }
     }
+    // catalog_prodと同じm+sを持つcatalog行を除去（VRX3(SUV)等の重複表示を防ぐ）
+    const _cpKeys = new Set(
+      _expandedItems.filter(i=>i.type==='catalog_prod').map(i=>(i.r.m||'')+'||'+(i.r.s||''))
+    );
+    const _expandedItemsFinal = _expandedItems.filter(item =>
+      item.type !== 'catalog' || !_cpKeys.has((item.r.m||'')+'||'+(item.r.s||''))
+    );
 
     let _catI=0, _manI=0;
-    const rows = _expandedItems.map(item=>{
+    const rows = _expandedItemsFinal.map(item=>{
       if(item.type==='catalog_prod'){
         // 複数商品展開行：個別商品1件を独立行として表示
         const r=item.r, i=item.origIdx, cp=item.cp; _catI++;
@@ -6898,7 +6896,7 @@ window.addEventListener('storageReady', function(){
       : '';
     const _catalogEditBtn = canWriteData() ? '<button class="btn btn-ghost btn-sm no-print" style="font-size:11px;padding:3px 10px;" onclick="window._openCatalogBulkEdit(window._lastCatalogMatches||[])">✏️ 一括編集</button>' : '';
     window._lastCatalogMatches = matches;
-    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+allTireItems.length+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
+    wrap.innerHTML = sectionLabel+'<div class="price-catalog"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div class="price-catalog-title" style="margin-bottom:0;">ブリヂストン 夏タイヤA表価格表（'+_expandedItemsFinal.length+'件）</div>'+_catalogEditBtn+_catalogRegisterBtn+'</div>'
       + '<div class="price-catalog-sub no-print">茨城地区本部 A表・2026年2月以降 ／ 「'+escapeHtml(queryLabel)+'」に一致する銘柄'+(forceTire ? ' ・ チェックを入れると見積もりに追加できます' : '')+'</div>'
       + sortBarHtml
       + (forceTire ? quoteBarHtml : '')
