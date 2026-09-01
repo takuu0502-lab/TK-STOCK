@@ -5575,12 +5575,14 @@ window.addEventListener('storageReady', function(){
       if(!p){
         _msgEl.style.color='var(--red)';
         _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
+        setTimeout(()=>_input.focus(), 30);
         return;
       }
       _counts.set(p.id, (_counts.get(p.id)||0) + 1);
       _msgEl.style.color='var(--teal)';
       _msgEl.textContent = '✅ '+cleanName(p.name)+(p.spec?' ('+p.spec+')':'')+'　→ '+_counts.get(p.id)+'本';
       _render();
+      setTimeout(()=>_input.focus(), 30);
     }
 
     // 開く
@@ -5600,10 +5602,10 @@ window.addEventListener('storageReady', function(){
     _input.addEventListener('input', ()=>{
       // ハンディスキャナー（Enterなしで自動確定）対応
       const v = _input.value;
-      if(v.length >= 8 && /^[a-z0-9\-]+$/.test(v)){
+      if(v.length >= 8 && /^[a-zA-Z0-9\-]+$/.test(v)){
         setTimeout(()=>{
           if(_input.value === v){ _doScan(_input.value); _input.value = ''; }
-        }, 80);
+        }, 120);
       }
     });
 
