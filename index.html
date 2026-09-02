@@ -14846,7 +14846,8 @@ window.addEventListener('storageReady', function(){
           const itemOver = p2 && allProvQty > _p2Stk;
           // タイヤ以外も含め名前・ブランド・スペックを表示
           const _dispName = escapeHtml(cleanName(item.name || (p2 && p2.name) || '—'));
-          const _dispSub  = [item.brand||(p2&&p2.brand)||'', item.spec||(p2&&p2.spec)||''].filter(Boolean).join(' ');
+          const _dispBrandRaw = item.brand||(p2&&p2.brand)||'';
+          const _dispSub  = [(!_dispBrandRaw || cleanName(item.name||(p2&&p2.name)||'').startsWith(_dispBrandRaw) ? '' : _dispBrandRaw), item.spec||(p2&&p2.spec)||''].filter(Boolean).join(' ');
           return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);">'
             +'<div style="min-width:0;flex:1;">'
             +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+_dispName+'</div>'
@@ -14875,8 +14876,9 @@ window.addEventListener('storageReady', function(){
               const _sName = cleanName(item.name||(_pSummary&&_pSummary.name)||'');
               const _sSpec = item.spec||(_pSummary&&_pSummary.spec)||'';
               const _sBrand = item.brand||(_pSummary&&_pSummary.brand)||'';
+              const _showBrand = _sBrand && !_sName.startsWith(_sBrand);
               return _sName ? '<div style="font-size:12px;color:var(--text-1);padding:2px 0;">'
-                +(_sBrand?'<span style="color:var(--text-3);">'+escapeHtml(_sBrand)+'</span> ':'')
+                +(_showBrand?'<span style="color:var(--text-3);">'+escapeHtml(_sBrand)+'</span> ':'')
                 +'<span style="font-weight:600;">'+escapeHtml(_sName)+'</span>'
                 +(_sSpec?' <span style="color:var(--text-2);">'+escapeHtml(_sSpec)+'</span>':'')
                 +' <span style="color:var(--amber);font-weight:700;">×'+item.qty+'</span>'
