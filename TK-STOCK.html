@@ -2330,7 +2330,7 @@
         <input type="text" id="prov_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;margin-top:4px;">
       </div>
       <div class="field">
-        <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
+        <label style="font-size:13px;font-weight:600;">取付予定日 <span style="color:var(--red);">*</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
           <input type="date" id="prov_date" style="flex:1;box-sizing:border-box;">
           <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="prov_date_tbd" style="width:16px;height:16px;cursor:pointer;">未定</label>
@@ -2386,7 +2386,7 @@
         <input type="text" id="provEdit_customer" placeholder="例) 田中様" style="width:100%;box-sizing:border-box;margin-top:4px;">
       </div>
       <div class="field">
-        <label style="font-size:13px;font-weight:600;">引き渡し予定日 <span style="color:var(--red);">*</span></label>
+        <label style="font-size:13px;font-weight:600;">取付予定日 <span style="color:var(--red);">*</span></label>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
           <input type="date" id="provEdit_date" style="flex:1;box-sizing:border-box;">
           <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="provEdit_date_tbd" style="width:16px;height:16px;cursor:pointer;">未定</label>
@@ -5777,7 +5777,7 @@ window.addEventListener('storageReady', function(){
         const car  = document.getElementById('provEdit_car').value.trim();
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_customer').focus(); return; }
-        if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; _editDateInput.focus(); return; }
+        if(!date){ errorEl.textContent='取付予定日を入力してください。'; errorEl.style.display='block'; _editDateInput.focus(); return; }
         const qtys = (entry.items||[]).map((_,i)=> Math.max(1, parseInt(document.getElementById('provEdit_qty_'+i).value||'1',10)));
         cleanup({ customerName:name, scheduledDate:date, carName:car, qtys });
       }
@@ -5898,7 +5898,7 @@ window.addEventListener('storageReady', function(){
         const type = document.querySelector('input[name="prov_type"]:checked').value;
         errorEl.style.display = 'none';
         if(!name){ errorEl.textContent=(type==='custody'?'取引先名':'お客様名')+'を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
-        if(!date){ errorEl.textContent='引き渡し予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
+        if(!date){ errorEl.textContent='取付予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
         const _isCustody = type === 'custody';
         if(_isCustody && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。（預かり出庫には必須です）'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
         if(useInbound && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
@@ -11474,7 +11474,7 @@ window.addEventListener('storageReady', function(){
         +'<span style="font-size:11px;font-weight:400;color:var(--amber);">計 '+totalProv+' / 在庫 '+stk+(isOver?'　<span class="pt-over">'+( totalProv-stk)+'超過</span>':'')+'</span></div>';
       if(relPOs.length > 0){
         html += '<div style="display:grid;grid-template-columns:36px 1fr auto;gap:4px 8px;padding:4px 0 2px;font-size:10px;font-weight:600;color:var(--text-3);border-bottom:1px solid var(--line);margin-bottom:2px;">'
-          +'<span style="text-align:center;">数量</span><span>お客様 / 車種</span><span style="text-align:right;">引き渡し予定日</span></div>';
+          +'<span style="text-align:center;">数量</span><span>お客様 / 車種</span><span style="text-align:right;">取付予定日</span></div>';
       }
       relPOs.slice().sort((a,b)=>(a.scheduledDate||'').localeCompare(b.scheduledDate||'')).forEach(po=>{
         const qty = (po.items||[]).filter(i=>i.productId===productId).reduce((s,i)=>s+i.qty,0);
@@ -14871,9 +14871,9 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           /* 商品概要（顧客名直下）は詳細行と重複するため非表示 */
           +(entry.carName?'<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">車種：'+escapeHtml(entry.carName)+'</div>':'<div style="margin-bottom:8px;"></div>')
-          /* 引き渡し予定日 */
+          /* 取付予定日 */
           +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
-          +'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">引き渡し予定日</span>'
+          +'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">取付予定日</span>'
           +'<span style="font-size:14px;font-weight:700;color:var(--amber);">'+escapeHtml(sdStr)+'</span>'
           +'</div>'
           /* 商品リスト */
