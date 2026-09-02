@@ -2926,7 +2926,12 @@ window.addEventListener('storageReady', function(){
   }
   function getBrands(){
     if(!importedItems.length) return DISTINCT_BRANDS;
-    return Array.from(new Set(getCatalog().map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
+    const _brands = new Set(getCatalog().map(r=>r.b));
+    // 価格ルールで設定済みのブランドも含める（カタログ未取込でも設定を維持）
+    for(const rules of Object.values(allPriceRules)){
+      if(rules && rules.byBrand) for(const b of Object.keys(rules.byBrand)) _brands.add(b);
+    }
+    return Array.from(_brands).sort((a,b)=>a.localeCompare(b,'ja'));
   }
   // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
   const _BS_BRAND_LOOKUP = [
@@ -6367,7 +6372,19 @@ window.addEventListener('storageReady', function(){
   function _matchesCatalogEntry(p, r){
     // catalogKey（商品登録時に保存したキー）で優先照合 → 商品名変更後も追跡できる
     const cKey = r.b+'||'+r.m+'||'+r.s;
-    if(p.catalogKey && p.catalogKey === cKey) return true;
+    if(p.catalogKey && p.catalogKey === cKey){
+      // catalogKeyが一致しても、商品名がより具体的なカタログエントリを示す場合は除外
+      // 例: VRX3(SUV)商品のcatalogKeyがVRX3を指しているが、VRX3(SUV)エントリも存在する場合
+      if(p.name){
+        const _specificEntry = getCatalog().find(r2 =>
+          r2 !== r && r2.b === r.b && r2.s === r.s &&
+          r2.m.startsWith(r.m) && r2.m.length > r.m.length &&
+          p.name.includes(r2.m)
+        );
+        if(_specificEntry) return false;
+      }
+      return true;
+    }
     // _fromCatalogなし＋製造年あり → 年別手動商品として別行表示
     const _hasMfYear = p.manufactureYear || (p._branchManufactureYear && Object.values(p._branchManufactureYear).some(v=>v));
     if(!p._fromCatalog && _hasMfYear) return false;
