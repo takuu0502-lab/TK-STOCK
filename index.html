@@ -12905,9 +12905,13 @@ window.addEventListener('storageReady', function(){
         const d = new Date(t.date);
         const dateStr = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
         const resTag = t.itemType === 'reserved' ? '<span class="res-tag">予約品</span>' : '';
+        const _histSub = [
+          (t.customerName ? escapeHtml(t.customerName)+'様' : ''),
+          (t.user ? '担当: '+escapeHtml(t.user) : '')
+        ].filter(Boolean).join('　');
         return '<div class="hist-row">'
           + '<span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span>'
-          + '<div class="hist-info"><div class="hist-name">'+dateStr+resTag+'</div><div class="hist-sub">'+(t.user?'担当: '+escapeHtml(t.user):'')+'</div></div>'
+          + '<div class="hist-info"><div class="hist-name">'+dateStr+resTag+'</div>'+(_histSub?'<div class="hist-sub">'+_histSub+'</div>':'')+'</div>'
           + '<div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div>'
           + '</div>';
       }).join('');
@@ -14923,7 +14927,8 @@ window.addEventListener('storageReady', function(){
           p.branchStock[entryBranch] = curStk2 - item.qty; p.stock = p.branchStock[entryBranch];
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
-            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch });
+            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch,
+            customerName:entry.customerName||'' });
         }
         entry.status = 'confirmed';
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
