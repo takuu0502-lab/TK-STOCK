@@ -2953,18 +2953,16 @@ window.addEventListener('storageReady', function(){
     return 'ブリヂストン';
   }
   function rebuildImportedItems(){
-    // 全角半角・スペース正規化ヘルパー
-    const _hwNorm = s => (s||'').replace(/[Ａ-Ｚａ-ｚ０-９（）　]/g, c => c==='　'?' ':String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/\s+/g,'').trim();
     const _raw = importedCatalogs.flatMap(c=>c.items||[]).map(item=>{
       if(!item.b || item.b==='ブリヂストン'){
         return Object.assign({}, item, {b: _normalizeBsBrand(item.m||'')});
       }
       return item;
     });
-    // 同一銘柄+サイズの重複除去（ブランド・全角半角差異を無視して後勝ち）
+    // 同一ブランド+銘柄+サイズの重複除去（後勝ち）
     const _dedup = {};
     for(const item of _raw){
-      const key = _hwNorm(item.m||'')+'||'+_hwNorm(item.s||'');
+      const key = (item.b||'')+'||'+(item.m||'')+'||'+(item.s||'');
       _dedup[key] = item;
     }
     importedItems = Object.values(_dedup);
@@ -6594,11 +6592,10 @@ window.addEventListener('storageReady', function(){
       const _wantStudless = estimateSeasonFilter === 'studless';
       matches = matches.filter(r => _isStudlessCatalogEntry(r) === _wantStudless);
     }
-    // モデル+サイズで重複除去（全角半角・スペース差異を正規化して確実に排除）
+    // モデル+サイズで重複除去
     {
-      const _hw = s => (s||'').replace(/[Ａ-Ｚａ-ｚ０-９（）　]/g, c => c === '　' ? ' ' : String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/\s+/g,'').trim();
       const _mdd = {};
-      for(const r of matches) _mdd[_hw(r.m)+'||'+_hw(r.s)] = r;
+      for(const r of matches) _mdd[(r.m||'')+'||'+(r.s||'')] = r;
       matches = Object.values(_mdd);
     }
     const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
