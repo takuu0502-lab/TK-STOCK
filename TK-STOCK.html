@@ -14398,7 +14398,7 @@ window.addEventListener('storageReady', function(){
     let rows = pending.map(order=>{
       const _srcItems = _getOrderItems(order);
       const dateStr = _fmtJpDate(order.expectedDate);
-      const installStr = order.installDate ? _fmtJpDate(order.installDate) : null;
+      const installStr = _fmtJpDate(order.installDate);
       const _expD = order.expectedDate ? new Date(order.expectedDate+'T00:00:00') : null;
       const _diffDays = _expD ? Math.round((_expD - _coToday)/(1000*60*60*24)) : null;
       const _isOver = _diffDays !== null && _diffDays < 0;
@@ -14447,12 +14447,10 @@ window.addEventListener('storageReady', function(){
         + '<span style="font-size:10px;font-weight:600;color:'+(_isOver?'var(--red)':'var(--teal)')+';background:'+(_isOver?'rgba(220,50,50,0.08)':'rgba(0,160,140,0.08)')+';border:1px solid '+(_isOver?'var(--red)':'var(--teal)')+';border-radius:4px;padding:1px 6px;white-space:nowrap;">入庫予定日</span>'
         + '<span style="font-size:14px;font-weight:700;color:'+(_isOver?'var(--red)':'var(--teal)')+';">'+escapeHtml(dateStr)+'</span>'
         + '</div>'
-        + (installStr
-            ? '<div style="display:flex;align-items:center;gap:8px;">'
-              + '<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">取付予定日</span>'
-              + '<span style="font-size:14px;font-weight:700;color:var(--amber);">'+escapeHtml(installStr)+'</span>'
-              + '</div>'
-            : '')
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+          + '<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">取付予定日</span>'
+          + '<span style="font-size:14px;font-weight:700;color:var(--amber);">'+escapeHtml(installStr)+'</span>'
+          + '</div>'
         + '</div>'
         + (order.createdBy||order.createdAt ? '<div style="margin-top:8px;font-size:11px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;">'
             +(order.createdBy ? '<span>担当：'+escapeHtml(order.createdBy)+'</span>' : '')
