@@ -1484,6 +1484,7 @@
         <option value="summer">サマータイヤ</option>
         <option value="studless">スタッドレスタイヤ</option>
       </select>
+      <select id="catalogBulkRegisterBranch" class="input" style="width:auto;font-size:12.5px;padding:4px 8px;"></select>
       <button class="btn btn-teal btn-sm" id="catalogBulkRegisterBtn" data-studless="0">📥 取込済み価格表から全件一括登録</button>
     </div>
     <div id="catalogBulkRegisterMsg" style="margin-top:8px;font-size:13px;"></div>
@@ -5493,7 +5494,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
@@ -11247,8 +11248,13 @@ window.addEventListener('storageReady', function(){
 
     window._bulkRegisterCatalog = async (sourceItems, opts)=>{
       const _isStudless = opts && opts.studless;
+      const _newBrIdOverride = opts && opts.targetBranchId; // 対象支店の上書き（全支店登録時）
       const matches = sourceItems || window._lastCatalogMatches || [];
-      const unregistered = matches.filter(r=>!findProductForCatalogEntry(r));
+      // 支店別登録の場合: その支店所有の商品が存在しない場合のみ登録対象
+      // 通常時: 既存の任意の商品があればスキップ
+      const unregistered = _newBrIdOverride
+        ? matches.filter(r => !products.some(p => (p.branchId||'taniyabe') === _newBrIdOverride && _matchesCatalogEntry(p, r)))
+        : matches.filter(r=>!findProductForCatalogEntry(r));
       // 既存商品のうちr.cを持つカタログエントリと紐づくものは仕入れ価格を更新
       const toUpdateCost = matches.filter(r=>r.c && findProductForCatalogEntry(r));
       let updatedCount = 0;
@@ -11258,18 +11264,26 @@ window.addEventListener('storageReady', function(){
       }
       if(updatedCount > 0){ await saveProducts(); showToast(updatedCount+'件の仕入れ価格を更新しました'); }
       if(!unregistered.length){
-        if(updatedCount===0) alert('未登録の商品はありません。');
+        if(updatedCount===0 && !_newBrIdOverride) alert('未登録の商品はありません。');
         return;
       }
       const _subLabel = _isStudless ? 'スタッドレスタイヤ' : 'サマータイヤ';
-      const ok = await showConfirm(unregistered.length+'件の商品を一括登録しますか？\n中分類: '+_subLabel+'\n（在庫数0・価格は価格調整ルールから自動計算）');
-      if(!ok) return;
+      // targetBranchId指定時はconfirmスキップ（呼び出し元でまとめてconfirm済み）
+      if(!_newBrIdOverride){
+        const ok = await showConfirm(unregistered.length+'件の商品を一括登録しますか？\n中分類: '+_subLabel+'\n（在庫数0・価格は価格調整ルールから自動計算）');
+        if(!ok) return;
+      }
       const tireCat = categories.find(c=>c.name==='タイヤ');
       const majorId = tireCat ? tireCat.id : (categories[0]&&categories[0].id);
       const subId = _isStudless ? _getStudlessTireSubId(majorId) : _getSummerTireSubId(majorId);
-      const _newBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const _newBrId = _newBrIdOverride || (currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe');
       for(const r of unregistered){
-        if(findProductForCatalogEntry(r)) continue;
+        // 支店別登録: 対象支店の既存商品がある場合はスキップ
+        if(_newBrIdOverride){
+          if(products.some(p => (p.branchId||'taniyabe') === _newBrId && _matchesCatalogEntry(p, r))) continue;
+        } else {
+          if(findProductForCatalogEntry(r)) continue;
+        }
         const sell = computeSellPrice(r.b, r.m, r.w, r.t);
         const cost = computeCostPrice(r.b, r.m, r.w, r.t);
         const _brStock = {}; BRANCHES.forEach(b=>{ _brStock[b.id]=0; });
@@ -17121,6 +17135,20 @@ window.addEventListener('storageReady', function(){
     setTimeout(()=>{ document.getElementById('yahooAppIdMsg').innerHTML = ''; }, 3000);
   });
 
+  // 支店セレクター初期化（価格設定タブ表示時に呼び出す）
+  function initCatalogBulkRegisterBranchSelect(){
+    const sel = document.getElementById('catalogBulkRegisterBranch');
+    if(!sel) return;
+    if(!isSuperAdminUser()){
+      sel.style.display = 'none';
+      return;
+    }
+    sel.style.display = '';
+    const _myBr = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    sel.innerHTML = '<option value="__all__">全支店</option>'
+      + BRANCHES.map(b=>'<option value="'+b.id+'"'+(b.id===_myBr?' selected':'')+'>'+escapeHtml(b.name)+'</option>').join('');
+  }
+
   document.getElementById('catalogBulkRegisterType').addEventListener('change', function(){
     document.getElementById('catalogBulkRegisterBtn').dataset.studless = this.value === 'studless' ? '1' : '0';
   });
@@ -17131,16 +17159,28 @@ window.addEventListener('storageReady', function(){
       msgEl.innerHTML = '<div class="msg msg-error">取込済みの価格表がありません。先に「価格表を取込む（Excel）」からインポートしてください。</div>';
       return;
     }
+    const _isSt = document.getElementById('catalogBulkRegisterBtn').dataset.studless === '1';
+    const _subLbl = _isSt ? 'スタッドレスタイヤ' : 'サマータイヤ';
+    const _branchSel = document.getElementById('catalogBulkRegisterBranch');
+    const _targetBranch = (_branchSel && _branchSel.value) ? _branchSel.value : null;
+    const _isAllBranch = _targetBranch === '__all__';
+    const _targetBranches = _isAllBranch ? BRANCHES.map(b=>b.id) : [_targetBranch || (currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe')];
     const unregistered = allCatalog.filter(r=>!findProductForCatalogEntry(r));
     if(!unregistered.length){
       msgEl.innerHTML = '<div class="msg msg-ok">✅ 全商品（'+allCatalog.length+'件）はすでに登録済みです。</div>';
       return;
     }
-    const _isSt = document.getElementById('catalogBulkRegisterBtn').dataset.studless === '1';
-    const _subLbl = _isSt ? 'スタッドレスタイヤ' : 'サマータイヤ';
-    msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">カタログ全'+allCatalog.length+'件 / 未登録: '+unregistered.length+'件 を中分類「'+_subLbl+'」で一括登録します。</div>';
-    await window._bulkRegisterCatalog(allCatalog, {studless: _isSt});
-    msgEl.innerHTML = '<div class="msg msg-ok">✅ '+unregistered.length+'件を'+_subLbl+'として一括登録しました。</div>';
+    const _branchLabel = _isAllBranch ? '全支店' : branchName(_targetBranches[0]);
+    if(_targetBranches.length > 1){
+      // 全支店登録: 呼び出し元で一括confirm
+      const _ok = await showConfirm(allCatalog.length+'件の商品を中分類「'+_subLbl+'」で【'+_branchLabel+'】に登録しますか？\n（在庫数0・各支店ごとに未登録のものを登録）');
+      if(!_ok) return;
+    }
+    msgEl.innerHTML = '<div class="msg" style="background:var(--bg-1);border:1px solid var(--line);">登録中...【'+_branchLabel+'】に登録しています。</div>';
+    for(const _brId of _targetBranches){
+      await window._bulkRegisterCatalog(allCatalog, {studless: _isSt, targetBranchId: _brId});
+    }
+    msgEl.innerHTML = '<div class="msg msg-ok">✅ カタログ商品を中分類「'+_subLbl+'」として【'+_branchLabel+'】に登録しました。</div>';
   });
 
   document.getElementById('openImportCatalogBtn').addEventListener('click', ()=>{
