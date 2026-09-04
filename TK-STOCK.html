@@ -7311,10 +7311,16 @@ window.addEventListener('storageReady', function(){
             if(!isTire && !isWheelAlumSteel && !hasStockHere) return false;
             }
             // 他支店のカタログ自動登録品（_fromCatalog）で全支店在庫0のものは非表示
-            // （カタログ行と重複するゴースト商品を除去）ただしキーワード検索中は表示して削除可能にする
+            // ただし: 特定支店フィルター中はタイヤ・ホイールのカタログ商品を表示（在庫入力可能にするため）
+            // キーワード検索中も表示（削除可能にするため）
             if((p._fromCatalog || p.catalogKey) && !keywordFilter){
               const _totalStk = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
-              if(_totalStk === 0) return false;
+              if(_totalStk === 0){
+                // 特定支店閲覧中かつタイヤ・ホイールは在庫0でも表示
+                const _isTireProd = p.majorId === _tireCatId;
+                const _isWheelProd = _sharedWheelCat && p.majorId === _sharedWheelCat.id && _sharedWheelSubIds.includes(p.subId);
+                if(!_isTireProd && !_isWheelProd) return false;
+              }
             }
           }
         }
