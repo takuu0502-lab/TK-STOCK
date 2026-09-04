@@ -13865,6 +13865,9 @@ window.addEventListener('storageReady', function(){
   document.getElementById('detailClose').addEventListener('click', ()=>{
     detailModal.classList.remove('show');
   });
+  detailModal.addEventListener('click', (e)=>{
+    if(e.target === detailModal) detailModal.classList.remove('show');
+  });
   document.getElementById('detailEdit').addEventListener('click', ()=>{
     if(!canWriteData()) return;
     detailModal.classList.remove('show');
