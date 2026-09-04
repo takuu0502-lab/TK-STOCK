@@ -1935,16 +1935,16 @@
       <label>製造年別在庫（自店舗）</label>
       <div id="yearStockRows" style="margin-bottom:6px;display:flex;flex-direction:column;gap:4px;"></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <input type="number" id="f_mfyear_new" min="2000" max="2099" placeholder="例) 2025" style="width:100px;" title="追加する製造年">
-        <span style="font-size:12px;color:var(--text-3);">年製</span>
-        <input type="number" id="f_mfyear_qty" min="0" max="9999" placeholder="本数" style="width:72px;" title="在庫数">
-        <span style="font-size:12px;color:var(--text-3);">本</span>
+        <input type="number" id="f_mfyear_new" min="2000" max="2099" placeholder="例) 2025" style="width:110px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;" title="追加する製造年">
+        <span style="font-size:13px;color:var(--text-3);">年製</span>
+        <input type="number" id="f_mfyear_qty" min="0" max="9999" placeholder="本数" style="width:80px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;" title="在庫数">
+        <span style="font-size:13px;color:var(--text-3);">本</span>
         <button type="button" id="addYearStockRowBtn" class="btn btn-ghost btn-sm">＋追加</button>
       </div>
       <!-- 後方互換: 年別在庫なし時の単一製造年入力 -->
       <div id="f_mfyear_legacy_wrap" style="margin-top:6px;">
         <div style="display:flex;align-items:center;gap:6px;">
-          <input type="number" id="f_mfyear" min="2000" max="2099" placeholder="例) 2025" style="width:110px;">
+          <input type="number" id="f_mfyear" min="2000" max="2099" placeholder="例) 2025" style="width:110px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;">
           <span style="font-size:13px;color:var(--text-3);">年製のみ（在庫数は上の在庫欄で管理）</span>
         </div>
         <div style="font-size:11px;color:var(--text-3);margin-top:2px;">年別在庫を追加すると在庫数が自動更新されます。</div>
