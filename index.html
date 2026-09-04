@@ -1407,8 +1407,9 @@
     <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
     <div id="brandRulesList" style="margin-top:8px;"></div>
     <div id="pricingMsg"></div>
-    <div style="margin-top:18px;">
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-amber" id="savePricingRules">販売価格の設定を保存</button>
+      <button class="btn btn-ghost" id="savePricingRulesAllBranches" style="font-size:12px;color:var(--text-2);" title="この支店の販売価格設定を全店舗にコピーして保存します">📋 全店舗に一括コピー</button>
     </div>
 
     <div class="pricing-section-divider"></div>
@@ -3217,6 +3218,55 @@ window.addEventListener('storageReady', function(){
     await savePriceRules();
     updateCurrentPriceRules();
     showToast('【'+branchName(pricingActiveBranch)+'】販売価格の設定を保存しました。');
+    renderPriceCatalog();
+  });
+
+  document.getElementById('savePricingRulesAllBranches').addEventListener('click', async ()=>{
+    if(!isSuperAdminUser()){ showToast('この操作は総管理者のみ利用できます。'); return; }
+    if(!allPriceRules[pricingActiveBranch]) allPriceRules[pricingActiveBranch] = defaultPriceRules();
+    allPriceRules[pricingActiveBranch].default = {
+      basis: document.getElementById('pr_default_basis').value,
+      percent: Number(document.getElementById('pr_default_percent').value) || 0
+    };
+    allPriceRules[pricingActiveBranch].roundUnit = Number(document.getElementById('pr_round_unit').value) || 1;
+    allPriceRules[pricingActiveBranch].roundMode = document.getElementById('pr_round_mode').value || 'round';
+    const byBrand = {};
+    getBrands().forEach(brand=>{
+      const basisEl = document.querySelector('[data-rule-basis="'+brand+'"]');
+      const percentEl = document.querySelector('[data-rule-percent="'+brand+'"]');
+      const basis = basisEl ? basisEl.value : '';
+      if(basis){
+        byBrand[brand] = {basis: basis, percent: Number(percentEl ? percentEl.value : 0) || 0};
+      }
+    });
+    const byModel = Object.assign({}, allPriceRules[pricingActiveBranch].byModel || {});
+    expandedBrandModels.forEach(brand=>{
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
+      models.forEach(model=>{
+        const key = brand+'||'+model;
+        const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
+        const percentEl = document.querySelector('[data-model-rule-percent="'+key+'"]');
+        if(!basisEl) return;
+        const basis = basisEl.value;
+        const pct = Number(percentEl ? percentEl.value : 0) || 0;
+        if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
+          byModel[key] = {basis: basis, percent: pct};
+        } else {
+          delete byModel[key];
+        }
+      });
+    });
+    allPriceRules[pricingActiveBranch].byBrand = byBrand;
+    allPriceRules[pricingActiveBranch].byModel = byModel;
+    // 全支店に同じ設定を同期
+    BRANCHES.forEach(b=>{
+      if(b.id !== pricingActiveBranch){
+        allPriceRules[b.id] = JSON.parse(JSON.stringify(allPriceRules[pricingActiveBranch]));
+      }
+    });
+    await savePriceRules();
+    updateCurrentPriceRules();
+    showToast('販売価格の設定を全店舗に保存しました。');
     renderPriceCatalog();
   });
 
