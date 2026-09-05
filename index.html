@@ -2944,8 +2944,17 @@ window.addEventListener('storageReady', function(){
   }
   function getBrands(){
     // 取込済みカタログに存在するブランドのみ表示
-    const _brands = new Set(getCatalog().map(r=>r.b).filter(b=>b));
-    return Array.from(_brands).sort((a,b)=>a.localeCompare(b,'ja'));
+    const _catalog = getCatalog();
+    if(_catalog.length > 0){
+      const _brands = new Set(_catalog.map(r=>r.b).filter(b=>b));
+      return Array.from(_brands).sort((a,b)=>a.localeCompare(b,'ja'));
+    }
+    // カタログ未読込時：価格ルール設定済みブランドをフォールバック表示
+    const _fallback = new Set();
+    for(const rules of Object.values(allPriceRules)){
+      if(rules && rules.byBrand) for(const b of Object.keys(rules.byBrand)) _fallback.add(b);
+    }
+    return Array.from(_fallback).sort((a,b)=>a.localeCompare(b,'ja'));
   }
   // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
   const _BS_BRAND_LOOKUP = [
@@ -2994,6 +3003,13 @@ window.addEventListener('storageReady', function(){
       console.log('[loadImportedCatalogs] loaded', importedCatalogs.length, 'catalogs');
     }catch(e){ console.error('[loadImportedCatalogs] error', e); importedCatalogs = []; }
     rebuildImportedItems();
+    // 管理タブが開いていればブランドルールを再描画（カタログ読込完了後）
+    const _pt = document.getElementById('tab-pricing');
+    if(_pt && _pt.style.display !== 'none'){
+      if(typeof renderBrandRules === 'function') renderBrandRules();
+      if(typeof renderCostBrandRules === 'function') renderCostBrandRules();
+      if(typeof renderExternalBrandRules === 'function') renderExternalBrandRules();
+    }
   }
   async function saveImportedCatalogs(){
     const json = JSON.stringify(importedCatalogs);
