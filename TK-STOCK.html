@@ -2945,8 +2945,11 @@ window.addEventListener('storageReady', function(){
     for(const rules of Object.values(allPriceRules)){
       if(rules && rules.byBrand) for(const b of Object.keys(rules.byBrand)) _brands.add(b);
     }
-    // 登録済み商品のブランドも含める
-    for(const p of products){ if(p.brand) _brands.add(p.brand); }
+    // 登録済みタイヤ商品のブランドも含める
+    const _tireCatForBrands = categories.find(c=>c.name==='タイヤ');
+    for(const p of products){
+      if(p.brand && _tireCatForBrands && p.majorId === _tireCatForBrands.id) _brands.add(p.brand);
+    }
     return Array.from(_brands).sort((a,b)=>a.localeCompare(b,'ja'));
   }
   // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
@@ -3107,7 +3110,8 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = _pr.byBrand[brand];
       const _catMods = getCatalog().filter(r=>r.b===brand).map(r=>r.m);
-      const _prodMods = products.filter(p=>(p.brand||'')=== brand).map(p=>{
+      const _tireCatForMods = categories.find(c=>c.name==='タイヤ');
+      const _prodMods = products.filter(p=>(p.brand||'')=== brand && _tireCatForMods && p.majorId===_tireCatForMods.id).map(p=>{
         const _n = cleanName(p.name||'');
         const _pre = brand+' ';
         return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
@@ -3498,7 +3502,8 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = _cr.byBrand[brand];
       const _catMods = getCatalog().filter(r=>r.b===brand).map(r=>r.m);
-      const _prodMods = products.filter(p=>(p.brand||'')=== brand).map(p=>{
+      const _tireCatForMods = categories.find(c=>c.name==='タイヤ');
+      const _prodMods = products.filter(p=>(p.brand||'')=== brand && _tireCatForMods && p.majorId===_tireCatForMods.id).map(p=>{
         const _n = cleanName(p.name||'');
         const _pre = brand+' ';
         return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
