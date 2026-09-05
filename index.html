@@ -2945,6 +2945,8 @@ window.addEventListener('storageReady', function(){
     for(const rules of Object.values(allPriceRules)){
       if(rules && rules.byBrand) for(const b of Object.keys(rules.byBrand)) _brands.add(b);
     }
+    // 登録済み商品のブランドも含める
+    for(const p of products){ if(p.brand) _brands.add(p.brand); }
     return Array.from(_brands).sort((a,b)=>a.localeCompare(b,'ja'));
   }
   // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
@@ -3104,7 +3106,13 @@ window.addEventListener('storageReady', function(){
     const rmEl = document.getElementById('pr_round_mode'); if(rmEl) rmEl.value = _pr.roundMode || 'round';
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = _pr.byBrand[brand];
-      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const _catMods = getCatalog().filter(r=>r.b===brand).map(r=>r.m);
+      const _prodMods = products.filter(p=>(p.brand||'')=== brand).map(p=>{
+        const _n = cleanName(p.name||'');
+        const _pre = brand+' ';
+        return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
+      });
+      const models = Array.from(new Set([..._catMods,..._prodMods])).filter(m=>m).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
@@ -3489,7 +3497,13 @@ window.addEventListener('storageReady', function(){
     updateCostRuleDebug();
     wrap.innerHTML = getBrands().map(brand=>{
       const rule = _cr.byBrand[brand];
-      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m))).sort((a,b)=>a.localeCompare(b,'ja'));
+      const _catMods = getCatalog().filter(r=>r.b===brand).map(r=>r.m);
+      const _prodMods = products.filter(p=>(p.brand||'')=== brand).map(p=>{
+        const _n = cleanName(p.name||'');
+        const _pre = brand+' ';
+        return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
+      });
+      const models = Array.from(new Set([..._catMods,..._prodMods])).filter(m=>m).sort((a,b)=>a.localeCompare(b,'ja'));
       const isOpen = expandedCostBrandModels.has(brand);
       let html = '<div class="brand-rule-row">'
         + '<span class="brand-rule-name">'+escapeHtml(brand)+'</span>'
