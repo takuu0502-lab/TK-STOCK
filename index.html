@@ -4160,6 +4160,10 @@ window.addEventListener('storageReady', function(){
         const _pricingTab = document.getElementById('tab-pricing');
         if(_pricingTab && _pricingTab.style.display !== 'none'){
           if(typeof initAnnouncementEditor === 'function') initAnnouncementEditor();
+          // アコーディオンを再初期化（superAdminSection表示後に正しく構築するため）
+          _pricingAccordionInit = false;
+          _pricingTab.querySelectorAll('.admin-accordion-header').forEach(h=>h.remove());
+          initPricingAccordion();
           renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor();
           if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable();
           initCatalogBulkRegisterBranchSelect();
@@ -5638,7 +5642,7 @@ window.addEventListener('storageReady', function(){
       const header = document.createElement('div');
       header.className = 'admin-accordion-header'+(group.open?' open':'');
       header.innerHTML = '<span class="acc-title">'+group.label+'</span><span class="acc-arrow">▼</span>';
-      panel.insertBefore(header, firstEl);
+      (firstEl.parentNode || panel).insertBefore(header, firstEl);
 
       if(!group.open){
         panel.querySelectorAll('[data-acc-group="'+group.label+'"]').forEach(el=>{ el.style.display='none'; });
