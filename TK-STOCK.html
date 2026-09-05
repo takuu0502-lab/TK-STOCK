@@ -4159,6 +4159,7 @@ window.addEventListener('storageReady', function(){
       if(isSuperAdminUser()){
         const _pricingTab = document.getElementById('tab-pricing');
         if(_pricingTab && _pricingTab.style.display !== 'none'){
+          if(typeof initAnnouncementEditor === 'function') initAnnouncementEditor();
           renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor();
           if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable();
           initCatalogBulkRegisterBranchSelect();
@@ -5670,7 +5671,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'pricing'){
         const _superAdminSec = document.getElementById('superAdminPricingSection');
         if(_superAdminSec) _superAdminSec.style.display = isSuperAdminUser() ? '' : 'none';
-        if(isSuperAdminUser()){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); const _costAllBtn = document.getElementById('saveCostPricingRulesAllBranches'); if(_costAllBtn) _costAllBtn.style.display = 'inline-flex'; }
+        if(isSuperAdminUser()){ initAnnouncementEditor(); renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); const _costAllBtn = document.getElementById('saveCostPricingRulesAllBranches'); if(_costAllBtn) _costAllBtn.style.display = 'inline-flex'; }
       }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
