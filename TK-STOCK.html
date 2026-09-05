@@ -2998,13 +2998,22 @@ window.addEventListener('storageReady', function(){
   async function loadImportedCatalogs(){
     try{
       const r = await window.storage.get('importedCatalogs', SHARED);
+      console.log('[loadImportedCatalogs] raw:', r ? ('length='+String(r.value||'').length) : 'null');
       importedCatalogs = r ? JSON.parse(r.value) : [];
-    }catch(e){ importedCatalogs = []; }
+      console.log('[loadImportedCatalogs] loaded', importedCatalogs.length, 'catalogs');
+    }catch(e){ console.error('[loadImportedCatalogs] error', e); importedCatalogs = []; }
     rebuildImportedItems();
   }
   async function saveImportedCatalogs(){
-    try{ await window.storage.set('importedCatalogs', JSON.stringify(importedCatalogs), SHARED); }
-    catch(e){ console.error('save importedCatalogs failed', e); }
+    const json = JSON.stringify(importedCatalogs);
+    console.log('[saveImportedCatalogs] saving', importedCatalogs.length, 'catalogs,', json.length, 'bytes');
+    const result = await window.storage.set('importedCatalogs', json, SHARED);
+    if(!result){
+      console.error('[saveImportedCatalogs] storage.set returned null — write failed');
+      return false;
+    }
+    console.log('[saveImportedCatalogs] save OK');
+    return true;
   }
 
   async function loadImportedJanItems(){
@@ -4134,6 +4143,10 @@ window.addEventListener('storageReady', function(){
     renderSpecSearchPanel();
     renderProductTable();
     renderHistory();
+
+    // 管理タブの総管理者専用セクション表示を初期化（migration後のrole確定後に実行）
+    const _superAdminSec = document.getElementById('superAdminPricingSection');
+    if(_superAdminSec) _superAdminSec.style.display = isSuperAdminUser() ? '' : 'none';
   }
 
   async function saveLabelSettings(){
@@ -17896,9 +17909,13 @@ window.addEventListener('storageReady', function(){
     importedCatalogs = importedCatalogs.filter(c=>c.brand !== brand);
     importedCatalogs.push(catalog);
     rebuildImportedItems();
-    await saveImportedCatalogs();
+    const saveOk = await saveImportedCatalogs();
     renderPriceCatalog();
     renderImportedCatalogsPreview();
+    if(!saveOk){
+      msgEl.innerHTML = '<div class="msg msg-error">Firebaseへの保存に失敗しました。ブラウザのコンソールでエラーを確認してください。（データはリロード後に消える可能性があります）</div>';
+      return;
+    }
     msgEl.innerHTML = '<div class="msg msg-ok">'+items.length+'件を取込みました。</div>';
     document.getElementById('importExecBtn').disabled = true;
     setTimeout(()=>{ document.getElementById('importCatalogModal').classList.remove('show'); }, 1200);
