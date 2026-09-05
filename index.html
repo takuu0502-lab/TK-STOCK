@@ -6874,8 +6874,21 @@ window.addEventListener('storageReady', function(){
         const _indivSellFixed = getBranchFixedSell(cp, _catOwnBranchId);
         const sell = _indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         const _yearBadgeForBranch = (brId) => {
+          if(hasYearStock(cp, brId)) return yearStockBadgesHtml(cp, brId, false);
           const _yr = getBranchManufactureYear(cp, brId);
           return _yr ? '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:9px;font-weight:600;padding:1px 5px;border-radius:6px;white-space:nowrap;">🗓 '+_yr+'年製</div>' : '';
+        };
+        const _prodPriceTip = (brId)=>{
+          if(isExternalUser()) return '';
+          const _tCost = getBranchFixedCost(cp, brId) ?? computeCostPrice(r.b, r.m, r.w, r.t);
+          const _tSellF = getBranchFixedSell(cp, brId);
+          const _tSell = _tSellF !== null ? _tSellF : (getEffectiveSellPrice(r.b,r.m,r.w,r.t)||cp.sellPrice||0);
+          const _ysKeys = Object.keys(getBranchYearStock(cp,brId)||{}).filter(yr=>(getBranchYearStock(cp,brId)[yr]||0)>0).sort((a,b)=>b-a);
+          const _mfy = getBranchManufactureYear(cp, brId);
+          let _tip = _ysKeys.length ? _ysKeys.map(yr=>yr+'年製: '+getBranchYearStock(cp,brId)[yr]+'本').join(' / ') : (_mfy?_mfy+'年製':'');
+          if(_tCost) _tip += (_tip?'\n':'')+'仕入: ¥'+_tCost.toLocaleString();
+          if(_tSell) _tip += (_tip?'\n':'')+'販売: ¥'+_tSell.toLocaleString();
+          return _tip;
         };
         const _nameCell = escapeHtml(cleanName(cp.name));
         const stockCell = _catShowMultiCols
@@ -6886,7 +6899,8 @@ window.addEventListener('storageReady', function(){
               let _extra = (bStk > 0 && _brYearBadge) ? _brYearBadge : '';
               _extra += _makeInschBadges(cp.id, brId, 10, true);
               if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
+              const _ppTip = _prodPriceTip(brId);
+              return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span'+(_ppTip?' title="'+_ppTip+'" style="cursor:help;color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';"':' style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';"')+'>'+bStk+'</span>'+_extra+'</td>';
             }).join('')
           : (()=>{
               const _bStk = cp.branchStock ? (cp.branchStock[_catOwnBranchId]||0) : 0;
@@ -6895,7 +6909,8 @@ window.addEventListener('storageReady', function(){
               let _extra = (_bStk > 0 && _ownYearBadge) ? _ownYearBadge : '';
               _extra += _makeInschBadges(cp.id, _catOwnBranchId, 10, true);
               if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+_bStk+'</span>'+_extra+'</td>';
+              const _ppTipOwn = _prodPriceTip(_catOwnBranchId);
+              return '<td class="price-num" style="vertical-align:top;"><span'+(_ppTipOwn?' title="'+_ppTipOwn+'" style="cursor:help;color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';"':' style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';"')+'>'+_bStk+'</span>'+_extra+'</td>';
             })();
         return '<tr data-catalog-idx="'+i+'" style="border-left:3px solid var(--teal);">'
           + (forceTire ? '<td class="no-print"><input type="checkbox" data-catalog-chk-prod="'+escapeHtml(cp.id)+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
@@ -6925,32 +6940,45 @@ window.addEventListener('storageReady', function(){
           if(_sf !== null){ sell = _sf; break; }
         }
         if(sell === null) sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-        // 製造年tooltip（在庫がある支店のみ、支店別製造年を使用）
+        // 製造年tooltip（年別在庫対応）
         const _yearTooltip = (brId)=>{
           const _tipBrId = brId || _catOwnBranchId;
-          const years = _catProds.filter(cp=>{
-            const ys = brId ? (cp.branchStock?cp.branchStock[brId]||0:0) : getStock(cp);
-            return ys > 0 && getBranchManufactureYear(cp, _tipBrId) != null;
-          }).map(cp=>getBranchManufactureYear(cp, _tipBrId)+'年製');
-          return years.length ? years.join(' / ') : '';
+          const parts = [];
+          _catProds.forEach(cp=>{
+            const _ys = getBranchYearStock(cp, _tipBrId);
+            const _ysKeys = Object.keys(_ys).filter(yr=>(_ys[yr]||0)>0).sort((a,b)=>b-a);
+            if(_ysKeys.length){
+              _ysKeys.forEach(yr=>parts.push(yr+'年製: '+_ys[yr]+'本'));
+            } else {
+              const _stk = brId ? (cp.branchStock?cp.branchStock[brId]||0:0) : getStock(cp);
+              const _mfy = getBranchManufactureYear(cp, _tipBrId);
+              if(_stk > 0 && _mfy != null) parts.push(_mfy+'年製');
+            }
+          });
+          return parts.length ? parts.join(' / ') : '';
+        };
+        // 仕入・販売価格tooltip（支店別、外部ユーザー除く）
+        const _priceTooltip = (brId)=>{
+          if(isExternalUser()) return '';
+          const _tipBrId = brId || _catOwnBranchId;
+          const _tipCp = _catProds.find(cp=>(cp.branchStock||{})[_tipBrId]>0) || _catProds[0];
+          if(!_tipCp) return '';
+          const _tCost = getBranchFixedCost(_tipCp, _tipBrId) ?? computeCostPrice(r.b, r.m, r.w, r.t);
+          const _tSellF = getBranchFixedSell(_tipCp, _tipBrId);
+          const _tSell = _tSellF !== null ? _tSellF : (getEffectiveSellPrice(r.b,r.m,r.w,r.t)||_tipCp.sellPrice||0);
+          let _pt = '';
+          if(_tCost) _pt += '仕入: ¥'+_tCost.toLocaleString();
+          if(_tSell) _pt += (_pt?'\n':'')+'販売: ¥'+_tSell.toLocaleString();
+          return _pt;
         };
         const stockCell = _catShowMultiCols
           ? _catVisibleBranches.map(brId => {
               const bStk = stockForCatalogEntryByBranch(r, brId);
               const _tip = _yearTooltip(brId);
               const _isOwnBranch = brId === _catOwnBranchId;
-              // 他支店列：価格情報をツールチップに追加（外部ユーザー除く）
               let _tipFull = _tip || '';
-              if(!_isOwnBranch && !isExternalUser() && _tip){
-                const _tipCp = _catProds.find(cp=>(cp.branchStock||{})[brId]>0) || _catProds[0];
-                if(_tipCp){
-                  const _tCost = getEffectiveCostForBranch(_tipCp, brId);
-                  const _tSellF = getBranchFixedSell(_tipCp, brId);
-                  const _tSell = _tSellF !== null ? _tSellF : (getEffectiveSellPrice(r.b,r.m,r.w,r.t)||_tipCp.sellPrice||0);
-                  if(_tCost) _tipFull += '\n仕入: ¥'+_tCost.toLocaleString();
-                  if(_tSell) _tipFull += '\n販売: ¥'+_tSell.toLocaleString();
-                }
-              }
+              const _priceTip = _priceTooltip(brId);
+              if(_priceTip) _tipFull += (_tipFull?'\n':'')+_priceTip;
               const _tipAttr = _tipFull ? ' title="'+_tipFull+'"' : '';
               const _tipBadge = _tip ? '<span data-price-tip="'+_tipFull+'" style="cursor:'+(_tipFull&&!_isOwnBranch?'pointer':'default')+';font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
               let _extra = _tipBadge;
