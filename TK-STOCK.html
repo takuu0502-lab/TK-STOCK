@@ -13848,7 +13848,17 @@ window.addEventListener('storageReady', function(){
     const msgEl = document.getElementById('detailActionMsg');
     if(!canOperateBranch()){ msgEl.innerHTML = '<div class="msg msg-error">'+escapeHtml(branchName(getOperationBranch()))+'の在庫は操作できません。自分の所属支店タブに切り替えてください。</div>'; return; }
     if(!qty || qty <= 0){ msgEl.innerHTML = '<div class="msg msg-error">数量を正しく入力してください。</div>'; return; }
-    if(kind === 'out' && qty > getStock(p)){ msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return; }
+    const _detMfYearChk = document.getElementById('detailMfYear');
+    const _detMfYearVal = _detMfYearChk ? parseInt(_detMfYearChk.value||'0',10) : 0;
+    if(kind === 'out'){
+      if(_detMfYearVal >= 2000 && _detMfYearVal <= 2099 && hasYearStock(p, getOperationBranch())){
+        // 年別在庫チェック
+        const _yrAvailChk = (getBranchYearStock(p, getOperationBranch())[String(_detMfYearVal)])||0;
+        if(qty > _yrAvailChk){ msgEl.innerHTML = '<div class="msg msg-error">'+_detMfYearVal+'年製の在庫('+_yrAvailChk+'本)を超える出庫はできません。</div>'; return; }
+      } else if(qty > getStock(p)){
+        msgEl.innerHTML = '<div class="msg msg-error">在庫数('+getStock(p)+')を超える出庫はできません。</div>'; return;
+      }
+    }
     const label = kind === 'in' ? '入庫' : '出庫';
     let outCustomerName = '';
     if(kind === 'out'){
@@ -13860,14 +13870,18 @@ window.addEventListener('storageReady', function(){
       if(!confirmed) return;
     }
     const opBranch = getOperationBranch(); if(!p.branchStock) p.branchStock={};
-    const _detMfYearEl = document.getElementById('detailMfYear');
-    const _detMfYear = _detMfYearEl ? parseInt(_detMfYearEl.value||'0',10) : 0;
+    const _detMfYear = _detMfYearVal; // 既にバリデーション済みの値を再利用
+    const _hasYS = hasYearStock(p, opBranch);
     if(_detMfYear >= 2000 && _detMfYear <= 2099){
       if(kind==='in'){
         addToYearStock(p, opBranch, _detMfYear, qty);
       } else {
         removeFromYearStock(p, opBranch, _detMfYear, qty);
       }
+    } else if(_hasYS){
+      // 年別在庫がある商品で製造年未指定はNG
+      msgEl.innerHTML = '<div class="msg msg-error">この商品は製造年別に管理されています。製造年を指定してください。</div>';
+      return;
     } else {
       p.branchStock[opBranch] = (p.branchStock[opBranch]||0) + (kind==='in' ? qty : -qty);
       if(p.branchStock[opBranch] < 0) p.branchStock[opBranch] = 0;
