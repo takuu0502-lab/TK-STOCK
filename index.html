@@ -2943,8 +2943,9 @@ window.addEventListener('storageReady', function(){
     return Object.values(_dd);
   }
   function getBrands(){
-    if(!importedItems.length) return DISTINCT_BRANDS;
     const _brands = new Set(getCatalog().map(r=>r.b));
+    // DISTINCT_BRANDSの静的ブランドも追加
+    for(const b of DISTINCT_BRANDS) _brands.add(b);
     // 価格ルールで設定済みのブランドも含める（カタログ未取込でも設定を維持）
     for(const rules of Object.values(allPriceRules)){
       if(rules && rules.byBrand) for(const b of Object.keys(rules.byBrand)) _brands.add(b);
@@ -4146,7 +4147,20 @@ window.addEventListener('storageReady', function(){
 
     // 管理タブの総管理者専用セクション表示を初期化（migration後のrole確定後に実行）
     const _superAdminSec = document.getElementById('superAdminPricingSection');
-    if(_superAdminSec) _superAdminSec.style.display = isSuperAdminUser() ? '' : 'none';
+    if(_superAdminSec){
+      _superAdminSec.style.display = isSuperAdminUser() ? '' : 'none';
+      // 管理タブがすでに表示中の場合はレンダー関数も実行
+      if(isSuperAdminUser()){
+        const _pricingTab = document.getElementById('tab-pricing');
+        if(_pricingTab && _pricingTab.style.display !== 'none'){
+          renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor();
+          if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable();
+          initCatalogBulkRegisterBranchSelect();
+          const _costAllBtn = document.getElementById('saveCostPricingRulesAllBranches');
+          if(_costAllBtn) _costAllBtn.style.display = 'inline-flex';
+        }
+      }
+    }
   }
 
   async function saveLabelSettings(){
