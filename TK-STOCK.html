@@ -460,10 +460,10 @@
   .cat-badge{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600;display:inline-block;letter-spacing:0.3px;white-space:nowrap;}
   .cat-sub-label{font-size:11px;color:var(--text-3);display:block;margin-top:3px;}
 
-  .gauge-wrap{display:flex;align-items:baseline;gap:8px;}
-  .gauge-bar{width:64px;height:6px;background:var(--bg-1);border-radius:99px;overflow:hidden;}
+  .gauge-wrap{display:flex;align-items:center;gap:8px;}
+  .gauge-bar{width:64px;height:6px;background:var(--bg-1);border-radius:99px;overflow:hidden;flex-shrink:0;}
   .gauge-fill{height:100%;border-radius:99px;}
-  .stock-num{font-family:var(--font-mono);font-weight:600;font-size:13.5px;min-width:28px;}
+  .stock-num{font-family:var(--font-mono);font-weight:600;font-size:13.5px;min-width:28px;line-height:1;}
 
   .empty-state{text-align:center;padding:40px 10px;color:var(--text-3);font-size:13.5px;}
 
@@ -7657,10 +7657,11 @@ window.addEventListener('storageReady', function(){
                 badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--amber);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>';
               }
               // 製造年バッジ：年別在庫(_branchYearStock)優先、なければ旧来の_branchManufactureYear
+              let _yearBadgeHtml = '';
               if(bStk > 0 || hasYearStock(p, brId)){
                 if(hasYearStock(p, brId)){
                   // 年別在庫バッジ（複数年対応）
-                  badges += yearStockBadgesHtml(p, brId, isOwn);
+                  _yearBadgeHtml = yearStockBadgesHtml(p, brId, isOwn);
                 } else {
                   const _brMfYear = getBranchManufactureYear(p, brId);
                   if(_brMfYear){
@@ -7677,7 +7678,7 @@ window.addEventListener('storageReady', function(){
                       if(_brCost > 0) _yrTitle += '\n仕入: ¥'+_brCost.toLocaleString();
                       if(_brSell > 0) _yrTitle += '\n販売: ¥'+_brSell.toLocaleString();
                     }
-                    badges += '<div data-price-tip="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
+                    _yearBadgeHtml = '<div data-price-tip="'+(_yrTitle||'')+'" style="cursor:'+(_yrTitle?'pointer':'default')+';display:inline-flex;align-items:center;gap:3px;background:'+_yrBg+';color:'+_yrColor+';font-size:'+(isOwn?'10':'9')+'px;font-weight:600;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🗓 '+_brMfYear+'年製</div>';
                   }
                 }
               }
@@ -7689,9 +7690,12 @@ window.addEventListener('storageReady', function(){
                 }
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;text-align:left;">'
+                + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
                 + '<div class="gauge-bar"><div class="gauge-fill" style="width:'+bPct+'%;background:'+bColor+';"></div></div>'
                 + (bLow ? '<span class="low-flag">在庫少</span>' : '')
+                + '</div>'
+                + _yearBadgeHtml
                 + '</div>'
                 + badges
                 + '</td>';
