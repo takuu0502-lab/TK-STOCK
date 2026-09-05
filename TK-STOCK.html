@@ -1432,8 +1432,9 @@
     <div class="detail-hist-title" style="margin-top:22px;">ブランド別設定</div>
     <div id="costBrandRulesList" style="margin-top:8px;"></div>
     <div id="costPricingMsg"></div>
-    <div style="margin-top:18px;">
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-amber" id="saveCostPricingRules">仕入れ価格の設定を保存</button>
+      <button class="btn btn-ghost" id="saveCostPricingRulesAllBranches" style="font-size:12px;color:var(--text-2);display:none;" title="この支店の仕入れ価格設定を全店舗にコピーして保存します">📋 全店舗に一括コピー</button>
     </div>
     <div id="costRuleDebug" style="margin-top:12px;font-size:12px;color:var(--text-2);background:var(--bg-2);border-radius:6px;padding:10px;display:none;"></div>
 
@@ -3577,11 +3578,46 @@ window.addEventListener('storageReady', function(){
     });
     allCostRules[pricingActiveBranch].byBrand = byBrand;
     allCostRules[pricingActiveBranch].byModel = byModel;
-    // 全支店に同じ設定を同期
+    await saveCostRules();
+    updateCurrentCostRules();
+    showToast('仕入れ価格の設定を保存しました。');
+    updateCostRuleDebug();
+    renderPriceCatalog();
+  });
+
+  document.getElementById('saveCostPricingRulesAllBranches').addEventListener('click', async ()=>{
+    if(!isSuperAdminUser()) return;
+    const ok = await showConfirm('この支店（'+branchName(pricingActiveBranch)+'）の仕入れ価格設定を全店舗にコピーして保存します。よろしいですか？');
+    if(!ok) return;
+    if(!allCostRules[pricingActiveBranch]) allCostRules[pricingActiveBranch] = defaultCostRules();
+    // 現在のフォーム値を pricingActiveBranch に反映（save handler と同じロジック）
+    allCostRules[pricingActiveBranch].default = {
+      basis: document.getElementById('cr_default_basis').value,
+      percent: Number(document.getElementById('cr_default_percent').value) || 0
+    };
+    const _abByBrand = {};
+    getBrands().forEach(brand=>{
+      const basisEl = document.querySelector('[data-cost-rule-basis="'+brand+'"]');
+      const percentEl = document.querySelector('[data-cost-rule-percent="'+brand+'"]');
+      if(basisEl && basisEl.value) _abByBrand[brand] = {basis: basisEl.value, percent: Number(percentEl ? percentEl.value : 0) || 0};
+    });
+    const _abByModel = Object.assign({}, allCostRules[pricingActiveBranch].byModel || {});
+    expandedCostBrandModels.forEach(brand=>{
+      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
+      models.forEach(model=>{
+        const key = brand+'||'+model;
+        const basisEl = document.querySelector('[data-cost-model-rule-basis="'+key+'"]');
+        const percentEl = document.querySelector('[data-cost-model-rule-percent="'+key+'"]');
+        if(!basisEl) return;
+        const basis = basisEl.value; const pct = Number(percentEl ? percentEl.value : 0) || 0;
+        if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')) _abByModel[key] = {basis, percent: pct};
+        else delete _abByModel[key];
+      });
+    });
+    allCostRules[pricingActiveBranch].byBrand = _abByBrand;
+    allCostRules[pricingActiveBranch].byModel = _abByModel;
     BRANCHES.forEach(b=>{
-      if(b.id !== pricingActiveBranch){
-        allCostRules[b.id] = JSON.parse(JSON.stringify(allCostRules[pricingActiveBranch]));
-      }
+      if(b.id !== pricingActiveBranch) allCostRules[b.id] = JSON.parse(JSON.stringify(allCostRules[pricingActiveBranch]));
     });
     await saveCostRules();
     updateCurrentCostRules();
@@ -5575,7 +5611,7 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); }
+      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); const _costAllBtn = document.getElementById('saveCostPricingRulesAllBranches'); if(_costAllBtn) _costAllBtn.style.display = isSuperAdminUser() ? 'inline-flex' : 'none'; }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
