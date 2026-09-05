@@ -1362,6 +1362,8 @@
       <span id="announcementSaveMsg" style="font-size:12px;color:var(--teal);display:none;">保存しました</span>
     </div>
 
+    <div id="superAdminPricingSection" style="display:none;">
+
     <div class="pricing-section-divider"></div>
 
     <!-- 支店切替タブ -->
@@ -1618,6 +1620,8 @@
     </p>
     <div id="popTemplateList" style="margin-bottom:14px;"></div>
     <button class="btn btn-amber btn-sm" id="addPopTemplateBtn">＋ テンプレートを追加</button>
+
+    </div><!-- /superAdminPricingSection -->
 
   </div>
 </div>
@@ -5630,7 +5634,11 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      if(tab === 'pricing'){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); const _costAllBtn = document.getElementById('saveCostPricingRulesAllBranches'); if(_costAllBtn) _costAllBtn.style.display = isSuperAdminUser() ? 'inline-flex' : 'none'; }
+      if(tab === 'pricing'){
+        const _superAdminSec = document.getElementById('superAdminPricingSection');
+        if(_superAdminSec) _superAdminSec.style.display = isSuperAdminUser() ? '' : 'none';
+        if(isSuperAdminUser()){ renderPricingBranchTabs(); renderBrandRules(); renderCostBrandRules(); renderExternalBrandRules(); renderImportedCatalogsPreview(); initWheelMenuEditor(); initWheelCatalogEditor(); if(typeof window.renderBulkUrlTable==='function') window.renderBulkUrlTable(); initCatalogBulkRegisterBranchSelect(); const _costAllBtn = document.getElementById('saveCostPricingRulesAllBranches'); if(_costAllBtn) _costAllBtn.style.display = 'inline-flex'; }
+      }
       if(tab === 'estimate'){ renderEstimateTab(); }
       if(tab === 'out'){ renderProvisionalList(); }
       if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
