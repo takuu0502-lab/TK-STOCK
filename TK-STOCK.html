@@ -17915,8 +17915,8 @@ window.addEventListener('storageReady', function(){
       importedAt: new Date().toLocaleDateString('ja-JP'),
       items: items
     };
-    // 同じブランドの既存データを置換
-    importedCatalogs = importedCatalogs.filter(c=>c.brand !== brand);
+    // 同じ価格表名の既存データを置換（同ブランドの複数ファイルは共存可能）
+    importedCatalogs = importedCatalogs.filter(c=>c.name !== name);
     importedCatalogs.push(catalog);
     rebuildImportedItems();
     const saveOk = await saveImportedCatalogs();
