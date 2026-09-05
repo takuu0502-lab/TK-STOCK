@@ -2943,18 +2943,14 @@ window.addEventListener('storageReady', function(){
     return Object.values(_dd);
   }
   function getBrands(){
+    // タイヤカタログのブランド
     const _brands = new Set(getCatalog().map(r=>r.b));
-    // DISTINCT_BRANDSの静的ブランドも追加
-    for(const b of DISTINCT_BRANDS) _brands.add(b);
-    // 価格ルールで設定済みのブランドも含める（カタログ未取込でも設定を維持）
-    for(const rules of Object.values(allPriceRules)){
-      if(rules && rules.byBrand) for(const b of Object.keys(rules.byBrand)) _brands.add(b);
-    }
     // 登録済みタイヤ商品のブランドも含める
     const _tireCatForBrands = categories.find(c=>c.name==='タイヤ');
     for(const p of products){
       if(p.brand && _tireCatForBrands && p.majorId === _tireCatForBrands.id) _brands.add(p.brand);
     }
+    // 価格ルール設定済みブランドはタイヤ由来のものだけ残す（_brandsにすでに含まれていれば追加不要）
     return Array.from(_brands).sort((a,b)=>a.localeCompare(b,'ja'));
   }
   // モデル名からブリヂストン銘柄を正規化（インポートデータのブランド名補正用）
