@@ -3416,7 +3416,7 @@ window.addEventListener('storageReady', function(){
       const bg = diff<=0?'#e0f5f0':diff===1?'#d4edda':diff===2?'#fff3cd':'#fde8e8';
       const col = diff<=0?'var(--teal)':diff===1?'#1a7a3c':diff===2?'#b8650c':'#c0392b';
       const fs = isOwn?'10':'9'; const px = isOwn?'6':'5'; const br = isOwn?'8':'6';
-      return '<div style="display:inline-flex;align-items:center;gap:2px;margin-top:3px;background:'+bg+';color:'+col+';font-size:'+fs+'px;font-weight:600;padding:1px '+px+'px;border-radius:'+br+'px;white-space:nowrap;">🗓 '+yr+'年製: <strong>'+ys[yr]+'</strong></div>';
+      return '<div style="display:inline-flex;align-items:center;gap:2px;margin-top:3px;background:'+bg+';color:'+col+';font-size:'+fs+'px;font-weight:600;padding:1px '+px+'px;border-radius:'+br+'px;white-space:nowrap;">🗓 '+yr+'年製: <strong>'+ys[yr]+'本</strong></div>';
     }).join(' ');
   }
   // ─────────────────────────────────────────────────────────────
@@ -7660,7 +7660,7 @@ window.addEventListener('storageReady', function(){
                   badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565c0;font-size:'+(isOwn?'10':'9')+'px;font-weight:700;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🏪 預かり '+_cstQty+'本</div>';
                 }
               }
-              cell += '<td style="padding:6px 10px;vertical-align:top;">'
+              cell += '<td style="padding:6px 10px;vertical-align:top;text-align:left;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
                 + '<div class="gauge-bar"><div class="gauge-fill" style="width:'+bPct+'%;background:'+bColor+';"></div></div>'
                 + (bLow ? '<span class="low-flag">在庫少</span>' : '')
