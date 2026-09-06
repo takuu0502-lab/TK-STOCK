@@ -4036,6 +4036,7 @@ window.addEventListener('storageReady', function(){
     return [
       {id: uid('c'), name:'タイヤ', subs:[{id:uid('s'),name:'サマータイヤ'},{id:uid('s'),name:'スタッドレスタイヤ'}]},
       {id: uid('c'), name:'ホイール', subs:[{id:uid('s'),name:'スチールホイール'},{id:uid('s'),name:'アルミホイール'}]},
+      {id: uid('c'), name:'セット品', subs:[{id:uid('s'),name:'スタッドレスセット'},{id:uid('s'),name:'サマーセット'}]},
       {id: uid('c'), name:'オイル', subs:[{id:uid('s'),name:'エンジンオイル'},{id:uid('s'),name:'ギアオイル'}]},
       {id: uid('c'), name:'メンテナンス', subs:[{id:uid('s'),name:'バッテリー'},{id:uid('s'),name:'ワイパー'},{id:uid('s'),name:'フィルター'}]},
       {id: uid('c'), name:'その他', subs:[]}
@@ -4058,6 +4059,15 @@ window.addEventListener('storageReady', function(){
     if(!categories || categories.length === 0){
       categories = defaultCategories();
       await saveCategories();
+    } else {
+      // 「セット品」カテゴリが未登録の場合は自動追加
+      if(!categories.find(c=>c.name==='セット品')){
+        const insertIdx = categories.findIndex(c=>c.name==='ホイール');
+        const setcat = {id:uid('c'), name:'セット品', subs:[{id:uid('s'),name:'スタッドレスセット'},{id:uid('s'),name:'サマーセット'}]};
+        if(insertIdx >= 0) categories.splice(insertIdx+1, 0, setcat);
+        else categories.push(setcat);
+        await saveCategories();
+      }
     }
     try{
       const p = await window.storage.get('products', SHARED);
