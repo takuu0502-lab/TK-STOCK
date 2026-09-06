@@ -7780,7 +7780,7 @@ window.addEventListener('storageReady', function(){
       const showBranchBadge = selectedBranchFilter === null; // 全支店表示時のみバッジ表示
       return '<tr class="clickable-row'+(isChecked?' row-selected':'')+'" data-detail="'+p.id+'" style="vertical-align:top;">'
         + '<td class="chk-col"><input type="checkbox" class="row-chk" data-chk-id="'+p.id+'"'+(isChecked?' checked':'')+' onclick="event.stopPropagation();"></td>'
-        + (showBrand ? '<td data-label="ブランド" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+(showBranchBadge?'<br><span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>' : '<td>'+(showBranchBadge?'<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>')
+        + (showBrand ? '<td data-label="メーカー" style="color:var(--amber);font-size:12px;white-space:nowrap;">'+escapeHtml(brandName)+(showBranchBadge?'<br><span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>' : '<td>'+(showBranchBadge?'<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:6px;">'+escapeHtml(branchName(pBranch))+'</span>':'')+'</td>')
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+'</td>'
         + (_isWheelCat ? (()=>{
             const ws = p.wheelSpec || {};
@@ -7926,8 +7926,8 @@ window.addEventListener('storageReady', function(){
       ? '<th>ホイールスペック</th>'
       : '<th style="white-space:nowrap;">規格・サイズ</th>';
     const thead = recentFilter
-      ? '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th>'+_midHeadersRecent+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
-      : '<thead><tr>'+headerChk+'<th>ブランド</th><th>商品名</th>'+_midHeaders+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'</tr></thead>';
+      ? '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeadersRecent+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
+      : '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeaders+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'</tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     updateBulkBar();
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
