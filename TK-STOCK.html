@@ -5103,6 +5103,39 @@ window.addEventListener('storageReady', function(){
   }
   window.custodyPrintLabel=custodyPrintLabel;
 
+  // ── 仮出庫ラベル印刷 ──
+  function printProvLabel(provEntry){
+    if(!provEntry) return;
+    const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const brLabel = branchName(brId);
+    const today = new Date();
+    const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
+    function fmtDate(str){
+      if(!str || str==='未定') return str||'';
+      const d = new Date(str+'T00:00:00');
+      if(isNaN(d)) return str;
+      return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
+    }
+    const installStr = fmtDate(provEntry.scheduledDate);
+    const items = (provEntry.items||[]).map(item=>{
+      const p = products.find(x=>x.id===item.productId);
+      const ws = p && p.wheelSpec;
+      const specStr = ws ? [ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'', ws.holes&&ws.pcd?ws.holes+'H PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''].filter(Boolean).join(' ') : (item.spec||'');
+      const nameStr = (item.brand ? item.brand+' ' : '')+(item.name||'');
+      return _makeLabelHtmlInline({
+        status:'仮出庫', statusBg:'#b45309',
+        customer: (provEntry.customerName||'')+'　様',
+        name: nameStr,
+        spec: specStr,
+        partno: item.partno ? '品番：'+item.partno : '',
+        installDate: installStr ? '取付予定：'+installStr : '',
+        footer: (provEntry.carName ? provEntry.carName+'　' : '')+'登録日：'+dateStr+'　'+brLabel
+      });
+    });
+    if(items.length > 0) _printLabelsPDF(items, '仮出庫ラベル');
+  }
+  window.printProvLabel = printProvLabel;
+
   // ── 預かり出庫（本数追加）──
   function custodyAddQty(rowId){
     const row=custodyContracts.find(x=>x.id===rowId);
@@ -9434,6 +9467,9 @@ window.addEventListener('storageReady', function(){
       selectedProducts.clear(); updateBulkBar();
       renderProductTable();
       switchTab('out');
+      // ラベル印刷の確認
+      const _doPrint = await showConfirm('仮出庫ラベルを印刷しますか？');
+      if(_doPrint) printProvLabel(entry);
     });
     // 客注品登録（一括）→ 入庫予定登録モーダルを客注品モードで開く
     document.getElementById('bulkCoBtn')?.addEventListener('click', ()=>{
@@ -15376,10 +15412,11 @@ window.addEventListener('storageReady', function(){
           +''
           +'</div>'
           /* カード下部ボタン */
-          +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-          +'<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;">出庫確定</button>'
-          +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
-          +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">'+cancelLabel+'</button>'
+          +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap;">'
+          +'<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;min-width:80px;font-size:12px;">出庫確定</button>'
+          +'<button class="btn btn-ghost btn-sm prov-label-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 10px;">🖨️ ラベル</button>'
+          +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 10px;">編集</button>'
+          +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 10px;">'+cancelLabel+'</button>'
           +'</div>'
           +'</div>';
       }).join('');
@@ -15422,6 +15459,13 @@ window.addEventListener('storageReady', function(){
         entry.status = 'confirmed';
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
         renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
+      });
+    });
+
+    wrap.querySelectorAll('.prov-label-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
+        if(entry) printProvLabel(entry);
       });
     });
 
