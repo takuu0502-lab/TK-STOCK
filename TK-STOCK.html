@@ -1859,7 +1859,7 @@
     </div>
     <div class="row">
       <div class="field" style="flex:1;">
-        <label>ブランド名</label>
+        <label>メーカー名</label>
         <input type="text" id="f_brand" placeholder="例) ブリヂストン、ヨコハマ">
       </div>
       <div class="field" style="flex:1;">
@@ -18045,7 +18045,7 @@ window.addEventListener('storageReady', function(){
     const brand = document.getElementById('importBrandName').value.trim();
     const name = document.getElementById('importCatalogName').value.trim();
     const msgEl = document.getElementById('importMsg');
-    if(!brand){ msgEl.innerHTML = '<div class="msg msg-error">ブランド名を入力してください。</div>'; return; }
+    if(!brand){ msgEl.innerHTML = '<div class="msg msg-error">メーカー名を入力してください。</div>'; return; }
     if(!name){ msgEl.innerHTML = '<div class="msg msg-error">価格表名を入力してください。</div>'; return; }
     if(!parsedImportData.length){ msgEl.innerHTML = '<div class="msg msg-error">取込データがありません。</div>'; return; }
 
