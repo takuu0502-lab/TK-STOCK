@@ -7643,10 +7643,7 @@ window.addEventListener('storageReady', function(){
     };
     // キーワード検索中は在庫フィルターをスキップ（0在庫の重複商品を検索・削除できるようにする）
     const _skipStockFilter = !!(keywordFilter && keywordFilter.trim());
-    // タイヤ/ホイールカテゴリを選択中のときのみ、在庫0でも表示（在庫入力・管理のため）
-    const _viewingTireOrWheel = selectedMajor === _tireCatId2 || selectedMajor === _wheelCatId;
-    const _isTireOrWheelProduct = p => (_tireCatId2 && p.majorId === _tireCatId2) || (_wheelCatId && p.majorId === _wheelCatId);
-    let filteredList = (stockOnlyFilter && !recentFilter && !_skipStockFilter) ? list.filter(p=> getTotalStock(p) > 0 || (_viewingTireOrWheel && _isTireOrWheelProduct(p))) : list;
+    let filteredList = (stockOnlyFilter && !recentFilter && !_skipStockFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
     if(ownStockOnlyFilter && !_skipStockFilter){
       const _ownBrId = (currentUser && currentUser.branchId) || 'taniyabe';
       filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBrId]||0) : (p.stock||0)) > 0);
@@ -14277,6 +14274,8 @@ window.addEventListener('storageReady', function(){
       await saveToJanDict(barcode, {name, brand, partno, spec, majorId, subId});
     }
     await saveProducts();
+    // 新規登録後は在庫フィルターをオフ（在庫0の登録品が即座に表示されるように）
+    stockOnlyFilter = false; ownStockOnlyFilter = false;
     // 各描画を独立したtry/catchで実行（一つが失敗しても他の再描画をスキップしない）
     try { renderCatTree(); } catch(e){ console.error('renderCatTree error:', e); }
     try { renderProductTable(); } catch(e){ console.error('renderProductTable error:', e); }
