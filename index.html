@@ -13947,16 +13947,16 @@ window.addEventListener('storageReady', function(){
     const bg=opts.statusBg||'#000';
     const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     let mid='';
-    if(opts.customer) mid+=`<div style="font-size:${fmPx}px;font-weight:700;">${esc(opts.customer)}</div>`;
-    if(opts.name)     mid+=`<div style="font-size:${fnPx}px;font-weight:700;line-height:1.2;">${esc(opts.name)}</div>`;
-    if(opts.spec)     mid+=`<div style="font-size:${fsPx}px;color:#333;line-height:1.2;">${esc(opts.spec)}</div>`;
-    if(opts.partno)   mid+=`<div style="font-size:${fmPx}px;color:#555;">${esc(opts.partno)}</div>`;
-    if(opts.qty)      mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#6d28d9;">${esc(opts.qty)}</div>`;
-    if(opts.installDate) mid+=`<div style="font-size:${fmPx}px;">${esc(opts.installDate)}</div>`;
-    return `<div style="width:${w}px;height:${h}px;border:1px solid #000;padding:${pv}px ${ph}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${ff};">`
-      +`<div style="font-size:${stPx}px;font-weight:900;color:#fff;background:${bg};display:inline-block;padding:1px 4px;border-radius:3px;">${esc(opts.status||'')}</div>`
+    if(opts.customer) mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
+    if(opts.name)     mid+=`<div style="font-size:${fnPx}px;font-weight:700;color:#000;line-height:1.2;">${esc(opts.name)}</div>`;
+    if(opts.spec)     mid+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.2;">${esc(opts.spec)}</div>`;
+    if(opts.partno)   mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.partno)}</div>`;
+    if(opts.qty)      mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.qty)}</div>`;
+    if(opts.installDate) mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.installDate)}</div>`;
+    return `<div style="width:${w}px;height:${h}px;border:2px solid #000;padding:${pv}px ${ph}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${ff};">`
+      +`<div style="font-size:${stPx}px;font-weight:900;color:#fff;background:#000;display:inline-block;padding:1px 4px;border-radius:3px;">${esc(opts.status||'')}</div>`
       +`<div>${mid}</div>`
-      +`<div style="font-size:${fmPx}px;color:#555;text-align:right;">${esc(opts.footer||'')}</div>`
+      +`<div style="font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;">${esc(opts.footer||'')}</div>`
       +'</div>';
   }
 
