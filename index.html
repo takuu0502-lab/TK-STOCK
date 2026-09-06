@@ -7625,7 +7625,9 @@ window.addEventListener('storageReady', function(){
     };
     // キーワード検索中は在庫フィルターをスキップ（0在庫の重複商品を検索・削除できるようにする）
     const _skipStockFilter = !!(keywordFilter && keywordFilter.trim());
-    let filteredList = (stockOnlyFilter && !recentFilter && !_skipStockFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
+    // タイヤ・ホイールは在庫0でも常に表示（在庫入力・管理のため）
+    const _isTireOrWheelProduct = p => (_tireCatId2 && p.majorId === _tireCatId2) || (_wheelCatId && p.majorId === _wheelCatId);
+    let filteredList = (stockOnlyFilter && !recentFilter && !_skipStockFilter) ? list.filter(p=> getTotalStock(p) > 0 || _isTireOrWheelProduct(p)) : list;
     if(ownStockOnlyFilter && !_skipStockFilter){
       const _ownBrId = (currentUser && currentUser.branchId) || 'taniyabe';
       filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBrId]||0) : (p.stock||0)) > 0);
