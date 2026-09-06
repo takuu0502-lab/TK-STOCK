@@ -2949,16 +2949,31 @@ window.addEventListener('storageReady', function(){
 
   let importedItems = [];
   let importedCatalogs = []; // [{id, name, brand, importedAt, items:[]}]
+  let _catalogCache = null; // getCatalog()のキャッシュ（rebuildImportedItems時にクリア）
+  let _catalogKeyMap = null; // catalogKey(b||m||s) → catalogEntry の高速検索Map
+  function _clearCatalogCache(){ _catalogCache = null; _catalogKeyMap = null; }
   function getCatalog(){
-    if(!importedItems.length) return PRICE_CATALOG;
-    // インポート済みデータがある場合、同じ銘柄+サイズのPRICE_CATALOGエントリを除外（新価格優先）
-    const _importedKeys = new Set(importedItems.map(r=>r.m+'||'+r.s));
-    const _filteredBase = PRICE_CATALOG.filter(r => !_importedKeys.has(r.m+'||'+r.s));
-    const _all = [..._filteredBase, ...importedItems];
-    // 最終デdup（ブランド+銘柄+サイズで一意化）
-    const _dd = {};
-    for(const r of _all) _dd[(r.b||'')+'||'+(r.m||'')+'||'+(r.s||'')] = r;
-    return Object.values(_dd);
+    if(_catalogCache) return _catalogCache;
+    if(!importedItems.length){ _catalogCache = PRICE_CATALOG; }
+    else {
+      // インポート済みデータがある場合、同じ銘柄+サイズのPRICE_CATALOGエントリを除外（新価格優先）
+      const _importedKeys = new Set(importedItems.map(r=>r.m+'||'+r.s));
+      const _filteredBase = PRICE_CATALOG.filter(r => !_importedKeys.has(r.m+'||'+r.s));
+      const _all = [..._filteredBase, ...importedItems];
+      // 最終デdup（ブランド+銘柄+サイズで一意化）
+      const _dd = {};
+      for(const r of _all) _dd[(r.b||'')+'||'+(r.m||'')+'||'+(r.s||'')] = r;
+      _catalogCache = Object.values(_dd);
+    }
+    // catalogKey検索用Mapも同時に構築
+    _catalogKeyMap = new Map();
+    for(const r of _catalogCache) _catalogKeyMap.set((r.b||'')+'||'+(r.m||'')+'||'+(r.s||''), r);
+    return _catalogCache;
+  }
+  // catalogKeyで直接O(1)検索
+  function getCatalogByKey(b, m, s){
+    if(!_catalogKeyMap) getCatalog();
+    return _catalogKeyMap.get((b||'')+'||'+(m||'')+'||'+(s||'')) || null;
   }
   function getBrands(){
     // 取込済みカタログに存在するブランドのみ表示
@@ -3012,6 +3027,7 @@ window.addEventListener('storageReady', function(){
       _dedup[key] = item;
     }
     importedItems = Object.values(_dedup);
+    _clearCatalogCache(); // カタログキャッシュを無効化
   }
   async function loadImportedCatalogs(){
     try{
@@ -6668,10 +6684,10 @@ window.addEventListener('storageReady', function(){
     return products.filter(p => _matchesCatalogEntry(p, r));
   }
   function findCatalogEntryForProduct(p){
-    // catalogKeyで優先照合（商品名を変更してもカタログとの紐付けが維持される）
+    // catalogKeyで優先照合（O(1)マップ検索）
     if(p.catalogKey){
       const [ckB, ckM, ckS] = p.catalogKey.split('||');
-      const byKey = getCatalog().find(r => r.b===ckB && r.m===ckM && r.s===ckS);
+      const byKey = getCatalogByKey(ckB, ckM, ckS);
       if(byKey) return byKey;
     }
     if(!p.spec || !p.name) return null;
@@ -7591,6 +7607,10 @@ window.addEventListener('storageReady', function(){
       return true;
     });
     renderInventoryFilter(list.length > 0);
+    // 【パフォーマンス最適化】product.id → catalogEntry のMapを一度だけ構築
+    // renderProductTable内で findCatalogEntryForProduct を何度も呼ぶ代わりに使う
+    const _prodCatMap = new Map();
+    for(const p of list) _prodCatMap.set(p.id, findCatalogEntryForProduct(p));
     // 在庫あり判定：タイヤ・ホイールカテゴリは全支店合計、それ以外は自店舗在庫のみで判定
     const _stockFilterBranch = (currentUser && currentUser.branchId) || 'taniyabe';
     const _wheelCatId = (categories.find(c => c.name === 'ホイール') || {}).id;
@@ -7696,7 +7716,7 @@ window.addEventListener('storageReady', function(){
       const max = Math.max(stk, p.minStock*2, 5, 1);
       const pct = Math.min(100, Math.round((stk / max) * 100));
       const color = gaugeColor(stk, p.minStock);
-      const _catE = findCatalogEntryForProduct(p);
+      const _catE = _prodCatMap.get(p.id) || null;
       const brandName = p.brand || (_catE ? _catE.b : '');
       const _pMajor = majorById(p.majorId);
       const _isTire = _pMajor && _pMajor.name === 'タイヤ';
