@@ -17052,16 +17052,17 @@ window.addEventListener('storageReady', function(){
   }
 
   // ---------- ホイールカタログ写真管理 ----------
-  let wheelCatalog = { 梅: [], 竹: [], 松: [] };
+  let wheelCatalog = { 梅: [], 竹: [], 松: [], 梅_suv: [], 竹_suv: [], 松_suv: [] };
+  let _wcatVehicleType = ''; // '' = 乗用車, 'suv' = SUV・4WD
 
   async function loadWheelCatalog(){
     try{
       const r = await window.storage.get('wheelCatalog', SHARED);
       if(r && r.value){
         const d = JSON.parse(r.value);
-        wheelCatalog = { 梅: d['梅']||[], 竹: d['竹']||[], 松: d['松']||[] };
+        wheelCatalog = { 梅: d['梅']||[], 竹: d['竹']||[], 松: d['松']||[], 梅_suv: d['梅_suv']||[], 竹_suv: d['竹_suv']||[], 松_suv: d['松_suv']||[] };
       }
-    }catch(e){ wheelCatalog = { 梅:[], 竹:[], 松:[] }; }
+    }catch(e){ wheelCatalog = { 梅:[], 竹:[], 松:[], 梅_suv:[], 竹_suv:[], 松_suv:[] }; }
   }
 
   async function saveWheelCatalog(){
@@ -17098,9 +17099,22 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     const TIER_COLORS = {梅:'var(--text-2)',竹:'var(--teal)',松:'var(--amber)'};
     const TIER_SUBS = {梅:'ベーシック',竹:'スタンダード',松:'プレミアム'};
-    wrap.innerHTML = '';
+    // 車種タブ
+    const tabHtml = '<div style="display:flex;gap:6px;margin-bottom:16px;">'
+      +['','suv'].map(vt=>{
+        const active = vt === _wcatVehicleType;
+        const label = vt==='' ? '乗用車' : 'SUV・4WD';
+        return `<button data-wcat-vtype="${vt}" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${active?'var(--amber)':'var(--line)'};background:${active?'var(--amber-dim)':'var(--bg-1)'};color:${active?'var(--amber)':'var(--text-2)'};font-size:12px;font-weight:${active?'700':'400'};cursor:pointer;">${label}</button>`;
+      }).join('')
+      +'</div>';
+    wrap.innerHTML = tabHtml;
+    wrap.querySelectorAll('[data-wcat-vtype]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ _wcatVehicleType = btn.dataset.wcatVtype; renderWheelCatalogEditor(); });
+    });
+    const keySuffix = _wcatVehicleType ? '_'+_wcatVehicleType : '';
     WHEEL_TIERS.slice().reverse().forEach(tier=>{
-      const items = wheelCatalog[tier] || [];
+      const tierKey = tier + keySuffix;
+      const items = wheelCatalog[tierKey] || [];
       const sec = document.createElement('div');
       sec.style.cssText = 'background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;';
       sec.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
@@ -17108,25 +17122,25 @@ window.addEventListener('storageReady', function(){
         +'<span style="font-size:20px;font-weight:700;color:'+TIER_COLORS[tier]+';">'+tier+'</span>'
         +'<span style="font-size:12px;color:var(--text-2);">'+TIER_SUBS[tier]+'</span>'
         +'</div>'
-        +'<button class="btn btn-ghost btn-sm" data-wcat-add="'+tier+'" style="font-size:12px;">＋ 写真を追加</button>'
+        +'<button class="btn btn-ghost btn-sm" data-wcat-add="'+tierKey+'" style="font-size:12px;">＋ 写真を追加</button>'
         +'</div>'
-        +'<div data-wcat-list="'+tier+'" style="display:flex;flex-wrap:wrap;gap:10px;">'
+        +'<div data-wcat-list="'+tierKey+'" style="display:flex;flex-wrap:wrap;gap:10px;">'
         + (items.length === 0 ? '<span style="font-size:12px;color:var(--text-3);">写真なし</span>' : '')
         + items.map((item, idx)=>'<div style="position:relative;width:90px;">'
           +'<div style="width:90px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg-1);">'
           +'<img src="'+escapeHtml(item.dataUrl||'')+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
           +'</div>'
-          +'<input type="text" data-wcat-name="'+tier+'" data-wcat-idx="'+idx+'" value="'+escapeHtml(item.name||'')+'" placeholder="名称を入力" '
+          +'<input type="text" data-wcat-name="'+tierKey+'" data-wcat-idx="'+idx+'" value="'+escapeHtml(item.name||'')+'" placeholder="名称を入力" '
           +'title="クリックして名前を編集（Enterで保存）" '
           +'style="width:90px;margin-top:6px;padding:5px 7px;font-size:11.5px;border:1.5px solid var(--amber);border-radius:5px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;cursor:text;outline:none;">'
-          +'<button data-wcat-del="'+tier+'" data-wcat-idx="'+idx+'" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">×</button>'
+          +'<button data-wcat-del="'+tierKey+'" data-wcat-idx="'+idx+'" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">×</button>'
           +'</div>').join('')
         +'</div>';
       wrap.appendChild(sec);
 
       sec.querySelector('[data-wcat-add]').addEventListener('click', ()=>{
         const fi = document.getElementById('wcatFileInput');
-        fi._wcatTier = tier;
+        fi._wcatTier = tierKey;
         fi.value = '';
         fi.click();
       });
@@ -17171,8 +17185,9 @@ window.addEventListener('storageReady', function(){
     const TIER_COLORS = {梅:'#5C5A52', 竹:'#1F8F68', 松:'#B8650C'};
     const TIER_EN   = {梅:'BASIC', 竹:'STANDARD', 松:'PREMIUM'};
     const TIER_SUBS = {梅:'ベーシック', 竹:'スタンダード', 松:'プレミアム'};
-    const sectionsHtml = WHEEL_TIERS.map(tier=>{
-      const items = wheelCatalog[tier] || [];
+    const makeSections = (suffix)=> WHEEL_TIERS.map(tier=>{
+      const tierKey = suffix ? tier+'_'+suffix : tier;
+      const items = wheelCatalog[tierKey] || [];
       const hasItems = items.length > 0;
       const strip = hasItems ? items.map(item=>{
         const src = escapeHtml(item.dataUrl||'');
@@ -17190,6 +17205,9 @@ window.addEventListener('storageReady', function(){
         +(hasItems?'<div class="photo-strip">'+strip+'</div>':strip)
         +'</section>';
     }).join('');
+    const carSections = makeSections('');
+    const suvSections = makeSections('suv');
+    const sectionsHtml = carSections + suvSections;
     return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
       +'<title>アルミホイール カタログ</title>'
       +'<link rel="preconnect" href="https://fonts.googleapis.com">'
