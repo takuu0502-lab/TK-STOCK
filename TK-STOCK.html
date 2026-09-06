@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, set, get, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyA8--lZsQv4fg4ymCGU2qrMtIkp2HWGswQ",
@@ -60,6 +60,17 @@
         await remove(ref(db, path));
         return { deleted: true };
       } catch(e) { console.error('FB delete error', e); return null; }
+    },
+    // updateFn(currentValue: string|null) → string  ← Firebase retries on conflict
+    transaction: async (key, updateFn, shared) => {
+      try {
+        const path = shared ? 'shared/' + key : 'local/' + key;
+        const result = await runTransaction(ref(db, path), updateFn);
+        return result.committed ? { value: result.snapshot.val() } : null;
+      } catch(e) {
+        console.error('FB transaction error', e);
+        return null;
+      }
     }
   };
 
@@ -4221,27 +4232,27 @@ window.addEventListener('storageReady', function(){
     }catch(e){ labelSettings = { w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6 }; }
   }
   async function saveProducts(){
-    try{
-      // 【競合防止】保存前にFirebaseの最新データを取得し、他のアカウントが追加した商品をマージする
-      // これにより「複数アカウント同時使用時に後から保存した側が先の登録を上書きする」問題を防ぐ
-      try{
-        const _latestR = await window.storage.get('products', SHARED);
-        if(_latestR && _latestR.value){
-          const _latestProds = JSON.parse(_latestR.value);
-          const _localIds = new Set(products.map(p=>p.id));
-          // FirebaseにはあってローカルにないIDの商品（他アカウントが登録したもの）を追加
-          for(const fp of _latestProds){
-            if(!_localIds.has(fp.id)){
-              products.push(fp);
-              _localIds.add(fp.id);
-            }
-          }
+    // ローカルのproducts配列のスナップショット（トランザクション関数が参照）
+    const _localSnap = products.slice();
+    const result = await window.storage.transaction('products', (currentRaw) => {
+      // currentRaw = Firebaseの現在値（string | null）。競合時はFirebaseが自動リトライ。
+      const _fbProds = currentRaw ? JSON.parse(currentRaw) : [];
+      const _fbMap = new Map(_fbProds.map(p => [p.id, p]));
+      // ローカルの全商品をマージ（ローカルが新しければ上書き、なければ追加）
+      for(const lp of _localSnap){
+        const fbP = _fbMap.get(lp.id);
+        if(!fbP || (lp.updatedAt||0) >= (fbP.updatedAt||0)){
+          _fbMap.set(lp.id, lp);
         }
-      }catch(mergeErr){ console.warn('[saveProducts] merge read failed, saving local state only', mergeErr); }
-      await window.storage.set('products', JSON.stringify(products), SHARED);
-    }
-    catch(e){
-      console.error('save products failed', e);
+      }
+      return JSON.stringify([..._fbMap.values()]);
+    }, SHARED);
+
+    if(result){
+      // トランザクション成功 → ローカルをFirebaseの確定値で同期
+      try{ products = JSON.parse(result.value); }catch(_){}
+    } else {
+      console.error('saveProducts transaction failed');
       if(typeof showToast === 'function') showToast('⚠️ 在庫の保存に失敗しました。ページをリロードして再度お試しください。', 'error');
     }
   }
@@ -4250,8 +4261,21 @@ window.addEventListener('storageReady', function(){
     catch(e){ console.error('save productEditLog failed', e); }
   }
   async function saveTransactions(){
-    try{ await window.storage.set('transactions', JSON.stringify(transactions), SHARED); }
-    catch(e){ console.error('save transactions failed', e); }
+    const _localSnap = transactions.slice();
+    const result = await window.storage.transaction('transactions', (currentRaw)=>{
+      const _fbTxs = currentRaw ? JSON.parse(currentRaw) : [];
+      const _fbIds = new Set(_fbTxs.map(t=>t.id));
+      // Firebaseにあってローカルにない履歴（他ユーザーの操作）を追加
+      const _merged = [..._fbTxs];
+      for(const lt of _localSnap){
+        if(!_fbIds.has(lt.id)) _merged.push(lt);
+      }
+      // 日付降順を維持
+      _merged.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+      return JSON.stringify(_merged);
+    }, SHARED);
+    if(result){ try{ transactions = JSON.parse(result.value); }catch(_){} }
+    else { console.error('saveTransactions transaction failed'); }
   }
   async function saveCustodyContracts(){
     try{ await window.storage.set('custodyContracts', JSON.stringify(custodyContracts), SHARED); }
@@ -4295,17 +4319,65 @@ window.addEventListener('storageReady', function(){
   }
   window.renderSiteAnnouncement = renderSiteAnnouncement;
 
+  // 削除済みIDを記憶（トランザクション中に他ユーザーが追加したものを誤って復元しないため）
+  const _provDeletedIds = new Set();
+
   async function saveProvisionalOutbounds(){
-    try{ await window.storage.set('provisionalOutbounds', JSON.stringify(provisionalOutbounds), SHARED); }
-    catch(e){ console.error('save provisionalOutbounds failed', e); }
+    // updatedAt未設定のエントリに現在時刻をスタンプ（マージ判定に使用）
+    const _now = Date.now();
+    provisionalOutbounds.forEach(p=>{ if(!p.updatedAt) p.updatedAt = _now; });
+    const _localSnap = provisionalOutbounds.slice();
+    const _localMap = new Map(_localSnap.map(p=>[p.id, p]));
+    const _deletedIds = new Set(_provDeletedIds);
+
+    const result = await window.storage.transaction('provisionalOutbounds', (currentRaw)=>{
+      const _fbProds = currentRaw ? JSON.parse(currentRaw) : [];
+      const _merged = new Map();
+      // まずFirebaseの内容をベースにする
+      for(const fp of _fbProds){
+        if(_deletedIds.has(fp.id)) continue; // ローカルで削除済み → 復元しない
+        _merged.set(fp.id, fp);
+      }
+      // ローカルの変更を上書き（新規追加 or updatedAtが新しい更新）
+      for(const lp of _localSnap){
+        const fbP = _merged.get(lp.id);
+        if(!fbP || (lp.updatedAt||0) >= (fbP.updatedAt||0)){
+          _merged.set(lp.id, lp);
+        }
+      }
+      return JSON.stringify([..._merged.values()]);
+    }, SHARED);
+
+    if(result){
+      try{ provisionalOutbounds = JSON.parse(result.value); }catch(_){}
+    } else {
+      console.error('saveProvisionalOutbounds transaction failed');
+    }
     // 予約タブが表示中なら自動更新
     const _resPanel = document.getElementById('tab-reservation');
     if(_resPanel && _resPanel.style.display !== 'none'){ renderReservationTab(); }
   }
+  const _coDeletedIds = new Set();
   async function saveCustomerOrders(){
-    try{ await window.storage.set('customerOrders', JSON.stringify(customerOrders), SHARED); }
-    catch(e){ console.error('save customerOrders failed', e); }
-    // 予約タブが表示中なら自動更新
+    const _now2 = Date.now();
+    customerOrders.forEach(o=>{ if(!o.updatedAt) o.updatedAt = _now2; });
+    const _localSnap = customerOrders.slice();
+    const _deletedIds = new Set(_coDeletedIds);
+    const result = await window.storage.transaction('customerOrders', (currentRaw)=>{
+      const _fbOrds = currentRaw ? JSON.parse(currentRaw) : [];
+      const _merged = new Map();
+      for(const fo of _fbOrds){
+        if(_deletedIds.has(fo.id)) continue;
+        _merged.set(fo.id, fo);
+      }
+      for(const lo of _localSnap){
+        const fbO = _merged.get(lo.id);
+        if(!fbO || (lo.updatedAt||0) >= (fbO.updatedAt||0)) _merged.set(lo.id, lo);
+      }
+      return JSON.stringify([..._merged.values()]);
+    }, SHARED);
+    if(result){ try{ customerOrders = JSON.parse(result.value); }catch(_){} }
+    else { console.error('saveCustomerOrders transaction failed'); }
     const _resPanel2 = document.getElementById('tab-reservation');
     if(_resPanel2 && _resPanel2.style.display !== 'none'){ renderReservationTab(); }
   }
@@ -4313,9 +4385,27 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('reservationCategories', JSON.stringify(reservationCategories), SHARED); }
     catch(e){ console.error('save reservationCategories failed', e); }
   }
+  const _ischDeletedIds = new Set();
   async function saveIncomingSchedules(){
-    try{ await window.storage.set('incomingSchedules', JSON.stringify(incomingSchedules), SHARED); }
-    catch(e){ console.error('save incomingSchedules failed', e); }
+    const _now3 = Date.now();
+    incomingSchedules.forEach(s=>{ if(!s.updatedAt) s.updatedAt = _now3; });
+    const _localSnap = incomingSchedules.slice();
+    const _deletedIds = new Set(_ischDeletedIds);
+    const result = await window.storage.transaction('incomingSchedules', (currentRaw)=>{
+      const _fbItems = currentRaw ? JSON.parse(currentRaw) : [];
+      const _merged = new Map();
+      for(const fi of _fbItems){
+        if(_deletedIds.has(fi.id)) continue;
+        _merged.set(fi.id, fi);
+      }
+      for(const li of _localSnap){
+        const fbI = _merged.get(li.id);
+        if(!fbI || (li.updatedAt||0) >= (fbI.updatedAt||0)) _merged.set(li.id, li);
+      }
+      return JSON.stringify([..._merged.values()]);
+    }, SHARED);
+    if(result){ try{ incomingSchedules = JSON.parse(result.value); }catch(_){} }
+    else { console.error('saveIncomingSchedules transaction failed'); }
   }
   async function saveCategories(){
     try{ await window.storage.set('categories', JSON.stringify(categories), SHARED); }
@@ -5473,11 +5563,11 @@ window.addEventListener('storageReady', function(){
         if(!confirmed) return;
         // customerOrders から削除
         const idx = customerOrders.findIndex(o=>o.id===oid);
-        if(idx !== -1) customerOrders.splice(idx, 1);
+        if(idx !== -1){ _coDeletedIds.add(customerOrders[idx].id); customerOrders.splice(idx, 1); }
         await saveCustomerOrders();
         // 関連する仮出庫も削除
         const provIdx = provisionalOutbounds.findIndex(p=>p.customerOrderId===oid||p.id===oid);
-        if(provIdx !== -1){ provisionalOutbounds.splice(provIdx, 1); await saveProvisionalOutbounds(); }
+        if(provIdx !== -1){ _provDeletedIds.add(provisionalOutbounds[provIdx].id); provisionalOutbounds.splice(provIdx, 1); await saveProvisionalOutbounds(); }
         renderReservationTab(); renderCustomerOrderList(); showToast('予約を削除しました');
       });
     });
@@ -13617,7 +13707,7 @@ window.addEventListener('storageReady', function(){
           const ok = await showConfirm('この仮出庫を削除しますか？');
           if(!ok) return;
           const idx = provisionalOutbounds.findIndex(x=>x.id===btn.dataset.provDelete);
-          if(idx>=0) provisionalOutbounds.splice(idx,1);
+          if(idx>=0){ _provDeletedIds.add(provisionalOutbounds[idx].id); provisionalOutbounds.splice(idx,1); }
           await saveProvisionalOutbounds();
           renderProductTable(); renderProvisionalList(); renderDetailProvList();
         });
@@ -13641,7 +13731,7 @@ window.addEventListener('storageReady', function(){
           const ok = await showConfirm('この預かり出庫を削除しますか？');
           if(!ok) return;
           const idx = provisionalOutbounds.findIndex(x=>x.id===btn.dataset.custDelete);
-          if(idx>=0) provisionalOutbounds.splice(idx,1);
+          if(idx>=0){ _provDeletedIds.add(provisionalOutbounds[idx].id); provisionalOutbounds.splice(idx,1); }
           await saveProvisionalOutbounds();
           renderProductTable(); renderProvisionalList(); renderDetailProvList();
         });
@@ -13760,7 +13850,7 @@ window.addEventListener('storageReady', function(){
           const ok = await showConfirm('この入庫予定を削除しますか？');
           if(!ok) return;
           const idx = incomingSchedules.findIndex(x=>x.id===btn.dataset.inschDelete);
-          if(idx>=0) incomingSchedules.splice(idx,1);
+          if(idx>=0){ _ischDeletedIds.add(incomingSchedules[idx].id); incomingSchedules.splice(idx,1); }
           await saveIncomingSchedules();
           renderProductTable(); renderIncomingScheduleList(); renderDetailInschList();
         });
@@ -15491,7 +15581,7 @@ window.addEventListener('storageReady', function(){
             user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch,
             customerName:entry.customerName||'' });
         }
-        entry.status = 'confirmed';
+        entry.status = 'confirmed'; entry.updatedAt = Date.now();
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
         renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
       });
@@ -15511,7 +15601,7 @@ window.addEventListener('storageReady', function(){
         if(!entry) return;
         const ok = await showConfirm('✅ 作業完了にしますか？\n\nお客様: '+entry.customerName+'様');
         if(!ok) return;
-        entry.status = 'done';
+        entry.status = 'done'; entry.updatedAt = Date.now();
         // 対応するcustomerOrderも完了に
         const co = entry.customerOrderId ? customerOrders.find(o=>o.id===entry.customerOrderId) : null;
         if(co){ co.status='delivered'; await saveCustomerOrders(); }
@@ -15532,6 +15622,7 @@ window.addEventListener('storageReady', function(){
         entry.scheduledDate = result.scheduledDate;
         entry.carName       = result.carName;
         (entry.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
+        entry.updatedAt = Date.now();
         await saveProvisionalOutbounds();
         renderProductTable();
         renderHistory();
@@ -15546,7 +15637,7 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('この仮出庫を取り消しますか？');
         if(!ok) return;
         const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
-        if(entry) entry.status = 'cancelled';
+        if(entry){ entry.status = 'cancelled'; entry.updatedAt = Date.now(); }
         await saveProvisionalOutbounds();
         renderProductTable();
         renderHistory();
@@ -16039,7 +16130,7 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('この入庫予定を削除しますか？'+(name?'\n\n商品: '+name:''));
         if(!ok) return;
         const idx = incomingSchedules.findIndex(x=>x.id===btn.dataset.inschTabDelete);
-        if(idx>=0) incomingSchedules.splice(idx,1);
+        if(idx>=0){ _ischDeletedIds.add(incomingSchedules[idx].id); incomingSchedules.splice(idx,1); }
         await saveIncomingSchedules();
         renderProductTable(); renderIncomingScheduleList();
       });
