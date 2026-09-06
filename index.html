@@ -968,6 +968,7 @@
       <label id="beColLbl-sell"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sell"     checked style="accent-color:var(--amber);cursor:pointer;">販売価格</label>
       <label id="beColLbl-minstock" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="minstock" checked style="accent-color:var(--amber);cursor:pointer;">最低在庫数</label>
       <label id="beColLbl-partno"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="partno"   checked style="accent-color:var(--amber);cursor:pointer;">品番</label>
+      <label id="beColLbl-wheelspec" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="wheelspec" style="accent-color:var(--amber);cursor:pointer;">ホイールスペック</label>
     </div>
     <!-- 中分類一括変更 -->
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
@@ -988,6 +989,7 @@
           <th data-be-col="sell"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">販売価格</th>
           <th data-be-col="minstock" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">最低在庫数</th>
           <th data-be-col="partno"   style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">品番</th>
+          <th data-be-col="wheelspec" style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;display:none;">ホイールスペック</th>
         </tr></thead>
         <tbody id="bulkEditTbody"></tbody>
       </table>
@@ -11419,6 +11421,22 @@ window.addEventListener('storageReady', function(){
       });
     }
 
+    function _beWheelInchOpts(val){
+      let o = '<option value="">-</option>';
+      for(let i=12;i<=22;i++) o += `<option value="${i}"${String(val)===String(i)?' selected':''}>${i}インチ</option>`;
+      return o;
+    }
+    function _beWheelJOpts(val){
+      let o = '<option value="">-</option>';
+      for(let j=35;j<=120;j+=5){ const v=(j/10); o += `<option value="${v}"${String(val)===String(v)?' selected':''}>${v}J</option>`; }
+      return o;
+    }
+    function _beWheelOffsetOpts(val){
+      let o = '<option value="">-</option>';
+      for(let off=0;off<=60;off++) o += `<option value="${off}"${String(val)===String(off)?' selected':''}>${'+'+off}</option>`;
+      return o;
+    }
+
     function _beRender(){
       const list = _beGetFiltered().sort((a,b)=>(a.name||'').localeCompare(b.name||'ja'));
       const selStyle = 'padding:3px 6px;border:1px solid var(--line);border-radius:6px;font-size:11px;background:var(--bg-1);color:var(--text-1);max-width:110px;';
@@ -11435,6 +11453,7 @@ window.addEventListener('storageReady', function(){
           <td data-be-col="sell"     style="padding:4px 6px;"><input type="number" class="be-sell" data-pid="${p.id}" value="${p.sellPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
           <td data-be-col="minstock" style="padding:4px 6px;"><input type="number" class="be-minstock" data-pid="${p.id}" value="${p.minStock||''}" placeholder="0" min="0" style="${inpStyle('60px')}"></td>
           <td data-be-col="partno"   style="padding:4px 6px;"><input type="text" class="be-partno" data-pid="${p.id}" value="${escapeHtml(p.partno||'')}" placeholder="品番" style="${inpStyle('100px')}"></td>
+          <td data-be-col="wheelspec" style="padding:4px 6px;display:none;">${(()=>{ const ws=p.wheelSpec||{}; const wsss='padding:3px 5px;border:1px solid var(--line);border-radius:5px;font-size:11px;background:var(--bg-1);color:var(--text-1);'; return `<div style="display:flex;flex-direction:column;gap:3px;min-width:180px;"><div style="display:flex;gap:3px;"><select class="be-ws-inch" data-pid="${p.id}" style="${wsss}width:80px;">${_beWheelInchOpts(ws.inch||'')}</select><select class="be-ws-j" data-pid="${p.id}" style="${wsss}width:72px;">${_beWheelJOpts(ws.j||'')}</select></div><div style="display:flex;gap:3px;"><select class="be-ws-holes" data-pid="${p.id}" style="${wsss}width:56px;"><option value="">穴-</option><option value="4"${ws.holes==='4'?' selected':''}>4穴</option><option value="5"${ws.holes==='5'?' selected':''}>5穴</option><option value="6"${ws.holes==='6'?' selected':''}>6穴</option></select><select class="be-ws-pcd" data-pid="${p.id}" style="${wsss}width:72px;"><option value="">PCD-</option><option value="100"${ws.pcd==='100'?' selected':''}>100</option><option value="112"${ws.pcd==='112'?' selected':''}>112</option><option value="114.3"${ws.pcd==='114.3'?' selected':''}>114.3</option><option value="120"${ws.pcd==='120'?' selected':''}>120</option><option value="139"${ws.pcd==='139'?' selected':''}>139</option><option value="150"${ws.pcd==='150'?' selected':''}>150</option></select></div><div style="display:flex;gap:3px;"><select class="be-ws-offset" data-pid="${p.id}" style="${wsss}width:72px;">${_beWheelOffsetOpts(ws.offset||'')}</select><input type="text" class="be-ws-color" data-pid="${p.id}" value="${escapeHtml(ws.color||'')}" placeholder="カラー" style="padding:3px 5px;border:1px solid var(--line);border-radius:5px;font-size:11px;background:var(--bg-1);color:var(--text-1);width:72px;box-sizing:border-box;"></div></div>`; })()}</td>
         </tr>`).join('');
       // チェックボックス変更
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.addEventListener('change', _beUpdateCount));
@@ -11450,7 +11469,7 @@ window.addEventListener('storageReady', function(){
         });
       });
       // 入力変更でハイライト＆自動チェック
-      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub,.be-partno').forEach(inp=>{
+      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub,.be-partno,.be-ws-inch,.be-ws-j,.be-ws-holes,.be-ws-pcd,.be-ws-offset,.be-ws-color').forEach(inp=>{
         inp.addEventListener('change', ()=>{
           const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
           if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
@@ -11530,6 +11549,22 @@ window.addEventListener('storageReady', function(){
         if(sellVal !== null && sellVal !== (p.sellPrice||0))     { p.sellPrice=sellVal;      dirty=true; }
         if(minStockVal !== null && minStockVal !== (p.minStock||0)){ p.minStock=minStockVal; dirty=true; }
         if(partnoVal !== (p.partno||''))             { p.partno=partnoVal; dirty=true; }
+        // ホイールスペック（列が表示されている場合のみ）
+        const _wsInchEl = _beTbody.querySelector(`.be-ws-inch[data-pid="${pid}"]`);
+        if(_wsInchEl){
+          const prevWs = p.wheelSpec || {};
+          const newWs = {
+            inch:   _wsInchEl.value,
+            j:      (_beTbody.querySelector(`.be-ws-j[data-pid="${pid}"]`)?.value)||'',
+            holes:  (_beTbody.querySelector(`.be-ws-holes[data-pid="${pid}"]`)?.value)||'',
+            pcd:    (_beTbody.querySelector(`.be-ws-pcd[data-pid="${pid}"]`)?.value)||'',
+            offset: (_beTbody.querySelector(`.be-ws-offset[data-pid="${pid}"]`)?.value)||'',
+            color:  (_beTbody.querySelector(`.be-ws-color[data-pid="${pid}"]`)?.value||'').trim()
+          };
+          if(newWs.inch!==(prevWs.inch||'') || newWs.j!==(prevWs.j||'') || newWs.holes!==(prevWs.holes||'') || newWs.pcd!==(prevWs.pcd||'') || newWs.offset!==(prevWs.offset||'') || newWs.color!==(prevWs.color||'')){
+            p.wheelSpec = newWs; dirty=true;
+          }
+        }
         if(dirty){ p.updatedAt=Date.now(); changed++; }
       });
       if(!changed){ _beStatus.style.color='var(--text-2)'; _beStatus.textContent='変更がありません。'; return; }
