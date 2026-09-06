@@ -11423,7 +11423,7 @@ window.addEventListener('storageReady', function(){
 
     function _beWheelInchOpts(val){
       let o = '<option value="">-</option>';
-      for(let i=12;i<=22;i++) o += `<option value="${i}"${String(val)===String(i)?' selected':''}>${i}インチ</option>`;
+      for(let i=16;i<=20;i++) o += `<option value="${i}"${String(val)===String(i)?' selected':''}>${i}インチ</option>`;
       return o;
     }
     function _beWheelJOpts(val){
@@ -17052,7 +17052,7 @@ window.addEventListener('storageReady', function(){
   }
 
   // ---------- ホイールカタログ写真管理 ----------
-  let wheelCatalog = { 梅: [], 竹: [], 松: [], 梅_suv: [], 竹_suv: [], 松_suv: [] };
+  let wheelCatalog = { 梅: [], 竹: [], 松: [], 梅_suv: [] };
   let _wcatVehicleType = ''; // '' = 乗用車, 'suv' = SUV・4WD
 
   async function loadWheelCatalog(){
@@ -17060,9 +17060,9 @@ window.addEventListener('storageReady', function(){
       const r = await window.storage.get('wheelCatalog', SHARED);
       if(r && r.value){
         const d = JSON.parse(r.value);
-        wheelCatalog = { 梅: d['梅']||[], 竹: d['竹']||[], 松: d['松']||[], 梅_suv: d['梅_suv']||[], 竹_suv: d['竹_suv']||[], 松_suv: d['松_suv']||[] };
+        wheelCatalog = { 梅: d['梅']||[], 竹: d['竹']||[], 松: d['松']||[], 梅_suv: d['梅_suv']||[] };
       }
-    }catch(e){ wheelCatalog = { 梅:[], 竹:[], 松:[], 梅_suv:[], 竹_suv:[], 松_suv:[] }; }
+    }catch(e){ wheelCatalog = { 梅:[], 竹:[], 松:[], 梅_suv:[] }; }
   }
 
   async function saveWheelCatalog(){
@@ -17099,25 +17099,23 @@ window.addEventListener('storageReady', function(){
     if(!wrap) return;
     const TIER_COLORS = {梅:'var(--text-2)',竹:'var(--teal)',松:'var(--amber)'};
     const TIER_SUBS = {梅:'ベーシック',竹:'スタンダード',松:'プレミアム'};
-    // 車種タブ
-    const tabHtml = '<div style="display:flex;gap:6px;margin-bottom:16px;">'
-      +['','suv'].map(vt=>{
-        const active = vt === _wcatVehicleType;
-        const label = vt==='' ? '乗用車' : 'SUV・4WD';
-        return `<button data-wcat-vtype="${vt}" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${active?'var(--amber)':'var(--line)'};background:${active?'var(--amber-dim)':'var(--bg-1)'};color:${active?'var(--amber)':'var(--text-2)'};font-size:12px;font-weight:${active?'700':'400'};cursor:pointer;">${label}</button>`;
-      }).join('')
-      +'</div>';
-    wrap.innerHTML = tabHtml;
-    wrap.querySelectorAll('[data-wcat-vtype]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{ _wcatVehicleType = btn.dataset.wcatVtype; renderWheelCatalogEditor(); });
-    });
-    const keySuffix = _wcatVehicleType ? '_'+_wcatVehicleType : '';
+    wrap.innerHTML = '';
     WHEEL_TIERS.slice().reverse().forEach(tier=>{
+      // 車種タブはベーシック（梅）のみ
+      const keySuffix = (tier === '梅' && _wcatVehicleType) ? '_'+_wcatVehicleType : '';
       const tierKey = tier + keySuffix;
       const items = wheelCatalog[tierKey] || [];
       const sec = document.createElement('div');
       sec.style.cssText = 'background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;';
-      sec.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+      const basicTabsHtml = tier==='梅' ? '<div style="display:flex;gap:6px;margin-bottom:10px;">'
+        +['','suv'].map(vt=>{
+          const active = vt===_wcatVehicleType;
+          const label = vt==='' ? '乗用車' : 'SUV・4WD';
+          return '<button data-wcat-vtype="'+vt+'" style="padding:4px 14px;border-radius:20px;border:1.5px solid '+(active?'var(--amber)':'var(--line)')+';background:'+(active?'var(--amber-dim)':'var(--bg-1)')+';color:'+(active?'var(--amber)':'var(--text-2)')+';font-size:11.5px;font-weight:'+(active?'700':'400')+';cursor:pointer;">'+label+'</button>';
+        }).join('')
+        +'</div>' : '';
+      sec.innerHTML = basicTabsHtml
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
         +'<div style="display:flex;align-items:center;gap:10px;">'
         +'<span style="font-size:20px;font-weight:700;color:'+TIER_COLORS[tier]+';">'+tier+'</span>'
         +'<span style="font-size:12px;color:var(--text-2);">'+TIER_SUBS[tier]+'</span>'
@@ -17138,6 +17136,9 @@ window.addEventListener('storageReady', function(){
         +'</div>';
       wrap.appendChild(sec);
 
+      sec.querySelectorAll('[data-wcat-vtype]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ _wcatVehicleType = btn.dataset.wcatVtype; renderWheelCatalogEditor(); });
+      });
       sec.querySelector('[data-wcat-add]').addEventListener('click', ()=>{
         const fi = document.getElementById('wcatFileInput');
         fi._wcatTier = tierKey;
