@@ -11271,7 +11271,7 @@ window.addEventListener('storageReady', function(){
       const isOil = m && m.name === 'オイル';
       const isTire = m && m.name === 'タイヤ';
       if(!isOil){
-        const isWheel = m && m.name === 'ホイール';
+        const isWheel = m && (m.name === 'ホイール' || m.name === 'セット品');
         html += '<div class="spec-step"><div class="spec-step-label">3. 規格・サイズ</div>';
         if(isTire){
           html += '<div class="tire-size-row">';
@@ -12515,7 +12515,7 @@ window.addEventListener('storageReady', function(){
   function toggleTireNameField(){
     const m = majorById(document.getElementById('f_major').value);
     const isTire = m && m.name === 'タイヤ';
-    const isWheel = m && m.name === 'ホイール';
+    const isWheel = m && (m.name === 'ホイール' || m.name === 'セット品');
     document.getElementById('f_tiremodel_field').style.display = isTire ? 'block' : 'none';
     document.getElementById('f_spec').style.display = isTire ? 'none' : 'block';
     document.getElementById('f_spec_tire_row').style.display = isTire ? 'flex' : 'none';
@@ -13540,7 +13540,7 @@ window.addEventListener('storageReady', function(){
       + (()=>{ const _detMfYear=getBranchManufactureYear(p,_detBranch); return _detMfYear?'<div style="font-size:13px;color:var(--teal);margin-top:4px;font-weight:600;">🗓 '+_detMfYear+'年製</div>':''; })()
       + (()=>{
           const _dm = majorById(p.majorId);
-          const _isWheelDetail = _dm && _dm.name === 'ホイール';
+          const _isWheelDetail = _dm && (_dm.name === 'ホイール' || _dm.name === 'セット品');
           if(!_isWheelDetail || !p.wheelSpec) return '';
           const ws = p.wheelSpec;
           const sizeStr = (ws.inch && ws.j) ? ws.inch+'x'+ws.j : (ws.inch ? ws.inch+'インチ' : (ws.j ? ws.j+'J' : ''));
@@ -14310,7 +14310,7 @@ window.addEventListener('storageReady', function(){
     const manufactureYear = parseInt(document.getElementById('f_mfyear').value||'0',10)||null;
     // ホイールスペック
     const _wheelMajor = majorById(majorId);
-    const _isWheel = _wheelMajor && _wheelMajor.name === 'ホイール';
+    const _isWheel = _wheelMajor && (_wheelMajor.name === 'ホイール' || _wheelMajor.name === 'セット品');
     const wheelSpec = _isWheel ? {
       inch:   document.getElementById('f_wheel_inch').value,
       j:      document.getElementById('f_wheel_j').value,
