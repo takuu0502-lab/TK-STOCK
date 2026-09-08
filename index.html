@@ -12515,10 +12515,13 @@ window.addEventListener('storageReady', function(){
   function toggleTireNameField(){
     const m = majorById(document.getElementById('f_major').value);
     const isTire = m && m.name === 'タイヤ';
+    const isSet  = m && m.name === 'セット品';
     const isWheel = m && (m.name === 'ホイール' || m.name === 'セット品');
-    document.getElementById('f_tiremodel_field').style.display = isTire ? 'block' : 'none';
-    document.getElementById('f_spec').style.display = isTire ? 'none' : 'block';
-    document.getElementById('f_spec_tire_row').style.display = isTire ? 'flex' : 'none';
+    // セット品はタイヤ銘柄・サイズ選択も表示（商品名・スペックをタイヤと同様に入力）
+    const showTireFields = isTire || isSet;
+    document.getElementById('f_tiremodel_field').style.display = showTireFields ? 'block' : 'none';
+    document.getElementById('f_spec').style.display = showTireFields ? 'none' : 'block';
+    document.getElementById('f_spec_tire_row').style.display = showTireFields ? 'flex' : 'none';
     document.getElementById('f_wheel_fields').style.display = isWheel ? 'block' : 'none';
     document.getElementById('f_estimate_visible_field').style.display = isTire ? 'block' : 'none';
   }
