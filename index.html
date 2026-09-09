@@ -1887,6 +1887,10 @@
     <!-- ホイールスペック（ホイール分類選択時のみ表示） -->
     <div id="f_wheel_fields" style="display:none;background:var(--bg-2);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:4px;">
       <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px;">🔩 ホイールスペック</div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>ホイール商品名</label>
+        <input type="text" id="f_wheel_name" placeholder="例) レオニスFY、RAIZE など" style="width:100%;box-sizing:border-box;">
+      </div>
       <div class="row" style="gap:8px;flex-wrap:wrap;">
         <div class="field" style="flex:1;min-width:80px;">
           <label>インチ</label>
@@ -12878,6 +12882,7 @@ window.addEventListener('storageReady', function(){
     populateSupplierSelect('');
     populateLocationSelect('');
     document.getElementById('f_name').value = '';
+    document.getElementById('f_wheel_name').value = '';
     populateTireModelSelect();
     populateSpecTireSelects();
     document.getElementById('f_tiremodel').value = '';
@@ -12934,6 +12939,7 @@ window.addEventListener('storageReady', function(){
     prefillSpecTireSelects(p.spec || '');
     // ホイールスペック復元
     const ws = p.wheelSpec || {};
+    document.getElementById('f_wheel_name').value   = ws.wheelName || '';
     document.getElementById('f_wheel_inch').value   = ws.inch   || '';
     document.getElementById('f_wheel_j').value      = ws.j      || '';
     document.getElementById('f_wheel_holes').value  = ws.holes  || '';
@@ -13547,14 +13553,16 @@ window.addEventListener('storageReady', function(){
           const _isWheelDetail = _dm && (_dm.name === 'ホイール' || _dm.name === 'セット品');
           if(!_isWheelDetail || !p.wheelSpec) return '';
           const ws = p.wheelSpec;
+          const wheelNameStr = ws.wheelName || '';
           const sizeStr = (ws.inch && ws.j) ? ws.inch+'x'+ws.j : (ws.inch ? ws.inch+'インチ' : (ws.j ? ws.j+'J' : ''));
           const holeStr = (ws.holes && ws.pcd) ? ws.holes+'/'+ws.pcd : (ws.holes ? ws.holes+'穴' : (ws.pcd ? 'PCD'+ws.pcd : ''));
           const offsStr = ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : '';
           const parts = [sizeStr, holeStr, offsStr, ws.color||''].filter(Boolean);
-          if(!parts.length) return '';
-          return '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">'
+          if(!wheelNameStr && !parts.length) return '';
+          return (wheelNameStr ? '<div style="margin-top:4px;font-size:13px;font-weight:600;color:var(--text-2);">🔩 '+escapeHtml(wheelNameStr)+'</div>' : '')
+            + (parts.length ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;">'
             + parts.map(p=>'<span style="font-size:13px;font-weight:600;font-family:var(--font-mono);background:var(--bg-1);border:1px solid var(--line);border-radius:6px;padding:3px 10px;color:var(--text-1);">'+escapeHtml(p)+'</span>').join('')
-            + '</div>';
+            + '</div>' : '');
         })()
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">'
@@ -14316,6 +14324,7 @@ window.addEventListener('storageReady', function(){
     const _wheelMajor = majorById(majorId);
     const _isWheel = _wheelMajor && (_wheelMajor.name === 'ホイール' || _wheelMajor.name === 'セット品');
     const wheelSpec = _isWheel ? {
+      wheelName: document.getElementById('f_wheel_name').value.trim(),
       inch:   document.getElementById('f_wheel_inch').value,
       j:      document.getElementById('f_wheel_j').value,
       holes:  document.getElementById('f_wheel_holes').value,
