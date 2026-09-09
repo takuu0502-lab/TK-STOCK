@@ -7320,7 +7320,8 @@ window.addEventListener('storageReady', function(){
               let _extra = (bStk>0 && _manBrYearBadge) ? _manBrYearBadge : '';
               _extra += _makeInschBadges(p.id, brId, 10, true);
               if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+'</td>';
+              const _memoDiv = p.memo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.memo)+'</div>' : '';
+              return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+_memoDiv+'</td>';
             }).join('')
           : (()=>{
               const _bStk = getStock(p);
@@ -7329,7 +7330,8 @@ window.addEventListener('storageReady', function(){
               let _extra = (_bStk>0 && _manOwnYearBadge) ? _manOwnYearBadge : '';
               _extra += _makeInschBadges(p.id, _catOwnBranchId, 10, true);
               if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+'</td>';
+              const _memoDiv2 = p.memo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.memo)+'</div>' : '';
+              return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+_memoDiv2+'</td>';
             })();
         return '<tr>'
           + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+j+'"'+(checked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
