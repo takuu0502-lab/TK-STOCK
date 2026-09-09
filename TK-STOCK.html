@@ -14040,6 +14040,7 @@ window.addEventListener('storageReady', function(){
         if(!p2) return;
         p2.listMemo = document.getElementById('detailListMemo').value.trim();
         await saveProducts();
+        renderProductTable();
         const btn = document.getElementById('detailListMemoSave');
         if(btn){ btn.textContent = '保存しました'; setTimeout(()=>{ if(btn) btn.textContent = '一覧メモを保存'; }, 1500); }
       });
