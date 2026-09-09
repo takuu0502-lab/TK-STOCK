@@ -1884,40 +1884,6 @@
       <label>商品名</label>
       <input type="text" id="f_name" placeholder="例) ECOPIA NH200C">
     </div>
-    <!-- ホイールスペック（ホイール分類選択時のみ表示） -->
-    <div id="f_wheel_fields" style="display:none;background:var(--bg-2);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:4px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px;">🔩 ホイールスペック</div>
-      <div class="field" style="margin-bottom:8px;">
-        <label>ホイール商品名</label>
-        <input type="text" id="f_wheel_name" placeholder="例) レオニスFY、RAIZE など" style="width:100%;box-sizing:border-box;">
-      </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap;">
-        <div class="field" style="flex:1;min-width:80px;">
-          <label>インチ</label>
-          <select id="f_wheel_inch"><option value="">-</option></select>
-        </div>
-        <div class="field" style="flex:1;min-width:80px;">
-          <label>J数</label>
-          <select id="f_wheel_j"><option value="">-</option></select>
-        </div>
-        <div class="field" style="flex:1;min-width:80px;">
-          <label>穴数</label>
-          <select id="f_wheel_holes"><option value="">-</option><option value="4">4穴</option><option value="5">5穴</option><option value="6">6穴</option></select>
-        </div>
-        <div class="field" style="flex:1;min-width:80px;">
-          <label>PCD</label>
-          <select id="f_wheel_pcd"><option value="">-</option><option value="100">100</option><option value="112">112</option><option value="114.3">114.3</option><option value="120">120</option><option value="139">139</option><option value="150">150</option></select>
-        </div>
-        <div class="field" style="flex:1;min-width:80px;">
-          <label>オフセット</label>
-          <select id="f_wheel_offset"><option value="">-</option></select>
-        </div>
-        <div class="field" style="flex:1;min-width:100px;">
-          <label>カラー</label>
-          <input type="text" id="f_wheel_color" placeholder="例) シルバー" style="width:100%;box-sizing:border-box;">
-        </div>
-      </div>
-    </div>
     <div class="field">
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
@@ -1945,6 +1911,40 @@
             <select id="f_spec_li2"><option value="">-</option></select>
           </div>
         </div>
+      </div>
+    </div>
+    <!-- ホイールスペック（ホイール分類選択時のみ表示） -->
+    <div id="f_wheel_fields" style="display:none;background:var(--bg-2);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:4px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px;">🔩 ホイールスペック</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>インチ</label>
+          <select id="f_wheel_inch"><option value="">-</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>J数</label>
+          <select id="f_wheel_j"><option value="">-</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>穴数</label>
+          <select id="f_wheel_holes"><option value="">-</option><option value="4">4穴</option><option value="5">5穴</option><option value="6">6穴</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>PCD</label>
+          <select id="f_wheel_pcd"><option value="">-</option><option value="100">100</option><option value="112">112</option><option value="114.3">114.3</option><option value="120">120</option><option value="139">139</option><option value="150">150</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>オフセット</label>
+          <select id="f_wheel_offset"><option value="">-</option></select>
+        </div>
+        <div class="field" style="flex:1;min-width:100px;">
+          <label>カラー</label>
+          <input type="text" id="f_wheel_color" placeholder="例) シルバー" style="width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+      <div class="field" style="margin-top:8px;margin-bottom:0;">
+        <label>ホイール商品名</label>
+        <input type="text" id="f_wheel_name" placeholder="例) レオニスFY、RAIZE など" style="width:100%;box-sizing:border-box;">
       </div>
     </div>
     <!-- タイヤ見積もり表示設定（タイヤ分類のみ表示） -->
