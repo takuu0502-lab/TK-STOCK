@@ -2015,8 +2015,12 @@
       </div>
     </div>
     <div class="field" style="margin-top:8px;">
-      <label>備考・メモ</label>
+      <label>備考・メモ（自店のみ）</label>
       <textarea id="f_memo" rows="3" placeholder="メモを入力（任意）" style="resize:vertical;width:100%;min-height:70px;"></textarea>
+    </div>
+    <div class="field" style="margin-top:8px;">
+      <label>一覧メモ（全店に表示）</label>
+      <textarea id="f_list_memo" rows="2" placeholder="例）商品注文時は本店に注文（任意）" style="resize:vertical;width:100%;min-height:52px;"></textarea>
     </div>
     <div class="field" style="margin-top:8px;">
       <label>商品URL（リンク）</label>
@@ -7320,7 +7324,7 @@ window.addEventListener('storageReady', function(){
               let _extra = (bStk>0 && _manBrYearBadge) ? _manBrYearBadge : '';
               _extra += _makeInschBadges(p.id, brId, 10, true);
               if(_provQ>0){ const _over=_provQ>bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+brId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              const _memoDiv = p.memo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.memo)+'</div>' : '';
+              const _memoDiv = p.listMemo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.listMemo)+'</div>' : '';
               return '<td class="price-num" style="padding:4px 6px;vertical-align:top;"><span style="color:'+(bStk>0?'var(--teal)':'var(--text-3)')+';">'+bStk+'</span>'+_extra+_memoDiv+'</td>';
             }).join('')
           : (()=>{
@@ -7330,7 +7334,7 @@ window.addEventListener('storageReady', function(){
               let _extra = (_bStk>0 && _manOwnYearBadge) ? _manOwnYearBadge : '';
               _extra += _makeInschBadges(p.id, _catOwnBranchId, 10, true);
               if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
-              const _memoDiv2 = p.memo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.memo)+'</div>' : '';
+              const _memoDiv2 = p.listMemo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.listMemo)+'</div>' : '';
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+_memoDiv2+'</td>';
             })();
         return '<tr>'
@@ -12901,6 +12905,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_cost_fixed').checked = false;
     document.getElementById('f_sell_fixed').checked = false;
     document.getElementById('f_memo').value = '';
+    document.getElementById('f_list_memo').value = '';
     document.getElementById('f_url').value = '';
     document.getElementById('f_mfyear').value = '';
     renderYearStockModalRows(null, null);
@@ -12965,6 +12970,7 @@ window.addEventListener('storageReady', function(){
     const _estChkEdit = document.getElementById('f_estimate_visible');
     if(_estChkEdit) _estChkEdit.checked = !p.hideFromEstimate;
     document.getElementById('f_memo').value = p.memo || '';
+    document.getElementById('f_list_memo').value = p.listMemo || '';
     document.getElementById('f_url').value = p.url || '';
     const _mfEditBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     document.getElementById('f_mfyear').value = getBranchManufactureYear(p, _mfEditBranch) || '';
@@ -13620,9 +13626,14 @@ window.addEventListener('storageReady', function(){
         + '</div>'
       ) : '')
       + '<div style="margin:12px 0;padding:10px 14px;background:var(--bg-2);border-radius:8px;border-left:3px solid var(--amber);">'
-      + '<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">備考・メモ</div>'
+      + '<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">備考・メモ（自店のみ）</div>'
       + '<textarea id="detailMemo" rows="3" placeholder="メモを入力…" style="width:100%;resize:vertical;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13.5px;padding:7px 10px;box-sizing:border-box;"'+(writable?'':' readonly')+'>'+escapeHtml(p.memo||'')+'</textarea>'
       + (writable ? '<div style="text-align:right;margin-top:6px;"><button class="btn btn-amber btn-sm" id="detailMemoSave">メモを保存</button></div>' : '')
+      + '</div>'
+      + '<div style="margin:12px 0;padding:10px 14px;background:var(--bg-2);border-radius:8px;border-left:3px solid var(--teal);">'
+      + '<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">📌 一覧メモ（全店に表示）</div>'
+      + '<textarea id="detailListMemo" rows="2" placeholder="例）商品注文時は本店に注文" style="width:100%;resize:vertical;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13.5px;padding:7px 10px;box-sizing:border-box;"'+(writable?'':' readonly')+'>'+escapeHtml(p.listMemo||'')+'</textarea>'
+      + (writable ? '<div style="text-align:right;margin-top:6px;"><button class="btn btn-amber btn-sm" id="detailListMemoSave">一覧メモを保存</button></div>' : '')
       + '</div>'
       + '<div class="detail-hist-title" style="display:flex;align-items:center;justify-content:space-between;">📦 入庫予定<span id="detailInschAddBtn2" style="font-size:12px;font-weight:400;color:var(--teal);cursor:pointer;border:1px solid var(--teal);border-radius:6px;padding:2px 10px;">＋ 予定を登録</span></div>'
       + '<div id="detailInschList" style="margin-bottom:12px;"></div>'
@@ -14024,6 +14035,14 @@ window.addEventListener('storageReady', function(){
         const btn = document.getElementById('detailMemoSave');
         if(btn){ btn.textContent = '保存しました'; setTimeout(()=>{ if(btn) btn.textContent = 'メモを保存'; }, 1500); }
       });
+      document.getElementById('detailListMemoSave').addEventListener('click', async ()=>{
+        const p2 = products.find(x=>x.id===id);
+        if(!p2) return;
+        p2.listMemo = document.getElementById('detailListMemo').value.trim();
+        await saveProducts();
+        const btn = document.getElementById('detailListMemoSave');
+        if(btn){ btn.textContent = '保存しました'; setTimeout(()=>{ if(btn) btn.textContent = '一覧メモを保存'; }, 1500); }
+      });
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
@@ -14046,6 +14065,7 @@ window.addEventListener('storageReady', function(){
         _pendingCatalogKey = p.catalogKey || null;
         _pendingFromCatalog = !!p._fromCatalog;
         document.getElementById('f_memo').value = p.memo || '';
+        document.getElementById('f_list_memo').value = p.listMemo || '';
         document.getElementById('f_cost').value = p.costPrice || '';
         const _dupBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         const _dupSell = getBranchFixedSell(p, _dupBranchId);
@@ -14320,6 +14340,7 @@ window.addEventListener('storageReady', function(){
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const memo = document.getElementById('f_memo').value.trim();
+    const listMemo = document.getElementById('f_list_memo').value.trim();
     const url = document.getElementById('f_url').value.trim();
     const manufactureYear = parseInt(document.getElementById('f_mfyear').value||'0',10)||null;
     // ホイールスペック
@@ -14422,7 +14443,7 @@ window.addEventListener('storageReady', function(){
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
@@ -14444,7 +14465,7 @@ window.addEventListener('storageReady', function(){
       if(_fixedSell && sellPrice > 0) initBranchSellPrice[newBranchId] = sellPrice;
       const initBranchManufactureYear = {};
       if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
