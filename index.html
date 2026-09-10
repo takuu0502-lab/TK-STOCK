@@ -1171,6 +1171,7 @@
       <button class="tab-btn" data-tab="pricing">管理</button>
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
       <button class="tab-btn" data-tab="custody" id="custodyTabBtn" style="display:none;">預かり在庫</button>
+      <button class="tab-btn" data-tab="popfolder">POPフォルダ</button>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch" style="display:none;">商品検索</button>
@@ -2166,6 +2167,10 @@
   <div id="custodyContent"></div>
 </div>
 
+<div class="panel" id="tab-popfolder" style="display:none;">
+  <div id="popfolderContent"></div>
+</div>
+
 <div class="modal-overlay" id="outCustomerModal">
   <div class="modal" style="max-width:360px;">
     <h3 style="margin-top:0;">📤 出庫確認</h3>
@@ -2867,6 +2872,7 @@ window.addEventListener('storageReady', function(){
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
   let custodyContracts = []; // 預かり在庫
+  let popFiles = []; // POPフォルダ
   let custodyCustomers = []; // 取引先マスター
   let siteAnnouncements = []; // お知らせ（複数）
   let popTemplates = []; // POP印刷テンプレート
@@ -4060,6 +4066,7 @@ window.addEventListener('storageReady', function(){
     await loadLabelSettings();
     await loadCatalogVisibility();
     await loadPopTemplates();
+    await loadPopFiles();
     try{
       const c = await window.storage.get('categories', SHARED);
       categories = c ? JSON.parse(c.value) : [];
@@ -4302,6 +4309,16 @@ window.addEventListener('storageReady', function(){
   async function saveCustodyCustomers(){
     try{ await window.storage.set('custodyCustomers', JSON.stringify(custodyCustomers), SHARED); }
     catch(e){ console.error('save custodyCustomers failed', e); }
+  }
+  async function savePopFiles(){
+    try{ await window.storage.set('popFiles', JSON.stringify(popFiles), SHARED); }
+    catch(e){ console.error('save popFiles failed', e); }
+  }
+  async function loadPopFiles(){
+    try{
+      const r = await window.storage.get('popFiles', SHARED);
+      popFiles = r ? JSON.parse(r.value) : [];
+    }catch(e){ popFiles = []; }
   }
   async function saveSiteAnnouncement(){
     try{ await window.storage.set('siteAnnouncements', JSON.stringify(siteAnnouncements), SHARED); }
@@ -4829,6 +4846,88 @@ window.addEventListener('storageReady', function(){
   }
 
   // ── メインビュー（表形式） ──
+  // ─── POPフォルダ ───────────────────────────────────────────
+  function renderPopFolder(){
+    const wrap = document.getElementById('popfolderContent');
+    if(!wrap) return;
+    const isAdmin = isAdminUser();
+    const CATS = ['全て','夏タイヤ','冬タイヤ','ホイール','セット品','その他'];
+
+    let filterCat = wrap._filterCat || '全て';
+    const filtered = filterCat === '全て' ? popFiles : popFiles.filter(f=>f.category===filterCat);
+
+    const catBtns = CATS.map(c=>'<button onclick="(function(){var w=document.getElementById(\'popfolderContent\');w._filterCat=\''+c+'\';renderPopFolder();})()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid var(--line);background:'+(filterCat===c?'var(--amber)':'var(--bg-1)')+';color:'+(filterCat===c?'#fff':'var(--text-2)')+';cursor:pointer;font-weight:'+(filterCat===c?'700':'400')+';">'+escapeHtml(c)+'</button>').join('');
+
+    const fileCards = filtered.length === 0
+      ? '<div style="color:var(--text-3);text-align:center;padding:40px 0;">登録されているPOPファイルはありません。</div>'
+      : filtered.map(f=>{
+          const driveId = (f.url.match(/\/d\/([^/]+)/) || f.url.match(/id=([^&]+)/) || [])[1];
+          const thumbUrl = driveId ? 'https://drive.google.com/thumbnail?id='+driveId+'&sz=w300' : '';
+          const date = f.createdAt ? new Date(f.createdAt).toLocaleDateString('ja-JP') : '';
+          return '<div style="background:var(--bg-1);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;">'
+            + (thumbUrl ? '<div style="background:var(--bg-2);height:160px;overflow:hidden;display:flex;align-items:center;justify-content:center;"><img src="'+thumbUrl+'" style="max-width:100%;max-height:160px;object-fit:contain;" onerror="this.parentNode.innerHTML=\'<span style=color:var(--text-3)>プレビュー不可</span>\'"></div>' : '<div style="background:var(--bg-2);height:160px;display:flex;align-items:center;justify-content:center;font-size:40px;">📄</div>')
+            + '<div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:4px;">'
+            + '<div style="font-size:13px;font-weight:700;color:var(--text-1);">'+escapeHtml(f.name)+'</div>'
+            + (f.category ? '<div style="font-size:11px;color:var(--amber);font-weight:600;">'+escapeHtml(f.category)+'</div>' : '')
+            + (f.note ? '<div style="font-size:11px;color:var(--text-2);margin-top:2px;">'+escapeHtml(f.note)+'</div>' : '')
+            + '<div style="font-size:10px;color:var(--text-3);margin-top:4px;">'+escapeHtml(f.uploadedBy||'')+(date?' ・ '+date:'')+'</div>'
+            + '</div>'
+            + '<div style="display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line);background:var(--bg-2);">'
+            + '<a href="'+escapeHtml(f.url)+'" target="_blank" style="flex:1;text-align:center;font-size:12px;font-weight:700;background:var(--amber);color:#fff;padding:6px 0;border-radius:7px;text-decoration:none;">開く / ダウンロード</a>'
+            + (isAdmin ? '<button onclick="deletePopFile(\''+f.id+'\')" style="font-size:12px;color:var(--text-3);background:none;border:1px solid var(--line);border-radius:7px;padding:6px 10px;cursor:pointer;">削除</button>' : '')
+            + '</div>'
+            + '</div>';
+        }).join('');
+
+    wrap.innerHTML = '<div style="max-width:900px;margin:0 auto;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">'
+      + '<h2 style="font-size:18px;font-weight:700;margin:0;">📂 POPフォルダ</h2>'
+      + (isAdmin ? '<button id="popAddBtn" style="font-size:13px;font-weight:700;background:var(--amber);color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;">＋ ファイルを登録</button>' : '')
+      + '</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">'+catBtns+'</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">'+fileCards+'</div>'
+      + '</div>'
+      + (isAdmin ? '<div id="popAddModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center;">'
+      + '<div style="background:var(--bg-1);border-radius:12px;padding:24px;width:min(480px,90vw);display:flex;flex-direction:column;gap:12px;">'
+      + '<div style="font-size:16px;font-weight:700;">POPファイルを登録</div>'
+      + '<div class="field"><label>ファイル名</label><input id="pf_name" class="input" placeholder="例）NEWNO 185/65R15 POP" style="width:100%;box-sizing:border-box;"></div>'
+      + '<div class="field"><label>GoogleドライブURL</label><input id="pf_url" class="input" placeholder="https://drive.google.com/..." style="width:100%;box-sizing:border-box;"></div>'
+      + '<div class="field"><label>カテゴリ</label><select id="pf_cat" class="input" style="width:100%;box-sizing:border-box;"><option value="">選択...</option>'+CATS.filter(c=>c!=='全て').map(c=>'<option>'+c+'</option>').join('')+'</select></div>'
+      + '<div class="field"><label>メモ（任意）</label><input id="pf_note" class="input" placeholder="説明など" style="width:100%;box-sizing:border-box;"></div>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;"><button id="pf_cancel" style="font-size:13px;padding:8px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text-2);cursor:pointer;">キャンセル</button><button id="pf_save" style="font-size:13px;font-weight:700;padding:8px 18px;border:none;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;">登録</button></div>'
+      + '</div></div>' : '');
+
+    wrap._filterCat = filterCat;
+
+    if(isAdmin){
+      const modal = document.getElementById('popAddModal');
+      if(modal) modal.style.display = 'none';
+      const addBtn = document.getElementById('popAddBtn');
+      if(addBtn) addBtn.addEventListener('click', ()=>{ if(modal){ modal.style.display='flex'; } });
+      const cancelBtn = document.getElementById('pf_cancel');
+      if(cancelBtn) cancelBtn.addEventListener('click', ()=>{ if(modal) modal.style.display='none'; });
+      const saveBtn = document.getElementById('pf_save');
+      if(saveBtn) saveBtn.addEventListener('click', async ()=>{
+        const name = (document.getElementById('pf_name').value||'').trim();
+        const url = (document.getElementById('pf_url').value||'').trim();
+        const category = document.getElementById('pf_cat').value||'その他';
+        const note = (document.getElementById('pf_note').value||'').trim();
+        if(!name || !url){ alert('ファイル名とURLは必須です。'); return; }
+        popFiles.push({ id: uid('pf'), name, url, category, note, uploadedBy: currentUser ? currentUser.displayName : '', createdAt: new Date().toISOString() });
+        await savePopFiles();
+        if(modal) modal.style.display='none';
+        renderPopFolder();
+      });
+    }
+  }
+  window.deletePopFile = async function(id){
+    if(!confirm('このファイルを削除しますか？')) return;
+    popFiles = popFiles.filter(f=>f.id!==id);
+    await savePopFiles();
+    renderPopFolder();
+  };
+  // ────────────────────────────────────────────────────────────
+
   function renderCustodyTab(){
     const el = document.getElementById('custodyContent');
     if(!el) return;
@@ -5682,7 +5781,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
-    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','popfolder'].forEach(t=>{
       try{
         const el = document.getElementById('tab-'+t);
         if(el) el.style.display = (t === tabName) ? 'block' : 'none';
@@ -5690,6 +5789,7 @@ window.addEventListener('storageReady', function(){
     });
     if(tabName === 'out'){ renderProvisionalList(); }
     if(tabName === 'pricing'){ initPricingAccordion(); initAnnouncementEditor(); renderAnnouncementList(); }
+    if(tabName === 'popfolder'){ renderPopFolder(); }
   }
 
   let _announcementAddBtnBound = false;
@@ -5855,7 +5955,7 @@ window.addEventListener('storageReady', function(){
 
   function showHomeState(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','popfolder'].forEach(t=>{
       document.getElementById('tab-'+t).style.display = 'none';
     });
   }
