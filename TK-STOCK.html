@@ -14200,7 +14200,7 @@ window.addEventListener('storageReady', function(){
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
     document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || sell) : sell, sell));
-    document.getElementById('detailDelete').style.display = (currentUser && currentUser.role === 'superadmin') ? 'inline-block' : 'none';
+    document.getElementById('detailDelete').style.display = isAdminUser() ? 'inline-block' : 'none';
     // 複製ボタン（管理者以上のみ）
     const _dupBtn = document.getElementById('detailDuplicate');
     _dupBtn.style.display = isAdminUser() ? 'inline-block' : 'none';
@@ -14450,7 +14450,7 @@ window.addEventListener('storageReady', function(){
     if(detailProductId) openEditModal(detailProductId);
   });
   document.getElementById('detailDelete').addEventListener('click', async ()=>{
-    if(!currentUser || currentUser.role !== 'superadmin') return;
+    if(!isAdminUser()) return;
     if(!detailProductId) return;
     const p = products.find(x=>x.id===detailProductId);
     if(!p) return;
@@ -14462,11 +14462,14 @@ window.addEventListener('storageReady', function(){
     const _delStk = p.branchStock ? (p.branchStock[_delBranch] || 0) : (p.stock || 0);
     transactions.unshift({ id: uid('t'), productId: p.id, barcode: p.barcode||'', name: p.name, type: 'delete', qty: _delStk, date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '', itemType: 'delete', branchId: _delBranch });
     await saveTransactions();
-    products = products.filter(x=>x.id!==detailProductId);
-    await saveProducts();
+    const _deletedId = detailProductId;
+    products = products.filter(x=>x.id!==_deletedId);
+    // トランザクションのマージでは削除が復活するため直接上書き保存
+    await window.storage.set('products', JSON.stringify(products), SHARED);
     renderCatTree();
     renderProductTable();
     detailModal.classList.remove('show');
+    showToast('商品を削除しました');
   });
 
 
