@@ -2873,6 +2873,7 @@ window.addEventListener('storageReady', function(){
   let provisionalOutbounds = []; // 仮出庫リスト
   let custodyContracts = []; // 預かり在庫
   let popFiles = []; // POPフォルダ
+  let popCategories = ['夏タイヤ','冬タイヤ','ホイール','セット品','その他']; // POPカテゴリ
   let custodyCustomers = []; // 取引先マスター
   let siteAnnouncements = []; // お知らせ（複数）
   let popTemplates = []; // POP印刷テンプレート
@@ -4314,11 +4315,19 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('popFiles', JSON.stringify(popFiles), SHARED); }
     catch(e){ console.error('save popFiles failed', e); }
   }
+  async function savePopCategories(){
+    try{ await window.storage.set('popCategories', JSON.stringify(popCategories), SHARED); }
+    catch(e){ console.error('save popCategories failed', e); }
+  }
   async function loadPopFiles(){
     try{
       const r = await window.storage.get('popFiles', SHARED);
       popFiles = r ? JSON.parse(r.value) : [];
     }catch(e){ popFiles = []; }
+    try{
+      const rc = await window.storage.get('popCategories', SHARED);
+      if(rc) popCategories = JSON.parse(rc.value);
+    }catch(e){ /* デフォルト維持 */ }
   }
   async function saveSiteAnnouncement(){
     try{ await window.storage.set('siteAnnouncements', JSON.stringify(siteAnnouncements), SHARED); }
@@ -4851,12 +4860,14 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('popfolderContent');
     if(!wrap) return;
     const isAdmin = isAdminUser();
-    const CATS = ['全て','夏タイヤ','冬タイヤ','ホイール','セット品','その他'];
+    const CATS = ['全て', ...popCategories];
 
     let filterCat = wrap._filterCat || '全て';
+    if(filterCat !== '全て' && !popCategories.includes(filterCat)) filterCat = '全て';
     const filtered = filterCat === '全て' ? popFiles : popFiles.filter(f=>f.category===filterCat);
 
-    const catBtns = CATS.map(c=>'<button onclick="(function(){var w=document.getElementById(\'popfolderContent\');w._filterCat=\''+c+'\';renderPopFolder();})()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid var(--line);background:'+(filterCat===c?'var(--amber)':'var(--bg-1)')+';color:'+(filterCat===c?'#fff':'var(--text-2)')+';cursor:pointer;font-weight:'+(filterCat===c?'700':'400')+';">'+escapeHtml(c)+'</button>').join('');
+    const catBtns = CATS.map(c=>'<button onclick="(function(){var w=document.getElementById(\'popfolderContent\');w._filterCat=\''+c+'\';renderPopFolder();})()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid var(--line);background:'+(filterCat===c?'var(--amber)':'var(--bg-1)')+';color:'+(filterCat===c?'#fff':'var(--text-2)')+';cursor:pointer;font-weight:'+(filterCat===c?'700':'400')+';">'+escapeHtml(c)+'</button>').join('')
+      + (isAdmin ? '<button id="popCatEditBtn" style="font-size:12px;padding:5px 12px;border-radius:16px;border:1px dashed var(--line);background:var(--bg-1);color:var(--text-3);cursor:pointer;">⚙ カテゴリ編集</button>' : '');
 
     const fileCards = filtered.length === 0
       ? '<div style="color:var(--text-3);text-align:center;padding:40px 0;">登録されているPOPファイルはありません。</div>'
@@ -4892,10 +4903,18 @@ window.addEventListener('storageReady', function(){
       + '<div style="font-size:16px;font-weight:700;">POPファイルを登録</div>'
       + '<div class="field"><label>ファイル名</label><input id="pf_name" class="input" placeholder="例）NEWNO 185/65R15 POP" style="width:100%;box-sizing:border-box;"></div>'
       + '<div class="field"><label>GoogleドライブURL</label><input id="pf_url" class="input" placeholder="https://drive.google.com/..." style="width:100%;box-sizing:border-box;"></div>'
-      + '<div class="field"><label>カテゴリ</label><select id="pf_cat" class="input" style="width:100%;box-sizing:border-box;"><option value="">選択...</option>'+CATS.filter(c=>c!=='全て').map(c=>'<option>'+c+'</option>').join('')+'</select></div>'
+      + '<div class="field"><label>カテゴリ</label><select id="pf_cat" class="input" style="width:100%;box-sizing:border-box;"><option value="">選択...</option>'+popCategories.map(c=>'<option>'+escapeHtml(c)+'</option>').join('')+'</select></div>'
       + '<div class="field"><label>メモ（任意）</label><input id="pf_note" class="input" placeholder="説明など" style="width:100%;box-sizing:border-box;"></div>'
       + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;"><button id="pf_cancel" style="font-size:13px;padding:8px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text-2);cursor:pointer;">キャンセル</button><button id="pf_save" style="font-size:13px;font-weight:700;padding:8px 18px;border:none;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;">登録</button></div>'
-      + '</div></div>' : '');
+      + '</div></div>'
+      + '<div id="popCatModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9001;align-items:center;justify-content:center;">'
+      + '<div style="background:var(--bg-1);border-radius:12px;padding:24px;width:min(400px,90vw);display:flex;flex-direction:column;gap:12px;">'
+      + '<div style="font-size:16px;font-weight:700;">カテゴリを編集</div>'
+      + '<div id="popCatList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div>'
+      + '<div style="display:flex;gap:8px;"><input id="popCatNewInput" class="input" placeholder="新しいカテゴリ名" style="flex:1;"><button id="popCatAddBtn" style="font-size:13px;font-weight:700;padding:6px 14px;border:none;border-radius:8px;background:var(--teal);color:#fff;cursor:pointer;">追加</button></div>'
+      + '<div style="text-align:right;"><button id="popCatClose" style="font-size:13px;padding:8px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--text-2);cursor:pointer;">閉じる</button></div>'
+      + '</div></div>'
+      : '');
 
     wrap._filterCat = filterCat;
 
@@ -4917,6 +4936,39 @@ window.addEventListener('storageReady', function(){
         await savePopFiles();
         if(modal) modal.style.display='none';
         renderPopFolder();
+      });
+      // カテゴリ編集モーダル
+      const catModal = document.getElementById('popCatModal');
+      const catEditBtn = document.getElementById('popCatEditBtn');
+      const catClose = document.getElementById('popCatClose');
+      function renderCatList(){
+        const listEl = document.getElementById('popCatList');
+        if(!listEl) return;
+        listEl.innerHTML = popCategories.map((c,i)=>
+          '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-2);border-radius:7px;">'
+          +'<span style="flex:1;font-size:13px;">'+escapeHtml(c)+'</span>'
+          +'<button onclick="window._popCatDel('+i+')" style="font-size:11px;color:var(--text-3);background:none;border:1px solid var(--line);border-radius:5px;padding:2px 8px;cursor:pointer;">削除</button>'
+          +'</div>'
+        ).join('');
+      }
+      window._popCatDel = async function(i){
+        if(!confirm('「'+popCategories[i]+'」を削除しますか？')) return;
+        popCategories.splice(i,1);
+        await savePopCategories();
+        renderCatList();
+      };
+      if(catEditBtn) catEditBtn.addEventListener('click', ()=>{ if(catModal){ catModal.style.display='flex'; renderCatList(); } });
+      if(catClose) catClose.addEventListener('click', ()=>{ if(catModal) catModal.style.display='none'; renderPopFolder(); });
+      const catAddBtn = document.getElementById('popCatAddBtn');
+      if(catAddBtn) catAddBtn.addEventListener('click', async ()=>{
+        const inp = document.getElementById('popCatNewInput');
+        const val = (inp.value||'').trim();
+        if(!val) return;
+        if(popCategories.includes(val)){ alert('同じカテゴリが既に存在します。'); return; }
+        popCategories.push(val);
+        await savePopCategories();
+        inp.value = '';
+        renderCatList();
       });
     }
   }
