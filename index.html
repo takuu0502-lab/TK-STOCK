@@ -721,6 +721,13 @@
             <button type="button" class="qr-opt-btn" data-pt-pricesize="32">大</button>
           </div>
         </div>
+        <div class="field">
+          <label style="font-size:12px;font-weight:700;color:var(--text-3);letter-spacing:.4px;">印刷媒体</label>
+          <div style="display:flex;gap:6px;margin-top:6px;" id="ptMediumGroup">
+            <button type="button" class="qr-opt-btn active" data-pt-medium="paper">📄 紙</button>
+            <button type="button" class="qr-opt-btn" data-pt-medium="label">🏷️ ラベル</button>
+          </div>
+        </div>
       </div>
       <!-- 右: プレビュー -->
       <div>
@@ -9835,7 +9842,7 @@ window.addEventListener('storageReady', function(){
       modal.classList.add('show');
 
       // 設定状態
-      let ptSettings = { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24 };
+      let ptSettings = { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24, printMedium:'paper' };
 
       // ボタントグル
       modal.querySelectorAll('[data-pt-cols]').forEach(btn=>{
@@ -9869,6 +9876,14 @@ window.addEventListener('storageReady', function(){
 
       // プレビューバーコード描画
       try{ JsBarcode('#ptPvBarSvg','4571234567893',{format:'EAN13',width:1.5,height:35,displayValue:true,fontSize:9,margin:3}); }catch(_){}
+
+      modal.querySelectorAll('[data-pt-medium]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          modal.querySelectorAll('[data-pt-medium]').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          ptSettings.printMedium = btn.dataset.ptMedium;
+        });
+      });
 
       document.getElementById('ptSettingsCancelBtn').onclick = ()=>modal.classList.remove('show');
       document.getElementById('ptSettingsPrintBtn').onclick = ()=>{
@@ -11366,8 +11381,35 @@ window.addEventListener('storageReady', function(){
     }, 300);
   }
 
+  async function executePriceTagLabelPrint(ps, cfg){
+    const ownBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const brLabel = branchName(ownBranch);
+    const items = await Promise.all(ps.map(async p=>{
+      const name = cleanName(p.name);
+      const spec = cfg.showSpec ? (p.spec||'') : '';
+      const partno = cfg.showPartno ? (p.partno ? '品番：'+p.partno : '') : '';
+      const sellEx = p.branchSellPrice && p.branchSellPrice[ownBranch] ? p.branchSellPrice[ownBranch] : (p.sellPrice||0);
+      const sell = sellEx ? Math.floor(sellEx * 1.1) : 0;
+      const priceStr = (cfg.showPrice && sell) ? ('¥'+Number(sell).toLocaleString('ja-JP')+(cfg.showTaxNote?' 税込':'')) : '';
+      const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? (p.internalBarcode || '') : '';
+      const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
+      const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
+      return _makeLabelHtmlInline({
+        status:'プライスタグ', statusBg:'#b45309',
+        name: cfg.showName ? name : '',
+        spec,
+        partno,
+        price: priceStr,
+        footer: brLabel,
+        qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
+      });
+    }));
+    if(items.length > 0) _printLabelsPDF(items, 'プライスタグ');
+  }
+
   function executePriceTagPrint(ps, cfg){
-    cfg = cfg || { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24 };
+    cfg = cfg || { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24, printMedium:'paper' };
+    if(cfg.printMedium === 'label'){ executePriceTagLabelPrint(ps, cfg); return; }
     const printArea = document.getElementById('priceTagPrintArea');
     printArea.innerHTML = '';
     printArea.style.display = 'block';
@@ -14396,6 +14438,7 @@ window.addEventListener('storageReady', function(){
     if(opts.customer) textBody+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
     if(opts.name)     textBody+=`<div style="font-size:${fnPx}px;font-weight:900;color:#000;line-height:1.15;">${esc(opts.name)}</div>`;
     if(opts.spec)     textBody+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.15;">${esc(opts.spec)}</div>`;
+    if(opts.price)    textBody+=`<div style="font-size:${Math.round(labelSettings.fontName*1.5*96/72)}px;font-weight:900;color:#000;line-height:1.1;">${esc(opts.price)}</div>`;
     const subItems=[opts.partno,opts.qty,opts.installDate].filter(Boolean);
     if(subItems.length) textBody+=`<div style="display:flex;gap:4px;flex-wrap:wrap;">${subItems.map(s=>`<span style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(s)}</span>`).join('')}</div>`;
     // コンテンツ行：QRがある場合は右にQR、左にテキスト
