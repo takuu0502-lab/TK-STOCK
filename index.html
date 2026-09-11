@@ -7937,10 +7937,11 @@ window.addEventListener('storageReady', function(){
       // その他 → 自店舗在庫のみで判定
       return p.branchStock ? (p.branchStock[_stockFilterBranch] || 0) : (p.stock || 0);
     };
-    // キーワード検索中は在庫フィルターをスキップ（0在庫の重複商品を検索・削除できるようにする）
+    // キーワード検索中は「在庫あり（他店含む）」フィルターをスキップ（0在庫の重複商品を検索・削除できるようにする）
+    // ただし「在庫あり（自店舗のみ）」はキーワード検索中も有効
     const _skipStockFilter = !!(keywordFilter && keywordFilter.trim());
     let filteredList = (stockOnlyFilter && !recentFilter && !_skipStockFilter) ? list.filter(p=> getTotalStock(p) > 0) : list;
-    if(ownStockOnlyFilter && !_skipStockFilter){
+    if(ownStockOnlyFilter){
       const _ownBrId = (currentUser && currentUser.branchId) || 'taniyabe';
       filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBrId]||0) : (p.stock||0)) > 0);
     }
