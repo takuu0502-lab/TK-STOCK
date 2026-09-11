@@ -1587,6 +1587,16 @@
         <input type="number" id="labelSettingFontSmall" min="4" max="24" step="0.5" style="width:100%;box-sizing:border-box;">
       </div>
     </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="labelSettingShowQr" style="width:16px;height:16px;">
+        QRコードを印刷する
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="labelSettingShowBarcode" style="width:16px;height:16px;">
+        自社バーコードを印刷する
+      </label>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;">
       <button class="btn btn-amber" id="labelSettingSaveBtn">💾 保存</button>
       <span id="labelSettingMsg" style="font-size:13px;"></span>
@@ -2956,7 +2966,7 @@ window.addEventListener('storageReady', function(){
   let suppliers = [];
   let locations = [];       // 現在ログイン支店の保管場所（branchLocationsから取得）
   let branchLocations = {}; // {taniyabe:[...], iwama:[...], katsuta:[...]}
-  let labelSettings = { w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6 }; // ラベル印刷設定
+  let labelSettings = { w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6, showQr:true, showBarcode:true }; // ラベル印刷設定
   let accounts = [];
   let currentUser = null;
 
@@ -4254,8 +4264,8 @@ window.addEventListener('storageReady', function(){
   async function loadLabelSettings(){
     try{
       const r = await window.storage.get('labelSettings', SHARED);
-      if(r) labelSettings = Object.assign({ w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6 }, JSON.parse(r.value));
-    }catch(e){ labelSettings = { w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6 }; }
+      if(r) labelSettings = Object.assign({ w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6, showQr:true, showBarcode:true }, JSON.parse(r.value));
+    }catch(e){ labelSettings = { w:62, h:29, fontName:9, fontSpec:7.5, fontSmall:6, showQr:true, showBarcode:true }; }
   }
   async function saveProducts(){
     // ローカルのproducts配列のスナップショット（トランザクション関数が参照）
@@ -5353,8 +5363,9 @@ window.addEventListener('storageReady', function(){
     const saleDateStr = row.saleDate ? fmtDate(row.saleDate) : '';
     // 預かり在庫は商品IDから internalBarcode を引く（row.productId があれば）
     const _custProd = row.productId ? products.find(x=>x.id===row.productId) : null;
-    const _custBc = (_custProd && _custProd.internalBarcode) || '';
-    const [_qrUrl, _bcUrl] = _custBc ? await Promise.all([_genQrDataUrl(_custBc, 64), _genBarcodeDataUrl(_custBc)]) : [null, null];
+    const _custBc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? ((_custProd && _custProd.internalBarcode) || '') : '';
+    const _qrUrl  = (_custBc && labelSettings.showQr !== false)      ? await _genQrDataUrl(_custBc, 64)  : null;
+    const _bcUrl  = (_custBc && labelSettings.showBarcode !== false)  ? await _genBarcodeDataUrl(_custBc) : null;
     const item = _makeLabelHtmlInline({
       status:'預かり在庫', statusBg:'#6d28d9',
       customer:(row.customerName||'')+'　様',
@@ -5388,8 +5399,9 @@ window.addEventListener('storageReady', function(){
       const ws = p && p.wheelSpec;
       const specStr = ws ? [ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'', ws.holes&&ws.pcd?ws.holes+'H PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''].filter(Boolean).join(' ') : (item.spec||'');
       const nameStr = (item.name||'');
-      const _bc = (p && p.internalBarcode) || '';
-      const [_qrUrl, _bcUrl] = _bc ? await Promise.all([_genQrDataUrl(_bc, 64), _genBarcodeDataUrl(_bc)]) : [null, null];
+      const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? ((p && p.internalBarcode) || '') : '';
+      const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
+      const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
       return _makeLabelHtmlInline({
         status:'仮出庫', statusBg:'#b45309',
         customer: (provEntry.customerName||'')+'　様',
@@ -10870,6 +10882,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('labelSettingFontName').value = labelSettings.fontName;
       document.getElementById('labelSettingFontSpec').value = labelSettings.fontSpec;
       document.getElementById('labelSettingFontSmall').value= labelSettings.fontSmall;
+      document.getElementById('labelSettingShowQr').checked      = labelSettings.showQr !== false;
+      document.getElementById('labelSettingShowBarcode').checked  = labelSettings.showBarcode !== false;
     }
     _fillLabelSettingInputs();
     document.getElementById('labelSettingSaveBtn').addEventListener('click', async ()=>{
@@ -10883,7 +10897,9 @@ window.addEventListener('storageReady', function(){
         document.getElementById('labelSettingMsg').textContent='⚠️ 正しい数値を入力してください。';
         return;
       }
-      labelSettings = { w, h, fontName:fName, fontSpec:fSpec, fontSmall:fSmall };
+      const showQr      = document.getElementById('labelSettingShowQr').checked;
+      const showBarcode = document.getElementById('labelSettingShowBarcode').checked;
+      labelSettings = { w, h, fontName:fName, fontSpec:fSpec, fontSmall:fSmall, showQr, showBarcode };
       const btn = document.getElementById('labelSettingSaveBtn');
       btn.disabled = true;
       try{
@@ -14462,8 +14478,9 @@ window.addEventListener('storageReady', function(){
       return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
     }
     const installStr = fmtDate(installDate);
-    const _bc = p.internalBarcode || '';
-    const [_qrUrl, _bcUrl] = _bc ? await Promise.all([_genQrDataUrl(_bc, 64), _genBarcodeDataUrl(_bc)]) : [null, null];
+    const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? (p.internalBarcode || '') : '';
+    const _qrUrl  = (_bc && labelSettings.showQr !== false)      ? await _genQrDataUrl(_bc, 64)    : null;
+    const _bcUrl  = (_bc && labelSettings.showBarcode !== false)  ? await _genBarcodeDataUrl(_bc)   : null;
     const items = Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
       status:'入庫済み', statusBg:'#000',
       name:(p.name||''),
@@ -14486,8 +14503,9 @@ window.addEventListener('storageReady', function(){
       const p=t.p, qty=t.qty;
       const ws=p.wheelSpec;
       const specStr=ws?[ws.inch?ws.inch+'インチ':'',ws.j?ws.j+'J':'',ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'',ws.offset?'+'+ws.offset:'',ws.color?ws.color:''].filter(Boolean).join('  '):(p.spec||'');
-      const _bc = p.internalBarcode || '';
-      const [_qrUrl, _bcUrl] = _bc ? await Promise.all([_genQrDataUrl(_bc, 64), _genBarcodeDataUrl(_bc)]) : [null, null];
+      const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? (p.internalBarcode || '') : '';
+      const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
+      const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
       return Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
         status:'入庫済み', statusBg:'#000',
         name:(p.name||''),
