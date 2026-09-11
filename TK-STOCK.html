@@ -676,12 +676,21 @@
 
 <!-- プライスタグ設定モーダル -->
 <div class="modal-overlay" id="priceTagSettingsModal">
-  <div class="modal" style="max-width:520px;width:95%;">
+  <div class="modal" style="max-width:560px;width:95%;">
     <h3 style="margin-top:0;font-size:16px;">💴 プライスタグの設定</h3>
+    <!-- 印刷媒体（最上部） -->
+    <div class="field" style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:700;color:var(--text-3);letter-spacing:.4px;">印刷媒体</label>
+      <div style="display:flex;gap:6px;margin-top:6px;" id="ptMediumGroup">
+        <button type="button" class="qr-opt-btn active" data-pt-medium="paper">📄 紙</button>
+        <button type="button" class="qr-opt-btn" data-pt-medium="label">🏷️ ラベル</button>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
       <!-- 左: 設定項目 -->
       <div style="display:flex;flex-direction:column;gap:16px;">
-        <div class="field">
+        <!-- 1行の枚数（紙のみ） -->
+        <div class="field" id="ptColsField">
           <label style="font-size:12px;font-weight:700;color:var(--text-3);letter-spacing:.4px;">1行の枚数</label>
           <div style="display:flex;gap:6px;margin-top:6px;" id="ptColGroup">
             <button type="button" class="qr-opt-btn" data-pt-cols="2">2枚</button>
@@ -719,13 +728,6 @@
             <button type="button" class="qr-opt-btn" data-pt-pricesize="18">小</button>
             <button type="button" class="qr-opt-btn active" data-pt-pricesize="24">中</button>
             <button type="button" class="qr-opt-btn" data-pt-pricesize="32">大</button>
-          </div>
-        </div>
-        <div class="field">
-          <label style="font-size:12px;font-weight:700;color:var(--text-3);letter-spacing:.4px;">印刷媒体</label>
-          <div style="display:flex;gap:6px;margin-top:6px;" id="ptMediumGroup">
-            <button type="button" class="qr-opt-btn active" data-pt-medium="paper">📄 紙</button>
-            <button type="button" class="qr-opt-btn" data-pt-medium="label">🏷️ ラベル</button>
           </div>
         </div>
       </div>
@@ -9877,11 +9879,17 @@ window.addEventListener('storageReady', function(){
       // プレビューバーコード描画
       try{ JsBarcode('#ptPvBarSvg','4571234567893',{format:'EAN13',width:1.5,height:35,displayValue:true,fontSize:9,margin:3}); }catch(_){}
 
+      function _applyMediumUi(){
+        const isLabel = ptSettings.printMedium === 'label';
+        document.getElementById('ptColsField').style.display = isLabel ? 'none' : '';
+      }
+      _applyMediumUi();
       modal.querySelectorAll('[data-pt-medium]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           modal.querySelectorAll('[data-pt-medium]').forEach(b=>b.classList.remove('active'));
           btn.classList.add('active');
           ptSettings.printMedium = btn.dataset.ptMedium;
+          _applyMediumUi();
         });
       });
 
