@@ -11399,7 +11399,8 @@ window.addEventListener('storageReady', function(){
       const sellEx = p.branchSellPrice && p.branchSellPrice[ownBranch] ? p.branchSellPrice[ownBranch] : (p.sellPrice||0);
       const sell = sellEx ? Math.floor(sellEx * 1.1) : 0;
       const priceStr = (cfg.showPrice && sell) ? ('¥'+Number(sell).toLocaleString('ja-JP')+(cfg.showTaxNote?' 税込':'')) : '';
-      const _bc = labelSettings.showBarcode !== false ? (p.internalBarcode || '') : '';
+      // JANコードがあればJAN優先、なければ自社バーコード
+      const _bc = labelSettings.showBarcode !== false ? (p.barcode || p.internalBarcode || '') : '';
       const _bcUrl = _bc ? await _genBarcodeDataUrl(_bc) : null;
       return _makeLabelHtmlInline({
         status:'プライスタグ', statusBg:'#b45309',
@@ -14413,12 +14414,14 @@ window.addEventListener('storageReady', function(){
       }catch(e){ if(document.body.contains(div)) document.body.removeChild(div); resolve(null); }
     });
   }
-  // バーコードデータURL生成（CODE128）
+  // バーコードデータURL生成（JAN13/JAN8/CODE128 自動判定）
   async function _genBarcodeDataUrl(text){
     if(!text||typeof JsBarcode==='undefined') return null;
     try{
       const canvas=document.createElement('canvas');
-      JsBarcode(canvas,text,{format:'CODE128',width:1.5,height:32,displayValue:false,margin:2});
+      const isJan = /^\d{8}$/.test(text) || /^\d{13}$/.test(text);
+      const fmt = isJan ? (text.length===8?'EAN8':'EAN13') : 'CODE128';
+      JsBarcode(canvas,text,{format:fmt,width:1.5,height:32,displayValue:false,margin:2});
       return canvas.toDataURL('image/png');
     }catch(e){ return null; }
   }
