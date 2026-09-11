@@ -7980,11 +7980,12 @@ window.addEventListener('storageReady', function(){
     if(keywordFilter){
       const kw = keywordFilter.trim().toLowerCase();
       if(kw) filteredList = filteredList.filter(p =>
-        (p.name    || '').toLowerCase().includes(kw) ||
-        (p.brand   || '').toLowerCase().includes(kw) ||
-        (p.partno  || '').toLowerCase().includes(kw) ||
-        (p.spec    || '').toLowerCase().includes(kw) ||
-        (p.barcode || '').toLowerCase().includes(kw)
+        (p.name             || '').toLowerCase().includes(kw) ||
+        (p.brand            || '').toLowerCase().includes(kw) ||
+        (p.partno           || '').toLowerCase().includes(kw) ||
+        (p.spec             || '').toLowerCase().includes(kw) ||
+        (p.barcode          || '').toLowerCase().includes(kw) ||
+        (p.internalBarcode  || '').toLowerCase().includes(kw)
       );
     }
     if(recentFilter){
@@ -14414,14 +14415,15 @@ window.addEventListener('storageReady', function(){
       }catch(e){ if(document.body.contains(div)) document.body.removeChild(div); resolve(null); }
     });
   }
-  // バーコードデータURL生成（JAN13/JAN8/CODE128 自動判定）
+  // バーコードデータURL生成（JAN13/JAN8/CODE128 自動判定・高解像度）
   async function _genBarcodeDataUrl(text){
     if(!text||typeof JsBarcode==='undefined') return null;
     try{
       const canvas=document.createElement('canvas');
       const isJan = /^\d{8}$/.test(text) || /^\d{13}$/.test(text);
       const fmt = isJan ? (text.length===8?'EAN8':'EAN13') : 'CODE128';
-      JsBarcode(canvas,text,{format:fmt,width:1.5,height:32,displayValue:false,margin:2});
+      // 高解像度で生成（引き伸ばし時のぼやけを防ぐ）
+      JsBarcode(canvas,text,{format:fmt,width:5,height:100,displayValue:false,margin:0});
       return canvas.toDataURL('image/png');
     }catch(e){ return null; }
   }
@@ -14485,7 +14487,7 @@ window.addEventListener('storageReady', function(){
       const LW=labelSettings.w, LH=labelSettings.h;
       const px=96/25.4;
       const wPx=Math.round(LW*px), hPx=Math.round(LH*px);
-      const SCALE=3;
+      const SCALE=4;
       const wrap=document.createElement('div');
       wrap.style.cssText=`position:fixed;left:-9999px;top:0;width:${wPx}px;height:${hPx}px;overflow:hidden;z-index:-9999;`;
       document.body.appendChild(wrap);
