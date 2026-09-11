@@ -11399,9 +11399,8 @@ window.addEventListener('storageReady', function(){
       const sellEx = p.branchSellPrice && p.branchSellPrice[ownBranch] ? p.branchSellPrice[ownBranch] : (p.sellPrice||0);
       const sell = sellEx ? Math.floor(sellEx * 1.1) : 0;
       const priceStr = (cfg.showPrice && sell) ? ('¥'+Number(sell).toLocaleString('ja-JP')+(cfg.showTaxNote?' 税込':'')) : '';
-      const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? (p.internalBarcode || '') : '';
-      const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
-      const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
+      const _bc = labelSettings.showBarcode !== false ? (p.internalBarcode || '') : '';
+      const _bcUrl = _bc ? await _genBarcodeDataUrl(_bc) : null;
       return _makeLabelHtmlInline({
         status:'プライスタグ', statusBg:'#b45309',
         name: cfg.showName ? name : '',
@@ -11409,7 +11408,7 @@ window.addEventListener('storageReady', function(){
         partno,
         price: priceStr,
         footer: brLabel,
-        qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
+        qrDataUrl:null, barcodeDataUrl:_bcUrl
       });
     }));
     if(items.length > 0) _printLabelsPDF(items, 'プライスタグ');
