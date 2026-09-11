@@ -9288,16 +9288,20 @@ window.addEventListener('storageReady', function(){
     const counts = currentStockcountDraft.counts || {};
     const brProducts = products.filter(p=> !p.deleted);
 
-    // カテゴリ一覧
+    // カテゴリ一覧（大分類）
     const cats = [{id: null, name: 'すべて'}, ...categories.map(c=>({id:c.id, name:c.name}))];
+    // 選択中大分類の中分類一覧
+    const _selMajor = stockcountCatFilter ? categories.find(c=>c.id===stockcountCatFilter) : null;
+    const subCats = _selMajor ? [{id: null, name: 'すべて'}, ...(_selMajor.subs||[]).map(s=>({id:s.id, name:s.name}))] : [];
+    if(!window._scSubFilter) window._scSubFilter = null;
+    if(!stockcountCatFilter) window._scSubFilter = null;
 
     // フィルタ済み商品リスト
     let filtered = brProducts;
     if(stockcountCatFilter){
-      const cat = categories.find(c=>c.id===stockcountCatFilter);
-      if(cat){
-        const subIds = (cat.subs||[]).map(s=>s.id);
-        filtered = brProducts.filter(p=> p.majorId===stockcountCatFilter || subIds.includes(p.minorId));
+      filtered = brProducts.filter(p=> p.majorId===stockcountCatFilter);
+      if(window._scSubFilter){
+        filtered = filtered.filter(p=> p.subId===window._scSubFilter);
       }
     }
 
@@ -9330,13 +9334,24 @@ window.addEventListener('storageReady', function(){
     html += '</div>';
     html += '</div>';
 
-    // カテゴリフィルタ
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">';
+    // 大分類フィルタ
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
     cats.forEach(c=>{
       const active = stockcountCatFilter === c.id;
       html += '<button class="btn btn-sm '+(active?'btn-amber':'btn-ghost')+' sc-cat-btn" data-cat-id="'+(c.id||'')+'" style="font-size:12px;">'+escapeHtml(c.name)+'</button>';
     });
     html += '</div>';
+    // 中分類フィルタ（大分類選択時のみ）
+    if(subCats.length > 1){
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-left:8px;border-left:3px solid var(--amber);">';
+      subCats.forEach(s=>{
+        const active = (window._scSubFilter||null) === s.id;
+        html += '<button class="btn btn-sm '+(active?'btn-teal':'btn-ghost')+' sc-sub-btn" data-sub-id="'+(s.id||'')+'" style="font-size:11px;">'+escapeHtml(s.name)+'</button>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div style="margin-bottom:16px;"></div>';
+    }
 
     // 商品リスト
     html += '<div style="display:flex;flex-direction:column;gap:6px;">';
@@ -9373,6 +9388,14 @@ window.addEventListener('storageReady', function(){
       btn.addEventListener('click', ()=>{
         const val = btn.dataset.catId;
         stockcountCatFilter = val === '' ? null : val;
+        window._scSubFilter = null;
+        renderStockcountTab();
+      });
+    });
+    wrap.querySelectorAll('.sc-sub-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const val = btn.dataset.subId;
+        window._scSubFilter = val === '' ? null : val;
         renderStockcountTab();
       });
     });
