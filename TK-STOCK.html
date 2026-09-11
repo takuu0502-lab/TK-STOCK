@@ -6581,6 +6581,7 @@ window.addEventListener('storageReady', function(){
   let customerOrderFilter = false;
   let orderOnlyFilter = false;
   let recentFilter = false;
+  let oldMfgFilter = false; // 自店舗製造年が古い順
   let brandSortFilter = false;
   let nameSortFilter = false;
   let keywordFilter = '';
@@ -7749,6 +7750,8 @@ window.addEventListener('storageReady', function(){
       + '<input type="checkbox" id="recentChk"'+(recentFilter?' checked':'')+'> 最近の登録順'
       + '</label>'
       + '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);cursor:pointer;">'
+      + '<input type="checkbox" id="oldMfgChk"'+(oldMfgFilter?' checked':'')+'> 製造年が古い順（自店舗）'
+      + '</label>'
       + '</div>';
     const chk = document.getElementById('stockOnlyChk');
     if(chk){ chk.addEventListener('change', ()=>{ stockOnlyFilter = chk.checked; renderProductTable(); }); }
@@ -7760,6 +7763,8 @@ window.addEventListener('storageReady', function(){
     if(oochk){ oochk.addEventListener('change', ()=>{ orderOnlyFilter = oochk.checked; renderProductTable(); }); }
     const rchk = document.getElementById('recentChk');
     if(rchk){ rchk.addEventListener('change', ()=>{ recentFilter = rchk.checked; if(recentFilter){ stockOnlyFilter = false; document.getElementById('stockOnlyChk').checked = false; } renderProductTable(); }); }
+    const omchk = document.getElementById('oldMfgChk');
+    if(omchk){ omchk.addEventListener('change', ()=>{ oldMfgFilter = omchk.checked; renderProductTable(); }); }
 
   }
 
@@ -7960,6 +7965,18 @@ window.addEventListener('storageReady', function(){
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
+    if(oldMfgFilter){
+      const _ownBr = (currentUser && currentUser.branchId) || 'taniyabe';
+      filteredList = filteredList.slice().sort((a,b)=>{
+        const ya = getBranchManufactureYear(a, _ownBr);
+        const yb = getBranchManufactureYear(b, _ownBr);
+        // 製造年なしは末尾
+        if(!ya && !yb) return 0;
+        if(!ya) return 1;
+        if(!yb) return -1;
+        return Number(ya) - Number(yb); // 古い順（小さい年が先）
+      });
+    }
     if(list.length === 0){
       const _dbgCount = products.length;
       const _dbgBranch = selectedBranchFilter || '全支店';
@@ -7971,7 +7988,7 @@ window.addEventListener('storageReady', function(){
       const rfBtn = document.getElementById('resetFiltersBtn');
       if(rfBtn) rfBtn.addEventListener('click', ()=>{
         stockOnlyFilter = false; ownStockOnlyFilter = false; manualOnlyFilter = false;
-        customerOrderFilter = false; orderOnlyFilter = false; recentFilter = false; brandSortFilter = false;
+        customerOrderFilter = false; orderOnlyFilter = false; recentFilter = false; oldMfgFilter = false; brandSortFilter = false;
         keywordFilter = ''; if(document.getElementById('keywordSearchInput')) document.getElementById('keywordSearchInput').value = '';
         renderProductTable();
       });
