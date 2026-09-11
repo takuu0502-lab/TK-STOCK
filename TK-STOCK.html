@@ -7967,6 +7967,8 @@ window.addEventListener('storageReady', function(){
     }
     if(oldMfgFilter){
       const _ownBr = (currentUser && currentUser.branchId) || 'taniyabe';
+      // 自店舗に在庫がある商品のみ
+      filteredList = filteredList.filter(p => (p.branchStock ? (p.branchStock[_ownBr]||0) : (p.stock||0)) > 0);
       filteredList = filteredList.slice().sort((a,b)=>{
         const ya = getBranchManufactureYear(a, _ownBr);
         const yb = getBranchManufactureYear(b, _ownBr);
