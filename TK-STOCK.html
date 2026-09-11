@@ -11467,11 +11467,32 @@ window.addEventListener('storageReady', function(){
         html += '</div></div>';
       }
 
+      // 小分類（subsubs）ステップ：selectedSub が選択済みかつ subsubs がある場合に表示
+      let _hasSubsubStep = false;
+      if(selectedSub !== null && m){
+        const _selSub = m.subs.find(s => s.id === selectedSub);
+        if(_selSub && (_selSub.subsubs||[]).length > 0){
+          _hasSubsubStep = true;
+          const _ssBaseCol = colorForMajor(selectedMajor).text;
+          html += '<div class="spec-step"><div class="spec-step-label">3. 小分類</div><div class="spec-step-tabs">';
+          const _ssAllActive = selectedSubSub === null;
+          html += '<span class="chip'+(_ssAllActive?' active':'')+'" data-spec-subsub="" style="'+(_ssAllActive?'border-color:'+_ssBaseCol+';background:'+_ssBaseCol+';color:#fff;':'border-color:'+_ssBaseCol+';')+'"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(_ssAllActive?'rgba(255,255,255,0.85)':_ssBaseCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>すべて</span>';
+          (_selSub.subsubs||[]).forEach((ss, ssi)=>{
+            const _ssActive = selectedSubSub === ss.id;
+            const _ssItemCol = colorForSubItem(selectedMajor, ssi);
+            html += '<span class="chip'+(_ssActive?' active':'')+'" data-spec-subsub="'+ss.id+'" style="'+(_ssActive?'border-color:'+_ssItemCol+';background:'+_ssItemCol+';color:#fff;':'border-color:'+_ssItemCol+';')+'">'
+              +'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(_ssActive?'rgba(255,255,255,0.85)':_ssItemCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
+              +escapeHtml(ss.name)+'</span>';
+          });
+          html += '</div></div>';
+        }
+      }
+
       const isOil = m && m.name === 'オイル';
       const isTire = m && m.name === 'タイヤ';
       if(!isOil){
         const isWheel = m && (m.name === 'ホイール' || m.name === 'セット品');
-        html += '<div class="spec-step"><div class="spec-step-label">3. 規格・サイズ</div>';
+        html += '<div class="spec-step"><div class="spec-step-label">'+(_hasSubsubStep ? '4' : '3')+'. 規格・サイズ</div>';
         if(isTire){
           html += '<div class="tire-size-row">';
           html += '<div class="tire-size-col"><label>タイヤ幅</label>';
@@ -11580,6 +11601,14 @@ window.addEventListener('storageReady', function(){
       chip.addEventListener('click', ()=>{
         selectedSub = chip.dataset.specSub || null;
         resetSpecSelections();
+        renderSpecSearchPanel();
+        renderCatTree();
+        renderProductTable();
+      });
+    });
+    panel.querySelectorAll('[data-spec-subsub]').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        selectedSubSub = chip.dataset.specSubsub || null;
         renderSpecSearchPanel();
         renderCatTree();
         renderProductTable();
