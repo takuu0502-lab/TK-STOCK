@@ -8002,7 +8002,7 @@ window.addEventListener('storageReady', function(){
       });
     } else if(nameSortFilter){
       filteredList.sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
-    } else if(!recentFilter){
+    } else if(!recentFilter && !oldMfgFilter){
       filteredList.sort((a,b)=>{
         // 検索したタイヤサイズに一致する商品を先頭に表示
         const hasSize = p => p.spec && (
