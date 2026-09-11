@@ -13704,8 +13704,9 @@ window.addEventListener('storageReady', function(){
         else { cost = p.costPrice || 0; }
       }
     } else {
-      // 自社登録商品（カタログ外）：登録価格をそのまま使用
-      cost = p.costPrice || 0;
+      // 自社登録商品（カタログ外）：支店別固定価格 → 登録価格の順で使用
+      const _nonCatFixed = getBranchFixedCost(p, _detBranch);
+      cost = _nonCatFixed !== null ? _nonCatFixed : (p.costPrice || 0);
     }
     const _branchSellFixed = getBranchFixedSell(p, _detBranch);
     const sell = _branchSellFixed !== null ? _branchSellFixed
