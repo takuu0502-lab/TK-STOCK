@@ -10137,7 +10137,7 @@ window.addEventListener('storageReady', function(){
       _si.value = ''; // 読み取り直後にクリア（次のスキャンが追記されないよう）
       if(_scanPreview) _scanPreview.textContent = '';
       if(!barcode) return;
-      const p = products.find(x=>x.barcode && x.barcode.trim().toLowerCase() === barcode);
+      const p = findByBarcode(barcode);
       if(!p){
         document.getElementById('receiveScanMsg').textContent = '⚠️ 該当する商品が見つかりません（バーコード：'+barcode+'）';
         document.getElementById('receiveScanProductArea').style.display = 'none';
