@@ -14680,8 +14680,9 @@ window.addEventListener('storageReady', function(){
       await saveToJanDict(barcode, {name, brand, partno, spec, majorId, subId});
     }
     await saveProducts();
-    // 新規登録後は在庫フィルターをオフ（在庫0の登録品が即座に表示されるように）
-    stockOnlyFilter = false; ownStockOnlyFilter = false;
+    // 新規登録後のみ在庫フィルターをオフ（在庫0の登録品が即座に表示されるように）
+    // 編集時はフィルター状態を維持する
+    if(!editingId) { stockOnlyFilter = false; ownStockOnlyFilter = false; }
     // 各描画を独立したtry/catchで実行（一つが失敗しても他の再描画をスキップしない）
     try { renderCatTree(); } catch(e){ console.error('renderCatTree error:', e); }
     try { renderProductTable(); } catch(e){ console.error('renderProductTable error:', e); }
