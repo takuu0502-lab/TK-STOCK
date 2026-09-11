@@ -9847,27 +9847,17 @@ window.addEventListener('storageReady', function(){
       // 設定状態
       let ptSettings = { cols:3, showName:true, showSpec:true, showPartno:false, showPrice:true, showBarcode:true, showTaxNote:true, priceSize:24, printMedium:'paper' };
 
-      // ボタントグル
-      modal.querySelectorAll('[data-pt-cols]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          modal.querySelectorAll('[data-pt-cols]').forEach(b=>b.classList.remove('active'));
-          btn.classList.add('active');
-          ptSettings.cols = parseInt(btn.dataset.ptCols);
-        });
-      });
-      modal.querySelectorAll('[data-pt-pricesize]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          modal.querySelectorAll('[data-pt-pricesize]').forEach(b=>b.classList.remove('active'));
-          btn.classList.add('active');
-          ptSettings.priceSize = parseInt(btn.dataset.ptPricesize);
-          document.getElementById('ptPvPrice').style.fontSize = ptSettings.priceSize+'px';
-        });
-      });
-      ['ptShowName','ptShowSpec','ptShowPartno','ptShowPrice','ptShowBarcode','ptShowTaxNote'].forEach(id=>{
-        const cb = document.getElementById(id);
-        const key = id.replace('ptShow','show').replace('pt','');
-        cb.addEventListener('change', ()=>{ ptSettings[id.replace('ptShow','show')] = cb.checked; updatePtPreview(); });
-      });
+      // チェックボックスの初期値をptSettingsに合わせてリセット
+      document.getElementById('ptShowName').checked    = ptSettings.showName;
+      document.getElementById('ptShowSpec').checked    = ptSettings.showSpec;
+      document.getElementById('ptShowPartno').checked  = ptSettings.showPartno;
+      document.getElementById('ptShowPrice').checked   = ptSettings.showPrice;
+      document.getElementById('ptShowBarcode').checked = ptSettings.showBarcode;
+      document.getElementById('ptShowTaxNote').checked = ptSettings.showTaxNote;
+      // activeボタンをリセット
+      modal.querySelectorAll('[data-pt-cols]').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.ptCols)===ptSettings.cols));
+      modal.querySelectorAll('[data-pt-pricesize]').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.ptPricesize)===ptSettings.priceSize));
+      modal.querySelectorAll('[data-pt-medium]').forEach(b=>b.classList.toggle('active', b.dataset.ptMedium===ptSettings.printMedium));
 
       function updatePtPreview(){
         document.getElementById('ptPvName').style.display = ptSettings.showName?'':'none';
@@ -9876,23 +9866,45 @@ window.addEventListener('storageReady', function(){
         document.getElementById('ptPvJan').style.display = ptSettings.showBarcode?'':'none';
         document.querySelector('#ptPvPrice span:last-child').textContent = ptSettings.showTaxNote?' 税込':'';
       }
-
-      // プレビューバーコード描画
-      try{ JsBarcode('#ptPvBarSvg','4571234567893',{format:'EAN13',width:1.5,height:35,displayValue:true,fontSize:9,margin:3}); }catch(_){}
+      updatePtPreview();
 
       function _applyMediumUi(){
         const isLabel = ptSettings.printMedium === 'label';
         document.getElementById('ptColsField').style.display = isLabel ? 'none' : '';
       }
       _applyMediumUi();
+
+      // ボタントグル（onclickで上書き → 重複なし）
+      modal.querySelectorAll('[data-pt-cols]').forEach(btn=>{
+        btn.onclick = ()=>{
+          modal.querySelectorAll('[data-pt-cols]').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          ptSettings.cols = parseInt(btn.dataset.ptCols);
+        };
+      });
+      modal.querySelectorAll('[data-pt-pricesize]').forEach(btn=>{
+        btn.onclick = ()=>{
+          modal.querySelectorAll('[data-pt-pricesize]').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          ptSettings.priceSize = parseInt(btn.dataset.ptPricesize);
+          document.getElementById('ptPvPrice').style.fontSize = ptSettings.priceSize+'px';
+        };
+      });
       modal.querySelectorAll('[data-pt-medium]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
+        btn.onclick = ()=>{
           modal.querySelectorAll('[data-pt-medium]').forEach(b=>b.classList.remove('active'));
           btn.classList.add('active');
           ptSettings.printMedium = btn.dataset.ptMedium;
           _applyMediumUi();
-        });
+        };
       });
+      ['ptShowName','ptShowSpec','ptShowPartno','ptShowPrice','ptShowBarcode','ptShowTaxNote'].forEach(id=>{
+        const cb = document.getElementById(id);
+        cb.onchange = ()=>{ ptSettings[id.replace('ptShow','show')] = cb.checked; updatePtPreview(); };
+      });
+
+      // プレビューバーコード描画
+      try{ JsBarcode('#ptPvBarSvg','4571234567893',{format:'EAN13',width:1.5,height:35,displayValue:true,fontSize:9,margin:3}); }catch(_){}
 
       document.getElementById('ptSettingsCancelBtn').onclick = ()=>modal.classList.remove('show');
       document.getElementById('ptSettingsPrintBtn').onclick = ()=>{
