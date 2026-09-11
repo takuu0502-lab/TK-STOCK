@@ -14294,25 +14294,30 @@ window.addEventListener('storageReady', function(){
     const LW=labelSettings.w, LH=labelSettings.h;
     const px=96/25.4;
     const w=Math.round(LW*px), h=Math.round(LH*px);
-    const pv=Math.round(2*px), ph=Math.round(3*px);
+    const ph=Math.round(3*px);
     const fnPx=Math.round(labelSettings.fontName*96/72);
     const fsPx=Math.round(labelSettings.fontSpec*96/72);
     const fmPx=Math.round(labelSettings.fontSmall*96/72);
-    const stPx=Math.round(7*96/72);
+    const stPx=Math.round(7.5*96/72);
     const ff="'Hiragino Kaku Gothic ProN','Meiryo',sans-serif";
     const bg=opts.statusBg||'#000';
     const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    let mid='';
-    if(opts.customer) mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
-    if(opts.name)     mid+=`<div style="font-size:${fnPx}px;font-weight:700;color:#000;line-height:1.2;">${esc(opts.name)}</div>`;
-    if(opts.spec)     mid+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.2;">${esc(opts.spec)}</div>`;
-    if(opts.partno)   mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.partno)}</div>`;
-    if(opts.qty)      mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.qty)}</div>`;
-    if(opts.installDate) mid+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.installDate)}</div>`;
-    return `<div style="width:${w}px;height:${h}px;border:2px solid #000;padding:${pv}px ${ph}px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${ff};">`
-      +`<div style="font-size:${stPx}px;font-weight:900;color:#fff;background:#000;display:inline-block;padding:1px 4px;border-radius:3px;">${esc(opts.status||'')}</div>`
-      +`<div>${mid}</div>`
-      +`<div style="font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;">${esc(opts.footer||'')}</div>`
+    // ステータスヘッダー（全幅）
+    const header=`<div style="width:100%;background:${bg};color:#fff;font-size:${stPx}px;font-weight:900;text-align:center;padding:2px 0;box-sizing:border-box;letter-spacing:1px;">${esc(opts.status||'')}</div>`;
+    // メイン情報
+    let body='';
+    if(opts.customer) body+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
+    if(opts.name)     body+=`<div style="font-size:${fnPx}px;font-weight:900;color:#000;line-height:1.15;">${esc(opts.name)}</div>`;
+    if(opts.spec)     body+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.15;">${esc(opts.spec)}</div>`;
+    // 品番・数量・取付日を横並び
+    const subItems=[opts.partno,opts.qty,opts.installDate].filter(Boolean);
+    if(subItems.length) body+=`<div style="display:flex;gap:6px;flex-wrap:wrap;">${subItems.map(s=>`<span style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(s)}</span>`).join('')}</div>`;
+    // フッター（全幅・右寄せ）
+    const footer=`<div style="width:100%;font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;border-top:1px solid #000;padding-top:1px;">${esc(opts.footer||'')}</div>`;
+    return `<div style="width:${w}px;height:${h}px;border:2px solid #000;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${ff};">`
+      +header
+      +`<div style="padding:0 ${ph}px;flex:1;display:flex;flex-direction:column;justify-content:center;">${body}</div>`
+      +`<div style="padding:0 ${ph}px 2px;">${footer}</div>`
       +'</div>';
   }
 
