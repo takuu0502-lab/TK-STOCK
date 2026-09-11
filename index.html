@@ -497,6 +497,9 @@
   details summary::-webkit-details-marker{display:none;}
   details summary .hist-arrow{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--bg-3);color:var(--text-2);font-size:11px;transition:transform 0.2s;flex-shrink:0;}
   details[open] summary .hist-arrow{transform:rotate(180deg);}
+  details summary .prov-arrow{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:var(--bg-3);color:var(--text-3);font-size:10px;transition:transform 0.2s;flex-shrink:0;}
+  details[open] summary .prov-arrow{transform:rotate(180deg);}
+  .prov-card-summary{list-style:none;display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;-webkit-appearance:none;}
   .hist-row{display:flex;align-items:center;gap:12px;padding:11px 8px;border-bottom:1px solid var(--line-soft);}
   .hist-row:last-child{border-bottom:none;}
   .hist-type{font-size:11px;font-weight:700;padding:4px 9px;border-radius:4px;min-width:44px;text-align:center;}
@@ -15928,41 +15931,40 @@ window.addEventListener('storageReady', function(){
             +'<div style="font-size:14px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'</div>'
             +'</div>';
         }).join('');
-        return '<div id="prov-entry-'+entry.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
-          /* カード上部 */
-          +'<div style="padding:14px 16px;flex:1;">'
-          +(hasOver?'<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;">⚠️ 在庫超過あり</div>':'')
-          /* 顧客名・車種 */
-          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
-          +'<span style="font-size:17px;font-weight:700;color:var(--text-1);">'+escapeHtml(entry.customerName||'—')+'<span style="font-size:13px;font-weight:400;color:var(--text-2);">　様</span></span>'
-          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:2px 10px;text-align:center;flex-shrink:0;">'
-          +'<div style="font-size:10px;color:var(--amber);font-weight:600;">合計</div>'
-          +'<div style="font-size:15px;font-weight:700;color:var(--amber);line-height:1.1;">'+totalQty+'<span style="font-size:11px;">本</span></div>'
+        /* サマリー行（常時表示） */
+        const _dateLabel = sdStr !== '—' ? sdStr : '';
+        return '<details id="prov-entry-'+entry.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);">'
+          +'<summary class="prov-card-summary">'
+          +'<span class="prov-arrow">▼</span>'
+          +(hasOver?'<span style="font-size:11px;font-weight:700;color:var(--red);white-space:nowrap;flex-shrink:0;">⚠️ 超過</span>':'')
+          +'<span style="font-size:15px;font-weight:700;color:var(--text-1);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+          +escapeHtml(entry.customerName||'—')+'<span style="font-size:12px;font-weight:400;color:var(--text-2);">　様</span>'
+          +(entry.carName?'<span style="font-size:12px;font-weight:400;color:var(--text-2);">　'+escapeHtml(entry.carName)+'</span>':'')
+          +'</span>'
+          +(_dateLabel?'<span style="font-size:12px;color:var(--amber);white-space:nowrap;flex-shrink:0;">'+escapeHtml(_dateLabel)+'</span>':'')
+          +'<div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:2px 8px;text-align:center;flex-shrink:0;">'
+          +'<span style="font-size:13px;font-weight:700;color:var(--amber);">'+totalQty+'<span style="font-size:10px;">本</span></span>'
           +'</div>'
-          +'</div>'
-          /* 商品概要（顧客名直下）は詳細行と重複するため非表示 */
-          +(entry.carName?'<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">車種：'+escapeHtml(entry.carName)+'</div>':'<div style="margin-bottom:8px;"></div>')
-          /* 取付予定日 */
-          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
+          +'</summary>'
+          /* 展開部分 */
+          +'<div style="padding:10px 16px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
           +'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">取付予定日</span>'
-          +'<span style="font-size:14px;font-weight:700;color:var(--amber);">'+escapeHtml(sdStr)+'</span>'
+          +'<span style="font-size:13px;font-weight:700;color:var(--amber);">'+escapeHtml(sdStr)+'</span>'
           +'</div>'
-          /* 商品リスト */
           +'<div>'+(itemRows || '<div style="font-size:12px;color:var(--red);padding:6px 0;">⚠️ 商品情報なし（取り消して再登録してください）</div>')+'</div>'
           +((entry.staff||entry.date) ? '<div style="margin-top:8px;font-size:11px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;">'
             +(entry.staff ? '<span>担当：'+escapeHtml(entry.staff)+'</span>' : '')
             +(entry.date ? (()=>{ const _d=new Date(entry.date); return '<span>登録：'+_d.getFullYear()+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+String(_d.getDate()).padStart(2,'0')+' '+String(_d.getHours()).padStart(2,'0')+':'+String(_d.getMinutes()).padStart(2,'0')+'</span>'; })() : '')
             +'</div>' : '')
-          +''
           +'</div>'
-          /* カード下部ボタン */
           +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;flex-wrap:nowrap;align-items:center;">'
           +'<button class="btn btn-amber btn-sm prov-confirm-btn" data-prov-id="'+entry.id+'" style="flex:1;font-size:12px;white-space:nowrap;">出庫確定</button>'
           +'<button class="btn btn-ghost btn-sm prov-label-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 8px;white-space:nowrap;">ラベル印刷</button>'
           +'<button class="btn btn-ghost btn-sm prov-edit-btn" data-prov-id="'+entry.id+'" style="font-size:12px;padding:0 8px;white-space:nowrap;">編集</button>'
           +'<button class="btn btn-ghost btn-sm prov-cancel-btn" data-prov-id="'+entry.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 8px;white-space:nowrap;">取消</button>'
           +'</div>'
-          +'</div>';
+          +'</details>';
       }).join('');
     };
     let html = '<div style="margin-top:4px;">';
@@ -15974,7 +15976,7 @@ window.addEventListener('storageReady', function(){
     if(custList.length>0){
       if(provList.length>0) html += '<div style="margin-top:20px;"></div>';
       html += '<div style="font-size:14px;font-weight:700;color:#e8a020;margin-bottom:10px;">📦 預かり出庫リスト（'+custList.length+'件）</div>';
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+buildCards(custList, true)+'</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">'+buildCards(custList, true)+'</div>';
     }
     html += '</div>';
     wrap.innerHTML = html;
