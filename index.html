@@ -11403,7 +11403,7 @@ window.addEventListener('storageReady', function(){
       const _bc = labelSettings.showBarcode !== false ? (p.barcode || p.internalBarcode || '') : '';
       const _bcUrl = _bc ? await _genBarcodeDataUrl(_bc) : null;
       return _makeLabelHtmlInline({
-        status:'プライスタグ', statusBg:'#b45309',
+        status:'', statusBg:'#b45309',
         name: cfg.showName ? name : '',
         spec,
         partno,
@@ -14442,7 +14442,7 @@ window.addEventListener('storageReady', function(){
     const hasQr=!!opts.qrDataUrl;
     const hasBc=!!opts.barcodeDataUrl;
     // ステータスヘッダー（全幅）
-    const header=`<div style="width:100%;background:${bg};color:#fff;font-size:${stPx}px;font-weight:900;text-align:center;padding:2px 0;box-sizing:border-box;letter-spacing:1px;">${esc(opts.status||'')}</div>`;
+    const header=opts.status?`<div style="width:100%;background:${bg};color:#fff;font-size:${stPx}px;font-weight:900;text-align:center;padding:2px 0;box-sizing:border-box;letter-spacing:1px;">${esc(opts.status)}</div>`:`<div style="width:100%;height:3px;background:${bg};"></div>`;
     // メイン情報（テキスト部）
     let textBody='';
     if(opts.customer) textBody+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
