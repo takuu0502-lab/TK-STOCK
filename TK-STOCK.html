@@ -5337,7 +5337,7 @@ window.addEventListener('storageReady', function(){
   window.custodyDeleteLog=custodyDeleteLog;
 
   // ── ラベル印刷 ──
-  function custodyPrintLabel(rowId){
+  async function custodyPrintLabel(rowId){
     const row = custodyContracts.find(x=>x.id===rowId);
     if(!row) return;
     const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
@@ -5351,6 +5351,10 @@ window.addEventListener('storageReady', function(){
       return d[0]+'年'+parseInt(d[1])+'月'+parseInt(d[2])+'日';
     }
     const saleDateStr = row.saleDate ? fmtDate(row.saleDate) : '';
+    // 預かり在庫は商品IDから internalBarcode を引く（row.productId があれば）
+    const _custProd = row.productId ? products.find(x=>x.id===row.productId) : null;
+    const _custBc = (_custProd && _custProd.internalBarcode) || '';
+    const [_qrUrl, _bcUrl] = _custBc ? await Promise.all([_genQrDataUrl(_custBc, 64), _genBarcodeDataUrl(_custBc)]) : [null, null];
     const item = _makeLabelHtmlInline({
       status:'預かり在庫', statusBg:'#6d28d9',
       customer:(row.customerName||'')+'　様',
@@ -5358,14 +5362,15 @@ window.addEventListener('storageReady', function(){
       spec:row.size||'',
       qty:'預かり：'+row.initialQty+'本　残：'+rem+'本',
       installDate:saleDateStr?'預かり出庫：'+saleDateStr:'',
-      footer:'印刷日：'+todayStr+'　'+brLabel
+      footer:'印刷日：'+todayStr+'　'+brLabel,
+      qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
     });
     _printLabelsPDF([item], '預かり在庫ラベル');
   }
   window.custodyPrintLabel=custodyPrintLabel;
 
   // ── 仮出庫ラベル印刷 ──
-  function printProvLabel(provEntry){
+  async function printProvLabel(provEntry){
     if(!provEntry) return;
     const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const brLabel = branchName(brId);
@@ -5378,11 +5383,13 @@ window.addEventListener('storageReady', function(){
       return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
     }
     const installStr = fmtDate(provEntry.scheduledDate);
-    const items = (provEntry.items||[]).map(item=>{
+    const items = await Promise.all((provEntry.items||[]).map(async item=>{
       const p = products.find(x=>x.id===item.productId);
       const ws = p && p.wheelSpec;
       const specStr = ws ? [ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'', ws.holes&&ws.pcd?ws.holes+'H PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''].filter(Boolean).join(' ') : (item.spec||'');
       const nameStr = (item.name||'');
+      const _bc = (p && p.internalBarcode) || '';
+      const [_qrUrl, _bcUrl] = _bc ? await Promise.all([_genQrDataUrl(_bc, 64), _genBarcodeDataUrl(_bc)]) : [null, null];
       return _makeLabelHtmlInline({
         status:'仮出庫', statusBg:'#b45309',
         customer: (provEntry.customerName||'')+'　様',
@@ -5390,9 +5397,10 @@ window.addEventListener('storageReady', function(){
         spec: specStr,
         partno: item.partno ? '品番：'+item.partno : '',
         installDate: installStr ? '取付予定：'+installStr : '',
-        footer: (provEntry.carName ? provEntry.carName+'　' : '')+'登録日：'+dateStr+'　'+brLabel
+        footer: (provEntry.carName ? provEntry.carName+'　' : '')+'登録日：'+dateStr+'　'+brLabel,
+        qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
       });
-    });
+    }));
     if(items.length > 0) _printLabelsPDF(items, '仮出庫ラベル');
   }
   window.printProvLabel = printProvLabel;
@@ -14322,6 +14330,34 @@ window.addEventListener('storageReady', function(){
     });
   }
 
+  // QRコードデータURL生成
+  async function _genQrDataUrl(text, size){
+    if(!text||typeof QRCode==='undefined') return null;
+    return new Promise(resolve=>{
+      const div=document.createElement('div');
+      div.style.cssText='position:fixed;left:-9999px;top:0;width:'+size+'px;height:'+size+'px;';
+      document.body.appendChild(div);
+      try{
+        new QRCode(div,{text,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+        setTimeout(()=>{
+          const canvas=div.querySelector('canvas');
+          const url=canvas?canvas.toDataURL('image/png'):null;
+          if(document.body.contains(div)) document.body.removeChild(div);
+          resolve(url);
+        },100);
+      }catch(e){ if(document.body.contains(div)) document.body.removeChild(div); resolve(null); }
+    });
+  }
+  // バーコードデータURL生成（CODE128）
+  async function _genBarcodeDataUrl(text){
+    if(!text||typeof JsBarcode==='undefined') return null;
+    try{
+      const canvas=document.createElement('canvas');
+      JsBarcode(canvas,text,{format:'CODE128',width:1.5,height:32,displayValue:false,margin:2});
+      return canvas.toDataURL('image/png');
+    }catch(e){ return null; }
+  }
+
   // ラベル1枚分のインラインスタイルHTML生成
   function _makeLabelHtmlInline(opts){
     const LW=labelSettings.w, LH=labelSettings.h;
@@ -14335,21 +14371,38 @@ window.addEventListener('storageReady', function(){
     const ff="'Hiragino Kaku Gothic ProN','Meiryo',sans-serif";
     const bg=opts.statusBg||'#000';
     const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const hasQr=!!opts.qrDataUrl;
+    const hasBc=!!opts.barcodeDataUrl;
     // ステータスヘッダー（全幅）
     const header=`<div style="width:100%;background:${bg};color:#fff;font-size:${stPx}px;font-weight:900;text-align:center;padding:2px 0;box-sizing:border-box;letter-spacing:1px;">${esc(opts.status||'')}</div>`;
-    // メイン情報
-    let body='';
-    if(opts.customer) body+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
-    if(opts.name)     body+=`<div style="font-size:${fnPx}px;font-weight:900;color:#000;line-height:1.15;">${esc(opts.name)}</div>`;
-    if(opts.spec)     body+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.15;">${esc(opts.spec)}</div>`;
-    // 品番・数量・取付日を横並び
+    // メイン情報（テキスト部）
+    let textBody='';
+    if(opts.customer) textBody+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
+    if(opts.name)     textBody+=`<div style="font-size:${fnPx}px;font-weight:900;color:#000;line-height:1.15;">${esc(opts.name)}</div>`;
+    if(opts.spec)     textBody+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.15;">${esc(opts.spec)}</div>`;
     const subItems=[opts.partno,opts.qty,opts.installDate].filter(Boolean);
-    if(subItems.length) body+=`<div style="display:flex;gap:6px;flex-wrap:wrap;">${subItems.map(s=>`<span style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(s)}</span>`).join('')}</div>`;
+    if(subItems.length) textBody+=`<div style="display:flex;gap:4px;flex-wrap:wrap;">${subItems.map(s=>`<span style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(s)}</span>`).join('')}</div>`;
+    // コンテンツ行：QRがある場合は右にQR、左にテキスト
+    const bcH=hasBc?28:0;
+    const qrSize=hasQr?Math.min(h-stPx-4-fmPx-8-bcH, Math.round(w*0.27)):0;
+    const contentRow=hasQr
+      ?`<div style="flex:1;display:flex;flex-direction:row;align-items:center;overflow:hidden;">
+          <div style="flex:1;padding:0 ${ph}px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;">${textBody}</div>
+          <div style="flex:0 0 ${qrSize}px;width:${qrSize}px;height:${qrSize}px;padding:2px;box-sizing:border-box;">
+            <img src="${opts.qrDataUrl}" style="width:100%;height:100%;display:block;" />
+          </div>
+        </div>`
+      :`<div style="padding:0 ${ph}px;flex:1;display:flex;flex-direction:column;justify-content:center;">${textBody}</div>`;
+    // バーコード行
+    const bcRow=hasBc
+      ?`<div style="width:100%;height:${bcH}px;padding:0 ${ph}px;box-sizing:border-box;overflow:hidden;">
+          <img src="${opts.barcodeDataUrl}" style="width:100%;height:100%;object-fit:fill;display:block;" />
+        </div>`
+      :'';
     // フッター（全幅・右寄せ）
     const footer=`<div style="width:100%;font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;border-top:1px solid #000;padding-top:1px;">${esc(opts.footer||'')}</div>`;
-    return `<div style="width:${w}px;height:${h}px;border:2px solid #000;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${ff};">`
-      +header
-      +`<div style="padding:0 ${ph}px;flex:1;display:flex;flex-direction:column;justify-content:center;">${body}</div>`
+    return `<div style="width:${w}px;height:${h}px;border:2px solid #000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:#fff;font-family:${ff};">`
+      +header+contentRow+bcRow
       +`<div style="padding:0 ${ph}px 2px;">${footer}</div>`
       +'</div>';
   }
@@ -14390,7 +14443,7 @@ window.addEventListener('storageReady', function(){
     }
   }
 
-  function _printReceiveLabel(p, qty, opts){
+  async function _printReceiveLabel(p, qty, opts){
     const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const brLabel = branchName(brId);
     const ws = p.wheelSpec;
@@ -14409,6 +14462,8 @@ window.addEventListener('storageReady', function(){
       return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
     }
     const installStr = fmtDate(installDate);
+    const _bc = p.internalBarcode || '';
+    const [_qrUrl, _bcUrl] = _bc ? await Promise.all([_genQrDataUrl(_bc, 64), _genBarcodeDataUrl(_bc)]) : [null, null];
     const items = Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
       status:'入庫済み', statusBg:'#000',
       name:(p.name||''),
@@ -14416,28 +14471,32 @@ window.addEventListener('storageReady', function(){
       partno:'品番：'+(p.partno||'—'),
       customer:customerName?customerName+'　様':'',
       installDate:installStr?'取付日：'+installStr:'',
-      footer:'入庫日：'+dateStr+'　'+brLabel
+      footer:'入庫日：'+dateStr+'　'+brLabel,
+      qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
     }));
     _printLabelsPDF(items, '入庫済みラベル');
   }
 
-  function _printReceiveLabelBatch(targets){
+  async function _printReceiveLabelBatch(targets){
     const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const brLabel = branchName(brId);
     const today = new Date();
     const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
-    const items = targets.flatMap(function(t){
+    const items = (await Promise.all(targets.map(async function(t){
       const p=t.p, qty=t.qty;
       const ws=p.wheelSpec;
       const specStr=ws?[ws.inch?ws.inch+'インチ':'',ws.j?ws.j+'J':'',ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'',ws.offset?'+'+ws.offset:'',ws.color?ws.color:''].filter(Boolean).join('  '):(p.spec||'');
+      const _bc = p.internalBarcode || '';
+      const [_qrUrl, _bcUrl] = _bc ? await Promise.all([_genQrDataUrl(_bc, 64), _genBarcodeDataUrl(_bc)]) : [null, null];
       return Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
         status:'入庫済み', statusBg:'#000',
         name:(p.name||''),
         spec:specStr,
         partno:'品番：'+(p.partno||'—'),
-        footer:dateStr+'　'+brLabel
+        footer:dateStr+'　'+brLabel,
+        qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
       }));
-    });
+    }))).flat();
     _printLabelsPDF(items, '入庫済みラベル');
   }
 
