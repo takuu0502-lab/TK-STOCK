@@ -5382,7 +5382,7 @@ window.addEventListener('storageReady', function(){
       const p = products.find(x=>x.id===item.productId);
       const ws = p && p.wheelSpec;
       const specStr = ws ? [ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'', ws.holes&&ws.pcd?ws.holes+'H PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''].filter(Boolean).join(' ') : (item.spec||'');
-      const nameStr = (item.brand ? item.brand+' ' : '')+(item.name||'');
+      const nameStr = (item.name||'');
       return _makeLabelHtmlInline({
         status:'仮出庫', statusBg:'#b45309',
         customer: (provEntry.customerName||'')+'　様',
@@ -14373,7 +14373,7 @@ window.addEventListener('storageReady', function(){
     const installStr = fmtDate(installDate);
     const items = Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
       status:'入庫済み', statusBg:'#000',
-      name:(p.brand||'')+' '+(p.name||''),
+      name:(p.name||''),
       spec:specStr,
       partno:'品番：'+(p.partno||'—'),
       customer:customerName?customerName+'　様':'',
@@ -14394,7 +14394,7 @@ window.addEventListener('storageReady', function(){
       const specStr=ws?[ws.inch?ws.inch+'インチ':'',ws.j?ws.j+'J':'',ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'',ws.offset?'+'+ws.offset:'',ws.color?ws.color:''].filter(Boolean).join('  '):(p.spec||'');
       return Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
         status:'入庫済み', statusBg:'#000',
-        name:(p.brand||'')+' '+(p.name||''),
+        name:(p.name||''),
         spec:specStr,
         partno:'品番：'+(p.partno||'—'),
         footer:dateStr+'　'+brLabel
