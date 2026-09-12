@@ -14511,7 +14511,7 @@ window.addEventListener('storageReady', function(){
         await new Promise(r=>setTimeout(r,80));
         const canvas=await html2canvas(wrap,{scale:SCALE,backgroundColor:'#ffffff',width:wPx,height:hPx,logging:false,useCORS:false});
         if(i>0) doc.addPage([LW,LH],'landscape');
-        doc.addImage(canvas.toDataURL('image/png'),'PNG',0,MARGIN,LW-2*MARGIN,LH-2*MARGIN);
+        doc.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN*0.5,MARGIN,LW-2*MARGIN,LH-2*MARGIN);
       }
       document.body.removeChild(wrap);
       const blob=doc.output('blob');
