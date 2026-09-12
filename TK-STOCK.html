@@ -14485,7 +14485,7 @@ window.addEventListener('storageReady', function(){
       :'';
     // フッター（全幅・右寄せ）
     const footer=`<div style="width:100%;font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;border-top:1px solid #000;padding-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(opts.footer||'')}</div>`;
-    return `<div style="width:${w}px;height:${h}px;border:1px solid #000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:#fff;font-family:${ff};">`
+    return `<div style="width:${w}px;height:${h}px;border-top:1px solid #000;border-bottom:1px solid #000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:#fff;font-family:${ff};">`
       +header+contentRow+bcRow
       +`<div style="flex-shrink:0;padding:0 ${ph}px 3px;">${footer}</div>`
       +'</div>';
