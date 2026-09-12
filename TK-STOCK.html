@@ -5412,7 +5412,7 @@ window.addEventListener('storageReady', function(){
       const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
       const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
       return _makeLabelHtmlInline({
-        status:'仮出庫', statusBg:'#b45309',
+        status:'仮出庫', statusBg:'#000',
         customer: (provEntry.customerName||'')+'　様',
         name: nameStr,
         spec: specStr,
