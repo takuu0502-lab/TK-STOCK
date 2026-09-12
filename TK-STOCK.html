@@ -14442,7 +14442,8 @@ window.addEventListener('storageReady', function(){
 
   // ラベル1枚分のインラインスタイルHTML生成
   function _makeLabelHtmlInline(opts){
-    const LW=labelSettings.w, LH=labelSettings.h;
+    const MARGIN=1.5;
+    const LW=labelSettings.w-2*MARGIN, LH=labelSettings.h-2*MARGIN;
     const px=96/25.4;
     const w=Math.round(LW*px), h=Math.round(LH*px);
     const ph=Math.round(3*px);
@@ -14497,8 +14498,9 @@ window.addEventListener('storageReady', function(){
       await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','jspdf');
       const {jsPDF}=window.jspdf;
       const LW=labelSettings.w, LH=labelSettings.h;
+      const MARGIN=1.5; // プリンター余白（mm）
       const px=96/25.4;
-      const wPx=Math.round(LW*px), hPx=Math.round(LH*px);
+      const wPx=Math.round((LW-2*MARGIN)*px), hPx=Math.round((LH-2*MARGIN)*px);
       const SCALE=4;
       const wrap=document.createElement('div');
       wrap.style.cssText=`position:fixed;left:-9999px;top:0;width:${wPx}px;height:${hPx}px;overflow:hidden;z-index:-9999;`;
@@ -14509,7 +14511,7 @@ window.addEventListener('storageReady', function(){
         await new Promise(r=>setTimeout(r,80));
         const canvas=await html2canvas(wrap,{scale:SCALE,backgroundColor:'#ffffff',width:wPx,height:hPx,logging:false,useCORS:false});
         if(i>0) doc.addPage([LW,LH],'landscape');
-        doc.addImage(canvas.toDataURL('image/png'),'PNG',0,0,LW,LH);
+        doc.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,MARGIN,LW-2*MARGIN,LH-2*MARGIN);
       }
       document.body.removeChild(wrap);
       const blob=doc.output('blob');
