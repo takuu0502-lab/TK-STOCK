@@ -14466,27 +14466,27 @@ window.addEventListener('storageReady', function(){
     const subItems=[opts.partno,opts.qty,opts.installDate].filter(Boolean);
     if(subItems.length) textBody+=`<div style="display:flex;gap:4px;flex-wrap:wrap;">${subItems.map(s=>`<span style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(s)}</span>`).join('')}</div>`;
     // コンテンツ行：QRがある場合は右にQR、左にテキスト
-    const bcH=hasBc?28:0;
+    const bcH=hasBc?24:0;
     const qrSize=hasQr?Math.min(h-stPx-4-fmPx-8-bcH, Math.round(w*0.27)):0;
     const contentRow=hasQr
-      ?`<div style="flex:1;display:flex;flex-direction:row;align-items:center;overflow:hidden;">
+      ?`<div style="flex:1;min-height:0;display:flex;flex-direction:row;align-items:center;overflow:hidden;">
           <div style="flex:1;padding:0 ${ph}px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;">${textBody}</div>
           <div style="flex:0 0 ${qrSize}px;width:${qrSize}px;height:${qrSize}px;padding:2px;box-sizing:border-box;">
             <img src="${opts.qrDataUrl}" style="width:100%;height:100%;display:block;" />
           </div>
         </div>`
-      :`<div style="padding:0 ${ph}px;flex:1;display:flex;flex-direction:column;justify-content:center;">${textBody}</div>`;
+      :`<div style="padding:0 ${ph}px;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden;">${textBody}</div>`;
     // バーコード行
     const bcRow=hasBc
-      ?`<div style="width:100%;height:${bcH}px;padding:0 ${ph}px;box-sizing:border-box;overflow:hidden;">
+      ?`<div style="flex-shrink:0;width:100%;height:${bcH}px;padding:0 ${ph}px;box-sizing:border-box;overflow:hidden;">
           <img src="${opts.barcodeDataUrl}" style="width:100%;height:100%;object-fit:fill;display:block;" />
         </div>`
       :'';
     // フッター（全幅・右寄せ）
-    const footer=`<div style="width:100%;font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;border-top:1px solid #000;padding-top:1px;">${esc(opts.footer||'')}</div>`;
-    return `<div style="width:${w}px;height:${h}px;border:2px solid #000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:#fff;font-family:${ff};">`
+    const footer=`<div style="width:100%;font-size:${fmPx}px;font-weight:700;color:#000;text-align:right;border-top:1px solid #000;padding-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(opts.footer||'')}</div>`;
+    return `<div style="width:${w}px;height:${h}px;border:1px solid #000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:#fff;font-family:${ff};">`
       +header+contentRow+bcRow
-      +`<div style="padding:0 ${ph}px 2px;">${footer}</div>`
+      +`<div style="flex-shrink:0;padding:0 ${ph}px 3px;">${footer}</div>`
       +'</div>';
   }
 
