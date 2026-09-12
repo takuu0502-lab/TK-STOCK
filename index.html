@@ -14563,11 +14563,15 @@ window.addEventListener('storageReady', function(){
     _printLabelsPDF(items, '入庫済みラベル');
   }
 
-  async function _printReceiveLabelBatch(targets){
+  async function _printReceiveLabelBatch(targets, opts){
     const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const brLabel = branchName(brId);
     const today = new Date();
     const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
+    const customerName = (opts && opts.customerName) || '';
+    const installDate  = (opts && opts.installDate)  || '';
+    function fmtDate(str){ if(!str) return ''; const d=new Date(str+'T00:00:00'); if(isNaN(d)) return str; return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0'); }
+    const installStr = fmtDate(installDate);
     const items = (await Promise.all(targets.map(async function(t){
       const p=t.p, qty=t.qty;
       const ws=p.wheelSpec;
@@ -14580,7 +14584,9 @@ window.addEventListener('storageReady', function(){
         name:(p.name||''),
         spec:specStr,
         partno:'品番：'+(p.partno||'—'),
-        footer:dateStr+'　'+brLabel,
+        customer:customerName?customerName+'　様':'',
+        installDate:installStr?'取付日：'+installStr:'',
+        footer:'入庫日：'+dateStr+'　'+brLabel,
         qrDataUrl:_qrUrl, barcodeDataUrl:_bcUrl
       }));
     }))).flat();
@@ -16932,6 +16938,10 @@ window.addEventListener('storageReady', function(){
   window._histPrint = async function(batchIdx){
     const items = window._histBatches && window._histBatches[batchIdx];
     if(!items || items.length === 0) return;
+    // 代表トランザクションからお客様名・取付日を取得
+    const _rep = items[0];
+    const _customerName = _rep.customerName || (_rep.reservation && _rep.reservation.customer) || '';
+    const _installDate  = (_rep.reservation && _rep.reservation.installDate) || '';
     const targets = items.map(t=>{
       const p = products.find(x=>x.id===t.productId);
       return p ? {p, qty:t.qty} : null;
@@ -16940,10 +16950,11 @@ window.addEventListener('storageReady', function(){
     const names = targets.map(t=>escapeHtml(t.p.name)+' × '+t.qty+'枚').join('\n');
     const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+names);
     if(!doPrint) return;
+    const _opts = { customerName: _customerName, installDate: _installDate };
     if(targets.length === 1){
-      _printReceiveLabel(targets[0].p, targets[0].qty);
+      _printReceiveLabel(targets[0].p, targets[0].qty, _opts);
     } else {
-      _printReceiveLabelBatch(targets);
+      _printReceiveLabelBatch(targets, _opts);
     }
   };
 
