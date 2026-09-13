@@ -8094,7 +8094,15 @@ window.addEventListener('storageReady', function(){
         + '<td data-label="商品名">'+escapeHtml(cleanName(p.name))+(p.listMemo?'<div style="font-size:11px;color:var(--amber);margin-top:3px;font-weight:500;">'+escapeHtml(p.listMemo)+'</div>':'')+'</td>'
         + (_isWheelCat ? (()=>{
             const ws = p.wheelSpec || {};
-            const sizeStr  = (ws.inch && ws.j)    ? ws.inch+'x'+ws.j : (ws.inch ? ws.inch+'インチ' : (ws.j ? ws.j+'J' : ''));
+            // ws.inchが空の場合、小分類名（例:「15インチ」）から補完
+            const _ssId = p.subSubId;
+            let _inchFromCat = '';
+            if(_ssId && !ws.inch){
+              const _wCat = categories.find(c=>c.name==='ホイール'||c.name.includes('ホイール'));
+              if(_wCat){ for(const sub of (_wCat.subs||[])){ const ss=(sub.subsubs||[]).find(s=>s.id===_ssId); if(ss){ const m=ss.name.match(/(\d+)/); if(m) _inchFromCat=m[1]; break; } } }
+            }
+            const _inch = ws.inch || _inchFromCat;
+            const sizeStr  = (_inch && ws.j) ? _inch+'x'+ws.j : (_inch ? _inch+'インチ' : (ws.j ? ws.j+'J' : ''));
             const holeStr  = (ws.holes && ws.pcd)  ? ws.holes+'/'+ws.pcd : (ws.holes ? ws.holes+'穴' : (ws.pcd ? 'PCD'+ws.pcd : ''));
             const offsStr  = ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : '';
             const colorStr = ws.color ? ws.color : '';
