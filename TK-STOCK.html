@@ -11416,7 +11416,7 @@ window.addEventListener('storageReady', function(){
       const _bc = labelSettings.showBarcode !== false ? (p.barcode || p.internalBarcode || '') : '';
       const _bcUrl = _bc ? await _genBarcodeDataUrl(_bc) : null;
       return _makeLabelHtmlInline({
-        status:'', statusBg:'#b45309',
+        status:'', statusBg:'#b45309', hideHeader:true,
         name: cfg.showName ? name : '',
         spec,
         partno,
@@ -14457,13 +14457,19 @@ window.addEventListener('storageReady', function(){
     const hasQr=!!opts.qrDataUrl;
     const hasBc=!!opts.barcodeDataUrl;
     // ステータスヘッダー（全幅）
-    const header=opts.status?`<div style="width:100%;background:${bg};color:#fff;font-size:${stPx}px;font-weight:900;text-align:center;padding:2px 0;box-sizing:border-box;letter-spacing:1px;">${esc(opts.status)}</div>`:`<div style="width:100%;height:3px;background:${bg};"></div>`;
-    // メイン情報（テキスト部）
+    const header=opts.status
+      ?`<div style="width:100%;background:${bg};color:#fff;font-size:${stPx}px;font-weight:900;text-align:center;padding:2px 0;box-sizing:border-box;letter-spacing:1px;">${esc(opts.status)}</div>`
+      :opts.hideHeader?''
+      :`<div style="width:100%;height:3px;background:${bg};"></div>`;
+    // メイン情報（テキスト部）— 行数を数えてフォントを自動縮小
+    const _lineCount=(opts.name?1:0)+(opts.spec?1:0)+(opts.price?1:0)+(opts.customer?1:0)+((opts.partno||opts.installDate)?1:0);
+    const _scale = _lineCount>=4 ? 0.8 : _lineCount>=3 ? 0.9 : 1;
+    const fnPxS=Math.round(fnPx*_scale), fsPxS=Math.round(fsPx*_scale), fmPxS=Math.round(fmPx*_scale);
     let textBody='';
-    if(opts.customer) textBody+=`<div style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
-    if(opts.name)     textBody+=`<div style="font-size:${fnPx}px;font-weight:900;color:#000;line-height:1.15;">${esc(opts.name)}</div>`;
-    if(opts.spec)     textBody+=`<div style="font-size:${fsPx}px;font-weight:700;color:#000;line-height:1.15;">${esc(opts.spec)}</div>`;
-    if(opts.price)    textBody+=`<div style="font-size:${Math.round(labelSettings.fontName*1.5*96/72)}px;font-weight:900;color:#000;line-height:1.1;">${esc(opts.price)}</div>`;
+    if(opts.customer) textBody+=`<div style="font-size:${fmPxS}px;font-weight:700;color:#000;">${esc(opts.customer)}</div>`;
+    if(opts.name)     textBody+=`<div style="font-size:${fnPxS}px;font-weight:900;color:#000;line-height:1.15;">${esc(opts.name)}</div>`;
+    if(opts.spec)     textBody+=`<div style="font-size:${fsPxS}px;font-weight:700;color:#000;line-height:1.15;">${esc(opts.spec)}</div>`;
+    if(opts.price)    textBody+=`<div style="font-size:${Math.round(labelSettings.fontName*1.3*_scale*96/72)}px;font-weight:900;color:#000;line-height:1.1;">${esc(opts.price)}</div>`;
     const subItems=[opts.partno,opts.qty,opts.installDate].filter(Boolean);
     if(subItems.length) textBody+=`<div style="display:flex;gap:4px;flex-wrap:wrap;">${subItems.map(s=>`<span style="font-size:${fmPx}px;font-weight:700;color:#000;">${esc(s)}</span>`).join('')}</div>`;
     // コンテンツ行：QRがある場合は右にQR、左にテキスト
