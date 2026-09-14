@@ -5654,8 +5654,8 @@ window.addEventListener('storageReady', function(){
           const majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
           const isTire = (majorCat && majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
           return '<div style="padding:3px 0;">'
-            +(sp ? '<div style="font-size:15px;font-weight:800;color:var(--text-1);letter-spacing:0.3px;">'+escapeHtml(sp)+'</div>' : '')
-            +'<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(nm)+'</div>'
+            +'<div style="font-size:15px;font-weight:800;color:var(--text-1);letter-spacing:0.3px;">'+escapeHtml(nm)+'</div>'
+            +(sp ? '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(sp)+'</div>' : '')
             +(isTire
               ? '<div style="font-size:13px;font-weight:700;color:var(--amber);">×'+i.qty+'本</div>'
               : (i.qty > 1 ? '<div style="font-size:13px;font-weight:700;color:var(--text-2);">×'+i.qty+'個</div>' : ''))
