@@ -5581,6 +5581,9 @@ window.addEventListener('storageReady', function(){
       });
     }
 
+    // 登録が新しい順にソート
+    orders = orders.slice().sort((a,b)=>new Date(b.createdAt||b.date||0)-new Date(a.createdAt||a.date||0));
+
     // 日付フォーマットヘルパー（YYYY-MM-DD → YYYY年MM月DD日）
     const _fmtDate = s => {
       if(!s || s === '未定' || s === '') return s || '未定';
@@ -15468,7 +15471,8 @@ window.addEventListener('storageReady', function(){
     const wrap = document.getElementById('customerOrderWrap');
     if(!wrap) return;
     const _coBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch);
+    const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch)
+      .sort((a,b)=>new Date(b.createdAt||b.date||0)-new Date(a.createdAt||a.date||0));
     const totalCount = pending.length;
 
     let header = '<div style="margin-bottom:12px;">'
