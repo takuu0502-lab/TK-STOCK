@@ -15626,7 +15626,7 @@ window.addEventListener('storageReady', function(){
           if(!p) continue;
           if(!p.branchStock) p.branchStock = {};
           p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + si.qty;
-          transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, note:'客注品入荷 ('+order.customerName+')' });
+          transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, customerName:order.customerName||'', note:'客注品入荷 ('+order.customerName+')' });
           _provItems.push({ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty:si.qty });
         }
         await saveProducts();
@@ -15681,7 +15681,7 @@ window.addEventListener('storageReady', function(){
           if(!p) continue;
           if(!p.branchStock) p.branchStock = {};
           p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + si.qty;
-          transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, note:'客注品入荷 ('+order.customerName+')' });
+          transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, customerName:order.customerName||'', note:'客注品入荷 ('+order.customerName+')' });
         }
         // 全 incomingSchedules を done に
         incomingSchedules.filter(s=>s.customerOrderId===orderId&&s.status==='pending').forEach(s=>s.status='done');
@@ -15719,7 +15719,7 @@ window.addEventListener('storageReady', function(){
         const _coBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         if(!p.branchStock) p.branchStock = {};
         p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + qty;
-        transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, note:'客注品入荷 ('+order.customerName+')' });
+        transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, customerName:order.customerName||'', note:'客注品入荷 ('+order.customerName+')' });
         isch.status = 'done';
         await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
         // 全 incomingSchedules が完了したら注文を completed に
@@ -16220,7 +16220,7 @@ window.addEventListener('storageReady', function(){
             const _p = ci.product;
             if(!_p.branchStock) _p.branchStock = {};
             _p.branchStock[_coBr] = (_p.branchStock[_coBr]||0) + ci.qty;
-            transactions.push({ id:uid('tx'), productId:_p.id, name:_p.name, brand:_p.brand||'', spec:_p.spec||'', type:'in', qty:ci.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBr, note:'客注品入荷 ('+customerName+')' });
+            transactions.push({ id:uid('tx'), productId:_p.id, name:_p.name, brand:_p.brand||'', spec:_p.spec||'', type:'in', qty:ci.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBr, customerName:customerName||'', note:'客注品入荷 ('+customerName+')' });
           }
           await saveProducts();
           await saveTransactions();
@@ -16956,7 +16956,8 @@ window.addEventListener('storageReady', function(){
     if(!items || items.length === 0) return;
     // 代表トランザクションからお客様名・取付日を取得
     const _rep = items[0];
-    const _customerName = _rep.customerName || (_rep.reservation && _rep.reservation.customer) || '';
+    const _noteMatch = (_rep.note||'').match(/客注品入荷\s*[（(]([^）)]+)[）)]/);
+    const _customerName = _rep.customerName || (_rep.reservation && _rep.reservation.customer) || (_noteMatch ? _noteMatch[1] : '') || '';
     const _installDate  = (_rep.reservation && _rep.reservation.installDate) || '';
     const targets = items.map(t=>{
       const p = products.find(x=>x.id===t.productId);
