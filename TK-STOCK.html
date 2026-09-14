@@ -15916,8 +15916,9 @@ window.addEventListener('storageReady', function(){
     const _plOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const pending = provisionalOutbounds.filter(p=>p.status==='pending'&&(p.branchId||'taniyabe')===_plOwnBranch);
     if(pending.length===0){ wrap.innerHTML=''; return; }
-    const provList = pending.filter(e=>(e.type||'custody')==='provisional');
-    const custList = pending.filter(e=>(e.type||'custody')==='custody');
+    const _sortNew = arr => arr.slice().sort((a,b)=>new Date(b.date||b.createdAt||0)-new Date(a.date||a.createdAt||0));
+    const provList = _sortNew(pending.filter(e=>(e.type||'custody')==='provisional'));
+    const custList = _sortNew(pending.filter(e=>(e.type||'custody')==='custody'));
     function _fmtJpDatePL(str){
       if(!str) return '—';
       const d = new Date(str+'T00:00:00');
