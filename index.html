@@ -11902,7 +11902,9 @@ window.addEventListener('storageReady', function(){
 
     function _beWheelInchOpts(val){
       let o = '<option value="">-</option>';
-      for(let i=16;i<=20;i++) o += `<option value="${i}"${String(val)===String(i)?' selected':''}>${i}インチ</option>`;
+      const _il = [];
+      for(let i=12;i<=22;i++){ _il.push(i); if(i===15) _il.push(15.5); }
+      _il.forEach(i=>{ o += `<option value="${i}"${String(val)===String(i)?' selected':''}>${i}インチ</option>`; });
       return o;
     }
     function _beWheelJOpts(val){
@@ -12944,7 +12946,9 @@ window.addEventListener('storageReady', function(){
     // インチ 12〜22
     const inchSel = document.getElementById('f_wheel_inch');
     let iOpts = '<option value="">-</option>';
-    for(let i=12; i<=22; i++){ iOpts += '<option value="'+i+'">'+i+'インチ</option>'; }
+    const _inchList = [];
+    for(let i=12; i<=22; i++){ _inchList.push(i); if(i===15) _inchList.push(15.5); }
+    _inchList.forEach(i=>{ iOpts += '<option value="'+i+'">'+i+'インチ</option>'; });
     inchSel.innerHTML = iOpts;
     // J数 3.5〜12 (0.5刻み)
     const jSel = document.getElementById('f_wheel_j');
