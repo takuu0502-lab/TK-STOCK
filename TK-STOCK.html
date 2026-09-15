@@ -762,8 +762,16 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
       <!-- 左: 設定項目 -->
       <div style="display:flex;flex-direction:column;gap:16px;">
-        <!-- 1行の枚数 -->
+        <!-- 印刷レイアウト -->
         <div class="field">
+          <label style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;">印刷レイアウト</label>
+          <div style="display:flex;gap:6px;margin-top:6px;" id="qrLayoutGroup">
+            <button type="button" class="qr-opt-btn active" data-qr-layout="grid">通常（複数枚）</button>
+            <button type="button" class="qr-opt-btn" data-qr-layout="a4large">A4横・大きく</button>
+          </div>
+        </div>
+        <!-- 1行の枚数 -->
+        <div class="field" id="qrColsField">
           <label style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;">1行の枚数</label>
           <div style="display:flex;gap:6px;margin-top:6px;" id="qrColGroup">
             <button type="button" class="qr-opt-btn active" data-qr-cols="2">2枚</button>
@@ -11326,6 +11334,7 @@ window.addEventListener('storageReady', function(){
   let qrSettings = {
     cols: 2,
     size: 120,
+    layout: 'grid',
     showName: true,
     showSpec: true,
     showPartno: false,
@@ -11350,6 +11359,13 @@ window.addEventListener('storageReady', function(){
     modal.classList.add('show');
 
     // ボタン選択状態を復元
+    function applyLayoutUI(){
+      const lay = qrSettings.layout || 'grid';
+      document.querySelectorAll('#qrLayoutGroup .qr-opt-btn').forEach(b=>{
+        b.classList.toggle('active', b.dataset.qrLayout === lay);
+      });
+      document.getElementById('qrColsField').style.display = lay === 'a4large' ? 'none' : '';
+    }
     function applyColUI(){
       document.querySelectorAll('#qrColGroup .qr-opt-btn').forEach(b=>{
         b.classList.toggle('active', Number(b.dataset.qrCols)===qrSettings.cols);
@@ -11360,7 +11376,10 @@ window.addEventListener('storageReady', function(){
         b.classList.toggle('active', Number(b.dataset.qrSize)===qrSettings.size);
       });
     }
-    applyColUI(); applySizeUI();
+    applyLayoutUI(); applyColUI(); applySizeUI();
+    document.querySelectorAll('#qrLayoutGroup .qr-opt-btn').forEach(b=>{
+      b.onclick = ()=>{ qrSettings.layout = b.dataset.qrLayout; applyLayoutUI(); onSettingChange(); };
+    });
     document.getElementById('qrShowName').checked = qrSettings.showName;
     document.getElementById('qrShowSpec').checked = qrSettings.showSpec;
     document.getElementById('qrShowPartno').checked = qrSettings.showPartno;
@@ -11412,8 +11431,57 @@ window.addEventListener('storageReady', function(){
     // 印刷実行
     document.getElementById('qrSettingsPrintBtn').onclick = ()=>{
       modal.classList.remove('show');
-      executeQrBulkPrint(products_to_print);
+      if(qrSettings.layout === 'a4large'){
+        executeQrA4LargePrint(products_to_print);
+      } else {
+        executeQrBulkPrint(products_to_print);
+      }
     };
+  }
+
+  function executeQrA4LargePrint(ps){
+    const qrSize = 280;
+    const bcDivs = [];
+    let pages = '';
+    ps.forEach((p, idx)=>{
+      const qrValue = p.barcode || p.internalBarcode || p.id;
+      const name = cleanName(p.name);
+      const spec = p.spec || '';
+      const partno = p.partno || '';
+      const safeId = p.id.replace(/[^a-zA-Z0-9]/g,'_')+'_'+idx;
+      let content = '';
+      if(qrSettings.showName) content += `<div style="font-size:28px;font-weight:800;margin-bottom:6px;">${escapeHtml(name)}</div>`;
+      if(qrSettings.showSpec && spec) content += `<div style="font-size:36px;font-weight:900;margin-bottom:10px;color:#111;">${escapeHtml(spec)}</div>`;
+      if(qrSettings.showPartno && partno) content += `<div style="font-size:16px;color:#666;margin-bottom:8px;">${escapeHtml(partno)}</div>`;
+      if(qrSettings.showQrCode !== false) content += `<div id="qrA4G_${safeId}" style="margin:12px auto;"></div>`;
+      if(qrSettings.showCode) content += `<div style="font-size:14px;color:#888;font-family:monospace;margin-top:6px;">${escapeHtml(qrValue)}</div>`;
+      const _bcCode = p.barcode || p.internalBarcode || '';
+      if(qrSettings.showBarcode && _bcCode){
+        content += `<div style="margin-top:14px;"><svg id="bcA4_${safeId}" style="max-width:500px;width:100%;"></svg></div>`;
+        bcDivs.push({ id: safeId, code: _bcCode });
+      }
+      pages += `<div class="a4page">${content}</div>`;
+    });
+    const css = `
+      @page{size:A4 landscape;margin:0;}
+      body{margin:0;font-family:'Hiragino Sans','BIZ UDGothic',sans-serif;}
+      .a4page{width:297mm;height:210mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:16mm;page-break-after:always;}
+    `;
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>${css}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script></head><body>${pages}<script>
+      window.onload=function(){
+        var items=${JSON.stringify(ps.map((p,i)=>({safeId:p.id.replace(/[^a-zA-Z0-9]/g,'_')+'_'+i, qrValue:p.barcode||p.internalBarcode||p.id, bcCode:p.barcode||p.internalBarcode||''})))};
+        items.forEach(function(item){
+          var el=document.getElementById('qrA4G_'+item.safeId);
+          if(el) new QRCode(el,{text:item.qrValue,width:${qrSize},height:${qrSize},correctLevel:QRCode.CorrectLevel.M});
+          if(item.bcCode){var sv=document.getElementById('bcA4_'+item.safeId);if(sv)try{JsBarcode(sv,item.bcCode,{format:'CODE128',width:3,height:80,displayValue:true,fontSize:16,margin:6});}catch(e){}}
+        });
+        setTimeout(function(){window.print();},600);
+      };
+    <\/script></body></html>`;
+    const w = window.open('','_blank','width=1100,height=800');
+    if(!w){ alert('ポップアップがブロックされています。'); return; }
+    w.document.write(html);
+    w.document.close();
   }
 
   function executeQrBulkPrint(ps){
