@@ -11467,7 +11467,7 @@ window.addEventListener('storageReady', function(){
       body{margin:0;font-family:'Hiragino Sans','BIZ UDGothic',sans-serif;}
       .a4page{width:297mm;height:210mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:16mm;page-break-after:always;}
     `;
-    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>${css}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script></head><body>${pages}<script>
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>${css}<\/style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"><\/script></head><body>${pages}<script>
       window.onload=function(){
         var items=${JSON.stringify(ps.map((p,i)=>({safeId:p.id.replace(/[^a-zA-Z0-9]/g,'_')+'_'+i, qrValue:p.barcode||p.internalBarcode||p.id, bcCode:p.barcode||p.internalBarcode||''})))};
         items.forEach(function(item){
