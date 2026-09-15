@@ -8119,7 +8119,11 @@ window.addEventListener('storageReady', function(){
         const bMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(b) : false;
         if(aMatch && !bMatch) return -1;
         if(!aMatch && bMatch) return 1;
-        return (a.name||'').localeCompare(b.name||'','ja');
+        // 新規登録順（createdAt降順）
+        if(!a.createdAt && !b.createdAt) return (a.name||'').localeCompare(b.name||'','ja');
+        if(!a.createdAt) return 1;
+        if(!b.createdAt) return -1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
     // 複数支店閲覧可能な場合は支店別在庫列を表示
