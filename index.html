@@ -801,7 +801,7 @@
               <input type="checkbox" id="qrShowQrCode" checked style="accent-color:var(--amber);width:15px;height:15px;"> 🔲 QRコードを印刷する
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
-              <input type="checkbox" id="qrShowBarcode" checked style="accent-color:var(--amber);width:15px;height:15px;"> 📶 1Dバーコードも印刷する<br><span style="font-size:10px;color:var(--text-3);">（SHバーコード発行済み商品のみ）</span>
+              <input type="checkbox" id="qrShowBarcode" checked style="accent-color:var(--amber);width:15px;height:15px;"> 📶 1Dバーコードも印刷する<br><span style="font-size:10px;color:var(--text-3);">（JANコードまたはSHバーコードがある商品）</span>
             </label>
           </div>
         </div>
@@ -11442,12 +11442,13 @@ window.addEventListener('storageReady', function(){
       if(qrSettings.showPartno && partno) inner += '<div style="font-size:10px;color:#888;margin-bottom:4px;">'+escapeHtml(partno)+'</div>';
       if(qrSettings.showQrCode !== false) inner += '<div id="qrBulkG_'+safeId+'"></div>';
       if(qrSettings.showCode) inner += '<div class="qr-label-code" style="font-size:10px;">'+escapeHtml(qrValue)+'</div>';
-      // SHバーコード（1D）エリア
-      if(qrSettings.showBarcode && p.internalBarcode){
+      // 1Dバーコード（JANコード優先、なければSHバーコード）
+      const _bcCode = p.barcode || p.internalBarcode || '';
+      if(qrSettings.showBarcode && _bcCode){
         inner += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #ddd;">'
           +'<svg id="bcSvg_'+safeId+'" style="max-width:100%;"></svg>'
           +'</div>';
-        barcodeDivs.push({ id: safeId, code: p.internalBarcode });
+        barcodeDivs.push({ id: safeId, code: _bcCode });
       }
       wrapper.innerHTML = inner;
       grid.appendChild(wrapper);
