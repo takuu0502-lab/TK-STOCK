@@ -2116,6 +2116,9 @@
       <label id="prcol_totalval_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_totalval" style="width:16px;height:16px;accent-color:var(--teal);"> 在庫合計金額（仕入れ価格 × 在庫数）
       </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_yearmfg" style="width:16px;height:16px;accent-color:var(--teal);"> 製造年別在庫
+      </label>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="inventoryPrintSettingsCancel">キャンセル</button>
@@ -12274,6 +12277,7 @@ window.addEventListener('storageReady', function(){
     const colPType    = document.getElementById('prcol_producttype').checked;
     const colCost     = isAdminUser() && document.getElementById('prcol_cost').checked;
     const colTotalVal = isAdminUser() && document.getElementById('prcol_totalval').checked;
+    const colYearMfg  = document.getElementById('prcol_yearmfg').checked;
 
     // 現在の表示フィルターで商品リストを取得
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -12317,6 +12321,7 @@ window.addEventListener('storageReady', function(){
     if(colPType)    thCols += '<th>商品区分</th>';
     if(colCost)     thCols += '<th style="text-align:right;">仕入れ価格</th>';
     if(colTotalVal) thCols += '<th style="text-align:right;">在庫合計金額</th>';
+    if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
     const rows = list.sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(p=>{
       const brand = p.brand || '';
@@ -12340,6 +12345,7 @@ window.addEventListener('storageReady', function(){
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     tdCols += '<td style="text-align:right;font-family:monospace;">'+(p.costPrice ? '&yen;'+Number(p.costPrice).toLocaleString('ja-JP') : '—')+'</td>';
       if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _tv = (p.costPrice||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
+      if(colYearMfg){ const _ys = getBranchYearStock(p, ownBranch); const _ysEntries = Object.entries(_ys).filter(([,q])=>(q||0)>0).sort((a,b)=>b[0]-a[0]); tdCols += '<td style="font-size:11px;color:#555;">'+(_ysEntries.length ? _ysEntries.map(([yr,q])=>yr+'年製 '+q+'本').join(' / ') : '—')+'</td>'; }
 
       return '<tr>'+tdCols+'</tr>';
     }).join('');
