@@ -11441,7 +11441,7 @@ window.addEventListener('storageReady', function(){
       wrapper.style.cssText = 'text-align:center;page-break-inside:avoid;';
       let inner = '';
       if(qrSettings.showName) inner += '<div class="qr-label-name" style="font-size:'+(labelSize>=160?'15':'13')+'px;">'+escapeHtml(name)+'</div>';
-      if(qrSettings.showSpec && spec) inner += '<div class="qr-label-spec" style="font-size:'+(labelSize>=160?'12':'10')+'px;">'+escapeHtml(spec)+'</div>';
+      if(qrSettings.showSpec && spec) inner += '<div class="qr-label-spec" style="font-size:'+(labelSize>=160?'16':'14')+'px;font-weight:700;margin-bottom:2px;">'+escapeHtml(spec)+'</div>';
       if(qrSettings.showPartno && partno) inner += '<div style="font-size:10px;color:#888;margin-bottom:4px;">'+escapeHtml(partno)+'</div>';
       if(qrSettings.showQrCode !== false) inner += '<div id="qrBulkG_'+safeId+'"></div>';
       if(qrSettings.showCode) inner += '<div class="qr-label-code" style="font-size:10px;">'+escapeHtml(qrValue)+'</div>';
