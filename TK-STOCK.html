@@ -2218,6 +2218,26 @@
   </div>
 </div>
 
+<!-- 印刷オプションモーダル -->
+<div class="modal-overlay" id="printOptionsModal">
+  <div class="modal" style="max-width:320px;">
+    <h3 style="margin-top:0;font-size:16px;">🖨️ 印刷オプション</h3>
+    <p id="printOptionsMessage" style="font-size:13px;color:var(--text-2);white-space:pre-wrap;margin-top:0;"></p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0 16px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+        <input type="checkbox" id="printOptQr" style="width:16px;height:16px;"> QRコードを印刷する
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+        <input type="checkbox" id="printOptBarcode" style="width:16px;height:16px;"> バーコードを印刷する
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="printOptsCancelBtn">キャンセル</button>
+      <button class="btn btn-amber" id="printOptsOkBtn">印刷する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 客注品登録モーダル -->
 <div class="modal-overlay" id="customerOrderModal">
   <div class="modal" style="max-width:400px;width:95%;">
@@ -5374,9 +5394,11 @@ window.addEventListener('storageReady', function(){
     const saleDateStr = row.saleDate ? fmtDate(row.saleDate) : '';
     // 預かり在庫は商品IDから internalBarcode を引く（row.productId があれば）
     const _custProd = row.productId ? products.find(x=>x.id===row.productId) : null;
-    const _custBc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? ((_custProd && _custProd.internalBarcode) || '') : '';
-    const _qrUrl  = (_custBc && labelSettings.showQr !== false)      ? await _genQrDataUrl(_custBc, 64)  : null;
-    const _bcUrl  = (_custBc && labelSettings.showBarcode !== false)  ? await _genBarcodeDataUrl(_custBc) : null;
+    const _cPopts = await showPrintOptions(row.pattern||row.customerName||'');
+    if(!_cPopts) return;
+    const _custBc = (_cPopts.showQr || _cPopts.showBarcode) ? ((_custProd && _custProd.internalBarcode) || '') : '';
+    const _qrUrl  = (_custBc && _cPopts.showQr)      ? await _genQrDataUrl(_custBc, 64)  : null;
+    const _bcUrl  = (_custBc && _cPopts.showBarcode)  ? await _genBarcodeDataUrl(_custBc) : null;
     const item = _makeLabelHtmlInline({
       status:'預かり在庫', statusBg:'#6d28d9',
       customer:(row.customerName||'')+'　様',
@@ -5405,14 +5427,16 @@ window.addEventListener('storageReady', function(){
       return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
     }
     const installStr = fmtDate(provEntry.scheduledDate);
+    const _pPopts = await showPrintOptions((provEntry.customerName||'')+(provEntry.items&&provEntry.items.length?' — '+provEntry.items.map(i=>i.name).join(', '):''));
+    if(!_pPopts) return;
     const items = await Promise.all((provEntry.items||[]).map(async item=>{
       const p = products.find(x=>x.id===item.productId);
       const ws = p && p.wheelSpec;
       const specStr = ws ? [ws.inch?ws.inch+'インチ':'', ws.j?ws.j+'J':'', ws.holes&&ws.pcd?ws.holes+'H PCD'+ws.pcd:'', ws.offset?'+'+ws.offset:'', ws.color?ws.color:''].filter(Boolean).join(' ') : (item.spec||'');
       const nameStr = (item.name||'');
-      const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? ((p && p.internalBarcode) || '') : '';
-      const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
-      const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
+      const _bc = (_pPopts.showQr || _pPopts.showBarcode) ? ((p && p.internalBarcode) || '') : '';
+      const _qrUrl = (_bc && _pPopts.showQr)  ? await _genQrDataUrl(_bc, 64)  : null;
+      const _bcUrl = (_bc && _pPopts.showBarcode) ? await _genBarcodeDataUrl(_bc) : null;
       return _makeLabelHtmlInline({
         status:'仮出庫', statusBg:'#000',
         customer: (provEntry.customerName||'')+'　様',
@@ -6540,6 +6564,31 @@ window.addEventListener('storageReady', function(){
       }
       function onOk(){ cleanup(true); }
       function onCancel(){ cleanup(false); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
+  function showPrintOptions(message){
+    return new Promise((resolve)=>{
+      const overlay = document.getElementById('printOptionsModal');
+      const msgEl = document.getElementById('printOptionsMessage');
+      const qrChk = document.getElementById('printOptQr');
+      const bcChk = document.getElementById('printOptBarcode');
+      const okBtn = document.getElementById('printOptsOkBtn');
+      const cancelBtn = document.getElementById('printOptsCancelBtn');
+      if(msgEl) msgEl.textContent = message || '';
+      qrChk.checked = labelSettings.showQr !== false;
+      bcChk.checked = labelSettings.showBarcode !== false;
+      overlay.classList.add('show');
+      function cleanup(result){
+        overlay.classList.remove('show');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk(){ cleanup({ ok:true, showQr:qrChk.checked, showBarcode:bcChk.checked }); }
+      function onCancel(){ cleanup(null); }
       okBtn.addEventListener('click', onOk);
       cancelBtn.addEventListener('click', onCancel);
     });
@@ -11416,6 +11465,8 @@ window.addEventListener('storageReady', function(){
   }
 
   async function executePriceTagLabelPrint(ps, cfg){
+    const _ptPopts = await showPrintOptions(ps.map(p=>cleanName(p.name)).join('\n'));
+    if(!_ptPopts) return;
     const ownBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const brLabel = branchName(ownBranch);
     const items = await Promise.all(ps.map(async p=>{
@@ -11426,7 +11477,7 @@ window.addEventListener('storageReady', function(){
       const sell = sellEx ? Math.floor(sellEx * 1.1) : 0;
       const priceStr = (cfg.showPrice && sell) ? ('¥'+Number(sell).toLocaleString('ja-JP')+(cfg.showTaxNote?' 税込':'')) : '';
       // JANコードがあればJAN優先、なければ自社バーコード
-      const _bc = labelSettings.showBarcode !== false ? (p.barcode || p.internalBarcode || '') : '';
+      const _bc = _ptPopts.showBarcode ? (p.barcode || p.internalBarcode || '') : '';
       const _bcUrl = _bc ? await _genBarcodeDataUrl(_bc) : null;
       return _makeLabelHtmlInline({
         status:'', statusBg:'#b45309', hideHeader:true,
@@ -14566,9 +14617,12 @@ window.addEventListener('storageReady', function(){
       return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
     }
     const installStr = fmtDate(installDate);
-    const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? (p.internalBarcode || '') : '';
-    const _qrUrl  = (_bc && labelSettings.showQr !== false)      ? await _genQrDataUrl(_bc, 64)    : null;
-    const _bcUrl  = (_bc && labelSettings.showBarcode !== false)  ? await _genBarcodeDataUrl(_bc)   : null;
+    const _popts = await showPrintOptions(p.name+(qty>1?' × '+qty+'枚':''));
+    if(!_popts) return;
+    const _useQr = _popts.showQr, _useBc = _popts.showBarcode;
+    const _bc = (_useQr || _useBc) ? (p.internalBarcode || '') : '';
+    const _qrUrl  = (_bc && _useQr) ? await _genQrDataUrl(_bc, 64)  : null;
+    const _bcUrl  = (_bc && _useBc) ? await _genBarcodeDataUrl(_bc) : null;
     const items = Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
       status:'入庫済み', statusBg:'#000',
       name:(p.name||''),
@@ -14591,13 +14645,17 @@ window.addEventListener('storageReady', function(){
     const installDate  = (opts && opts.installDate)  || '';
     function fmtDate(str){ if(!str) return ''; const d=new Date(str+'T00:00:00'); if(isNaN(d)) return str; return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0'); }
     const installStr = fmtDate(installDate);
+    const _msg = targets.map(t=>t.p.name+' × '+t.qty+'枚').join('\n');
+    const _popts = await showPrintOptions(_msg);
+    if(!_popts) return;
+    const _useQr = _popts.showQr, _useBc = _popts.showBarcode;
     const items = (await Promise.all(targets.map(async function(t){
       const p=t.p, qty=t.qty;
       const ws=p.wheelSpec;
       const specStr=ws?[ws.inch?ws.inch+'インチ':'',ws.j?ws.j+'J':'',ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'',ws.offset?'+'+ws.offset:'',ws.color?ws.color:''].filter(Boolean).join('  '):(p.spec||'');
-      const _bc = (labelSettings.showQr !== false || labelSettings.showBarcode !== false) ? (p.internalBarcode || '') : '';
-      const _qrUrl = (_bc && labelSettings.showQr !== false)     ? await _genQrDataUrl(_bc, 64)   : null;
-      const _bcUrl = (_bc && labelSettings.showBarcode !== false) ? await _genBarcodeDataUrl(_bc)  : null;
+      const _bc = (_useQr || _useBc) ? (p.internalBarcode || '') : '';
+      const _qrUrl = (_bc && _useQr) ? await _genQrDataUrl(_bc, 64)  : null;
+      const _bcUrl = (_bc && _useBc) ? await _genBarcodeDataUrl(_bc) : null;
       return Array.from({length:qty}).map(()=>_makeLabelHtmlInline({
         status:'入庫済み', statusBg:'#000',
         name:(p.name||''),
