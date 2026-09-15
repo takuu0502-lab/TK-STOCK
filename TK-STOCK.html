@@ -12936,9 +12936,10 @@ window.addEventListener('storageReady', function(){
         iOpts += '<option value="R'+v+'">'+v+'</option>';
       });
     } else {
-      // 標準サイズ12〜24 + 22.5（全店共通）
+      // 標準サイズ12〜24 + 15.5, 22.5（全店共通）
       const stdInches = [];
       for(let inch=12; inch<=24; inch++) stdInches.push(inch);
+      if(!stdInches.includes(15.5)) stdInches.push(15.5);
       if(!stdInches.includes(22.5)) stdInches.push(22.5);
       stdInches.sort((a,b)=>a-b);
       stdInches.forEach(v=>{ iOpts += '<option value="R'+v+'">'+v+'</option>'; });
