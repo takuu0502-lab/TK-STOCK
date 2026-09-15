@@ -1918,6 +1918,10 @@
       <input type="text" id="f_name" placeholder="例) ECOPIA NH200C">
     </div>
     <div class="field">
+      <label>車種</label>
+      <input type="text" id="f_car_model" placeholder="例) プリウス、アクア、N-BOX">
+    </div>
+    <div class="field">
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
       <div class="tire-size-row" id="f_spec_tire_row" style="display:none;margin-top:8px;">
@@ -13362,6 +13366,7 @@ window.addEventListener('storageReady', function(){
     populateSupplierSelect('');
     populateLocationSelect('');
     document.getElementById('f_name').value = '';
+    document.getElementById('f_car_model').value = '';
     document.getElementById('f_wheel_name').value = '';
     populateTireModelSelect();
     populateSpecTireSelects();
@@ -13409,6 +13414,7 @@ window.addEventListener('storageReady', function(){
     const _editLocId = (p.branchLocation && _editLocBranch in p.branchLocation) ? p.branchLocation[_editLocBranch] : (p.locationId || '');
     populateLocationSelect(_editLocId);
     document.getElementById('f_name').value = p.name;
+    document.getElementById('f_car_model').value = p.carModel || '';
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
     populateSubSelect(p.majorId, p.subId);
@@ -14901,6 +14907,7 @@ window.addEventListener('storageReady', function(){
     const sellPrice = parseInt(document.getElementById('f_price').value || '0', 10);
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
+    const carModel = document.getElementById('f_car_model').value.trim();
     const memo = document.getElementById('f_memo').value.trim();
     const listMemo = document.getElementById('f_list_memo').value.trim();
     const url = document.getElementById('f_url').value.trim();
@@ -15005,7 +15012,7 @@ window.addEventListener('storageReady', function(){
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, updatedAt: Date.now()});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, carModel, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, updatedAt: Date.now()});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
