@@ -11455,16 +11455,16 @@ window.addEventListener('storageReady', function(){
       if(hasQr && hasBc){
         let left = `<div id="qrA4G_${safeId}" style="flex-shrink:0;"></div>`;
         let right = '';
-        if(qrSettings.showName) right += `<div style="font-size:42px;font-weight:800;margin-bottom:10px;">${escapeHtml(name)}</div>`;
-        if(qrSettings.showSpec && spec) right += `<div style="font-size:64px;font-weight:900;line-height:1.1;margin-bottom:14px;">${escapeHtml(spec)}</div>`;
+        if(qrSettings.showName) right += `<div style="font-size:52px;font-weight:800;margin-bottom:12px;">${escapeHtml(name)}</div>`;
+        if(qrSettings.showSpec && spec) right += `<div style="font-size:86px;font-weight:900;line-height:1.05;margin-bottom:16px;">${escapeHtml(spec)}</div>`;
         if(qrSettings.showPartno && partno) right += `<div style="font-size:20px;color:#666;margin-bottom:10px;">${escapeHtml(partno)}</div>`;
         if(qrSettings.showCode) right += `<div style="font-size:16px;color:#888;font-family:monospace;margin-bottom:16px;">${escapeHtml(qrValue)}</div>`;
         right += `<svg id="bcA4_${safeId}" style="width:100%;max-width:540px;"></svg>`;
         pages += `<div class="a4page" style="flex-direction:row;gap:30px;"><div style="display:flex;align-items:center;">${left}</div><div style="display:flex;flex-direction:column;justify-content:center;text-align:left;flex:1;">${right}</div></div>`;
       } else {
         let content = '';
-        if(qrSettings.showName) content += `<div style="font-size:44px;font-weight:800;margin-bottom:12px;">${escapeHtml(name)}</div>`;
-        if(qrSettings.showSpec && spec) content += `<div style="font-size:72px;font-weight:900;line-height:1.1;margin-bottom:16px;">${escapeHtml(spec)}</div>`;
+        if(qrSettings.showName) content += `<div style="font-size:62px;font-weight:800;margin-bottom:14px;">${escapeHtml(name)}</div>`;
+        if(qrSettings.showSpec && spec) content += `<div style="font-size:110px;font-weight:900;line-height:1.05;margin-bottom:20px;">${escapeHtml(spec)}</div>`;
         if(qrSettings.showPartno && partno) content += `<div style="font-size:22px;color:#666;margin-bottom:12px;">${escapeHtml(partno)}</div>`;
         if(hasQr) content += `<div id="qrA4G_${safeId}" style="margin:16px auto;"></div>`;
         if(qrSettings.showCode) content += `<div style="font-size:18px;color:#888;font-family:monospace;margin-top:10px;">${escapeHtml(qrValue)}</div>`;
