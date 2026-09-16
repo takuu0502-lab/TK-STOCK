@@ -8310,13 +8310,14 @@ window.addEventListener('storageReady', function(){
                 }
               }
               cell += '<td style="padding:6px 10px;vertical-align:top;text-align:left;background:'+_bBg+';border-left:3px solid '+_bBd+';">'
-                + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-                + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
-                + (bLow ? '<span class="low-flag">在庫少</span>' : '')
+                + '<div style="display:flex;flex-direction:column;gap:4px;">'
+                + '<div style="display:flex;align-items:baseline;gap:6px;">'
+                + '<span style="font-size:22px;font-weight:700;line-height:1;color:'+bColor+';">'+bStk+'</span>'
+                + (bLow ? '<span class="low-flag" style="font-size:10px;">在庫少</span>' : '')
                 + '</div>'
-                + _yearBadgeHtml
+                + (_yearBadgeHtml ? '<div style="display:flex;flex-wrap:wrap;gap:3px;">'+_yearBadgeHtml+'</div>' : '')
+                + (badges ? '<div style="display:flex;flex-direction:column;gap:2px;">'+badges+'</div>' : '')
                 + '</div>'
-                + badges
                 + '</td>';
             });
             return cell;
