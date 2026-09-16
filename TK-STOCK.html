@@ -7218,7 +7218,7 @@ window.addEventListener('storageReady', function(){
         for(const r of selectedMatches){
           const _rProd2 = r._productId ? null : findProductForCatalogEntry(r);
           const sell = r._productId
-            ? (r._sellPrice || 0)
+            ? (r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t) || 0)
             : (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
               ? _rProd2.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
@@ -7701,7 +7701,7 @@ window.addEventListener('storageReady', function(){
         for(const r of selectedMatches){
           const _rProd = r._productId ? null : findProductForCatalogEntry(r);
           const sell = r._productId
-            ? (r._sellPrice || 0)
+            ? (r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t) || 0)
             : (_rProd && _rProd._sellManual && _rProd.sellPrice)
               ? _rProd.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
