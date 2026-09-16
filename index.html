@@ -8214,7 +8214,10 @@ window.addEventListener('storageReady', function(){
           : _partnoOnlyMode
             // タイヤ以外の特定カテゴリ：品番のみ1列表示
             ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
-            // 全カテゴリ・タイヤ選択時：品番＋規格（非タイヤの規格は—）
+            // タイヤカテゴリ：規格のみ（品番非表示）
+            : _isTireCat
+              ? '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'—')+'</td>'
+            // 全カテゴリ・その他：品番＋規格
             : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
               + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+(_isTire ? escapeHtml(p.spec||'—') : '—')+'</td>')
         + (_showCostCol
@@ -8340,7 +8343,9 @@ window.addEventListener('storageReady', function(){
       ? '<th>ホイールスペック</th>'
       : _partnoOnlyMode
         ? '<th>品番</th>'
-        : '<th>品番</th><th>規格・サイズ</th>';
+        : _isTireCat
+          ? '<th>規格・サイズ</th>'
+          : '<th>品番</th><th>規格・サイズ</th>';
     // 最近の登録順では列数を抑えるため品番を省略
     const _midHeadersRecent = _isWheelCat
       ? '<th>ホイールスペック</th>'
