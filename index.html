@@ -8119,6 +8119,16 @@ window.addEventListener('storageReady', function(){
         const bMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(b) : false;
         if(aMatch && !bMatch) return -1;
         if(!aMatch && bMatch) return 1;
+        // ホイールカテゴリ選択時：インチ昇順 → J数昇順 → 名前順
+        if(_isWheelCat){
+          const aInch = a.wheelSpec ? parseFloat(a.wheelSpec.inch)||0 : 0;
+          const bInch = b.wheelSpec ? parseFloat(b.wheelSpec.inch)||0 : 0;
+          if(aInch !== bInch) return aInch - bInch;
+          const aJ = a.wheelSpec ? parseFloat(a.wheelSpec.j)||0 : 0;
+          const bJ = b.wheelSpec ? parseFloat(b.wheelSpec.j)||0 : 0;
+          if(aJ !== bJ) return aJ - bJ;
+          return (a.name||'').localeCompare(b.name||'','ja');
+        }
         // 新規登録順（createdAt降順）
         if(!a.createdAt && !b.createdAt) return (a.name||'').localeCompare(b.name||'','ja');
         if(!a.createdAt) return 1;
