@@ -8140,6 +8140,9 @@ window.addEventListener('storageReady', function(){
     const _isTireWheelCat = selectedMajor === null || selectedMajor === _tireCatId || selectedMajor === _wheelCatId2;
     const _isWheelCat = selectedMajor === _wheelCatId2; // ホイールカテゴリのみ選択中
     const _isTireCat  = selectedMajor === _tireCatId;   // タイヤカテゴリのみ選択中
+    // アルミホイール中分類選択時は仕入れ価格列を表示
+    const _alumWheelSubId = _sharedWheelCat ? ((_sharedWheelCat.subs||[]).find(s=>s.name==='アルミホイール')||{}).id : null;
+    const _showCostCol = _isWheelCat && selectedSub === _alumWheelSubId;
     // タイヤ以外の特定カテゴリ選択時：規格・サイズ列を省略して品番列のみ表示
     const _partnoOnlyMode = selectedMajor !== null && !_isTireCat && !_isWheelCat;
     const _showMultiCols = _visibleBranches.length > 1
@@ -8192,7 +8195,10 @@ window.addEventListener('storageReady', function(){
             // 全カテゴリ・タイヤ選択時：品番＋規格（非タイヤの規格は—）
             : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
               + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+(_isTire ? escapeHtml(p.spec||'—') : '—')+'</td>')
-        + '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
+        + (_showCostCol
+            ? '<td data-label="仕入れ価格" style="color:var(--text-2);font-size:12px;white-space:nowrap;">'+(p.costPrice ? '¥'+Number(p.costPrice).toLocaleString() : '—')+'</td>'
+            : '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
+          )
         + (()=>{
           if(_showMultiCols){
             // 支店別在庫列（ヘッダーと列数を合わせるため別々の<td>）
@@ -8317,9 +8323,12 @@ window.addEventListener('storageReady', function(){
     const _midHeadersRecent = _isWheelCat
       ? '<th>ホイールスペック</th>'
       : '<th style="white-space:nowrap;">規格・サイズ</th>';
+    const _locOrCostTh = _showCostCol
+      ? '<th style="white-space:nowrap;width:80px;">仕入れ価格</th>'
+      : '<th style="white-space:nowrap;width:60px;">保管場所</th>';
     const thead = recentFilter
-      ? '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeadersRecent+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
-      : '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeaders+'<th style="white-space:nowrap;width:60px;">保管場所</th>'+_multiStkHeaders+'</tr></thead>';
+      ? '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeadersRecent+_locOrCostTh+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
+      : '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeaders+_locOrCostTh+_multiStkHeaders+'</tr></thead>';
     wrap.innerHTML = '<table class="stock-table">'+thead+'<tbody>'+rows+'</tbody></table>';
     updateBulkBar();
     wrap.querySelectorAll('[data-detail]').forEach(tr=>{
