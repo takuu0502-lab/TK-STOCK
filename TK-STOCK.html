@@ -768,6 +768,7 @@
           <div style="display:flex;gap:6px;margin-top:6px;" id="qrLayoutGroup">
             <button type="button" class="qr-opt-btn active" data-qr-layout="grid">通常（複数枚）</button>
             <button type="button" class="qr-opt-btn" data-qr-layout="a4large">A4横・大きく</button>
+            <button type="button" class="qr-opt-btn" data-qr-layout="label">ラベルプリンター</button>
           </div>
         </div>
         <!-- 1行の枚数 -->
@@ -11402,7 +11403,7 @@ window.addEventListener('storageReady', function(){
       document.querySelectorAll('#qrLayoutGroup .qr-opt-btn').forEach(b=>{
         b.classList.toggle('active', b.dataset.qrLayout === lay);
       });
-      document.getElementById('qrColsField').style.display = lay === 'a4large' ? 'none' : '';
+      document.getElementById('qrColsField').style.display = (lay === 'a4large' || lay === 'label') ? 'none' : '';
     }
     function applyColUI(){
       document.querySelectorAll('#qrColGroup .qr-opt-btn').forEach(b=>{
@@ -11471,10 +11472,38 @@ window.addEventListener('storageReady', function(){
       modal.classList.remove('show');
       if(qrSettings.layout === 'a4large'){
         executeQrA4LargePrint(products_to_print);
+      } else if(qrSettings.layout === 'label'){
+        executeQrLabelPrint(products_to_print);
       } else {
         executeQrBulkPrint(products_to_print);
       }
     };
+  }
+
+  async function executeQrLabelPrint(ps){
+    const brId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const brLabel = branchName(brId);
+    const today = new Date();
+    const dateStr = today.getFullYear()+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getDate().toString().padStart(2,'0');
+    const _useQr = qrSettings.showQrCode !== false;
+    const _useBc = !!qrSettings.showBarcode;
+    const labelItems = await Promise.all(ps.map(async p=>{
+      const ws = p.wheelSpec;
+      const specStr = ws ? [ws.inch?ws.inch+'インチ':'',ws.j?ws.j+'J':'',ws.holes&&ws.pcd?ws.holes+'H / PCD'+ws.pcd:'',ws.offset?'+'+ws.offset:'',ws.color?ws.color:''].filter(Boolean).join('  ') : (p.spec||'');
+      const _bc = p.barcode || p.internalBarcode || '';
+      const _qrUrl = (_bc && _useQr) ? await _genQrDataUrl(_bc, 64) : null;
+      const _bcUrl = (_bc && _useBc) ? await _genBarcodeDataUrl(_bc) : null;
+      return _makeLabelHtmlInline({
+        status:'', hideHeader:true,
+        name: p.name||'',
+        spec: specStr,
+        partno: p.partno ? '品番：'+p.partno : '',
+        footer: brLabel+' '+dateStr,
+        qrDataUrl: _qrUrl,
+        barcodeDataUrl: _bcUrl,
+      });
+    }));
+    await _printLabelsPDF(labelItems, 'QRラベル');
   }
 
   function executeQrA4LargePrint(ps){
