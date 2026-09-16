@@ -8197,8 +8197,10 @@ window.addEventListener('storageReady', function(){
             const offsStr  = ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : '';
             const colorStr = ws.color ? ws.color : '';
             const parts = [sizeStr, holeStr, offsStr].filter(Boolean);
+            // wheelSpecにデータがない場合はp.specを表示
+            const _wsEmpty = !sizeStr && !holeStr && !offsStr && !colorStr;
             return '<td data-label="ホイールスペック" style="color:var(--text-2);font-size:12px;white-space:nowrap;font-family:var(--font-mono);">'
-              +(parts.length ? escapeHtml(parts.join('　')) : '—')
+              +(_wsEmpty ? (p.spec ? escapeHtml(p.spec) : '—') : parts.length ? escapeHtml(parts.join('　')) : '—')
               +(colorStr ? '<span style="font-family:var(--font-sans);font-size:11px;color:var(--text-3);margin-left:6px;">'+escapeHtml(colorStr)+'</span>' : '')
               +'</td>';
           })()
