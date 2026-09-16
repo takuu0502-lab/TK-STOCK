@@ -8225,6 +8225,7 @@ window.addEventListener('storageReady', function(){
               + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:14px;font-weight:500;">'+(_isTire ? escapeHtml(p.spec||'—') : '—')+'</td>')
         + (_showCostCol
             ? '<td data-label="仕入れ価格" style="color:var(--text-2);font-size:12px;white-space:nowrap;">'+(p.costPrice ? '¥'+Number(p.costPrice).toLocaleString() : '—')+'</td>'
+            : _showMultiCols ? ''
             : '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
           )
         + (()=>{
@@ -8359,6 +8360,7 @@ window.addEventListener('storageReady', function(){
       : '<th style="white-space:nowrap;">規格・サイズ</th>';
     const _locOrCostTh = _showCostCol
       ? '<th style="white-space:nowrap;width:80px;">仕入れ価格</th>'
+      : _showMultiCols ? ''
       : '<th style="white-space:nowrap;width:60px;">保管場所</th>';
     const thead = recentFilter
       ? '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeadersRecent+_locOrCostTh+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
