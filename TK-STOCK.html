@@ -8219,10 +8219,10 @@ window.addEventListener('storageReady', function(){
             ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
             // タイヤカテゴリ：規格のみ（品番非表示）
             : _isTireCat
-              ? '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+escapeHtml(p.spec||'—')+'</td>'
+              ? '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:14px;font-weight:500;">'+escapeHtml(p.spec||'—')+'</td>'
             // 全カテゴリ・その他：品番＋規格
             : (recentFilter ? '' : '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>')
-              + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:12.5px;">'+(_isTire ? escapeHtml(p.spec||'—') : '—')+'</td>')
+              + '<td data-label="規格・サイズ" style="color:var(--text-2);font-size:14px;font-weight:500;">'+(_isTire ? escapeHtml(p.spec||'—') : '—')+'</td>')
         + (_showCostCol
             ? '<td data-label="仕入れ価格" style="color:var(--text-2);font-size:12px;white-space:nowrap;">'+(p.costPrice ? '¥'+Number(p.costPrice).toLocaleString() : '—')+'</td>'
             : '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
@@ -8343,9 +8343,8 @@ window.addEventListener('storageReady', function(){
     const someChecked = filteredList.some(p=>selectedProducts.has(p.id));
     const headerChk = '<th class="chk-col"><input type="checkbox" class="row-chk" id="bulkSelectAll"'+(allChecked?' checked':( someChecked?' style="accent-color:var(--amber);"':''))+' title="全選択/解除"></th>';
     // ヘッダー: 保管場所 | 支店別在庫列
-    const _brColW = _showMultiCols && _visibleBranches.length > 0 ? Math.floor(100/_visibleBranches.length)+'%' : 'auto';
     const _multiStkHeaders = _showMultiCols
-      ? _visibleBranches.map((brId,_bci)=>'<th style="font-size:11px;white-space:nowrap;text-align:center;background:'+_brColBg[_bci%4]+';padding:6px 8px;width:'+_brColW+';">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
+      ? _visibleBranches.map((brId,_bci)=>'<th style="font-size:11px;white-space:nowrap;text-align:center;background:'+_brColBg[_bci%4]+';padding:6px 8px;width:160px;min-width:140px;">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
       : '<th>在庫</th>';
     const _midHeaders = _isWheelCat
       ? '<th>ホイールスペック</th>'
