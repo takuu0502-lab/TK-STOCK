@@ -8192,7 +8192,10 @@ window.addEventListener('storageReady', function(){
               if(_wCat){ for(const sub of (_wCat.subs||[])){ const ss=(sub.subsubs||[]).find(s=>s.id===_ssId); if(ss){ const m=ss.name.match(/(\d+)/); if(m) _inchFromCat=m[1]; break; } } }
             }
             const _inch = ws.inch || _inchFromCat;
-            const sizeStr  = (_inch && ws.j) ? _inch+'x'+ws.j : (_inch ? _inch+'インチ' : (ws.j ? ws.j+'J' : ''));
+            // ws.j が未設定の場合、p.spec テキストから J 数を抽出（例: "4.5J", "15x4.5"）
+            const _jFromSpec = !ws.j && p.spec ? ((p.spec.match(/(\d+(?:\.\d+)?)\s*[Jj](?!\d)/)||[])[1] || (p.spec.match(/\d+x(\d+(?:\.\d+)?)/)||[])[1] || '') : '';
+            const _j = ws.j || _jFromSpec;
+            const sizeStr  = (_inch && _j) ? _inch+'x'+_j : (_inch ? _inch+'インチ' : (_j ? _j+'J' : ''));
             const holeStr  = (ws.holes && ws.pcd)  ? ws.holes+'/'+ws.pcd : (ws.holes ? ws.holes+'穴' : (ws.pcd ? 'PCD'+ws.pcd : ''));
             const offsStr  = ws.offset !== undefined && ws.offset !== '' ? '+'+ws.offset : '';
             const colorStr = ws.color ? ws.color : '';
