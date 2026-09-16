@@ -8309,14 +8309,16 @@ window.addEventListener('storageReady', function(){
                   badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565c0;font-size:'+(isOwn?'10':'9')+'px;font-weight:700;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🏪 預かり '+_cstQty+'本</div>';
                 }
               }
-              cell += '<td style="padding:6px 10px;vertical-align:top;text-align:left;background:'+_bBg+';border-left:3px solid '+_bBd+';">'
-                + '<div style="display:flex;flex-direction:column;gap:4px;">'
-                + '<div style="display:flex;align-items:baseline;gap:6px;">'
+              cell += '<td style="padding:6px 10px;vertical-align:middle;text-align:left;background:'+_bBg+';border-left:3px solid '+_bBd+';">'
+                + '<div style="display:flex;align-items:center;gap:8px;">'
+                + '<div style="flex-shrink:0;">'
                 + '<span style="font-size:22px;font-weight:700;line-height:1;color:'+bColor+';">'+bStk+'</span>'
-                + (bLow ? '<span class="low-flag" style="font-size:10px;">在庫少</span>' : '')
+                + (bLow ? '<div><span class="low-flag" style="font-size:10px;">在庫少</span></div>' : '')
                 + '</div>'
-                + (_yearBadgeHtml ? '<div style="display:flex;flex-wrap:wrap;gap:3px;">'+_yearBadgeHtml+'</div>' : '')
-                + (badges ? '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start;">'+badges+'</div>' : '')
+                + ((_yearBadgeHtml || badges) ? '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">'
+                  + (_yearBadgeHtml ? '<div style="display:flex;flex-wrap:wrap;gap:3px;">'+_yearBadgeHtml+'</div>' : '')
+                  + (badges ? badges : '')
+                  + '</div>' : '')
                 + '</div>'
                 + '</td>';
             });
