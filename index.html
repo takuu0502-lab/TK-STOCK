@@ -2110,6 +2110,9 @@
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_spec" checked style="width:16px;height:16px;accent-color:var(--teal);"> 規格・サイズ
       </label>
+      <label id="prcol_wheelspec_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_wheelspec" checked style="width:16px;height:16px;accent-color:var(--teal);"> ホイールスペック
+      </label>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_category" checked style="width:16px;height:16px;accent-color:var(--teal);"> 分類
       </label>
@@ -12381,6 +12384,10 @@ window.addEventListener('storageReady', function(){
     const _costVisible = isAdminUser() ? 'flex' : 'none';
     document.getElementById('prcol_cost_row').style.display = _costVisible;
     document.getElementById('prcol_totalval_row').style.display = _costVisible;
+    // ホイールスペック列はホイールカテゴリ選択時のみ表示
+    const _wcId = (categories.find(c=>c.name==='ホイール')||{}).id;
+    const _wsRow = document.getElementById('prcol_wheelspec_row');
+    if(_wsRow) _wsRow.style.display = (selectedMajor === _wcId) ? 'flex' : 'none';
     _printSettingsModal.classList.add('show');
   });
 
@@ -12394,9 +12401,10 @@ window.addEventListener('storageReady', function(){
     const colLocation = document.getElementById('prcol_location').checked;
     const colStock    = document.getElementById('prcol_stock').checked;
     const colPType    = document.getElementById('prcol_producttype').checked;
-    const colCost     = isAdminUser() && document.getElementById('prcol_cost').checked;
-    const colTotalVal = isAdminUser() && document.getElementById('prcol_totalval').checked;
-    const colYearMfg  = document.getElementById('prcol_yearmfg').checked;
+    const colCost      = isAdminUser() && document.getElementById('prcol_cost').checked;
+    const colTotalVal  = isAdminUser() && document.getElementById('prcol_totalval').checked;
+    const colYearMfg   = document.getElementById('prcol_yearmfg').checked;
+    const colWheelSpec = document.getElementById('prcol_wheelspec') && document.getElementById('prcol_wheelspec').checked;
 
     // 現在の表示フィルターで商品リストを取得
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -12433,8 +12441,9 @@ window.addEventListener('storageReady', function(){
     let thCols = '<th>商品名</th>';
     if(colBrand)    thCols = '<th>ブランド</th>' + thCols;
     if(colPartno)   thCols += '<th>品番</th>';
-    if(colSpec)     thCols += '<th>規格・サイズ</th>';
-    if(colCategory) thCols += '<th>分類</th>';
+    if(colSpec)      thCols += '<th>規格・サイズ</th>';
+    if(colWheelSpec) thCols += '<th>ホイールスペック</th>';
+    if(colCategory)  thCols += '<th>分類</th>';
     if(colLocation) thCols += '<th>保管場所</th>';
     if(colStock)    thCols += sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
     if(colPType)    thCols += '<th>商品区分</th>';
@@ -12453,6 +12462,7 @@ window.addEventListener('storageReady', function(){
       if(colBrand)    tdCols = '<td>'+escapeHtml(brand)+'</td>' + tdCols;
       if(colPartno)   tdCols += '<td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td>';
       if(colSpec)     tdCols += '<td style="color:#666;">'+escapeHtml(p.spec||'—')+'</td>';
+      if(colWheelSpec){ const _ws=p.wheelSpec||{}; const _wsInch=_ws.inch||''; const _wsJ=_ws.j||''; const _wsSz=(_wsInch&&_wsJ)?_wsInch+'x'+_wsJ:(_wsInch?_wsInch+'インチ':(_wsJ?_wsJ+'J':'')); const _wsH=(_ws.holes&&_ws.pcd)?_ws.holes+'/'+_ws.pcd:''; const _wsO=_ws.offset!==undefined&&_ws.offset!==''?'+'+_ws.offset:''; const _wsC=_ws.color||''; const _wsParts=[_wsSz,_wsH,_wsO,_wsC].filter(Boolean); tdCols += '<td style="color:#555;font-size:10px;white-space:nowrap;">'+(_wsParts.length?escapeHtml(_wsParts.join(' ')):(p.spec?escapeHtml(p.spec):'—'))+'</td>'; }
       if(colCategory) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>';
       if(colLocation) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(locName)+'</td>';
       if(colStock)    tdCols += sortedBranches.map(b=>{
