@@ -8123,6 +8123,9 @@ window.addEventListener('storageReady', function(){
         if(selectedMajor && selectedMajor === _wheelCatId){
           const aJ = a.wheelSpec ? parseFloat(a.wheelSpec.j)||0 : 0;
           const bJ = b.wheelSpec ? parseFloat(b.wheelSpec.j)||0 : 0;
+          // J数未設定（0）は末尾へ
+          if(aJ === 0 && bJ > 0) return 1;
+          if(aJ > 0 && bJ === 0) return -1;
           if(aJ !== bJ) return aJ - bJ;
           const aOff = a.wheelSpec ? parseFloat(a.wheelSpec.offset)||0 : 0;
           const bOff = b.wheelSpec ? parseFloat(b.wheelSpec.offset)||0 : 0;
