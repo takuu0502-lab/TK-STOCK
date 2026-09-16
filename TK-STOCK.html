@@ -8242,7 +8242,7 @@ window.addEventListener('storageReady', function(){
               const _bBd = _brColBorder[_bci % 4];
               // 他店列はタイヤ・ホイールのみ表示
               if(!isOwn && !_isTireOrWheel){
-                cell += '<td style="padding:6px 10px;vertical-align:top;color:var(--text-3);text-align:center;background:'+_bBg+';border-left:3px solid '+_bBd+';">—</td>';
+                cell += '<td style="padding:6px 10px;vertical-align:top;color:var(--text-3);text-align:center;background:'+_bBg+';">—</td>';
                 return;
               }
               const bColor = gaugeColor(bStk, p.minStock);
@@ -8309,7 +8309,7 @@ window.addEventListener('storageReady', function(){
                   badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565c0;font-size:'+(isOwn?'10':'9')+'px;font-weight:700;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🏪 預かり '+_cstQty+'本</div>';
                 }
               }
-              cell += '<td style="padding:6px 10px;vertical-align:middle;text-align:left;background:'+_bBg+';border-left:3px solid '+_bBd+';">'
+              cell += '<td style="padding:6px 10px;vertical-align:middle;text-align:left;background:'+_bBg+';">'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
                 + '<div style="flex-shrink:0;">'
                 + '<span style="font-size:22px;font-weight:700;line-height:1;color:'+bColor+';">'+bStk+'</span>'
@@ -8343,8 +8343,9 @@ window.addEventListener('storageReady', function(){
     const someChecked = filteredList.some(p=>selectedProducts.has(p.id));
     const headerChk = '<th class="chk-col"><input type="checkbox" class="row-chk" id="bulkSelectAll"'+(allChecked?' checked':( someChecked?' style="accent-color:var(--amber);"':''))+' title="全選択/解除"></th>';
     // ヘッダー: 保管場所 | 支店別在庫列
+    const _brColW = _showMultiCols && _visibleBranches.length > 0 ? Math.floor(100/_visibleBranches.length)+'%' : 'auto';
     const _multiStkHeaders = _showMultiCols
-      ? _visibleBranches.map((brId,_bci)=>'<th style="font-size:11px;white-space:nowrap;text-align:center;background:'+_brColBg[_bci%4]+';border-left:3px solid '+_brColBorder[_bci%4]+';padding:6px 8px;">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
+      ? _visibleBranches.map((brId,_bci)=>'<th style="font-size:11px;white-space:nowrap;text-align:center;background:'+_brColBg[_bci%4]+';padding:6px 8px;width:'+_brColW+';">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
       : '<th>在庫</th>';
     const _midHeaders = _isWheelCat
       ? '<th>ホイールスペック</th>'
