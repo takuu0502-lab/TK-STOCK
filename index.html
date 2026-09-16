@@ -8120,7 +8120,7 @@ window.addEventListener('storageReady', function(){
         if(aMatch && !bMatch) return -1;
         if(!aMatch && bMatch) return 1;
         // ホイールカテゴリ選択時：インチ昇順 → J数昇順 → 名前順
-        if(_isWheelCat){
+        if(selectedMajor && selectedMajor === _wheelCatId){
           const aInch = a.wheelSpec ? parseFloat(a.wheelSpec.inch)||0 : 0;
           const bInch = b.wheelSpec ? parseFloat(b.wheelSpec.inch)||0 : 0;
           if(aInch !== bInch) return aInch - bInch;
