@@ -14058,11 +14058,11 @@ window.addEventListener('storageReady', function(){
             + '</div>' : '');
         })()
       + (p.barcode ? '<div class="detail-code"><span style="color:var(--text-3);font-size:11px;">コード：</span>'+escapeHtml(cleanName(p.barcode))+'</div>' : '')
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">'
-      + '<button class="btn btn-ghost" id="detailQrBtn" style="font-size:14px;padding:8px 18px;">📱 QRコードを発行</button>'
-      + '<button class="btn btn-ghost" id="detailPopBtn" style="font-size:14px;padding:8px 18px;border-color:var(--amber);color:var(--amber);">🖨️ POP印刷</button>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;">'
+      + '<button class="btn btn-ghost" id="detailQrBtn" style="font-size:13px;padding:7px 16px;">QRコード</button>'
+      + '<button class="btn btn-ghost" id="detailPopBtn" style="font-size:13px;padding:7px 16px;border-color:var(--amber);color:var(--amber);">POP印刷</button>'
+      + (p.url ? '<a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;color:var(--teal);font-size:13px;text-decoration:none;border:1px solid var(--teal);border-radius:8px;padding:7px 16px;">商品URL</a>' : '')
       + '</div>'
-      + (p.url ? '<div style="margin-top:8px;"><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;color:var(--teal);font-size:14px;text-decoration:none;border:1px solid var(--teal);border-radius:8px;padding:7px 16px;">🔗 商品URLを開く</a></div>' : '')
       + '</div>'
       + (()=>{
           const _detOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
