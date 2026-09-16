@@ -8165,6 +8165,9 @@ window.addEventListener('storageReady', function(){
     const _showMultiCols = _visibleBranches.length > 1
       && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null)
       && _isTireWheelCat;
+    // 支店列の色分け定義
+    const _brColBg = ['rgba(59,130,246,0.06)','rgba(34,197,94,0.06)','rgba(245,158,11,0.07)','rgba(168,85,247,0.06)'];
+    const _brColBorder = ['#93c5fd','#86efac','#fcd34d','#d8b4fe'];
 
     let rows = filteredList.map(p=>{
       const stk = getStock(p);
@@ -8232,12 +8235,14 @@ window.addEventListener('storageReady', function(){
             const _tireCat = categories.find(c=>c.name==='タイヤ');
             const _wheelCat2 = categories.find(c=>c.name==='ホイール');
             const _isTireOrWheel = (_tireCat && p.majorId===_tireCat.id) || (_wheelCat2 && p.majorId===_wheelCat2.id);
-            _visibleBranches.forEach(brId => {
+            _visibleBranches.forEach((brId, _bci) => {
               const bStk = p.branchStock ? (p.branchStock[brId] || 0) : (brId === 'taniyabe' ? (p.stock || 0) : 0);
               const isOwn = brId === _ownBranchId;
+              const _bBg = _brColBg[_bci % 4];
+              const _bBd = _brColBorder[_bci % 4];
               // 他店列はタイヤ・ホイールのみ表示
               if(!isOwn && !_isTireOrWheel){
-                cell += '<td style="padding:6px 10px;vertical-align:top;color:var(--text-3);text-align:center;">—</td>';
+                cell += '<td style="padding:6px 10px;vertical-align:top;color:var(--text-3);text-align:center;background:'+_bBg+';border-left:3px solid '+_bBd+';">—</td>';
                 return;
               }
               const bColor = gaugeColor(bStk, p.minStock);
@@ -8304,7 +8309,7 @@ window.addEventListener('storageReady', function(){
                   badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565c0;font-size:'+(isOwn?'10':'9')+'px;font-weight:700;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🏪 預かり '+_cstQty+'本</div>';
                 }
               }
-              cell += '<td style="padding:6px 10px;vertical-align:top;text-align:left;">'
+              cell += '<td style="padding:6px 10px;vertical-align:top;text-align:left;background:'+_bBg+';border-left:3px solid '+_bBd+';">'
                 + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
                 + '<div class="gauge-wrap"><span class="stock-num" style="color:'+bColor+';">'+bStk+'</span>'
                 + '<div class="gauge-bar"><div class="gauge-fill" style="width:'+bPct+'%;background:'+bColor+';"></div></div>'
@@ -8337,7 +8342,7 @@ window.addEventListener('storageReady', function(){
     const headerChk = '<th class="chk-col"><input type="checkbox" class="row-chk" id="bulkSelectAll"'+(allChecked?' checked':( someChecked?' style="accent-color:var(--amber);"':''))+' title="全選択/解除"></th>';
     // ヘッダー: 保管場所 | 支店別在庫列
     const _multiStkHeaders = _showMultiCols
-      ? _visibleBranches.map(brId=>'<th style="font-size:11px;white-space:nowrap;text-align:center;">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
+      ? _visibleBranches.map((brId,_bci)=>'<th style="font-size:11px;white-space:nowrap;text-align:center;background:'+_brColBg[_bci%4]+';border-left:3px solid '+_brColBorder[_bci%4]+';padding:6px 8px;">'+(brId===_ownBranchId?'自店舗':escapeHtml(branchName(brId)))+'</th>').join('')
       : '<th>在庫</th>';
     const _midHeaders = _isWheelCat
       ? '<th>ホイールスペック</th>'
