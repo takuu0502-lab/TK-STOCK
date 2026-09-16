@@ -17841,12 +17841,12 @@ window.addEventListener('storageReady', function(){
         +'</div>'
         +'<div data-wcat-list="'+tierKey+'" style="display:flex;flex-wrap:wrap;gap:10px;">'
         + (items.length === 0 ? '<span style="font-size:12px;color:var(--text-3);">写真なし</span>' : '')
-        + items.map((item, idx)=>'<div style="position:relative;width:90px;">'
-          +'<div style="width:90px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg-1);">'
+        + items.map((item, idx)=>'<div draggable="true" data-wcat-dragidx="'+idx+'" data-wcat-dragtier="'+tierKey+'" style="position:relative;width:90px;cursor:grab;user-select:none;">'
+          +'<div style="width:90px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg-1);pointer-events:none;">'
           +'<img src="'+escapeHtml(item.dataUrl||'')+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
           +'</div>'
           +'<input type="text" data-wcat-name="'+tierKey+'" data-wcat-idx="'+idx+'" value="'+escapeHtml(item.name||'')+'" placeholder="名称を入力" '
-          +'title="クリックして名前を編集（Enterで保存）" '
+          +'title="クリックして名前を編集（Enterで保存）" draggable="false" '
           +'style="width:90px;margin-top:6px;padding:5px 7px;font-size:11.5px;border:1.5px solid var(--amber);border-radius:5px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;cursor:text;outline:none;">'
           +'<button data-wcat-del="'+tierKey+'" data-wcat-idx="'+idx+'" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">×</button>'
           +'</div>').join('')
@@ -17887,6 +17887,44 @@ window.addEventListener('storageReady', function(){
         };
         inp.addEventListener('change', saveName);
         inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ inp.blur(); } });
+        // inputにフォーカス中はdragを無効化
+        inp.addEventListener('mousedown', e=>{ e.stopPropagation(); });
+      });
+
+      // ドラッグ＆ドロップで並び替え
+      let _wcDragSrcTier = null, _wcDragSrcIdx = null, _wcDragEl = null;
+      sec.querySelectorAll('[data-wcat-dragidx]').forEach(el=>{
+        el.addEventListener('dragstart', e=>{
+          _wcDragSrcTier = el.dataset.wcatDragtier;
+          _wcDragSrcIdx = +el.dataset.wcatDragidx;
+          _wcDragEl = el;
+          el.style.opacity = '0.45';
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        el.addEventListener('dragend', ()=>{
+          el.style.opacity = '';
+          sec.querySelectorAll('[data-wcat-dragidx]').forEach(e2=>{ e2.style.outline=''; e2.style.transform=''; });
+        });
+        el.addEventListener('dragover', e=>{
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          sec.querySelectorAll('[data-wcat-dragidx]').forEach(e2=>{ e2.style.outline=''; });
+          if(el !== _wcDragEl) el.style.outline = '2px solid var(--amber)';
+        });
+        el.addEventListener('dragleave', ()=>{ el.style.outline=''; });
+        el.addEventListener('drop', async e=>{
+          e.preventDefault();
+          const destTier = el.dataset.wcatDragtier;
+          const destIdx = +el.dataset.wcatDragidx;
+          if(_wcDragSrcTier !== destTier || _wcDragSrcIdx === destIdx) return;
+          const arr = wheelCatalog[_wcDragSrcTier];
+          if(!arr) return;
+          const [moved] = arr.splice(_wcDragSrcIdx, 1);
+          arr.splice(destIdx, 0, moved);
+          await saveWheelCatalog();
+          renderWheelCatalogEditor();
+          showSaveMsgWcat('並び順を保存しました ✓');
+        });
       });
     });
   }
