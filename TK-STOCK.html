@@ -1162,7 +1162,13 @@
 
   <div class="header">
     <div class="brand-row">
-      <div class="brand" id="brandHome" style="cursor:pointer;" title="ホームに戻る"><span class="dot"></span>TK-STOCK</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div class="brand" id="brandHome" style="cursor:pointer;" title="ホームに戻る"><span class="dot"></span>TK-STOCK</div>
+        <button id="reloadDataBtn" onclick="location.reload()" style="display:flex;align-items:center;gap:5px;background:var(--bg-1);border:1.5px solid var(--line);border-radius:16px;padding:3px 12px;font-size:11.5px;font-weight:600;color:var(--text-2);cursor:pointer;white-space:nowrap;transition:all 0.2s;width:fit-content;">
+          <span>🔄</span><span>データ更新</span><span id="reloadBtnTime" style="color:var(--text-3);font-weight:400;"></span>
+        </button>
+        <span id="reloadStaleWarning" style="display:none;font-size:11px;font-weight:700;color:#b45309;">⚠️ 30分以上経過。入庫・出庫前に更新してください</span>
+      </div>
       <div id="siteAnnouncementBanner" style="flex:1;margin:0 16px;display:none;"></div>
       <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
@@ -1183,39 +1189,28 @@
       </div>
     </div>
   </div>
-
-  <!-- データ更新バー -->
-  <div id="reloadBar" style="background:var(--bg-2);border-bottom:1px solid var(--line);padding:5px 20px;display:flex;align-items:center;gap:10px;">
-    <button id="reloadDataBtn" onclick="location.reload()" style="display:flex;align-items:center;gap:6px;background:var(--bg-1);border:1.5px solid var(--line);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;color:var(--text-1);cursor:pointer;white-space:nowrap;transition:all 0.2s;">
-      <span style="font-size:13px;">🔄</span><span>データ更新</span>
-    </button>
-    <span id="reloadBtnTime" style="font-size:11.5px;color:var(--text-3);"></span>
-    <span id="reloadStaleWarning" style="display:none;font-size:11.5px;font-weight:700;color:#b45309;">⚠️ 30分以上経過しています。入庫・出庫前に更新してください。</span>
-  </div>
   <script>
   (function(){
     const _loadedAt = Date.now();
     function _fmtAgo(ms){
       const m = Math.floor(ms/60000);
-      if(m < 1) return '読み込み直後';
-      if(m < 60) return m+'分前に読み込み';
-      return Math.floor(m/60)+'時間前に読み込み';
+      if(m < 1) return '';
+      if(m < 60) return '（'+m+'分前）';
+      return '（'+Math.floor(m/60)+'時間前）';
     }
     function _tick(){
       const timeEl = document.getElementById('reloadBtnTime');
       const warn = document.getElementById('reloadStaleWarning');
       const btn = document.getElementById('reloadDataBtn');
-      const bar = document.getElementById('reloadBar');
       const ago = Date.now() - _loadedAt;
       const stale = ago >= 30 * 60 * 1000;
       if(timeEl) timeEl.textContent = _fmtAgo(ago);
-      if(warn) warn.style.display = stale ? 'inline' : 'none';
+      if(warn) warn.style.display = stale ? 'block' : 'none';
       if(btn){
         btn.style.borderColor = stale ? '#f59e0b' : '';
         btn.style.background = stale ? '#fffbeb' : '';
         btn.style.color = stale ? '#92400e' : '';
       }
-      if(bar) bar.style.background = stale ? '#fffbeb' : '';
     }
     _tick();
     setInterval(_tick, 60000);
