@@ -4371,12 +4371,37 @@ window.addEventListener('storageReady', function(){
       // currentRaw = Firebaseの現在値（string | null）。競合時はFirebaseが自動リトライ。
       const _fbProds = currentRaw ? JSON.parse(currentRaw) : [];
       const _fbMap = new Map(_fbProds.map(p => [p.id, p]));
-      // ローカルの全商品をマージ（ローカルが新しければ上書き、なければ追加）
       for(const lp of _localSnap){
         const fbP = _fbMap.get(lp.id);
-        if(!fbP || (lp.updatedAt||0) >= (fbP.updatedAt||0)){
+        if(!fbP){
+          // Firebaseにない新規商品 → そのまま追加
           _fbMap.set(lp.id, lp);
+        } else if((lp.updatedAt||0) >= (fbP.updatedAt||0)){
+          // ローカルが新しい → branchStockは支店ごとに新しい方を採用してマージ
+          const merged = Object.assign({}, lp);
+          if(fbP.branchStock && lp.branchStock){
+            const bs = Object.assign({}, lp.branchStock);
+            // ローカルが古い(updatedAt同一)支店キーはFirebase値を優先
+            for(const brId of Object.keys(fbP.branchStock)){
+              if(!(brId in lp.branchStock)){
+                bs[brId] = fbP.branchStock[brId];
+              }
+            }
+            merged.branchStock = bs;
+          }
+          // _branchYearStockも同様にマージ
+          if(fbP._branchYearStock && lp._branchYearStock){
+            const bys = Object.assign({}, lp._branchYearStock);
+            for(const brId of Object.keys(fbP._branchYearStock)){
+              if(!(brId in lp._branchYearStock)){
+                bys[brId] = fbP._branchYearStock[brId];
+              }
+            }
+            merged._branchYearStock = bys;
+          }
+          _fbMap.set(lp.id, merged);
         }
+        // ローカルが古い場合 → Firebase版を保持（何もしない）
       }
       return JSON.stringify([..._fbMap.values()]);
     }, SHARED);
@@ -14953,6 +14978,7 @@ window.addEventListener('storageReady', function(){
       if(p.branchStock[opBranch] < 0) p.branchStock[opBranch] = 0;
     }
     p.stock = p.branchStock[opBranch] || 0;
+    p.updatedAt = Date.now();
     transactions.unshift({
       id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
       date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
