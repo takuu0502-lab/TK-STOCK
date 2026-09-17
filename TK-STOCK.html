@@ -3539,11 +3539,55 @@ window.addEventListener('storageReady', function(){
 
   /** 年別在庫に加算（入庫時に使用） */
   function addToYearStock(p, branchId, year, qty){
-    if(!year) return; // 年未指定時は通常のbranchStockのみ
     if(!p._branchYearStock) p._branchYearStock = {};
     if(!p._branchYearStock[branchId]) p._branchYearStock[branchId] = {};
-    p._branchYearStock[branchId][String(year)] = (p._branchYearStock[branchId][String(year)]||0) + qty;
+    // 年未指定の場合は '0' キーで管理（年別表示では非表示）
+    const yr = (year && year >= 2000) ? String(year) : '0';
+    p._branchYearStock[branchId][yr] = (p._branchYearStock[branchId][yr]||0) + qty;
     recalcBranchStockFromYearStock(p);
+  }
+
+  /** branchStockを直接加算する共通ヘルパー。年別在庫がある場合は整合性を保って更新する */
+  function addBranchStock(p, branchId, qty){
+    if(!p.branchStock) p.branchStock = {};
+    if(p._branchYearStock && p._branchYearStock[branchId] && hasYearStock(p, branchId)){
+      // 年別在庫がある → '0'キー（年未指定）に加算してrecalc
+      p._branchYearStock[branchId]['0'] = (p._branchYearStock[branchId]['0']||0) + qty;
+      recalcBranchStockFromYearStock(p);
+    } else {
+      p.branchStock[branchId] = (p.branchStock[branchId]||0) + qty;
+      if(p.branchStock[branchId] < 0) p.branchStock[branchId] = 0;
+    }
+    p.stock = p.branchStock[branchId] || 0;
+  }
+
+  /** branchStockを直接減算する共通ヘルパー */
+  function subBranchStock(p, branchId, qty){
+    if(!p.branchStock) p.branchStock = {};
+    if(p._branchYearStock && p._branchYearStock[branchId] && hasYearStock(p, branchId)){
+      // 年別在庫がある → '0'キーから先に減算、なければ年別在庫合計から減らす（最新年から）
+      const noYr = p._branchYearStock[branchId]['0'] || 0;
+      const fromNoYr = Math.min(noYr, qty);
+      p._branchYearStock[branchId]['0'] = noYr - fromNoYr;
+      if(p._branchYearStock[branchId]['0'] <= 0) delete p._branchYearStock[branchId]['0'];
+      let rem = qty - fromNoYr;
+      if(rem > 0){
+        // 年別在庫の古い年から順に消費
+        const years = Object.keys(p._branchYearStock[branchId]).filter(y=>y!=='0').sort();
+        for(const yr of years){
+          if(rem <= 0) break;
+          const cur = p._branchYearStock[branchId][yr] || 0;
+          const take = Math.min(rem, cur);
+          p._branchYearStock[branchId][yr] = cur - take;
+          if(p._branchYearStock[branchId][yr] <= 0) delete p._branchYearStock[branchId][yr];
+          rem -= take;
+        }
+      }
+      recalcBranchStockFromYearStock(p);
+    } else {
+      p.branchStock[branchId] = Math.max(0, (p.branchStock[branchId]||0) - qty);
+    }
+    p.stock = p.branchStock[branchId] || 0;
   }
 
   /** 年別在庫から減算（出庫時に使用）。戻り値: 実際に減算した数 */
@@ -3566,7 +3610,7 @@ window.addEventListener('storageReady', function(){
   /** 年別在庫のHTML表示（コンパクト版） */
   function yearStockBadgesHtml(p, branchId, isOwn, tipText){
     const ys = getBranchYearStock(p, branchId);
-    const years = Object.keys(ys).filter(yr=>(ys[yr]||0)>0).sort((a,b)=>b-a);
+    const years = Object.keys(ys).filter(yr=>(ys[yr]||0)>0 && yr!=='0').sort((a,b)=>b-a);
     if(!years.length) return '';
     const curYr = new Date().getFullYear();
     const _tip = tipText || '';
@@ -10372,9 +10416,7 @@ window.addEventListener('storageReady', function(){
         +'在庫：'+currentStk0+' → '+(currentStk0+qty)+' 本（'+escapeHtml(branchLabel0)+'）'
       );
       if(!confirmed0) return;
-      if(!p.branchStock) p.branchStock = {};
-      p.branchStock[brId] = (p.branchStock[brId]||0) + qty;
-      p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
+      addBranchStock(p, brId, qty);
       if(locId){
         if(!p.branchLocation) p.branchLocation = {};
         p.branchLocation[brId] = locId;
@@ -15885,8 +15927,7 @@ window.addEventListener('storageReady', function(){
         for(const si of _arriveItems){
           const p = products.find(x=>x.id===si.productId);
           if(!p) continue;
-          if(!p.branchStock) p.branchStock = {};
-          p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + si.qty;
+          addBranchStock(p, _coBranchId, si.qty);
           transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, customerName:order.customerName||'', note:'客注品入荷 ('+order.customerName+')' });
           _provItems.push({ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty:si.qty });
         }
@@ -15940,8 +15981,7 @@ window.addEventListener('storageReady', function(){
         for(const si of _arriveItems){
           const p = products.find(x=>x.id===si.productId);
           if(!p) continue;
-          if(!p.branchStock) p.branchStock = {};
-          p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + si.qty;
+          addBranchStock(p, _coBranchId, si.qty);
           transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty:si.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, customerName:order.customerName||'', note:'客注品入荷 ('+order.customerName+')' });
         }
         // 全 incomingSchedules を done に
@@ -15978,8 +16018,7 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('「'+cleanName(p.name)+'」×'+qty+unit+'\nを入荷確定しますか？\n在庫に追加します。');
         if(!ok) return;
         const _coBranchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-        if(!p.branchStock) p.branchStock = {};
-        p.branchStock[_coBranchId] = (p.branchStock[_coBranchId]||0) + qty;
+        addBranchStock(p, _coBranchId, qty);
         transactions.push({ id:uid('tx'), productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', type:'in', qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBranchId, customerName:order.customerName||'', note:'客注品入荷 ('+order.customerName+')' });
         isch.status = 'done';
         await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
@@ -16951,7 +16990,7 @@ window.addEventListener('storageReady', function(){
           // 年別在庫に追加
           addToYearStock(p, opBranch3, item.manufactureYear, item.qty);
         } else {
-          p.branchStock[opBranch3]=(p.branchStock[opBranch3]||0)+item.qty;
+          addBranchStock(p, opBranch3, item.qty);
         }
         p.stock=p.branchStock[opBranch3];
         const _yrLabel = item.manufactureYear ? ' ('+item.manufactureYear+'年製)' : '';
