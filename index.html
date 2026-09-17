@@ -17661,6 +17661,13 @@ window.addEventListener('storageReady', function(){
   document.getElementById('auth_username').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') document.getElementById('auth_password').focus(); });
 
   function loginSuccess(acc){
+    // 自動ログアウト後の再ログイン → ページを完全リロードして最新データを取得
+    if(_wasAutoLoggedOut){
+      _wasAutoLoggedOut = false;
+      sessionStorage.setItem('tkstock_session', acc.id); // リロード後に自動ログインされるよう保存
+      location.reload();
+      return;
+    }
     currentUser = acc;
     sessionStorage.setItem('tkstock_session', acc.id);
     // ログイン時の支店フィルター初期値
@@ -17729,10 +17736,12 @@ window.addEventListener('storageReady', function(){
   // ---------- 非活動タイムアウト ----------
   const INACTIVITY_MS = 30 * 60 * 1000; // 30分
   let _inactivityTimer = null;
+  let _wasAutoLoggedOut = false; // 自動ログアウト後の再ログイン検知フラグ
   function _resetInactivity(){
     if(!currentUser) return;
     clearTimeout(_inactivityTimer);
     _inactivityTimer = setTimeout(()=>{
+      _wasAutoLoggedOut = true;
       currentUser = null;
       clearTimeout(_inactivityTimer);
       _inactivityTimer = null;
