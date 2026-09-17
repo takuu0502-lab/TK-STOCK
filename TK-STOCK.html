@@ -16680,9 +16680,12 @@ window.addEventListener('storageReady', function(){
       if(s.status !== 'pending' || (s.branchId||'taniyabe') !== _ownBr) return false;
       const isCoType = s.inboundType === 'customerOrder' || s.inboundType === 'co' || s.customerOrderId || s.customerName;
       if(!isCoType) return true; // 通常の在庫補充
-      // 客注品系：customerOrdersに紐づいていないorphanのみ表示
-      const hasLinkedOrder = s.customerOrderId && customerOrders.some(o => o.id === s.customerOrderId && o.status === 'pending');
-      return !hasLinkedOrder;
+      // 客注品系：customerOrdersに注文が存在する場合は（pending/completed問わず）非表示
+      // 完了済み注文に紐づくスケジュールも在庫品リストに混入させない
+      const linkedOrder = s.customerOrderId ? customerOrders.find(o => o.id === s.customerOrderId) : null;
+      if(linkedOrder) return false;
+      // customerOrderIdなし・かつcustomerNameのみのorphanは表示
+      return !s.customerOrderId;
     });
     if(pending.length===0){ wrap.innerHTML=''; return; }
     pending.sort((a,b)=>(a.expectedDate||'').localeCompare(b.expectedDate||''));
