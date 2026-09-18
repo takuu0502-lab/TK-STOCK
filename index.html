@@ -8115,20 +8115,25 @@ window.addEventListener('storageReady', function(){
       }
       // _fromCatalog自動登録品で同カタログエントリに手動登録品がある場合は非表示（重複防止）
       // キーワード検索中はスキップ（非表示になっている商品も検索・確認できるようにする）
+      // ただし：どこかの支店に在庫がある場合は非表示にしない（他支店在庫を見えなくしないため）
       if(p._fromCatalog && !keywordFilter){
         const _dupCatEntry = findCatalogEntryForProduct(p);
         if(_dupCatEntry){
-          const _dupAll = findAllProductsForCatalogEntry(_dupCatEntry);
-          const _dupBranch = selectedBranchFilter || _myBranch;
-          // 現在表示中の支店で在庫が1本以上ある手動登録品がある場合のみ非表示
-          // （0在庫の残骸データは対象外）
-          if(_dupAll.some(q => {
-            if(q.id === p.id || q._fromCatalog) return false;
-            const _brStk = q.branchStock
-              ? (q.branchStock[_dupBranch] || 0)
-              : ((q.branchId || 'taniyabe') === _dupBranch ? (q.stock || 0) : 0);
-            return _brStk > 0;
-          })) return false;
+          // 全支店合計在庫が0の場合のみ重複非表示を適用（在庫ありなら常に表示）
+          const _catTotalStk = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+          if(_catTotalStk === 0){
+            const _dupAll = findAllProductsForCatalogEntry(_dupCatEntry);
+            const _dupBranch = selectedBranchFilter || _myBranch;
+            // 現在表示中の支店で在庫が1本以上ある手動登録品がある場合のみ非表示
+            // （0在庫の残骸データは対象外）
+            if(_dupAll.some(q => {
+              if(q.id === p.id || q._fromCatalog) return false;
+              const _brStk = q.branchStock
+                ? (q.branchStock[_dupBranch] || 0)
+                : ((q.branchId || 'taniyabe') === _dupBranch ? (q.stock || 0) : 0);
+              return _brStk > 0;
+            })) return false;
+          }
         }
       }
       return true;
