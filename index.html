@@ -1165,6 +1165,15 @@
 
 <div class="app">
 
+  <!-- データ読み込み中オーバーレイ -->
+  <div id="dataLoadingOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:28px 36px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+      <div style="font-size:28px;margin-bottom:12px;">⏳</div>
+      <div style="font-size:15px;font-weight:700;color:#222;margin-bottom:6px;">データ読み込み中…</div>
+      <div style="font-size:12px;color:#666;">完了するまでお待ちください</div>
+    </div>
+  </div>
+
   <div class="header">
     <div class="brand-row">
       <div style="display:flex;flex-direction:column;gap:5px;">
@@ -4204,7 +4213,14 @@ window.addEventListener('storageReady', function(){
     ];
   }
 
+  function _setDataLoading(on){
+    const ov = document.getElementById('dataLoadingOverlay');
+    if(ov) ov.style.display = on ? 'flex' : 'none';
+  }
+
   async function loadData(){
+    _setDataLoading(true);
+    try{
     await loadPriceRules();
     await loadCostRules();
     await loadExternalPriceRules();
@@ -4390,6 +4406,9 @@ window.addEventListener('storageReady', function(){
           if(_costAllBtn) _costAllBtn.style.display = 'inline-flex';
         }
       }
+    }
+    } finally {
+      _setDataLoading(false);
     }
   }
 
@@ -17680,7 +17699,7 @@ window.addEventListener('storageReady', function(){
   document.getElementById('auth_password').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') handleAuthSubmit(); });
   document.getElementById('auth_username').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') document.getElementById('auth_password').focus(); });
 
-  function loginSuccess(acc){
+  async function loginSuccess(acc){
     // 自動ログアウト後の再ログイン → ページを完全リロードして最新データを取得
     if(_wasAutoLoggedOut){
       _wasAutoLoggedOut = false;
@@ -17706,7 +17725,7 @@ window.addEventListener('storageReady', function(){
     document.querySelector('.app').style.display = 'block';
     renderUserBadge();
     _resetInactivity();
-    loadData();
+    await loadData(); // データ読み込み完了まで待機（完了前の操作を防止）
   }
 
   function roleLabel(role){
