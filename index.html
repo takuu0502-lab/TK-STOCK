@@ -815,6 +815,11 @@
             </label>
           </div>
         </div>
+        <!-- メモ（A4横レイアウト時のみ表示） -->
+        <div class="field" id="qrMemoField" style="display:none;">
+          <label style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;">メモ（A4に印字）</label>
+          <textarea id="qrMemoText" rows="3" placeholder="例：保管棚A-3、要確認など" style="margin-top:6px;width:100%;padding:8px 10px;font-size:13px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea>
+        </div>
       </div>
       <!-- 右: プレビュー -->
       <div>
@@ -11519,6 +11524,7 @@ window.addEventListener('storageReady', function(){
         b.classList.toggle('active', b.dataset.qrLayout === lay);
       });
       document.getElementById('qrColsField').style.display = (lay === 'a4large' || lay === 'label') ? 'none' : '';
+      document.getElementById('qrMemoField').style.display = (lay === 'a4large') ? '' : 'none';
     }
     function applyColUI(){
       document.querySelectorAll('#qrColGroup .qr-opt-btn').forEach(b=>{
@@ -11565,6 +11571,7 @@ window.addEventListener('storageReady', function(){
     });
     document.getElementById('qrShowQrCode').checked = qrSettings.showQrCode !== false;
     document.getElementById('qrShowBarcode').checked = !!qrSettings.showBarcode;
+    document.getElementById('qrMemoText').value = qrSettings.memo || '';
     ['qrShowName','qrShowSpec','qrShowPartno','qrShowCode','qrShowQrCode','qrShowBarcode'].forEach(id=>{
       document.getElementById(id).onchange = ()=>{
         qrSettings.showName    = document.getElementById('qrShowName').checked;
@@ -11576,6 +11583,10 @@ window.addEventListener('storageReady', function(){
         onSettingChange();
       };
     });
+    document.getElementById('qrMemoText').oninput = ()=>{
+      qrSettings.memo = document.getElementById('qrMemoText').value;
+      saveQrSettings();
+    };
 
     // キャンセル
     document.getElementById('qrSettingsCancelBtn').onclick = ()=>{
@@ -11623,6 +11634,7 @@ window.addEventListener('storageReady', function(){
 
   function executeQrA4LargePrint(ps){
     const qrSize = 380;
+    const memoText = (qrSettings.memo || '').trim();
     let pages = '';
     ps.forEach((p, idx)=>{
       const qrValue = p.barcode || p.internalBarcode || p.id;
@@ -11633,6 +11645,7 @@ window.addEventListener('storageReady', function(){
       const hasQr = qrSettings.showQrCode !== false;
       const _bcCode = p.barcode || p.internalBarcode || '';
       const hasBc = !!(qrSettings.showBarcode && _bcCode);
+      const memoHtml = memoText ? `<div style="margin-top:18px;padding:10px 18px;border:2.5px solid #333;border-radius:8px;font-size:28px;font-weight:700;color:#222;white-space:pre-wrap;text-align:left;align-self:stretch;">${escapeHtml(memoText)}</div>` : '';
       // QRとバーコードがある場合は左右2カラムレイアウト
       if(hasQr && hasBc){
         let left = `<div id="qrA4G_${safeId}" style="flex-shrink:0;"></div>`;
@@ -11642,6 +11655,7 @@ window.addEventListener('storageReady', function(){
         if(qrSettings.showPartno && partno) right += `<div style="font-size:20px;color:#666;margin-bottom:10px;">${escapeHtml(partno)}</div>`;
         if(qrSettings.showCode) right += `<div style="font-size:16px;color:#888;font-family:monospace;margin-bottom:16px;">${escapeHtml(qrValue)}</div>`;
         right += `<svg id="bcA4_${safeId}" style="width:100%;max-width:540px;"></svg>`;
+        if(memoText) right += memoHtml;
         pages += `<div class="a4page" style="flex-direction:row;gap:30px;"><div style="display:flex;align-items:center;">${left}</div><div style="display:flex;flex-direction:column;justify-content:center;text-align:left;flex:1;">${right}</div></div>`;
       } else {
         let content = '';
@@ -11651,6 +11665,7 @@ window.addEventListener('storageReady', function(){
         if(hasQr) content += `<div id="qrA4G_${safeId}" style="margin:16px auto;"></div>`;
         if(qrSettings.showCode) content += `<div style="font-size:18px;color:#888;font-family:monospace;margin-top:10px;">${escapeHtml(qrValue)}</div>`;
         if(hasBc) content += `<div style="margin-top:20px;width:80%;"><svg id="bcA4_${safeId}" style="width:100%;"></svg></div>`;
+        if(memoText) content += memoHtml;
         pages += `<div class="a4page">${content}</div>`;
       }
     });
