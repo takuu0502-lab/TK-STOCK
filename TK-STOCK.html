@@ -4303,6 +4303,52 @@ window.addEventListener('storageReady', function(){
         if(_bfEntry){ p.catalogKey = _bfEntry.b+'||'+_bfEntry.m+'||'+_bfEntry.s; migrated = true; }
       }
     });
+
+    // _fromCatalog商品のサブカテゴリ自動修正（スタッドレスなのにサマータイヤ登録など）
+    {
+      const _tireCatFix = categories.find(c=>c.name==='タイヤ');
+      if(_tireCatFix){
+        const _summerSubId   = (_tireCatFix.subs||[]).find(s=>/サマータイヤ|夏タイヤ|夏用タイヤ/.test(s.name))?.id || null;
+        const _studlessSubId = (_tireCatFix.subs||[]).find(s=>/スタッドレス|冬タイヤ|冬用タイヤ/.test(s.name))?.id || null;
+        if(_summerSubId && _studlessSubId){
+          products.forEach(p=>{
+            if(!p._fromCatalog || p.majorId !== _tireCatFix.id) return;
+            const _ce = findCatalogEntryForProduct(p);
+            if(!_ce) return;
+            const _shouldBeStudless = _isStudlessCatalogEntry(_ce);
+            if(_shouldBeStudless && p.subId === _summerSubId){
+              p.subId = _studlessSubId; migrated = true;
+            } else if(!_shouldBeStudless && p.subId === _studlessSubId){
+              p.subId = _summerSubId; migrated = true;
+            }
+          });
+        }
+      }
+    }
+
+    // _fromCatalog重複エントリをFirebaseから削除（在庫0のもののみ）
+    {
+      const _getStk = p => p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+      const _nsMap = new Map();
+      products.forEach(p=>{
+        if(!p._fromCatalog) return;
+        const key = (p.name||'').trim()+'||'+(p.spec||'').trim();
+        if(!key || key==='||') return;
+        if(!_nsMap.has(key)) _nsMap.set(key,[]);
+        _nsMap.get(key).push(p);
+      });
+      const _dupIds = new Set();
+      _nsMap.forEach(group=>{
+        if(group.length < 2) return;
+        const sorted = group.slice().sort((a,b)=>_getStk(b)-_getStk(a));
+        sorted.slice(1).forEach(p=>{ if(_getStk(p)===0) _dupIds.add(p.id); });
+      });
+      if(_dupIds.size > 0){
+        products = products.filter(p=>!_dupIds.has(p.id));
+        migrated = true;
+      }
+    }
+
     if(migrated) await saveProducts();
 
     try{
