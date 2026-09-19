@@ -14466,6 +14466,8 @@ window.addEventListener('storageReady', function(){
             + '<div class="detail-stat"><div class="detail-stat-label">最低在庫数</div><div class="detail-stat-value">'+p.minStock+'</div></div>'
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;cursor:pointer;" data-price-tip="'+costAutoTip+'"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
             + '<div class="detail-stat"><div class="detail-stat-label">販売価格（1点）</div><div class="detail-stat-value">'+(sell ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</div></div>'
+            + (catalogEntry && catalogEntry.t ? '<div class="detail-stat"><div class="detail-stat-label">メーカー定価</div><div class="detail-stat-value">\u00a5'+catalogEntry.t.toLocaleString('ja-JP')+'</div></div>' : '')
+            + (showCost && catalogEntry && catalogEntry.w ? '<div class="detail-stat"><div class="detail-stat-label">A表価格</div><div class="detail-stat-value">\u00a5'+catalogEntry.w.toLocaleString('ja-JP')+'</div></div>' : '')
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">粗利（1点）</div><div class="detail-stat-value">'+(margin !== null ? '\u00a5'+margin.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*_detOwnStk).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
             + '</div>';
