@@ -2403,7 +2403,10 @@
       <!-- 入荷予定日 -->
       <div>
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px;">入荷予定日 <span style="color:var(--red);">*</span></label>
-        <input type="date" id="incomingSchedDate" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="date" id="incomingSchedDate" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:var(--bg-1);color:var(--text-1);box-sizing:border-box;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="incomingSchedDateTbd" style="width:14px;height:14px;">未定</label>
+        </div>
       </div>
       <!-- 数量 -->
       <div>
@@ -14635,7 +14638,10 @@ window.addEventListener('storageReady', function(){
           document.querySelector('#incomingSchedModal h3').textContent = '📦 入庫予定の編集';
           document.getElementById('incomingSchedSave').textContent = '更新する';
           document.getElementById('incomingSchedModalProductName').textContent = cleanName(sched.productName)+(sched.spec?' / '+sched.spec:'');
-          document.getElementById('incomingSchedDate').value = sched.expectedDate||'';
+          const _isEditTbd = sched.expectedDate === '未定';
+          document.getElementById('incomingSchedDateTbd').checked = _isEditTbd;
+          document.getElementById('incomingSchedDate').disabled = _isEditTbd;
+          document.getElementById('incomingSchedDate').value = _isEditTbd ? '' : (sched.expectedDate||'');
           document.getElementById('incomingSchedQty').value = sched.qty||1;
           modal.classList.add('show');
         });
@@ -16717,6 +16723,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('isch_co_car').value = '';
       document.getElementById('isch_co_install_date').value = '';
       document.getElementById('isch_co_install_tbd').checked = false;
+      document.getElementById('incomingSchedDateTbd').checked = false;
+      document.getElementById('incomingSchedDate').disabled = false;
       const _noteEl = document.getElementById('incomingSchedNote');
       if(_noteEl) _noteEl.value = '';
       const _ischProvNow = document.getElementById('isch_co_prov_now');
@@ -16755,6 +16763,10 @@ window.addEventListener('storageReady', function(){
       document.getElementById('isch_co_install_date').disabled = this.checked;
       if(this.checked) document.getElementById('isch_co_install_date').value = '';
     });
+    document.getElementById('incomingSchedDateTbd').addEventListener('change', function(){
+      document.getElementById('incomingSchedDate').disabled = this.checked;
+      if(this.checked) document.getElementById('incomingSchedDate').value = '';
+    });
 
     document.getElementById('incomingSchedCancel').addEventListener('click', ()=>{
       modal.classList.remove('show');
@@ -16769,9 +16781,10 @@ window.addEventListener('storageReady', function(){
       inp.value = parseInt(inp.value||'1',10)+1;
     });
     document.getElementById('incomingSchedSave').addEventListener('click', async ()=>{
-      const dateVal = document.getElementById('incomingSchedDate').value;
+      const isTbd = document.getElementById('incomingSchedDateTbd').checked;
+      const dateVal = isTbd ? '未定' : document.getElementById('incomingSchedDate').value;
       const qty = parseInt(document.getElementById('incomingSchedQty').value||'1',10);
-      if(!dateVal){ alert('入荷予定日を入力してください。'); return; }
+      if(!isTbd && !dateVal){ alert('入荷予定日を入力するか「未定」にチェックしてください。'); return; }
       if(!qty||qty<1){ alert('数量を入力してください。'); return; }
       const ischType = document.querySelector('input[name="isch_type"]:checked')?.value || 'stock';
       const noteVal = (document.getElementById('incomingSchedNote').value||'').trim();
