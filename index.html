@@ -3085,7 +3085,9 @@ window.addEventListener('storageReady', function(){
   ];
 
   // ブリヂストン 夏タイヤA表価格表（茨城地区本部 2026年2月以降 A表）より抽出
-  const PRICE_CATALOG = [];
+  const PRICE_CATALOG = [
+    {b:'Playz', m:'PX-RVⅡ', s:'235/50R18', w:35900, t:41600, season:'summer'},
+  ];
 
   const DISTINCT_BRANDS = Array.from(new Set(PRICE_CATALOG.map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
 
