@@ -15124,15 +15124,14 @@ window.addEventListener('storageReady', function(){
     try{ renderCatTree(); }catch(e){ console.error('renderCatTree error', e); }
     try{ renderProductTable(); }catch(e){ console.error('renderProductTable error', e); }
     try{ renderHistory(); }catch(e){ console.error('renderHistory error', e); }
+    // 詳細モーダルを閉じる
+    detailModal.classList.remove('show');
+    // 完了トーストを表示
+    showToast((kind==='in'?'✅ 入庫':'✅ 出庫')+'処理が完了しました（現在庫: '+getStock(pFresh)+'）');
     if(kind === 'in'){
       await new Promise(r => setTimeout(r, 80));
       const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(pFresh.brand||'')+' '+escapeHtml(pFresh.name||'')+' × '+qty+'枚');
       if(doPrint) _printReceiveLabel(pFresh, qty);
-    }
-    openProductDetail(id);
-    const refreshedMsg = document.getElementById('detailActionMsg');
-    if(refreshedMsg){
-      refreshedMsg.innerHTML = '<div class="msg msg-ok">'+(kind==='in'?'入庫':'出庫')+'処理が完了しました（現在庫: '+getStock(pFresh)+'）。</div>';
     }
   }
 
