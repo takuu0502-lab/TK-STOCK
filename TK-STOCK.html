@@ -8211,6 +8211,27 @@ window.addEventListener('storageReady', function(){
         const [_ckB, _ckM] = selectedCatalogModelKey.split('||');
         if(p.brand !== _ckB || (p.name||'').indexOf(_ckM) === -1) return false;
       }
+      // _fromCatalog品のサブカテゴリとカタログのシーズンが矛盾する場合は非表示
+      // 例：BLIZZAKなのにサマータイヤに登録されている場合
+      if(p._fromCatalog && !keywordFilter && p.subId){
+        const _tireCatSeason = categories.find(c=>c.id===p.majorId);
+        if(_tireCatSeason){
+          const _pSubSeason = (_tireCatSeason.subs||[]).find(s=>s.id===p.subId);
+          if(_pSubSeason){
+            const _pIsStudless = /スタッドレス|冬タイヤ|冬用タイヤ/.test(_pSubSeason.name);
+            const _pIsSummer   = /サマータイヤ|夏タイヤ|夏用タイヤ/.test(_pSubSeason.name);
+            if(_pIsStudless || _pIsSummer){
+              const _seasonCe = findCatalogEntryForProduct(p);
+              if(_seasonCe){
+                const _ceIsStudless = _isStudlessCatalogEntry(_seasonCe);
+                // カタログ=スタッドレスなのにサマータイヤ登録、または逆の場合は非表示
+                if(_ceIsStudless && _pIsSummer) return false;
+                if(!_ceIsStudless && _pIsStudless) return false;
+              }
+            }
+          }
+        }
+      }
       // _fromCatalog自動登録品で同カタログエントリに手動登録品がある場合は非表示（重複防止）
       // キーワード検索中はスキップ（非表示になっている商品も検索・確認できるようにする）
       // ただし：どこかの支店に在庫がある場合は非表示にしない（他支店在庫を見えなくしないため）
