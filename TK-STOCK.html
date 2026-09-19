@@ -8190,30 +8190,39 @@ window.addEventListener('storageReady', function(){
       }
       return true;
     });
-    // _fromCatalog重複除去：同一catalogKeyで複数エントリがある場合、在庫が多い方を1件のみ表示
+    // _fromCatalog重複除去：同一name+specの_fromCatalog品が複数 or 手動品と重複している場合に除去
     {
-      const _ckSeen = new Map();
-      const _toRemoveIds = new Set();
+      const _getStk = p => p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+      // name+specをキーに全商品をグループ化
+      const _nsGroups = new Map();
       list.forEach(p => {
-        if(!p._fromCatalog) return;
-        const ck = p.catalogKey || ((p.name||'')+'||'+(p.spec||''));
-        if(!ck) return;
-        if(!_ckSeen.has(ck)){ _ckSeen.set(ck, p); return; }
-        const existing = _ckSeen.get(ck);
-        const existStk = existing.branchStock ? Object.values(existing.branchStock).reduce((s,v)=>s+(v||0),0) : (existing.stock||0);
-        const thisStk  = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
-        if(thisStk > existStk){ _toRemoveIds.add(existing.id); _ckSeen.set(ck, p); }
-        else { _toRemoveIds.add(p.id); }
+        const key = (p.name||'').trim()+'||'+(p.spec||'').trim();
+        if(!key || key === '||') return;
+        if(!_nsGroups.has(key)) _nsGroups.set(key, []);
+        _nsGroups.get(key).push(p);
+      });
+      const _toRemoveIds = new Set();
+      _nsGroups.forEach(group => {
+        if(group.length < 2) return;
+        const manuals   = group.filter(p => !p._fromCatalog);
+        const fromCats  = group.filter(p =>  p._fromCatalog);
+        if(manuals.length > 0 && fromCats.length > 0){
+          // 手動登録品がある → 在庫0の_fromCatalog品を全削除候補に
+          fromCats.forEach(p => { if(_getStk(p) === 0) _toRemoveIds.add(p.id); });
+        } else if(fromCats.length > 1){
+          // _fromCatalog品が複数 → 在庫が最も多い1件だけ残す
+          const sorted = fromCats.slice().sort((a,b) => _getStk(b) - _getStk(a));
+          sorted.slice(1).forEach(p => _toRemoveIds.add(p.id));
+        }
       });
       if(_toRemoveIds.size > 0){
         list = list.filter(p => !_toRemoveIds.has(p.id));
-        // Firebaseからも重複を削除（在庫0の重複エントリのみ）
+        // Firebaseからも重複を削除（在庫0の重複エントリのみ安全に削除）
         let _dupRemoved = 0;
         for(const id of _toRemoveIds){
           const dp = products.find(x=>x.id===id);
           if(!dp) continue;
-          const stk = dp.branchStock ? Object.values(dp.branchStock).reduce((s,v)=>s+(v||0),0) : (dp.stock||0);
-          if(stk === 0){ products.splice(products.indexOf(dp), 1); _dupRemoved++; }
+          if(_getStk(dp) === 0){ products.splice(products.indexOf(dp),1); _dupRemoved++; }
         }
         if(_dupRemoved > 0){ saveProducts().catch(e=>console.warn('dup cleanup save error',e)); }
       }
