@@ -11686,6 +11686,18 @@ window.addEventListener('storageReady', function(){
     await _printLabelsPDF(labelItems, 'QRラベル');
   }
 
+  /**
+   * タイヤスペックをサイズ部とロードインデックス部に分割する。
+   * 例: "205/85R16 117/115" → { size:"205/85R16", li:"117/115" }
+   *     "11R22.5 14"        → { size:"11R22.5",   li:"14" }
+   *     "195/65R15"         → { size:"195/65R15",  li:"" }
+   */
+  function _splitSpecLI(spec){
+    const m = spec.match(/^(.+?)\s+(\d[\d\/A-Za-z]*)$/);
+    if(m) return { size: m[1], li: m[2] };
+    return { size: spec, li: '' };
+  }
+
   function executeQrA4LargePrint(ps){
     const qrSize = 380;
     const memoText = (qrSettings.memo || '').trim();
@@ -11700,12 +11712,25 @@ window.addEventListener('storageReady', function(){
       const _bcCode = p.barcode || p.internalBarcode || '';
       const hasBc = !!(qrSettings.showBarcode && _bcCode);
       const memoHtml = memoText ? `<div style="margin-top:18px;padding:10px 18px;border:2.5px solid #333;border-radius:8px;font-size:28px;font-weight:700;color:#222;white-space:pre-wrap;text-align:left;align-self:stretch;">${escapeHtml(memoText)}</div>` : '';
+      // スペックをサイズ部とロードインデックス部に分割
+      const _specParts = _splitSpecLI(spec);
+      // スペックHTML生成（ロードインデックスは一回り小さく表示）
+      function makeSpecHtml(sizeFontPx, liFontPx, mb){
+        if(!spec) return '';
+        if(_specParts.li){
+          return `<div style="margin-bottom:${mb}px;line-height:1.1;">`
+            + `<span style="font-size:${sizeFontPx}px;font-weight:900;">${escapeHtml(_specParts.size)}</span>`
+            + ` <span style="font-size:${liFontPx}px;font-weight:800;color:#333;">${escapeHtml(_specParts.li)}</span>`
+            + `</div>`;
+        }
+        return `<div style="font-size:${sizeFontPx}px;font-weight:900;line-height:1.05;margin-bottom:${mb}px;">${escapeHtml(spec)}</div>`;
+      }
       // QRとバーコードがある場合は左右2カラムレイアウト
       if(hasQr && hasBc){
         let left = `<div id="qrA4G_${safeId}" style="flex-shrink:0;"></div>`;
         let right = '';
         if(qrSettings.showName) right += `<div style="font-size:52px;font-weight:800;margin-bottom:12px;">${escapeHtml(name)}</div>`;
-        if(qrSettings.showSpec && spec) right += `<div style="font-size:86px;font-weight:900;line-height:1.05;margin-bottom:16px;">${escapeHtml(spec)}</div>`;
+        if(qrSettings.showSpec && spec) right += makeSpecHtml(86, 58, 16);
         if(qrSettings.showPartno && partno) right += `<div style="font-size:20px;color:#666;margin-bottom:10px;">${escapeHtml(partno)}</div>`;
         if(qrSettings.showCode) right += `<div style="font-size:16px;color:#888;font-family:monospace;margin-bottom:16px;">${escapeHtml(qrValue)}</div>`;
         right += `<svg id="bcA4_${safeId}" style="width:100%;max-width:540px;"></svg>`;
@@ -11714,7 +11739,7 @@ window.addEventListener('storageReady', function(){
       } else {
         let content = '';
         if(qrSettings.showName) content += `<div style="font-size:62px;font-weight:800;margin-bottom:14px;">${escapeHtml(name)}</div>`;
-        if(qrSettings.showSpec && spec) content += `<div style="font-size:110px;font-weight:900;line-height:1.05;margin-bottom:20px;">${escapeHtml(spec)}</div>`;
+        if(qrSettings.showSpec && spec) content += makeSpecHtml(110, 72, 20);
         if(qrSettings.showPartno && partno) content += `<div style="font-size:22px;color:#666;margin-bottom:12px;">${escapeHtml(partno)}</div>`;
         if(hasQr) content += `<div id="qrA4G_${safeId}" style="margin:16px auto;"></div>`;
         if(qrSettings.showCode) content += `<div style="font-size:18px;color:#888;font-family:monospace;margin-top:10px;">${escapeHtml(qrValue)}</div>`;
