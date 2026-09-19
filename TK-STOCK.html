@@ -6897,11 +6897,13 @@ window.addEventListener('storageReady', function(){
   let nameSortFilter = false;
   let keywordFilter = '';
   let selectedProducts = new Set(); // 一括操作用選択商品ID
-  function resetSpecSelections(){
+  function resetSpecSelections(keepTireSize){
     selectedSpec = null;
-    selectedTireWidth = null;
-    selectedTireAspect = null;
-    selectedTireInch = null;
+    if(!keepTireSize){
+      selectedTireWidth = null;
+      selectedTireAspect = null;
+      selectedTireInch = null;
+    }
     selectedCatalogModelKey = null;
     catalogQuoteSelection = new Map();
     stockOnlyFilter = false;
@@ -7102,20 +7104,20 @@ window.addEventListener('storageReady', function(){
         if(row.dataset.root){ selectedMajor = null; selectedSub = null; selectedSubSub = null; resetSpecSelections(); renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return; }
         if(row.dataset.subsub){
           selectedMajor = row.dataset.major; selectedSub = row.dataset.sub;
-          resetSpecSelections();
+          resetSpecSelections(true);
           selectedSubSub = row.dataset.subsub; // resetの後にセット（resetで消えないよう）
           renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
         }
         if(row.dataset.sub){
           const subKey = row.dataset.major+'_'+row.dataset.sub;
           if(expanded.has(subKey)) expanded.delete(subKey); else expanded.add(subKey);
-          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub; selectedSubSub = null; resetSpecSelections();
+          selectedMajor = row.dataset.major; selectedSub = row.dataset.sub; selectedSubSub = null; resetSpecSelections(true);
           renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
         }
         if(row.dataset.major){
           const mid = row.dataset.major;
           if(expanded.has(mid)) expanded.delete(mid); else expanded.add(mid);
-          selectedMajor = mid; selectedSub = null; selectedSubSub = null; resetSpecSelections();
+          selectedMajor = mid; selectedSub = null; selectedSubSub = null; resetSpecSelections(true);
           renderCatTree(); renderProductTable(); renderSpecSearchPanel(); return;
         }
       });
