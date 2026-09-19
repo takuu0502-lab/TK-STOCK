@@ -3589,6 +3589,15 @@ window.addEventListener('storageReady', function(){
   function addToYearStock(p, branchId, year, qty){
     if(!p._branchYearStock) p._branchYearStock = {};
     if(!p._branchYearStock[branchId]) p._branchYearStock[branchId] = {};
+    // 【整合性チェック】branchStock に直接書かれた値が _branchYearStock の合計より大きい場合、
+    // 差分を '0' キー（年未指定バケット）に救出してから加算する（年指定入庫でのデータ消滅防止）
+    if(p.branchStock && (p.branchStock[branchId]||0) > 0){
+      const _ysSum = Object.values(p._branchYearStock[branchId]).reduce((s,v)=>s+(v||0),0);
+      const _direct = p.branchStock[branchId] || 0;
+      if(_direct > _ysSum){
+        p._branchYearStock[branchId]['0'] = (p._branchYearStock[branchId]['0']||0) + (_direct - _ysSum);
+      }
+    }
     // 年未指定の場合は '0' キーで管理（年別表示では非表示）
     const yr = (year && year >= 2000) ? String(year) : '0';
     p._branchYearStock[branchId][yr] = (p._branchYearStock[branchId][yr]||0) + qty;
