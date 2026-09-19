@@ -7473,7 +7473,9 @@ window.addEventListener('storageReady', function(){
       if(useAspect && useAspect !== 'NOASPECT' && p.spec.indexOf(useAspect) === -1) return false;
       if(useAspect === 'NOASPECT' && /\//.test(p.spec)) return false;
       if(!useAspect && useWidth && useInch && /\//.test(p.spec)) return false; // 扁平率空欄時はスラッシュなしのみ
-      if(findCatalogEntryForProduct(p)) return false;
+      // カタログエントリが存在し、かつ表示中の場合のみ除外（非表示エントリは自社登録品として表示）
+      const _manCe = findCatalogEntryForProduct(p);
+      if(_manCe && isItemVisible(_manCe)) return false;
       // シーズンフィルター
       if(forceTire && estimateSeasonFilter !== 'all'){
         const _wantSt = estimateSeasonFilter === 'studless';
