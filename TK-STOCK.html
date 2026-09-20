@@ -16458,8 +16458,15 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('「'+escapeHtml(order.customerName)+'」の客注品をキャンセルしますか？');
         if(!ok) return;
         order.status = 'cancelled';
+        // 紐づく入庫予定も取消
+        const _linkedIsch = incomingSchedules.find(s=>s.customerOrderId===orderId&&s.status==='pending');
+        if(_linkedIsch){ _linkedIsch.status='cancelled'; await saveIncomingSchedules(); }
+        // 紐づく仮出庫も取消
+        const _linkedProv = provisionalOutbounds.find(po=>po.customerOrderId===orderId&&po.status==='pending');
+        if(_linkedProv){ _linkedProv.status='cancelled'; await saveProvisionalOutbounds(); renderProvisionalList(); }
         await saveCustomerOrders();
         renderCustomerOrderList();
+        renderProductTable();
       });
     });
   }
