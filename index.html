@@ -10894,8 +10894,7 @@ window.addEventListener('storageReady', function(){
         msgEl.innerHTML = '<div class="msg msg-ok">更新対象の商品がありませんでした（すでに最新の価格です）。</div>';
         return;
       }
-      const ok = await showConfirm(updated + '件の商品の仕入れ価格を最新カタログ価格に更新します。
-よろしいですか？');
+      const ok = await showConfirm(updated + '件の商品の仕入れ価格を最新カタログ価格に更新します。\nよろしいですか？');
       if(!ok){ msgEl.innerHTML = ''; return; }
       await saveProducts();
       renderProductTable();
