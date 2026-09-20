@@ -16217,6 +16217,7 @@ window.addEventListener('storageReady', function(){
         const p = products.find(x=>x.id===si.productId);
         const nm = p ? cleanName(p.name) : (si.productName||'不明');
         const sp = p ? (p.spec||'') : (si.spec||'');
+        const _br = p ? (p.brand||'') : '';
         const _majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
         const _siIsTire = (_majorCat && _majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
         const _unit = _siIsTire ? '本' : '個';
@@ -16225,6 +16226,7 @@ window.addEventListener('storageReady', function(){
         const _isItemArrived = !_linkedIsch && _linkedIschAll.some(s=>s.productId===si.productId && (s.status==='done'||s.status==='arrived'||s.status==='completed'));
         return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;">'
           +'<div style="flex:1;min-width:0;">'
+          +(_br?'<div style="font-size:11px;color:var(--text-3);">'+escapeHtml(_br)+'</div>':'')
           +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(nm)+'</div>'
           +(sp?'<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(sp)+'</div>':'')
           +'</div>'
@@ -16650,11 +16652,12 @@ window.addEventListener('storageReady', function(){
           // タイヤ以外も含め名前・ブランド・スペックを表示
           const _dispName = escapeHtml(cleanName(item.name || (p2 && p2.name) || '—'));
           const _dispBrandRaw = item.brand||(p2&&p2.brand)||'';
-          const _dispSub  = [(!_dispBrandRaw || cleanName(item.name||(p2&&p2.name)||'').startsWith(_dispBrandRaw) ? '' : _dispBrandRaw), item.spec||(p2&&p2.spec)||''].filter(Boolean).join(' ');
+          const _dispSpec = item.spec||(p2&&p2.spec)||'';
           return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);">'
             +'<div style="min-width:0;flex:1;">'
+            +(_dispBrandRaw?'<div style="font-size:11px;color:var(--text-3);">'+escapeHtml(_dispBrandRaw)+'</div>':'')
             +'<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+_dispName+'</div>'
-            +(_dispSub ? '<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(_dispSub)+'</div>' : '')
+            +(_dispSpec?'<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(_dispSpec)+'</div>':'')
             +(itemOver?'<div style="font-size:11px;color:var(--red);">⚠️ 在庫'+_p2Stk+' / 仮出庫計'+allProvQty+'</div>':'')
             +'</div>'
             +'<div style="font-size:14px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'</div>'
