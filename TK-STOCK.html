@@ -1615,6 +1615,12 @@
     </div>
 
     <div class="pricing-section-divider"></div>
+    <div style="font-weight:600;margin-bottom:6px;">💰 登録済み商品の仕入れ価格を一括更新</div>
+    <p style="font-size:12.5px;color:var(--text-2);margin:0 0 10px;line-height:1.7;">取込済み価格表と照合し、登録済み商品の仕入れ価格（原価）をカタログの最新価格で一括更新します。在庫数・保管場所などは変更されません。</p>
+    <button class="btn btn-sm" style="background:var(--teal);color:#fff;" id="updateCostFromCatalogBtn">🔄 仕入れ価格を一括更新する</button>
+    <div id="updateCostFromCatalogMsg" style="margin-top:8px;"></div>
+
+    <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">📦 商品一括インポート</div>
     <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">メーカー価格表のデータをまとめて商品登録します。カテゴリを選択して一括登録できます。</p>
     <div id="bulkImportBtnWrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
@@ -10866,6 +10872,34 @@ window.addEventListener('storageReady', function(){
       await saveProducts();
       renderProductTable();
       msgEl.innerHTML = '<div class="msg msg-ok">✅ ' + targets.length + ' 件を削除しました。</div>';
+    });
+
+
+    // 仕入れ価格を一括更新
+    document.getElementById('updateCostFromCatalogBtn').addEventListener('click', async ()=>{
+      const msgEl = document.getElementById('updateCostFromCatalogMsg');
+      const _catalog = getCatalog();
+      let updated = 0;
+      for(const p of products){
+        const ce = findCatalogEntryForProduct(p);
+        if(!ce) continue;
+        // カタログのA表価格から仕入れ価格を計算
+        const newCost = computeCostPrice(ce.b, ce.m, ce.w, ce.t);
+        if(newCost && newCost !== p.costPrice){
+          p.costPrice = newCost;
+          updated++;
+        }
+      }
+      if(updated === 0){
+        msgEl.innerHTML = '<div class="msg msg-ok">更新対象の商品がありませんでした（すでに最新の価格です）。</div>';
+        return;
+      }
+      const ok = await showConfirm(updated + '件の商品の仕入れ価格を最新カタログ価格に更新します。
+よろしいですか？');
+      if(!ok){ msgEl.innerHTML = ''; return; }
+      await saveProducts();
+      renderProductTable();
+      msgEl.innerHTML = '<div class="msg msg-ok">✅ ' + updated + '件の仕入れ価格を更新しました。</div>';
     });
 
     // JANコード取込
