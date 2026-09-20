@@ -18037,7 +18037,7 @@ window.addEventListener('storageReady', function(){
   }
 
   // ---------- 非活動タイムアウト ----------
-  const INACTIVITY_MS = 30 * 60 * 1000; // 30分
+  const INACTIVITY_MS = 10 * 60 * 1000; // 10分
   let _inactivityTimer = null;
   let _wasAutoLoggedOut = false; // 自動ログアウト後の再ログイン検知フラグ
   function _resetInactivity(){
@@ -18052,7 +18052,7 @@ window.addEventListener('storageReady', function(){
       showAuthScreen('login', '一定時間操作がなかったため、再ログインしてください。');
     }, INACTIVITY_MS);
   }
-  ['mousemove','keydown','click','touchstart'].forEach(ev=>{
+  ['keydown','click'].forEach(ev=>{
     document.addEventListener(ev, _resetInactivity, {passive:true});
   });
 
