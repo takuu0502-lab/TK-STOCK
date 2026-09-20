@@ -12789,6 +12789,8 @@ window.addEventListener('storageReady', function(){
     const colYearMfg   = document.getElementById('prcol_yearmfg').checked;
     const colWheelSpec = document.getElementById('prcol_wheelspec') && document.getElementById('prcol_wheelspec').checked;
 
+    // チェック済み商品がある場合はそれのみ、なければ表示フィルター全体を対象にする
+    const _printOnlySelected = selectedProducts.size > 0;
     // 現在の表示フィルターで商品リストを取得
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     const tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
