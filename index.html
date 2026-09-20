@@ -12797,6 +12797,7 @@ window.addEventListener('storageReady', function(){
     const sharedWheelSubIds = sharedWheelCat ? sharedWheelCat.subs.filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
 
     let list = products.filter(p=>{
+      if(_printOnlySelected) return selectedProducts.has(p.id);
       if(selectedBranchFilter !== null){
         const isOwned = (p.branchId||'taniyabe') === selectedBranchFilter;
         if(!isOwned){
@@ -12809,7 +12810,7 @@ window.addEventListener('storageReady', function(){
       if(selectedSub !== null && p.subId !== selectedSub) return false;
       return true;
     });
-    if(stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
+    if(!_printOnlySelected && stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
 
     // 印刷は自店舗のみ
     const sortedBranches = [ownBranch];
@@ -12876,7 +12877,7 @@ window.addEventListener('storageReady', function(){
     const totalValFooter = colTotalVal ? `<tfoot><tr><td colspan="100%" style="text-align:right;font-weight:700;padding:5pt;border-top:1pt solid #333;">合計金額：&yen;${totalValSum.toLocaleString('ja-JP')}</td></tr></tfoot>` : '';
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>在庫一覧</title><style>${css}</style></head><body>
       <h1>在庫一覧 — ${escapeHtml(branchLabel)} / ${escapeHtml(catLabel)}${subLabel?' / '+escapeHtml(subLabel):''}</h1>
-      <div class="meta">印刷日：${printDate} ／ 件数：${list.length}件${stockOnlyFilter?' ／ 在庫あり商品のみ':''}</div>
+      <div class="meta">印刷日：${printDate} ／ 件数：${list.length}件${_printOnlySelected?' ／ 選択商品のみ':(stockOnlyFilter?' ／ 在庫あり商品のみ':'')}</div>
       <table><thead><tr>${thCols}</tr></thead><tbody>${rows}</tbody>${totalValFooter}</table>
     </body></html>`;
     const w = window.open('','_blank','width=1000,height=700');
@@ -19199,12 +19200,54 @@ window.addEventListener('storageReady', function(){
           return Object.values(dedup);
         }
 
+        // VRX2卸価格一覧（柴山タイヤ商会）フォーマット判定
+        function isVRX2BulkFormat(wb){
+          try{
+            for(const sn of wb.SheetNames){
+              const ws = wb.Sheets[sn];
+              const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+              // E列にVRX2を含む行があり、F列に数値がある（データは6行目以降）
+              for(const row of (rows||[]).slice(5,15)){
+                if(!row) continue;
+                if(typeof row[4]==='string' && row[4].includes('VRX2') && typeof row[5]==='number') return true;
+              }
+            }
+          }catch(e){}
+          return false;
+        }
+        // VRX2卸価格一覧パーサー（柴山タイヤ商会フォーマット）
+        function parseVRX2Bulk(wb){
+          const SIZE_RE = /(\d{3}\/\d{2,3}\s*R\d{2})/;
+          const items = [];
+          for(const sn of wb.SheetNames){
+            const ws = wb.Sheets[sn];
+            const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+            for(const row of rows){
+              if(!row) continue;
+              const nameCell = row[4]; // E列: 商品名称（サイズ+銘柄）
+              const aPriceV  = row[5]; // F列: A表価格
+              const costV    = row[6]; // G列: 仕入れ単価
+              if(typeof nameCell !== 'string' || typeof aPriceV !== 'number') continue;
+              const sm = SIZE_RE.exec(nameCell);
+              if(!sm) continue;
+              const size = sm[1].replace(/\s+/g,'');
+              items.push({s:size, m:'VRX2', b:'BLIZZAK', w:Math.round(aPriceV), t:null, c:typeof costV==='number'?Math.round(costV):null, season:'studless'});
+            }
+          }
+          const dedup = {};
+          for(const it of items){ const k=it.m+'||'+it.s; if(!dedup[k]) dedup[k]=it; }
+          return Object.values(dedup);
+        }
+
         if(isBs){
           items = parseBridgestone(wb);
           document.getElementById('importBrandName').value = 'ブリヂストン';
         } else if((_isSeiber = isSeiberlingFormat(wb))){
           items = parseSeiberling(wb);
           document.getElementById('importBrandName').value = 'SEIBERLING';
+        } else if(isVRX2BulkFormat(wb)){
+          items = parseVRX2Bulk(wb);
+          document.getElementById('importBrandName').value = 'ブリヂストン';
         } else {
           // 汎用パーサー
           const ws = wb.Sheets[wb.SheetNames[0]];
