@@ -8335,6 +8335,28 @@ window.addEventListener('storageReady', function(){
       }
     }
     renderInventoryFilter(list.length > 0);
+
+    // 在庫金額を計算して表示
+    {
+      const _svEl = document.getElementById('stockValueDisplay');
+      if(_svEl){
+        const _svBr = selectedBranchFilter || ((currentUser && currentUser.branchId) || 'taniyabe');
+        let _totalCost = 0, _hasCost = false;
+        for(const p of list){
+          const qty = p.branchStock ? (p.branchStock[_svBr]||0) : ((p.branchId||'taniyabe')===_svBr ? (p.stock||0) : 0);
+          if(qty <= 0) continue;
+          if(p.costPrice && p.costPrice > 0){ _totalCost += qty * p.costPrice; _hasCost = true; }
+        }
+        const _catLabel = selectedMajor ? ((majorById(selectedMajor)||{}).name||'') : 'すべて';
+        if(_hasCost){
+          _svEl.innerHTML = '<div style="font-size:11px;color:var(--text-3);margin-bottom:1px;">'+escapeHtml(_catLabel)+' の在庫金額（原価）</div>'
+            + '<div style="font-size:20px;font-weight:700;color:var(--text-1);letter-spacing:-0.5px;">¥'+_totalCost.toLocaleString()+'</div>';
+        } else {
+          _svEl.innerHTML = '<div style="font-size:11px;color:var(--text-3);margin-bottom:1px;">'+escapeHtml(_catLabel)+' の在庫金額（原価）</div>'
+            + '<div style="font-size:14px;color:var(--text-3);">—（仕入れ価格未設定）</div>';
+        }
+      }
+    }
     // 【パフォーマンス最適化】product.id → catalogEntry のMapを一度だけ構築
     // renderProductTable内で findCatalogEntryForProduct を何度も呼ぶ代わりに使う
     const _prodCatMap = new Map();
@@ -9962,10 +9984,26 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const sysQty = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
-    const currentCount = currentStockcountDraft.counts.hasOwnProperty(p.id)
+    // スキャン +1 モード：前回のカウントがなければ 0 から開始し、+1 する
+    const prevCount = currentStockcountDraft.counts.hasOwnProperty(p.id)
       ? currentStockcountDraft.counts[p.id]
-      : sysQty;
+      : 0;
+    const newCount = prevCount + 1;
+    currentStockcountDraft.counts[p.id] = newCount;
+    await saveStockcountDraft();
 
+    // リスト側の入力欄・ボーダーを即時更新
+    const listRow = wrap.querySelector('[data-pid="'+p.id+'"]');
+    if(listRow){ listRow.value = newCount; listRow.closest('div[style]').style.borderColor='var(--teal)'; }
+    // ヘッダーの件数表示を更新
+    const totalAll2 = brProducts.length;
+    const countedNow = Object.keys(currentStockcountDraft.counts).length;
+    const subEl = wrap.querySelector('[style*="入力済み"]');
+    if(subEl) subEl.textContent = '入力済み '+countedNow+' / '+totalAll2+' 件';
+    const goBtn = document.getElementById('scGoReview');
+    if(goBtn) goBtn.textContent = '差異を確認する（'+countedNow+'件入力済み）';
+
+    // 結果パネルに商品名＋カウント数を表示（修正用入力欄つき）
     resultEl.style.display = 'block';
     resultEl.style.borderColor = 'var(--teal)';
     innerEl.innerHTML = ''
@@ -9975,42 +10013,55 @@ window.addEventListener('storageReady', function(){
       + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">'+(p.brand?escapeHtml(p.brand)+'　':'')+'システム在庫：<strong style="color:var(--text-1);">'+sysQty+'本</strong></div>'
       + '</div>'
       + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
-      + '<input type="number" id="scScanQtyInput" min="0" value="'+currentCount+'" style="width:80px;padding:8px;border:2px solid var(--teal);border-radius:8px;font-size:16px;text-align:right;background:var(--bg-2);color:var(--text-1);font-weight:700;">'
+      + '<span style="font-size:26px;font-weight:700;color:var(--teal);">'+newCount+'</span>'
       + '<span style="font-size:13px;color:var(--text-2);">本</span>'
-      + '<button id="scScanSaveBtn" class="btn btn-teal" data-pid="'+p.id+'" style="white-space:nowrap;">保存</button>'
+      + '<button id="scScanEditBtn" class="btn btn-ghost btn-sm" style="font-size:11px;">修正</button>'
       + '</div>'
       + '</div>';
 
-    // 保存ボタン
-    const saveBtn = document.getElementById('scScanSaveBtn');
-    const qtyInp = document.getElementById('scScanQtyInput');
-    qtyInp.select();
-    qtyInp.focus();
+    showToast('✓ '+cleanName(p.name)+'　'+newCount+'本（スキャン +1）');
 
-    const doSave = async ()=>{
-      const val = parseInt(qtyInp.value,10);
-      if(isNaN(val)||val<0){ showToast('正しい数を入力してください。'); return; }
-      currentStockcountDraft.counts[p.id] = val;
-      await saveStockcountDraft();
-      // リスト側のボーダーも更新
-      const listRow = wrap.querySelector('[data-pid="'+p.id+'"]');
-      if(listRow){ listRow.value = val; listRow.closest('div[style]').style.borderColor='var(--teal)'; }
-      resultEl.style.display = 'none';
-      // ヘッダーの件数表示を更新
-      const cnt = document.querySelector('#stockcountContent .section-title');
-      const totalAll2 = brProducts.length;
-      const countedNow = Object.keys(currentStockcountDraft.counts).length;
-      const subEl = wrap.querySelector('[style*="入力済み"]');
-      if(subEl) subEl.textContent = '入力済み '+countedNow+' / '+totalAll2+' 件';
-      // スキャンボタンを更新
-      const goBtn = document.getElementById('scGoReview');
-      if(goBtn) goBtn.textContent = '差異を確認する（'+countedNow+'件入力済み）';
-      showToast('✓ '+cleanName(p.name)+'　'+val+'本 を記録しました');
-      const scIn = document.getElementById('scBarcodeInput');
-      if(scIn){ scIn.value=''; scIn.focus(); }
-    };
-    saveBtn.addEventListener('click', doSave);
-    qtyInp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doSave(); } });
+    // 「修正」ボタン：数量を手動で変更したい場合
+    const editBtn = document.getElementById('scScanEditBtn');
+    if(editBtn){
+      editBtn.addEventListener('click', ()=>{
+        innerEl.innerHTML = innerEl.innerHTML.replace(
+          '<button id="scScanEditBtn"',
+          '<input type="number" id="scScanQtyEdit" min="0" value="'+newCount+'" style="width:72px;padding:6px 8px;border:2px solid var(--amber);border-radius:6px;font-size:15px;text-align:right;background:var(--bg-1);color:var(--text-1);font-weight:700;"> <button id="scScanEditSaveBtn" class="btn btn-teal btn-sm">保存</button><button id="scScanEditCancelBtn"'
+        );
+        // re-render with edit fields
+        const _sysQty2=sysQty, _pid=p.id, _name=cleanName(p.name);
+        innerEl.innerHTML = ''
+          + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+          + '<div><div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(_name)+(p.spec?' <span style="font-size:13px;color:var(--text-3);">'+escapeHtml(p.spec)+'</span>':'')+' </div>'
+          + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">'+(p.brand?escapeHtml(p.brand)+'　':'')+'システム在庫：<strong style="color:var(--text-1);">'+_sysQty2+'本</strong></div></div>'
+          + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+          + '<input type="number" id="scScanQtyEdit" min="0" value="'+newCount+'" style="width:72px;padding:6px 8px;border:2px solid var(--amber);border-radius:6px;font-size:16px;text-align:right;background:var(--bg-1);color:var(--text-1);font-weight:700;">'
+          + '<span style="font-size:13px;color:var(--text-2);">本</span>'
+          + '<button id="scScanEditSaveBtn" class="btn btn-teal btn-sm">保存</button>'
+          + '</div></div>';
+        const editQtyInp = document.getElementById('scScanQtyEdit');
+        const editSaveBtn = document.getElementById('scScanEditSaveBtn');
+        if(editQtyInp){ editQtyInp.select(); editQtyInp.focus(); }
+        const doEditSave = async ()=>{
+          const v = parseInt(editQtyInp.value,10);
+          if(isNaN(v)||v<0){ showToast('正しい数を入力してください。'); return; }
+          currentStockcountDraft.counts[_pid] = v;
+          await saveStockcountDraft();
+          const lr = wrap.querySelector('[data-pid="'+_pid+'"]');
+          if(lr){ lr.value = v; lr.closest('div[style]').style.borderColor='var(--teal)'; }
+          resultEl.style.display = 'none';
+          showToast('✓ '+_name+'　'+v+'本 に修正しました');
+          const scIn = document.getElementById('scBarcodeInput');
+          if(scIn){ scIn.value=''; scIn.focus(); }
+        };
+        if(editSaveBtn) editSaveBtn.addEventListener('click', doEditSave);
+        if(editQtyInp) editQtyInp.addEventListener('keydown', e=>{ if(e.key==='Enter'){e.preventDefault();doEditSave();} });
+      });
+    }
+
+    const scIn = document.getElementById('scBarcodeInput');
+    if(scIn){ scIn.value=''; scIn.focus(); }
   }
 
   function _renderStockcountReview(wrap){
@@ -12270,8 +12321,9 @@ window.addEventListener('storageReady', function(){
       }
     }
 
-    html += '<div class="spec-search-actions" style="justify-content:flex-start;align-items:center;">'
+    html += '<div class="spec-search-actions" style="justify-content:space-between;align-items:center;">'
       + '<button class="btn btn-amber" id="specSearchGo">検索</button>'
+      + '<div id="stockValueDisplay" style="text-align:right;min-width:180px;"></div>'
       + '</div>';
     html += '</div>';
     panel.innerHTML = html;
