@@ -3327,7 +3327,7 @@ window.addEventListener('storageReady', function(){
         + '<input type="number" min="0" max="100" data-rule-percent="'+escapeHtml(brand)+'" placeholder="%" value="'+(rule?rule.percent:'')+'">'
         + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((rule&&(rule.basis==='cost'||rule.basis==='retail_on'||rule.basis==='wholesale_on'))?'% 乗せ':'% OFF')+'</span>'
         + '<button type="button" class="btn btn-ghost btn-sm" data-toggle-models="'+escapeHtml(brand)+'">銘柄を'+(isOpen?'非表示':'表示')+'（'+models.length+'）</button>'
-        + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+(isBrandVisible(brand)?' checked':'')+'>検索表示</label>'
+        + '<label class="visibility-toggle"><input type="checkbox" data-vis-brand="'+escapeHtml(brand)+'"'+((!(allCatalogVisibility[pricingActiveBranch]||_defaultCatVis()).hiddenBrands.includes(brand))?' checked':'')+'>検索表示</label>'
         + '</div>';
       if(isOpen){
         html += '<div class="brand-model-list">';
@@ -3347,7 +3347,7 @@ window.addEventListener('storageReady', function(){
             + '</select>'
             + '<input type="number" min="0" max="100" data-model-rule-percent="'+escapeHtml(key)+'" placeholder="%" value="'+(mrule?mrule.percent:'')+'">'
             + '<span class="pct-label" style="font-size:11.5px;color:var(--text-2);white-space:nowrap;">'+((mrule&&(mrule.basis==='cost'||mrule.basis==='retail_on'||mrule.basis==='wholesale_on'))?'% 乗せ':'% OFF')+'</span>'
-            + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+(isModelVisible(brand,model)?' checked':'')+'>検索表示</label>'
+            + '<label class="visibility-toggle"><input type="checkbox" data-vis-model="'+escapeHtml(key)+'"'+((!(allCatalogVisibility[pricingActiveBranch]||_defaultCatVis()).hiddenModels.includes(key))?' checked':'')+'>検索表示</label>'
             + '</div>';
         });
         html += '</div>';
@@ -3365,8 +3365,11 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-vis-brand]').forEach(chk=>{
       chk.addEventListener('change', async ()=>{
         const brand = chk.dataset.visBrand;
-        if(chk.checked){ catalogVisibility.hiddenBrands = catalogVisibility.hiddenBrands.filter(b=>b!==brand); }
-        else { if(!catalogVisibility.hiddenBrands.includes(brand)) catalogVisibility.hiddenBrands.push(brand); }
+        const _cvb = allCatalogVisibility[pricingActiveBranch] || _defaultCatVis();
+        if(chk.checked){ _cvb.hiddenBrands = _cvb.hiddenBrands.filter(b=>b!==brand); }
+        else { if(!_cvb.hiddenBrands.includes(brand)) _cvb.hiddenBrands.push(brand); }
+        allCatalogVisibility[pricingActiveBranch] = _cvb;
+        updateCurrentCatalogVisibility();
         await saveCatalogVisibility();
         renderPriceCatalog();
       });
@@ -3374,8 +3377,11 @@ window.addEventListener('storageReady', function(){
     wrap.querySelectorAll('[data-vis-model]').forEach(chk=>{
       chk.addEventListener('change', async ()=>{
         const key = chk.dataset.visModel;
-        if(chk.checked){ catalogVisibility.hiddenModels = catalogVisibility.hiddenModels.filter(k=>k!==key); }
-        else { if(!catalogVisibility.hiddenModels.includes(key)) catalogVisibility.hiddenModels.push(key); }
+        const _cvb = allCatalogVisibility[pricingActiveBranch] || _defaultCatVis();
+        if(chk.checked){ _cvb.hiddenModels = _cvb.hiddenModels.filter(k=>k!==key); }
+        else { if(!_cvb.hiddenModels.includes(key)) _cvb.hiddenModels.push(key); }
+        allCatalogVisibility[pricingActiveBranch] = _cvb;
+        updateCurrentCatalogVisibility();
         await saveCatalogVisibility();
         renderPriceCatalog();
       });
@@ -3959,6 +3965,7 @@ window.addEventListener('storageReady', function(){
         renderPricingBranchTabs();
         renderBrandRules();
         renderCostBrandRules();
+        updateCurrentCatalogVisibility();
       });
     });
     // 谷田部以外の支店を選択中の総管理者にコピーボタンを表示
@@ -10198,9 +10205,12 @@ window.addEventListener('storageReady', function(){
       selectedProducts.clear(); updateBulkBar();
       renderProductTable();
       switchTab('out');
-      // ラベル印刷の確認
-      const _doPrint = await showConfirm('仮出庫ラベルを印刷しますか？');
-      if(_doPrint) printProvLabel(entry);
+      // ラベル印刷の確認（在庫がある商品が含まれる場合のみ）
+      const _hasStock = ps.some(p => getStock(p) > 0);
+      if(_hasStock){
+        const _doPrint = await showConfirm('仮出庫ラベルを印刷しますか？');
+        if(_doPrint) printProvLabel(entry);
+      }
     });
     // 客注品登録（一括）→ 入庫予定登録モーダルを客注品モードで開く
     document.getElementById('bulkCoBtn')?.addEventListener('click', ()=>{
@@ -14852,6 +14862,11 @@ window.addEventListener('storageReady', function(){
         renderDetailProvList();
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">🔖 仮出庫として登録しました。</div>';
           setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
+        // 在庫がある場合はラベル印刷確認
+        if(curStk2 >= qty){
+          const _dpPrint = await showConfirm('仮出庫ラベルを印刷しますか？');
+          if(_dpPrint) printProvLabel(entry);
+        }
       });
     }
     // 預かり出庫ボタン（勝田・岩間のみ）
@@ -14898,6 +14913,11 @@ window.addEventListener('storageReady', function(){
         if(_detailInschRefresh) _detailInschRefresh();
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">📦 預かり出庫として登録しました。</div>';
           setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; }, 3000); }
+        // 在庫がある場合はラベル印刷確認
+        if(_custStk >= qty){
+          const _custPrint = await showConfirm('仮出庫ラベルを印刷しますか？');
+          if(_custPrint) printProvLabel(entry);
+        }
       });
     }
     if(writable){
@@ -17901,6 +17921,7 @@ window.addEventListener('storageReady', function(){
     pricingActiveBranch = acc.branchId || 'taniyabe';
     updateCurrentPriceRules();
     updateCurrentCostRules();
+    updateCurrentCatalogVisibility();
     refreshLocations(); // 支店別保管場所を切り替え
     document.getElementById('authScreen').style.display = 'none';
     document.querySelector('.app').style.display = 'block';
@@ -18784,19 +18805,47 @@ window.addEventListener('storageReady', function(){
     el.addEventListener('click', ()=>{ setTimeout(renderBulkUrlTable, 100); });
   });
 
-  // ---------- カタログ表示設定 ----------
-  let catalogVisibility = { hiddenBrands: [], hiddenModels: [] };
+  // ---------- カタログ表示設定（支店別） ----------
+  let allCatalogVisibility = {}; // 支店別: { branchId: { hiddenBrands:[], hiddenModels:[] } }
+  let catalogVisibility = { hiddenBrands: [], hiddenModels: [] }; // 現在ログイン中の支店の表示設定（参照用）
+  function _defaultCatVis(){ return { hiddenBrands: [], hiddenModels: [] }; }
+  function _ensureAllCatVis(){
+    BRANCHES.forEach(b=>{
+      if(!allCatalogVisibility[b.id]) allCatalogVisibility[b.id] = _defaultCatVis();
+      if(!allCatalogVisibility[b.id].hiddenBrands) allCatalogVisibility[b.id].hiddenBrands = [];
+      if(!allCatalogVisibility[b.id].hiddenModels) allCatalogVisibility[b.id].hiddenModels = [];
+    });
+  }
+  function updateCurrentCatalogVisibility(){
+    const branchId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    catalogVisibility = allCatalogVisibility[branchId] || _defaultCatVis();
+  }
   async function loadCatalogVisibility(){
     try{
-      const r = await window.storage.get('catalogVisibility', SHARED);
-      catalogVisibility = r ? JSON.parse(r.value) : { hiddenBrands: [], hiddenModels: [] };
-    }catch(e){ catalogVisibility = { hiddenBrands: [], hiddenModels: [] }; }
-    if(!catalogVisibility.hiddenBrands) catalogVisibility.hiddenBrands = [];
-    if(!catalogVisibility.hiddenModels) catalogVisibility.hiddenModels = [];
+      const r = await window.storage.get('allCatalogVisibility', SHARED);
+      if(r){
+        allCatalogVisibility = JSON.parse(r.value);
+      } else {
+        // 旧データ（全店共通）からマイグレーション: 旧データを谷田部の設定として引き継ぐ
+        const old = await window.storage.get('catalogVisibility', SHARED);
+        const oldVis = old ? JSON.parse(old.value) : _defaultCatVis();
+        allCatalogVisibility = {};
+        BRANCHES.forEach(b=>{ allCatalogVisibility[b.id] = _defaultCatVis(); });
+        if(oldVis.hiddenBrands || oldVis.hiddenModels){
+          // 旧設定は谷田部にのみ引き継ぎ（他支店はデフォルト=全表示）
+          allCatalogVisibility['taniyabe'] = {
+            hiddenBrands: oldVis.hiddenBrands || [],
+            hiddenModels: oldVis.hiddenModels || []
+          };
+        }
+      }
+    }catch(e){ allCatalogVisibility = {}; }
+    _ensureAllCatVis();
+    updateCurrentCatalogVisibility();
   }
   async function saveCatalogVisibility(){
-    try{ await window.storage.set('catalogVisibility', JSON.stringify(catalogVisibility), SHARED); }
-    catch(e){ console.error('save catalogVisibility failed', e); }
+    try{ await window.storage.set('allCatalogVisibility', JSON.stringify(allCatalogVisibility), SHARED); }
+    catch(e){ console.error('save allCatalogVisibility failed', e); }
   }
   function isBrandVisible(brand){ return !catalogVisibility.hiddenBrands.includes(brand); }
   function isModelVisible(brand, model){ return !catalogVisibility.hiddenModels.includes(brand+'||'+model); }
