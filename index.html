@@ -4358,6 +4358,20 @@ window.addEventListener('storageReady', function(){
 
     if(migrated) await saveProducts();
 
+    // ── 一時クリーンアップ: PXR01182ブランド商品の削除 ──
+    {
+      const _pxrBefore = products.length;
+      products = products.filter(p => {
+        const _br = (p.brand||'').trim();
+        const _nm = (p.name||'').trim();
+        return !(_br === 'PXR01182' || _nm.startsWith('PXR01182'));
+      });
+      if(products.length < _pxrBefore){
+        await saveProducts();
+        console.log('[cleanup] PXR01182商品を' + (_pxrBefore - products.length) + '件削除しました');
+      }
+    }
+
     try{
       const t = await window.storage.get('transactions', SHARED);
       transactions = t ? JSON.parse(t.value) : [];
