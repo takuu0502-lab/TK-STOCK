@@ -19200,33 +19200,65 @@ window.addEventListener('storageReady', function(){
             return (r0||[]).slice(0,5).some(row=>(row||[]).some(c=>typeof c==='string' && c.includes('SEIBERLING')));
           }catch(e){ return false; }
         }
-        // SEIBERLINGパーサー（左右2列・2行1エントリ構造）
+        // SEIBERLINGパーサー（シンプル3列フォーマット or 左右2列・2行1エントリ構造の両対応）
         function parseSeiberling(wb){
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
           const result = [];
           const SIZE_RE = /(\d+\/\d+R\d+[A-Z0-9]*)/;
-          // サイズパターンが見つかった行をキーに、次の行から価格を取得
-          let ri = 5;
-          while(ri < rows.length - 1){
-            const r0 = rows[ri] || [];
-            const lm = SIZE_RE.exec(String(r0[2]||''));
-            const rm = SIZE_RE.exec(String(r0[8]||''));
-            if(lm || rm){
-              const r1 = rows[ri+1] || [];
-              if(lm){
-                const lp = (typeof r1[4]==='number') ? r1[4] : null;
-                if(lp && lp>=1000 && lp<=200000) result.push({s:lm[1], m:'SL201', b:'SEIBERLING', w:Math.round(lp), t:null});
+
+          // シンプルフォーマット判定：ヘッダー行に「サイズ」と「A表価格」があるか
+          let _simpleMode = false;
+          let _colSize=-1, _colModel=-1, _colA=-1, _colCost=-1, _dataStart=0;
+          for(let ri=0;ri<Math.min(rows.length,10);ri++){
+            const row=rows[ri]||[];
+            const labels=row.map(v=>typeof v==='string'?v.trim():'');
+            const si=labels.findIndex(l=>l.includes('サイズ')||l==='SIZE');
+            const ai=labels.findIndex(l=>l.includes('A表')||l==='卸価格'||l==='販売価格');
+            const mi=labels.findIndex(l=>l.includes('商品名')||l.includes('品名'));
+            const ci=labels.findIndex(l=>l.includes('仕入'));
+            if(si>=0 && ai>=0){ _simpleMode=true; _colSize=si; _colA=ai; _colModel=mi; _colCost=ci; _dataStart=ri+1; break; }
+          }
+
+          if(_simpleMode){
+            // シンプル3列フォーマット（サイズ / 商品名 / A表価格）
+            function toNum(v){ if(typeof v==='number') return v; if(typeof v==='string'){const n=Number(v.replace(/[¥,\s]/g,''));if(!isNaN(n))return n;} return null; }
+            for(let ri=_dataStart;ri<rows.length;ri++){
+              const row=rows[ri]; if(!row||row.every(c=>c===null)) continue;
+              const sm=SIZE_RE.exec(String(row[_colSize]||'')); if(!sm) continue;
+              const price=toNum(row[_colA]); if(!price||price<1000||price>500000) continue;
+              const modelRaw=_colModel>=0?String(row[_colModel]||'').trim():'';
+              // 商品名からSL201/SL101を抽出
+              const mMatch=modelRaw.match(/SL\d{3}/);
+              const m=mMatch?mMatch[0]:(modelRaw.replace(/SEIBERLING\s*/i,'').trim()||'SL201');
+              const cost=_colCost>=0?toNum(row[_colCost]):null;
+              const entry={s:sm[1],m:m,b:'SEIBERLING',w:Math.round(price),t:null};
+              if(cost&&cost>0) entry.c=Math.round(cost);
+              result.push(entry);
+            }
+          } else {
+            // 元のPDFフォーマット（左右2列・2行1エントリ構造）
+            let ri = 5;
+            while(ri < rows.length - 1){
+              const r0 = rows[ri] || [];
+              const lm = SIZE_RE.exec(String(r0[2]||''));
+              const rm = SIZE_RE.exec(String(r0[8]||''));
+              if(lm || rm){
+                const r1 = rows[ri+1] || [];
+                if(lm){
+                  const lp = (typeof r1[4]==='number') ? r1[4] : null;
+                  if(lp && lp>=1000 && lp<=200000) result.push({s:lm[1], m:'SL201', b:'SEIBERLING', w:Math.round(lp), t:null});
+                }
+                if(rm){
+                  const rp1 = (typeof r1[10]==='number') ? r1[10] : null;
+                  if(rp1 && rp1>=1000 && rp1<=200000) result.push({s:rm[1], m:'SL201', b:'SEIBERLING', w:Math.round(rp1), t:null});
+                  const rp2 = (typeof r1[12]==='number') ? r1[12] : null;
+                  if(rp2 && rp2>=1000 && rp2<=200000) result.push({s:rm[1], m:'SL101', b:'SEIBERLING', w:Math.round(rp2), t:null});
+                }
+                ri += 2;
+              } else {
+                ri += 1;
               }
-              if(rm){
-                const rp1 = (typeof r1[10]==='number') ? r1[10] : null;
-                if(rp1 && rp1>=1000 && rp1<=200000) result.push({s:rm[1], m:'SL201', b:'SEIBERLING', w:Math.round(rp1), t:null});
-                const rp2 = (typeof r1[12]==='number') ? r1[12] : null;
-                if(rp2 && rp2>=1000 && rp2<=200000) result.push({s:rm[1], m:'SL101', b:'SEIBERLING', w:Math.round(rp2), t:null});
-              }
-              ri += 2;
-            } else {
-              ri += 1;
             }
           }
           // 重複除去（サイズ+銘柄）
