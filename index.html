@@ -19208,10 +19208,10 @@ window.addEventListener('storageReady', function(){
             for(const sn of wb.SheetNames){
               const ws = wb.Sheets[sn];
               const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-              // E列にVRX2を含む行があり、F列に数値がある（データは6行目以降）
+              // C列(col[2])にVRX2を含む行があり、D列(col[3])に数値がある（データは6行目以降）
               for(const row of (rows||[]).slice(5,15)){
                 if(!row) continue;
-                if(typeof row[4]==='string' && row[4].includes('VRX2') && typeof row[5]==='number') return true;
+                if(typeof row[2]==='string' && row[2].includes('VRX2') && typeof row[3]==='number') return true;
               }
             }
           }catch(e){}
@@ -19226,9 +19226,9 @@ window.addEventListener('storageReady', function(){
             const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
             for(const row of rows){
               if(!row) continue;
-              const nameCell = row[4]; // E列: 商品名称（サイズ+銘柄）
-              const aPriceV  = row[5]; // F列: A表価格
-              const costV    = row[6]; // G列: 仕入れ単価
+              const nameCell = row[2]; // C列: 商品名称（サイズ+銘柄）
+              const aPriceV  = row[3]; // D列: A表価格
+              const costV    = row[4]; // E列: 仕入れ単価
               if(typeof nameCell !== 'string' || typeof aPriceV !== 'number') continue;
               const sm = SIZE_RE.exec(nameCell);
               if(!sm) continue;
