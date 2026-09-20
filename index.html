@@ -4361,14 +4361,16 @@ window.addEventListener('storageReady', function(){
     // ── 一時クリーンアップ: PXR01182ブランド商品の削除 ──
     {
       const _pxrBefore = products.length;
-      products = products.filter(p => {
+      const _pxrTargets = products.filter(p => {
         const _br = (p.brand||'').trim();
         const _nm = (p.name||'').trim();
-        return !(_br === 'PXR01182' || _nm.startsWith('PXR01182'));
+        return (_br === 'PXR01182' || _nm.startsWith('PXR01182'));
       });
-      if(products.length < _pxrBefore){
+      if(_pxrTargets.length > 0){
+        _pxrTargets.forEach(p => _deletedProductIds.add(p.id));
+        products = products.filter(p => !_deletedProductIds.has(p.id));
         await saveProducts();
-        console.log('[cleanup] PXR01182商品を' + (_pxrBefore - products.length) + '件削除しました');
+        console.log('[cleanup] PXR01182商品を' + _pxrTargets.length + '件削除しました');
       }
     }
 
@@ -4522,13 +4524,22 @@ window.addEventListener('storageReady', function(){
     }
   }
 
+  // 削除済み商品IDを記憶（トランザクション中に復元されないよう）
+  const _deletedProductIds = new Set();
+
   async function saveProducts(){
     // ローカルのproducts配列のスナップショット（トランザクション関数が参照）
     const _localSnap = products.slice();
+    const _deletedIds = new Set(_deletedProductIds);
     const result = await window.storage.transaction('products', (currentRaw) => {
       // currentRaw = Firebaseの現在値（string | null）。競合時はFirebaseが自動リトライ。
       const _fbProds = currentRaw ? JSON.parse(currentRaw) : [];
-      const _fbMap = new Map(_fbProds.map(p => [p.id, p]));
+      const _fbMap = new Map();
+      // まずFirebaseの内容をベース（削除済みIDは除外）
+      for(const fp of _fbProds){
+        if(_deletedIds.has(fp.id)) continue; // 削除済み → 復元しない
+        _fbMap.set(fp.id, fp);
+      }
       for(const lp of _localSnap){
         const fbP = _fbMap.get(lp.id);
         if(!fbP){
@@ -8741,6 +8752,7 @@ window.addEventListener('storageReady', function(){
     if(!ids.length) return;
     const ok = await showConfirm(ids.length+'件の商品を削除しますか？\nこの操作は取り消せません。');
     if(!ok) return;
+    ids.forEach(id => _deletedProductIds.add(id));
     products = products.filter(p=>!ids.includes(p.id));
     selectedProducts.clear();
     await saveProducts();
