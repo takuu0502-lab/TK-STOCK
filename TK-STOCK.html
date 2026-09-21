@@ -8561,6 +8561,14 @@ window.addEventListener('storageReady', function(){
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
+    // ホイール・タイヤカテゴリ判定（ソートより前に定義が必要）
+    const _wheelCatId2 = (_sharedWheelCat||{}).id;
+    const _isWheelCat = selectedMajor === _wheelCatId2;
+    const _isTireCat  = selectedMajor === _tireCatId;
+    const _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
+    const _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
+    // ナット等ホイール非スペック中分類
+    const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     // 複数支店閲覧可能な場合は支店別在庫列を表示
     // 列の並び順: 自店舗 → 勝田 → 谷田部 → 岩間
     const _colOrder = ['katsuta', 'taniyabe', 'iwama'];
@@ -8571,13 +8579,7 @@ window.addEventListener('storageReady', function(){
       return _colOrder.indexOf(a) - _colOrder.indexOf(b);
     });
     // タイヤ・ホイール以外のカテゴリ選択時は他店列を非表示（_tireCatId/_sharedWheelCatは上で定義済み）
-    const _wheelCatId2 = (_sharedWheelCat||{}).id;
     const _isTireWheelCat = selectedMajor === null || selectedMajor === _tireCatId || selectedMajor === _wheelCatId2;
-    const _isWheelCat = selectedMajor === _wheelCatId2; // ホイールカテゴリのみ選択中
-    const _isTireCat  = selectedMajor === _tireCatId;   // タイヤカテゴリのみ選択中
-    // ホイールカテゴリでも「アルミホイール」「スチールホイール」以外の中分類（ナット等）はホイールスペック列を非表示
-    const _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
-    const _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
     // 用品カテゴリ選択時は車種・仕入れ価格列を表示
     const _youhinCat  = categories.find(c=>c.name==='用品');
     const _isYouhinCat = !!(_youhinCat && selectedMajor === _youhinCat.id);
@@ -8590,8 +8592,6 @@ window.addEventListener('storageReady', function(){
     const _isEngineOilSub = !!(_oilCat && selectedMajor === _oilCat.id && _engineOilSubId && selectedSub === _engineOilSubId);
     // タイヤ以外の特定カテゴリ選択時：規格・サイズ列を省略して品番列のみ表示
     const _partnoOnlyMode = selectedMajor !== null && !_isTireCat && !_isWheelCat;
-    // ナット等ホイール非スペック中分類では規格列を1列表示
-    const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     const _showMultiCols = _visibleBranches.length > 1
       && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null)
       && _isTireWheelCat
