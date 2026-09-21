@@ -7912,7 +7912,7 @@ window.addEventListener('storageReady', function(){
             const _cpBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
             const _cpFixedSell = getBranchFixedSell(_cpObj, _cpBrId);
             catalogQuoteSelection.set(cKey, {
-              b: _cpObj.brand||(_catEnt?_catEnt.b:''), m: _cpObj.name, s: _cpObj.spec,
+              b: _catEnt ? _catEnt.b : (_cpObj.brand||''), m: _cpObj.name, s: _cpObj.spec,
               w: _catEnt ? _catEnt.w : (_cpObj.costPrice||0), t: _catEnt?_catEnt.t:null,
               _productId: _cpId, _sellPrice: _cpFixedSell || _cpObj.sellPrice||0
             });
@@ -7932,7 +7932,7 @@ window.addEventListener('storageReady', function(){
             const _mnBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
             const _mnFixedSell = getBranchFixedSell(p, _mnBrId);
             catalogQuoteSelection.set(cKey, {
-              b: p.brand||(_mnCatEnt?_mnCatEnt.b:p.name), m: p.name, s: p.spec,
+              b: _mnCatEnt ? _mnCatEnt.b : (p.brand||p.name), m: p.name, s: p.spec,
               w: _mnCatEnt ? _mnCatEnt.w : (p.costPrice||0), t: _mnCatEnt ? _mnCatEnt.t : null,
               _productId: p.id, _sellPrice: _mnFixedSell || p.sellPrice||0
             });
@@ -8086,7 +8086,7 @@ window.addEventListener('storageReady', function(){
             const _msBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
             const _msFixedSell = getBranchFixedSell(p, _msBrId);
             catalogQuoteSelection.set(cKey, {
-              b: p.brand||(_msCatEnt?_msCatEnt.b:p.name), m: p.name, s: p.spec,
+              b: _msCatEnt ? _msCatEnt.b : (p.brand||p.name), m: p.name, s: p.spec,
               w: _msCatEnt ? _msCatEnt.w : (p.costPrice||0), t: _msCatEnt ? _msCatEnt.t : null,
               _productId: p.id, _sellPrice: _msFixedSell || p.sellPrice||0
             });
