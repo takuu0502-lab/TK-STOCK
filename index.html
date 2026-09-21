@@ -8515,6 +8515,14 @@ window.addEventListener('storageReady', function(){
       });
       return;
     }
+    // ホイール・タイヤカテゴリ判定（ソートより前に定義）
+    const _wheelCatId2 = (_sharedWheelCat||{}).id;
+    const _isWheelCat = selectedMajor === _wheelCatId2;
+    const _isTireCat  = selectedMajor === _tireCatId;
+    const _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
+    const _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
+    // ナット等ホイール非スペック中分類
+    const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     if(brandSortFilter){
       filteredList.sort((a,b)=>{
         const ba = (a.brand||'').localeCompare(b.brand||'','ja');
@@ -8561,14 +8569,6 @@ window.addEventListener('storageReady', function(){
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
-    // ホイール・タイヤカテゴリ判定（ソートより前に定義が必要）
-    const _wheelCatId2 = (_sharedWheelCat||{}).id;
-    const _isWheelCat = selectedMajor === _wheelCatId2;
-    const _isTireCat  = selectedMajor === _tireCatId;
-    const _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
-    const _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
-    // ナット等ホイール非スペック中分類
-    const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     // 複数支店閲覧可能な場合は支店別在庫列を表示
     // 列の並び順: 自店舗 → 勝田 → 谷田部 → 岩間
     const _colOrder = ['katsuta', 'taniyabe', 'iwama'];
