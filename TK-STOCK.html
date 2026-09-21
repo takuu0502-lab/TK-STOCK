@@ -4537,6 +4537,30 @@ window.addEventListener('storageReady', function(){
   // 削除済み商品IDを記憶（トランザクション中に復元されないよう）
   const _deletedProductIds = new Set();
 
+  // ── タブ切替時の軽量データ更新 ────────────────────────────────
+  let _lastRefreshAt = 0;
+  const _REFRESH_THROTTLE_MS = 30 * 1000; // 30秒間隔でスロットリング
+  async function refreshLiveData(){
+    const now = Date.now();
+    if(now - _lastRefreshAt < _REFRESH_THROTTLE_MS) return;
+    _lastRefreshAt = now;
+    try{
+      const _rp = await window.storage.get('products', SHARED);
+      if(_rp){ const _fresh = JSON.parse(_rp.value); if(Array.isArray(_fresh)) products = _fresh; }
+      const _rpob = await window.storage.get('provisionalOutbounds', SHARED);
+      if(_rpob){ const _fresh = JSON.parse(_rpob.value); if(Array.isArray(_fresh)) provisionalOutbounds = _fresh; }
+      const _rco = await window.storage.get('customerOrders', SHARED);
+      if(_rco && _rco.value){ const _fresh = JSON.parse(_rco.value); if(Array.isArray(_fresh)) customerOrders = _fresh; }
+      const _risch = await window.storage.get('incomingSchedules', SHARED);
+      if(_risch && _risch.value){ const _fresh = JSON.parse(_risch.value); if(Array.isArray(_fresh)) incomingSchedules = _fresh; }
+      const _rtx = await window.storage.get('transactions', SHARED);
+      if(_rtx){ const _fresh = JSON.parse(_rtx.value); if(Array.isArray(_fresh)) transactions = _fresh; }
+      // 更新時刻をボタンに反映
+      const _rbt = document.getElementById('reloadBtnTime');
+      if(_rbt){ const _d=new Date(); _rbt.textContent = ' '+_d.getHours()+':'+String(_d.getMinutes()).padStart(2,'0'); }
+    }catch(e){ console.warn('refreshLiveData error', e); }
+  }
+
   async function saveProducts(){
     // ローカルのproducts配列のスナップショット（トランザクション関数が参照）
     const _localSnap = products.slice();
@@ -6341,12 +6365,21 @@ window.addEventListener('storageReady', function(){
   }
 
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', async ()=>{
       const tab = btn.dataset.tab;
       if(tab === 'pricing' && !canManagePricing()) return;
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
+      // タブ切替時に最新データを取得（30秒スロットル付き）
+      await refreshLiveData();
+      // データ更新後に現在タブを再描画
+      if(tab === 'list'){ renderCatTree(); renderProductTable(); }
+      if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
+      if(tab === 'out'){ renderProvisionalList(); }
+      if(tab === 'history'){ if(typeof renderHistory==='function') renderHistory(); }
+      if(tab === 'reservation'){ renderReservationTab(); }
+      if(tab === 'stockcount'){ renderStockcountTab(); }
       if(tab === 'pricing'){
         const _superAdminSec = document.getElementById('superAdminPricingSection');
         if(_superAdminSec) _superAdminSec.style.display = isAdminUser() ? '' : 'none';
