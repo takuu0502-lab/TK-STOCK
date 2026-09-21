@@ -7366,6 +7366,8 @@ window.addEventListener('storageReady', function(){
       if(r.s.indexOf(spec) === -1 && spec.indexOf(r.s) === -1) return false;
       const catalogName = r.b === r.m ? r.b : r.b + ' ' + r.m;
       if(nameTrim === catalogName) return true;
+      // 銘柄名のみで登録された商品（例: "BLIZZAK VRX3" vs カタログ b="BLIZZAK" m="BLIZZAK VRX3"）
+      if(nameTrim === r.m) return true;
       // ブリヂストン系ブランド名の揺れに対応（BLIZZAK等に正規化前に登録された商品）
       const _altNames = ['ブリヂストン '+r.m, 'BRIDGESTONE '+r.m];
       return _altNames.some(n => nameTrim === n);
@@ -7907,10 +7909,12 @@ window.addEventListener('storageReady', function(){
           const _catEnt = findCatalogEntryForProduct(_cpObj);
           const cKey = (_catEnt ? _catEnt.b+'||'+_catEnt.m+'||'+_catEnt.s : _cpId) + '||' + _cpId;
           if(cb.checked){
+            const _cpBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+            const _cpFixedSell = getBranchFixedSell(_cpObj, _cpBrId);
             catalogQuoteSelection.set(cKey, {
               b: _cpObj.brand||(_catEnt?_catEnt.b:''), m: _cpObj.name, s: _cpObj.spec,
-              w: _cpObj.costPrice||0, t: _catEnt?_catEnt.t:null,
-              _productId: _cpId, _sellPrice: _cpObj.sellPrice||0
+              w: _catEnt ? _catEnt.w : (_cpObj.costPrice||0), t: _catEnt?_catEnt.t:null,
+              _productId: _cpId, _sellPrice: _cpFixedSell || _cpObj.sellPrice||0
             });
           } else {
             catalogQuoteSelection.delete(cKey);
@@ -7924,10 +7928,13 @@ window.addEventListener('storageReady', function(){
           const p = manualMatched[Number(cb.dataset.manualChk)];
           const cKey = _chkPrefixManual + p.id;
           if(cb.checked){
+            const _mnCatEnt = findCatalogEntryForProduct(p);
+            const _mnBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+            const _mnFixedSell = getBranchFixedSell(p, _mnBrId);
             catalogQuoteSelection.set(cKey, {
-              b: p.name, m: p.name, s: p.spec,
-              w: p.costPrice||0, t: null,
-              _productId: p.id, _sellPrice: p.sellPrice||0
+              b: p.brand||(_mnCatEnt?_mnCatEnt.b:p.name), m: p.name, s: p.spec,
+              w: _mnCatEnt ? _mnCatEnt.w : (p.costPrice||0), t: _mnCatEnt ? _mnCatEnt.t : null,
+              _productId: p.id, _sellPrice: _mnFixedSell || p.sellPrice||0
             });
           } else {
             catalogQuoteSelection.delete(cKey);
@@ -8075,10 +8082,13 @@ window.addEventListener('storageReady', function(){
           const cKey = chkPrefix + p.id;
           if(cb.checked){
             // catalogQuoteSelectionに登録（カタログエントリ互換形式）
+            const _msCatEnt = findCatalogEntryForProduct(p);
+            const _msBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+            const _msFixedSell = getBranchFixedSell(p, _msBrId);
             catalogQuoteSelection.set(cKey, {
-              b: p.name, m: p.name, s: p.spec,
-              w: p.costPrice||0, t: null,
-              _productId: p.id, _sellPrice: p.sellPrice||0
+              b: p.brand||(_msCatEnt?_msCatEnt.b:p.name), m: p.name, s: p.spec,
+              w: _msCatEnt ? _msCatEnt.w : (p.costPrice||0), t: _msCatEnt ? _msCatEnt.t : null,
+              _productId: p.id, _sellPrice: _msFixedSell || p.sellPrice||0
             });
           } else {
             catalogQuoteSelection.delete(cKey);
