@@ -8273,6 +8273,13 @@ window.addEventListener('storageReady', function(){
     const _sharedWheelSubIds = _sharedWheelCat
       ? _sharedWheelCat.subs.filter(s => s.name === 'アルミホイール' || s.name === 'スチールホイール').map(s => s.id)
       : [];
+    // ナット等判定（関数スコープ最初に定義してTDZを回避）
+    const _wheelCatId2 = (_sharedWheelCat||{}).id;
+    const _isWheelCat = selectedMajor === _wheelCatId2;
+    const _isTireCat  = selectedMajor === _tireCatId;
+    const _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
+    const _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
+    const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     // 自支店タブかどうか（総管理者は常に全表示）
     const _myBranch = (currentUser && currentUser.branchId) || 'taniyabe';
     const _isViewingOwnBranch = isSuperAdminUser() || !selectedBranchFilter || selectedBranchFilter === _myBranch;
@@ -8515,14 +8522,6 @@ window.addEventListener('storageReady', function(){
       });
       return;
     }
-    // ホイール・タイヤカテゴリ判定（ソートより前に定義）
-    const _wheelCatId2 = (_sharedWheelCat||{}).id;
-    const _isWheelCat = selectedMajor === _wheelCatId2;
-    const _isTireCat  = selectedMajor === _tireCatId;
-    const _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
-    const _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
-    // ナット等ホイール非スペック中分類
-    const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     if(brandSortFilter){
       filteredList.sort((a,b)=>{
         const ba = (a.brand||'').localeCompare(b.brand||'','ja');
