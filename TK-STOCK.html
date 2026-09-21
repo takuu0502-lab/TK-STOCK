@@ -8535,6 +8535,12 @@ window.addEventListener('storageReady', function(){
         const bMatch = (selectedTireWidth || selectedTireInch || selectedTireAspect) ? hasSize(b) : false;
         if(aMatch && !bMatch) return -1;
         if(!aMatch && bMatch) return 1;
+        // ホイール→ナット等（非スペックモード）：メーカー順 → 名前順
+        if(_wheelNonSpecMode){
+          const ba = (a.brand||'').localeCompare(b.brand||'','ja');
+          if(ba !== 0) return ba;
+          return (a.name||'').localeCompare(b.name||'','ja');
+        }
         // ホイールカテゴリ選択時：インチ昇順 → J数昇順 → 名前順
         if(selectedMajor && selectedMajor === _wheelCatId){
           const aJ = a.wheelSpec ? parseFloat(a.wheelSpec.j)||0 : 0;
