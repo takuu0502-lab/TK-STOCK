@@ -7433,7 +7433,7 @@ window.addEventListener('storageReady', function(){
       ? '<span style="background:var(--amber);color:#fff;border-radius:4px;padding:1px 7px;font-size:11px;margin-right:6px;">前後異サイズ</span>'
       : '';
     const itemHtml = entries.map(r=>{
-      const name = r.b===r.m ? r.b : r.b+' '+r.m;
+      const name = r.b===r.m ? r.b : r.m.startsWith(r.b+' ') ? r.m : r.b+' '+r.m;
       return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg-1);border:1px solid var(--amber);border-radius:6px;padding:3px 10px;font-size:12px;">'
         + '<span style="color:var(--amber);font-weight:600;">'+escapeHtml(name)+'</span>'
         + '<span style="color:var(--text-3);">'+escapeHtml(r.s)+'</span>'
@@ -7470,15 +7470,34 @@ window.addEventListener('storageReady', function(){
         const selectedMatches = Array.from(catalogQuoteSelection.values());
         if(selectedMatches.length === 0) return;
         const defaultQty = 4;
+        const _qBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         const groups = [];
         for(const r of selectedMatches){
-          const _rProd2 = r._productId ? null : findProductForCatalogEntry(r);
-          const sell = r._productId
-            ? (r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t) || 0)
-            : (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
+          let sell = null;
+          if(r._productId){
+            const _qp = products.find(x=>x.id===r._productId);
+            if(_qp){
+              // ① 支店固定販売価格
+              const _qFixed = getBranchFixedSell(_qp, _qBrId);
+              if(_qFixed){ sell = _qFixed; }
+              // ② 手動設定の販売価格
+              else if(_qp.sellPrice){ sell = _qp.sellPrice; }
+              // ③ カタログエントリから計算（最も確実）
+              if(!sell){
+                const _qCat = findCatalogEntryForProduct(_qp);
+                if(_qCat) sell = getEffectiveSellPrice(_qCat.b, _qCat.m, _qCat.w, _qCat.t);
+              }
+            }
+            // ④ selectionに保存済みの値を使用
+            if(!sell) sell = r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+          } else {
+            const _rProd2 = findProductForCatalogEntry(r);
+            sell = (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
               ? _rProd2.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
+          }
+          const _sellVal = (sell != null && sell > 0) ? sell : null;
+          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: _sellVal != null ? _sellVal : r.w, retailPrice: r.t||null });
         }
         quoteGroups = groups;
         sharedLaborLines = [];
@@ -7958,16 +7977,31 @@ window.addEventListener('storageReady', function(){
         const selectedMatches = Array.from(catalogQuoteSelection.values());
         // 前後異サイズモード（Front/Rearパネル）はデフォルト2本、通常は4本
         const _isDualPanel = opts && (opts.targetId === 'estimateCatalogFront' || opts.targetId === 'estimateCatalogRear');
+        const _cqBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
         const groups = [];
         for(const r of selectedMatches){
-          const _rProd = r._productId ? null : findProductForCatalogEntry(r);
-          const sell = r._productId
-            ? (r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t) || 0)
-            : (_rProd && _rProd._sellManual && _rProd.sellPrice)
+          let sell = null;
+          if(r._productId){
+            const _cqp = products.find(x=>x.id===r._productId);
+            if(_cqp){
+              const _cqFixed = getBranchFixedSell(_cqp, _cqBrId);
+              if(_cqFixed){ sell = _cqFixed; }
+              else if(_cqp.sellPrice){ sell = _cqp.sellPrice; }
+              if(!sell){
+                const _cqCat = findCatalogEntryForProduct(_cqp);
+                if(_cqCat) sell = getEffectiveSellPrice(_cqCat.b, _cqCat.m, _cqCat.w, _cqCat.t);
+              }
+            }
+            if(!sell) sell = r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+          } else {
+            const _rProd = findProductForCatalogEntry(r);
+            sell = (_rProd && _rProd._sellManual && _rProd.sellPrice)
               ? _rProd.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+          }
+          const _cqSellVal = (sell != null && sell > 0) ? sell : null;
           if(opts && opts.targetId){
-            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:_isDualPanel?2:4, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
+            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:_isDualPanel?2:4, unitPrice: _cqSellVal != null ? _cqSellVal : r.w, retailPrice: r.t||null });
           } else {
             const product = await ensureProductForCatalogEntry(r);
             groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:4, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
