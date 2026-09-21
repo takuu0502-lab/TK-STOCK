@@ -1976,6 +1976,10 @@
       <label>車種</label>
       <input type="text" id="f_car_model" placeholder="例) プリウス、アクア、N-BOX">
     </div>
+    <div class="field" id="f_oil_volume_field" style="display:none;">
+      <label>容量</label>
+      <input type="text" id="f_oil_volume" placeholder="例) 1L、4L、20L">
+    </div>
     <div class="field">
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
@@ -8494,6 +8498,10 @@ window.addEventListener('storageReady', function(){
     // アルミホイール中分類選択時は仕入れ価格列を表示
     const _alumWheelSubId = _sharedWheelCat ? ((_sharedWheelCat.subs||[]).find(s=>s.name==='アルミホイール')||{}).id : null;
     const _showCostCol = (_isWheelCat && selectedSub === _alumWheelSubId);
+    // エンジンオイル中分類選択時は容量列を表示
+    const _oilCat = categories.find(c=>c.name==='オイル');
+    const _engineOilSubId = _oilCat ? ((_oilCat.subs||[]).find(s=>s.name==='エンジンオイル')||{}).id : null;
+    const _isEngineOilSub = !!(_oilCat && selectedMajor === _oilCat.id && _engineOilSubId && selectedSub === _engineOilSubId);
     // タイヤ以外の特定カテゴリ選択時：規格・サイズ列を省略して品番列のみ表示
     const _partnoOnlyMode = selectedMajor !== null && !_isTireCat && !_isWheelCat;
     const _showMultiCols = _visibleBranches.length > 1
@@ -8552,6 +8560,10 @@ window.addEventListener('storageReady', function(){
             // 用品カテゴリ：品番＋車種
             ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
               +'<td data-label="車種" style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.carModel||'—')+'</td>'
+          : _isEngineOilSub
+            // エンジンオイル：品番＋容量
+            ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
+              +'<td data-label="容量" style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.oilVolume||'—')+'</td>'
           : _partnoOnlyMode
             // タイヤ以外の特定カテゴリ：品番のみ1列表示
             ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
@@ -8689,6 +8701,8 @@ window.addEventListener('storageReady', function(){
       ? '<th>ホイールスペック</th>'
       : _isYouhinCat
         ? '<th>品番</th><th>車種</th>'
+      : _isEngineOilSub
+        ? '<th>品番</th><th>容量</th>'
       : _partnoOnlyMode
         ? '<th>品番</th>'
         : _isTireCat
@@ -12452,6 +12466,7 @@ window.addEventListener('storageReady', function(){
   document.getElementById('f_sub').addEventListener('change', function(){
     const majorId = document.getElementById('f_major').value;
     populateSubSubSelect(majorId, this.value, null);
+    toggleTireNameField();
   });
 
   const modal = document.getElementById('productModal');
@@ -13530,6 +13545,12 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_spec_tire_row').style.display = showTireFields ? 'flex' : 'none';
     document.getElementById('f_wheel_fields').style.display = isWheel ? 'block' : 'none';
     document.getElementById('f_estimate_visible_field').style.display = isTire ? 'block' : 'none';
+    // エンジンオイル中分類選択時：容量フィールドを表示
+    const _fSubEl = document.getElementById('f_sub');
+    const _fMajorId = document.getElementById('f_major').value;
+    const _fSubCat = _fSubEl ? subById(_fMajorId, _fSubEl.value) : null;
+    const _isEngineOil = !!(_fSubCat && _fSubCat.name === 'エンジンオイル');
+    document.getElementById('f_oil_volume_field').style.display = _isEngineOil ? 'block' : 'none';
   }
   function populateSpecTireSelects(){
     const _branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
@@ -13936,6 +13957,7 @@ window.addEventListener('storageReady', function(){
     populateLocationSelect(_editLocId);
     document.getElementById('f_name').value = p.name;
     document.getElementById('f_car_model').value = p.carModel || '';
+    document.getElementById('f_oil_volume').value = p.oilVolume || '';
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(p.majorId);
     populateSubSelect(p.majorId, p.subId);
@@ -15450,6 +15472,7 @@ window.addEventListener('storageReady', function(){
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const carModel = document.getElementById('f_car_model').value.trim();
+    const oilVolume = document.getElementById('f_oil_volume').value.trim();
     const memo = document.getElementById('f_memo').value.trim();
     const listMemo = document.getElementById('f_list_memo').value.trim();
     const url = document.getElementById('f_url').value.trim();
@@ -15554,7 +15577,7 @@ window.addEventListener('storageReady', function(){
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, carModel, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, updatedAt: Date.now()});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, carModel, oilVolume: oilVolume||null, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, updatedAt: Date.now()});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
@@ -15576,7 +15599,7 @@ window.addEventListener('storageReady', function(){
       if(_fixedSell && sellPrice > 0) initBranchSellPrice[newBranchId] = sellPrice;
       const initBranchManufactureYear = {};
       if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, carModel, oilVolume: oilVolume||null, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
