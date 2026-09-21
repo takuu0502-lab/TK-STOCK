@@ -7478,7 +7478,7 @@ window.addEventListener('storageReady', function(){
             : (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
               ? _rProd2.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
-          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
+          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
         }
         quoteGroups = groups;
         sharedLaborLines = [];
@@ -7967,7 +7967,7 @@ window.addEventListener('storageReady', function(){
               ? _rProd.sellPrice
               : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
           if(opts && opts.targetId){
-            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.b+' '+r.m), spec:r.s, qty:_isDualPanel?2:4, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
+            groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:_isDualPanel?2:4, unitPrice: sell!==null ? sell : r.w, retailPrice: r.t||null });
           } else {
             const product = await ensureProductForCatalogEntry(r);
             groups.push({ productId:product.id, name:product.name, spec:product.spec||'', qty:4, unitPrice: sell!==null ? sell : (product.sellPrice||0) });
