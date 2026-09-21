@@ -8588,7 +8588,8 @@ window.addEventListener('storageReady', function(){
     const _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
     const _showMultiCols = _visibleBranches.length > 1
       && !(currentUser && currentUser.role === 'admin' && selectedBranchFilter === null)
-      && _isTireWheelCat;
+      && _isTireWheelCat
+      && !_wheelNonSpecMode; // ナット・スペーサー・その他は他店在庫列を非表示
     // 支店列の色分け定義
     const _brColBg = ['rgba(59,130,246,0.06)','rgba(34,197,94,0.06)','rgba(245,158,11,0.07)','rgba(168,85,247,0.06)'];
     const _brColBorder = ['#93c5fd','#86efac','#fcd34d','#d8b4fe'];
