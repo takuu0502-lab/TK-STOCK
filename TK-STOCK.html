@@ -7747,9 +7747,11 @@ window.addEventListener('storageReady', function(){
       if(item.type === 'catalog'){
         const _eps = findAllProductsForCatalogEntry(item.r);
         // 同名・同スペック商品の重複除去（二重登録対策）
+        // スペックはロードインデックス等を除いたサイズ寸法部分で比較（"175/80R16 91S" と "175/80R16" を同一視）
         const _epDedup = {};
         for(const cp of _eps){
-          const k = (cp.name||'')+'||'+(cp.spec||'');
+          const _specDimKey = (cp.spec||'').trim().split(' ')[0];
+          const k = (cp.name||'')+'||'+_specDimKey;
           if(!_epDedup[k]) _epDedup[k] = cp;
         }
         const _epsUniq = Object.values(_epDedup);
