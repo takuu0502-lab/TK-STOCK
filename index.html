@@ -7619,6 +7619,7 @@ window.addEventListener('storageReady', function(){
     const aspectPart = (useAspect && useAspect !== 'NOASPECT') ? useAspect : '';
     // 扁平率あり: "165/70R13"形式で連結検索 / 扁平率なし: 幅・インチを個別チェック
     const query = aspectPart ? (useWidth||'') + aspectPart + (useInch||'') : '';
+    console.log('[renderPriceCatalog] START forceTire='+forceTire+' query='+query+' catalog='+getCatalog().length);
     let matches = getCatalog().filter(r => {
       if(forceTire && !isItemVisible(r)) return false;
       if(query) return r.s.indexOf(query) !== -1;
