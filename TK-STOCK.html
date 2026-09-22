@@ -3112,14 +3112,14 @@ window.addEventListener('storageReady', function(){
     if(!importedItems.length){ _catalogCache = PRICE_CATALOG; }
     else {
       // インポート済みデータがある場合、同じ銘柄+サイズのPRICE_CATALOGエントリを除外（新価格優先）
-      // ブランドプレフィックス付き/なし両対応のキーで比較
-      const _normKey = r => { const _mn=(r.m||'').startsWith((r.b||'')+' ')?(r.m||'').slice((r.b||'').length+1):(r.m||''); return _mn+'||'+(r.s||''); };
+      // ブランドシリーズプレフィックス付き/なし両対応のキーで比較
+      const _normKey = r => { const _mn=_normModelForDedup(r.m,r.b); return _mn+'||'+(r.s||'').trim().replace(/\s+/g,' '); };
       const _importedKeys = new Set(importedItems.map(_normKey));
       const _filteredBase = PRICE_CATALOG.filter(r => !_importedKeys.has(_normKey(r)));
       const _all = [..._filteredBase, ...importedItems];
       // 最終デdup（ブランド+正規化銘柄+サイズで一意化）
       const _dd = {};
-      for(const r of _all){ const _mn=(r.m||'').startsWith((r.b||'')+' ')?(r.m||'').slice((r.b||'').length+1):(r.m||''); _dd[(r.b||'')+'||'+_mn+'||'+(r.s||'')] = r; }
+      for(const r of _all){ const _b=(r.b||'').trim(); const _mn=_normModelForDedup(r.m,_b); const _s=(r.s||'').trim().replace(/\s+/g,' '); _dd[_b+'||'+_mn+'||'+_s] = r; }
       _catalogCache = Object.values(_dd);
     }
     // catalogKey検索用Mapも同時に構築
@@ -3170,22 +3170,48 @@ window.addEventListener('storageReady', function(){
     }
     return 'ブリヂストン';
   }
+  // モデル名からブランドシリーズプレフィックスを除去して正規化（重複除去キー用）
+  // 例: b="ALENZA", m="ALENZA LX100" → "LX100"
+  //     b="BRIDGESTONE", m="ALENZA LX100" → "LX100"（_BS_BRAND_LOOKUPで先頭語がシリーズ名と判定）
+  function _normModelForDedup(m, b){
+    const _m = (m||'').trim();
+    const _b = (b||'').trim();
+    // 1. bプレフィックスが一致するなら除去
+    if(_b && _m.startsWith(_b+' ')) return _m.slice(_b.length+1);
+    // 2. 先頭の1語が_BS_BRAND_LOOKUPのキーワードに含まれるブランドシリーズ名なら除去
+    const _fw = _m.split(' ')[0];
+    if(_fw && _m.includes(' ')){
+      const _isSeries = _BS_BRAND_LOOKUP.some(([ks])=>ks.some(k=>k===_fw));
+      if(_isSeries) return _m.slice(_fw.length+1);
+    }
+    return _m;
+  }
   function rebuildImportedItems(){
     const _raw = importedCatalogs.flatMap(c=>c.items||[]).map(item=>{
-      if(!item.b || item.b==='ブリヂストン'){
+      // "ブリヂストン"（日本語）または"BRIDGESTONE"（英語）の場合、銘柄名をシリーズ名に正規化
+      if(!item.b || item.b==='ブリヂストン' || item.b.toUpperCase()==='BRIDGESTONE'){
         return Object.assign({}, item, {b: _normalizeBsBrand(item.m||'')});
       }
       return item;
     });
-    // 同一ブランド+銘柄+サイズの重複除去（ブランドプレフィックス付き/なし両対応、後勝ち）
+    // 同一ブランド+銘柄+サイズの重複除去（ブランドプレフィックス付き/なし両対応、スペース正規化、後勝ち）
     const _dedup = {};
     for(const item of _raw){
-      // "ALENZA LX100" と "LX100" を同一視：先頭のブランド名+スペースを除去して正規化
-      const _mNorm = (item.m||'').startsWith((item.b||'')+' ') ? (item.m||'').slice((item.b||'').length+1) : (item.m||'');
-      const key = (item.b||'')+'||'+_mNorm+'||'+(item.s||'');
+      const _b = (item.b||'').trim();
+      const _mNorm = _normModelForDedup(item.m, _b);
+      const _s = (item.s||'').trim().replace(/\s+/g,' ');
+      const key = _b+'||'+_mNorm+'||'+_s;
       _dedup[key] = item;
     }
     importedItems = Object.values(_dedup);
+    // デバッグ: 重複が残っている場合はコンソールに警告
+    if(typeof console!=='undefined'){
+      const _mc={};
+      for(const i of importedItems){const k=(i.m||'')+'||'+(i.s||'').trim();_mc[k]=(_mc[k]||0)+1;}
+      const _dp=Object.entries(_mc).filter(([,c])=>c>1);
+      if(_dp.length) console.warn('[rebuildImportedItems] still-duplicate m+s pairs:',_dp);
+      else console.log('[rebuildImportedItems] dedup OK, items='+importedItems.length);
+    }
     _clearCatalogCache(); // カタログキャッシュを無効化
   }
   async function loadImportedCatalogs(){
@@ -7606,13 +7632,14 @@ window.addEventListener('storageReady', function(){
       const _wantStudless = estimateSeasonFilter === 'studless';
       matches = matches.filter(r => _isStudlessCatalogEntry(r) === _wantStudless);
     }
-    // モデル+サイズで重複除去（ブランドプレフィックス付き/なし両対応）
+    // モデル+サイズで重複除去（ブランドシリーズプレフィックス付き/なし・異なるb値も同一視）
     {
       const _mdd = {};
       for(const r of matches){
-        // "ALENZA LX100" と "LX100" を同一視するため、先頭のブランド名を除去して正規化
-        const _mNorm = (r.m||'').startsWith((r.b||'')+' ') ? (r.m||'').slice((r.b||'').length+1) : (r.m||'');
-        const _key = _mNorm+'||'+(r.s||'');
+        // _normModelForDedupで正規化（bプレフィックス除去＋_BS_BRAND_LOOKUPシリーズ名除去）
+        const _mNorm = _normModelForDedup(r.m, r.b);
+        const _s = (r.s||'').trim().replace(/\s+/g,' ');
+        const _key = _mNorm+'||'+_s;
         // インポートデータ（wまたはtあり）を優先、なければ既存エントリを維持
         if(!_mdd[_key] || (r.w || r.t)) _mdd[_key] = r;
       }
