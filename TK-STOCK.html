@@ -4600,9 +4600,9 @@ window.addEventListener('storageReady', function(){
   // ── タブ切替時の軽量データ更新 ────────────────────────────────
   let _lastRefreshAt = 0;
   const _REFRESH_THROTTLE_MS = 30 * 1000; // 30秒間隔でスロットリング
-  async function refreshLiveData(){
+  async function refreshLiveData(force){
     const now = Date.now();
-    if(now - _lastRefreshAt < _REFRESH_THROTTLE_MS) return;
+    if(!force && now - _lastRefreshAt < _REFRESH_THROTTLE_MS) return;
     _lastRefreshAt = now;
     try{
       const _rp = await window.storage.get('products', SHARED);
@@ -6505,8 +6505,8 @@ window.addEventListener('storageReady', function(){
       if((tab === 'in' || tab === 'out') && !canWriteData()) return;
       switchTab(tab);
       stopAllScanners();
-      // タブ切替時に最新データを取得（30秒スロットル付き）
-      await refreshLiveData();
+      // タブ切替時に最新データを強制取得
+      await refreshLiveData(true);
       // データ更新後に現在タブを再描画
       if(tab === 'list'){ renderCatTree(); renderProductTable(); }
       if(tab === 'in'){ renderCustomerOrderList(); renderIncomingScheduleList(); }
