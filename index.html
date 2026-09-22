@@ -8368,7 +8368,7 @@ window.addEventListener('storageReady', function(){
                 const _isTireProd = p.majorId === _tireCatId;
                 const _isWheelProd = _sharedWheelCat && p.majorId === _sharedWheelCat.id && _sharedWheelSubIds.includes(p.subId);
                 // オイルカテゴリも非表示ルールから除外（エンジンオイル・エレメント等）
-                const _oilCatId2 = _oilCat ? _oilCat.id : null;
+                const _oilCatId2 = (categories.find(c=>c.name==='オイル')||{}).id;
                 const _isOilProd = _oilCatId2 && p.majorId === _oilCatId2;
                 if(!_isTireProd && !_isWheelProd && !_isOilProd) return false;
               }
