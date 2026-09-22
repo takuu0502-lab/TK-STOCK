@@ -13196,7 +13196,9 @@ window.addEventListener('storageReady', function(){
     const colCost      = isAdminUser() && document.getElementById('prcol_cost').checked;
     const colTotalVal  = isAdminUser() && document.getElementById('prcol_totalval').checked;
     const colYearMfg   = document.getElementById('prcol_yearmfg').checked;
-    const colWheelSpec = document.getElementById('prcol_wheelspec') && document.getElementById('prcol_wheelspec').checked;
+    // ホイールスペック列はホイールカテゴリ選択時のみ有効（チェックあり＋ホイール選択時）
+    const _printWcId = (categories.find(c=>c.name==='ホイール')||{}).id;
+    const colWheelSpec = selectedMajor === _printWcId && document.getElementById('prcol_wheelspec') && document.getElementById('prcol_wheelspec').checked;
 
     // チェック済み商品がある場合はそれのみ、なければ表示フィルター全体を対象にする
     const _printOnlySelected = selectedProducts.size > 0;
