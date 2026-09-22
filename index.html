@@ -8651,6 +8651,9 @@ window.addEventListener('storageReady', function(){
     const _oilCat = categories.find(c=>c.name==='オイル');
     const _engineOilSubId = _oilCat ? ((_oilCat.subs||[]).find(s=>s.name==='エンジンオイル')||{}).id : null;
     const _isEngineOilSub = !!(_oilCat && selectedMajor === _oilCat.id && _engineOilSubId && selectedSub === _engineOilSubId);
+    // エレメント中分類選択時は車種列を表示
+    const _elementSubId = _oilCat ? ((_oilCat.subs||[]).find(s=>s.name==='エレメント')||{}).id : null;
+    const _isElementSub = !!(_oilCat && selectedMajor === _oilCat.id && _elementSubId && selectedSub === _elementSubId);
     // タイヤ以外の特定カテゴリ選択時：規格・サイズ列を省略して品番列のみ表示
     const _partnoOnlyMode = selectedMajor !== null && !_isTireCat && !_isWheelCat;
     const _showMultiCols = _visibleBranches.length > 1
@@ -8714,6 +8717,10 @@ window.addEventListener('storageReady', function(){
             // 用品カテゴリ：品番＋車種
             ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
               +'<td data-label="車種" style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.carModel||'—')+'</td>'
+          : _isElementSub
+            // エレメント：品番＋車種
+            ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
+              +'<td data-label="車種" style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.carModel||'—')+'</td>'
           : _isEngineOilSub
             // エンジンオイル：品番＋容量
             ? '<td data-label="品番" style="color:var(--text-2);font-size:12px;font-family:var(--font-mono);">'+escapeHtml(p.partno||'—')+'</td>'
@@ -8733,6 +8740,7 @@ window.addEventListener('storageReady', function(){
         + ((_showCostCol || _isYouhinCat)
             ? (()=>{ const _ec=getEffectiveCostForBranch(p,_ownBranchId); return '<td data-label="仕入れ価格" style="color:var(--text-2);font-size:12px;white-space:nowrap;">'+(_ec?'¥'+Number(_ec).toLocaleString():'—')+'</td>'; })()
             : _showMultiCols ? ''
+            : _isElementSub ? ''
             : '<td data-label="保管場所" style="color:var(--text-2);font-size:12px;">'+(()=>{ const _locBr=currentUser?(currentUser.branchId||'taniyabe'):'taniyabe'; const _locId=(p.branchLocation&&_locBr in p.branchLocation)?p.branchLocation[_locBr]:(p.locationId||''); return _locId&&locations.find(l=>l.id===_locId)?escapeHtml(locations.find(l=>l.id===_locId).name):'—'; })()+'</td>'
           )
         + (()=>{
@@ -8862,6 +8870,8 @@ window.addEventListener('storageReady', function(){
         ? '<th>品番</th><th>車種</th>'
       : _isEngineOilSub
         ? '<th>品番</th><th>容量</th>'
+      : _isElementSub
+        ? '<th>品番</th><th>車種</th>'
       : _isBatteryCat
         ? '<th style="white-space:nowrap;">規格・仕様</th>'
       : _partnoOnlyMode
@@ -8876,6 +8886,7 @@ window.addEventListener('storageReady', function(){
     const _locOrCostTh = (_showCostCol || _isYouhinCat)
       ? '<th style="white-space:nowrap;width:80px;">仕入れ価格</th>'
       : _showMultiCols ? ''
+      : _isElementSub ? ''
       : '<th style="white-space:nowrap;width:60px;">保管場所</th>';
     const thead = recentFilter
       ? '<thead><tr>'+headerChk+'<th>メーカー</th><th>商品名</th>'+_midHeadersRecent+_locOrCostTh+_multiStkHeaders+'<th style="white-space:nowrap;min-width:160px;">登録日時</th></tr></thead>'
