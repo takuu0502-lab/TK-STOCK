@@ -8582,9 +8582,17 @@ window.addEventListener('storageReady', function(){
     // 用品カテゴリ選択時は車種・仕入れ価格列を表示
     const _youhinCat  = categories.find(c=>c.name==='用品');
     const _isYouhinCat = !!(_youhinCat && selectedMajor === _youhinCat.id);
-    // バッテリーカテゴリ選択時は規格・仕様＋仕入れ価格列を表示
+    // バッテリー選択時は規格・仕様＋仕入れ価格列を表示（大分類・中分類どちらでも対応）
     const _batteryCat = categories.find(c=>c.name==='バッテリー');
-    const _isBatteryCat = !!(_batteryCat && selectedMajor === _batteryCat.id);
+    const _batterySubId = (()=>{
+      for(const c of categories){
+        const s = (c.subs||[]).find(s=>s.name==='バッテリー');
+        if(s) return s.id;
+      }
+      return null;
+    })();
+    const _isBatteryCat = !!(_batteryCat && selectedMajor === _batteryCat.id)
+      || !!(_batterySubId && selectedSub === _batterySubId);
     // アルミホイール中分類選択時は仕入れ価格列を表示
     const _alumWheelSubId = _sharedWheelCat ? ((_sharedWheelCat.subs||[]).find(s=>s.name==='アルミホイール')||{}).id : null;
     const _showCostCol = (_isWheelCat && selectedSub === _alumWheelSubId) || _isBatteryCat;
