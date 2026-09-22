@@ -73,6 +73,26 @@
         console.error('FB transaction error', e);
         return null;
       }
+    },
+    // 小さいパスへの直接書き込み（在庫数専用バックアップに使用）
+    setPath: async (path, value) => {
+      try {
+        await set(ref(db, path), value);
+        return true;
+      } catch(e) {
+        console.error('FB setPath error', e);
+        return false;
+      }
+    },
+    // 小さいパスからの直接読み込み
+    getPath: async (path) => {
+      try {
+        const snapshot = await get(ref(db, path));
+        return snapshot.exists() ? snapshot.val() : null;
+      } catch(e) {
+        console.error('FB getPath error', e);
+        return null;
+      }
     }
   };
 
@@ -4318,6 +4338,8 @@ window.addEventListener('storageReady', function(){
       const p = await window.storage.get('products', SHARED);
       products = p ? JSON.parse(p.value) : [];
     }catch(e){ products = []; }
+    // 初回ロード時：専用パスの在庫スナップショットを適用（在庫数の信頼性向上）
+    await _applyStockSnapshots();
 
     let migrated = false;
     products.forEach(p=>{
@@ -4615,10 +4637,54 @@ window.addEventListener('storageReady', function(){
       if(_risch && _risch.value){ const _fresh = JSON.parse(_risch.value); if(Array.isArray(_fresh)) incomingSchedules = _fresh; }
       const _rtx = await window.storage.get('transactions', SHARED);
       if(_rtx){ const _fresh = JSON.parse(_rtx.value); if(Array.isArray(_fresh)) transactions = _fresh; }
+      // 専用パスの在庫スナップショットを適用（メインブロブより新しい在庫数で上書き）
+      await _applyStockSnapshots();
       // 更新時刻をボタンに反映
       const _rbt = document.getElementById('reloadBtnTime');
       if(_rbt){ const _d=new Date(); _rbt.textContent = ' '+_d.getHours()+':'+String(_d.getMinutes()).padStart(2,'0'); }
     }catch(e){ console.warn('refreshLiveData error', e); }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 在庫数専用バックアップ：小さいパスに確実に保存・適用する仕組み
+  // shared/branchStock/{productId}/{branchId} = {c: count, t: updatedAt}
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** 在庫数を専用パスに書き込む（小さいJSON、高信頼性） */
+  async function _saveStockSnapshot(productId, branchStock, updatedAt){
+    if(!productId || !branchStock) return false;
+    const _obj = {};
+    for(const [bid, cnt] of Object.entries(branchStock)){
+      _obj[bid] = {c: cnt, t: updatedAt};
+    }
+    return await window.storage.setPath('shared/branchStock/'+productId, _obj);
+  }
+
+  /** 専用パスの在庫スナップショットを全商品に適用する */
+  async function _applyStockSnapshots(){
+    try{
+      const _stockAll = await window.storage.getPath('shared/branchStock');
+      if(!_stockAll) return;
+      for(const pid of Object.keys(_stockAll)){
+        const prod = products.find(p=>p.id===pid);
+        if(!prod) continue;
+        if(!prod.branchStock) prod.branchStock = {};
+        const _snap = _stockAll[pid];
+        if(!_snap) continue;
+        let _applied = false;
+        for(const [bid, entry] of Object.entries(_snap)){
+          // スナップショットの方が新しい場合だけ上書き
+          if((entry.t||0) > (prod.updatedAt||0)){
+            prod.branchStock[bid] = entry.c;
+            _applied = true;
+          }
+        }
+        if(_applied){
+          // 合計在庫も再計算
+          prod.stock = Object.values(prod.branchStock).reduce((s,v)=>s+(v||0),0);
+        }
+      }
+    }catch(e){ console.warn('_applyStockSnapshots error:', e); }
   }
 
   async function saveProducts(_retryCount){
@@ -10414,10 +10480,15 @@ window.addEventListener('storageReady', function(){
       if(!ok) return;
 
       // 在庫を実数に更新
+      const _scNow = Date.now();
       items.forEach(item=>{
         if(!item.p.branchStock) item.p.branchStock = {};
         item.p.branchStock[_br] = item.actQty;
+        item.p.stock = Object.values(item.p.branchStock).reduce((s,v)=>s+(v||0),0);
+        item.p.updatedAt = _scNow;
       });
+      // 在庫数を専用パスに先行保存（各商品ごと）
+      await Promise.all(items.map(item=>_saveStockSnapshot(item.p.id, item.p.branchStock, _scNow)));
       await saveProducts();
 
       // 履歴に保存
@@ -11021,6 +11092,8 @@ window.addEventListener('storageReady', function(){
       }
       p.updatedAt = Date.now();
       btn.disabled = true;
+      // 在庫数を専用パスに先行保存
+      await _saveStockSnapshot(p.id, p.branchStock, p.updatedAt);
       try{
         await saveProducts();
         renderProductTable();
@@ -15723,13 +15796,18 @@ window.addEventListener('storageReady', function(){
     }
     pFresh.stock = Object.values(pFresh.branchStock).reduce((s,v)=>s+(v||0),0);
     pFresh.updatedAt = Date.now();
-    // 在庫更新の保存（失敗時はロールバック）
-    const _saveResult = await saveProducts();
-    if(!_saveResult){
-      // saveProducts が失敗 → 在庫をロールバックして終了
+    // ① 在庫数を専用の小さいパスに先行保存（高信頼性・失敗時はロールバック）
+    const _stockSnapOk = await _saveStockSnapshot(pFresh.id, pFresh.branchStock, pFresh.updatedAt);
+    if(!_stockSnapOk){
       await refreshProductFromFirebase(pFresh.id);
       msgEl.innerHTML = '<div class="msg msg-error">⚠️ 在庫の保存に失敗しました。ネットワークを確認してもう一度お試しください。</div>';
       return;
+    }
+    // ② メインのproducts JSONブロブも更新（失敗しても在庫数は①で保護済み）
+    const _saveResult = await saveProducts();
+    if(!_saveResult){
+      // メインブロブの保存失敗：在庫数は①で確保済みなので続行
+      console.warn('doDetailStockChange: saveProducts failed, but stock snapshot is saved');
     }
     // 在庫保存成功後にトランザクション記録を保存
     const _tx = {
