@@ -4650,9 +4650,10 @@ window.addEventListener('storageReady', function(){
     if(result){
       // トランザクション成功 → ローカルをFirebaseの確定値で同期
       try{ products = JSON.parse(result.value); }catch(_){}
+      return result; // 成功を示す値を返す
     } else {
       console.error('saveProducts transaction failed');
-      if(typeof showToast === 'function') showToast('⚠️ 在庫の保存に失敗しました。ページをリロードして再度お試しください。', 'error');
+      return null; // 失敗を示す null を返す
     }
   }
   async function saveProductEditLog(){
@@ -15687,15 +15688,24 @@ window.addEventListener('storageReady', function(){
       pFresh.branchStock[opBranch] = (pFresh.branchStock[opBranch]||0) + (kind==='in' ? qty : -qty);
       if(pFresh.branchStock[opBranch] < 0) pFresh.branchStock[opBranch] = 0;
     }
-    pFresh.stock = pFresh.branchStock[opBranch] || 0;
+    pFresh.stock = Object.values(pFresh.branchStock).reduce((s,v)=>s+(v||0),0);
     pFresh.updatedAt = Date.now();
-    transactions.unshift({
+    // 在庫更新の保存（失敗時はロールバック）
+    const _saveResult = await saveProducts();
+    if(!_saveResult){
+      // saveProducts が失敗 → 在庫をロールバックして終了
+      await refreshProductFromFirebase(pFresh.id);
+      msgEl.innerHTML = '<div class="msg msg-error">⚠️ 在庫の保存に失敗しました。ネットワークを確認してもう一度お試しください。</div>';
+      return;
+    }
+    // 在庫保存成功後にトランザクション記録を保存
+    const _tx = {
       id: uid('t'), productId: pFresh.id, barcode: pFresh.barcode, name: pFresh.name, type: kind, qty: qty,
       date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
       itemType: 'stock', reservation: null, branchId: getOperationBranch(),
       customerName: outCustomerName
-    });
-    await saveProducts();
+    };
+    transactions.unshift(_tx);
     await saveTransactions();
     try{ renderCatTree(); }catch(e){ console.error('renderCatTree error', e); }
     try{ renderProductTable(); }catch(e){ console.error('renderProductTable error', e); }
