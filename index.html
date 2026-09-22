@@ -7599,10 +7599,16 @@ window.addEventListener('storageReady', function(){
       const _wantStudless = estimateSeasonFilter === 'studless';
       matches = matches.filter(r => _isStudlessCatalogEntry(r) === _wantStudless);
     }
-    // モデル+サイズで重複除去
+    // モデル+サイズで重複除去（ブランドプレフィックス付き/なし両対応）
     {
       const _mdd = {};
-      for(const r of matches) _mdd[(r.m||'')+'||'+(r.s||'')] = r;
+      for(const r of matches){
+        // "ALENZA LX100" と "LX100" を同一視するため、先頭のブランド名を除去して正規化
+        const _mNorm = (r.m||'').startsWith((r.b||'')+' ') ? (r.m||'').slice((r.b||'').length+1) : (r.m||'');
+        const _key = _mNorm+'||'+(r.s||'');
+        // インポートデータ（wまたはtあり）を優先、なければ既存エントリを維持
+        if(!_mdd[_key] || (r.w || r.t)) _mdd[_key] = r;
+      }
       matches = Object.values(_mdd);
     }
     const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
