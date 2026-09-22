@@ -7639,16 +7639,19 @@ window.addEventListener('storageReady', function(){
     }
     // モデル+サイズで重複除去（ブランドシリーズプレフィックス付き/なし・異なるb値・ロードインデックス差異も同一視）
     {
+      console.log('[renderPriceCatalog] dedup前 matches:', matches.length, matches.map(r=>({b:r.b,m:r.m,s:r.s})));
       const _mdd = {};
       for(const r of matches){
         const _mNorm = _normModelForDedup(r.m, r.b);
         // サイズ寸法部分のみ（ロードインデックス等を除く）でキー生成
         const _sKey2 = (r.s||'').trim().split(' ')[0]; // "175/80R16 91S" → "175/80R16"
         const _key = _mNorm+'||'+_sKey2;
+        console.log('[renderPriceCatalog] key:', _key, 'b:', r.b, 'm:', r.m, 's:', r.s);
         // 価格データあり・またはスペックが詳細なエントリを優先
         if(!_mdd[_key] || (r.w || r.t) || (r.s||'').length > (_mdd[_key].s||'').length) _mdd[_key] = r;
       }
       matches = Object.values(_mdd);
+      console.log('[renderPriceCatalog] dedup後 matches:', matches.length);
     }
     const queryLabel = query || ((useWidth||'')+(useInch||'')) || (useModel ? useModel.replace('||',' ') : '');
     // 自社登録タイヤを取得（統合表示用）
