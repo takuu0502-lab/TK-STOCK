@@ -3109,12 +3109,14 @@ window.addEventListener('storageReady', function(){
     if(!importedItems.length){ _catalogCache = PRICE_CATALOG; }
     else {
       // インポート済みデータがある場合、同じ銘柄+サイズのPRICE_CATALOGエントリを除外（新価格優先）
-      const _importedKeys = new Set(importedItems.map(r=>r.m+'||'+r.s));
-      const _filteredBase = PRICE_CATALOG.filter(r => !_importedKeys.has(r.m+'||'+r.s));
+      // ブランドプレフィックス付き/なし両対応のキーで比較
+      const _normKey = r => { const _mn=(r.m||'').startsWith((r.b||'')+' ')?(r.m||'').slice((r.b||'').length+1):(r.m||''); return _mn+'||'+(r.s||''); };
+      const _importedKeys = new Set(importedItems.map(_normKey));
+      const _filteredBase = PRICE_CATALOG.filter(r => !_importedKeys.has(_normKey(r)));
       const _all = [..._filteredBase, ...importedItems];
-      // 最終デdup（ブランド+銘柄+サイズで一意化）
+      // 最終デdup（ブランド+正規化銘柄+サイズで一意化）
       const _dd = {};
-      for(const r of _all) _dd[(r.b||'')+'||'+(r.m||'')+'||'+(r.s||'')] = r;
+      for(const r of _all){ const _mn=(r.m||'').startsWith((r.b||'')+' ')?(r.m||'').slice((r.b||'').length+1):(r.m||''); _dd[(r.b||'')+'||'+_mn+'||'+(r.s||'')] = r; }
       _catalogCache = Object.values(_dd);
     }
     // catalogKey検索用Mapも同時に構築
@@ -3172,10 +3174,12 @@ window.addEventListener('storageReady', function(){
       }
       return item;
     });
-    // 同一ブランド+銘柄+サイズの重複除去（後勝ち）
+    // 同一ブランド+銘柄+サイズの重複除去（ブランドプレフィックス付き/なし両対応、後勝ち）
     const _dedup = {};
     for(const item of _raw){
-      const key = (item.b||'')+'||'+(item.m||'')+'||'+(item.s||'');
+      // "ALENZA LX100" と "LX100" を同一視：先頭のブランド名+スペースを除去して正規化
+      const _mNorm = (item.m||'').startsWith((item.b||'')+' ') ? (item.m||'').slice((item.b||'').length+1) : (item.m||'');
+      const key = (item.b||'')+'||'+_mNorm+'||'+(item.s||'');
       _dedup[key] = item;
     }
     importedItems = Object.values(_dedup);
