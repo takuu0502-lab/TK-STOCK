@@ -1603,8 +1603,11 @@
 
     <div class="pricing-section-divider"></div>
     <div class="pricing-section-title">🔍 重複商品管理</div>
-    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">同じJANコードで複数登録されている商品を一覧表示します。不要な重複を削除できます。</p>
-    <button class="btn btn-ghost btn-sm" id="showDuplicatesBtn">🔍 重複商品を確認する</button>
+    <p style="font-size:12.5px;color:var(--text-2);margin-top:-4px;margin-bottom:14px;line-height:1.7;">同じJANコード、または同じ商品名＋メーカーで複数登録されている商品を一覧表示します。不要な重複を削除できます。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+      <button class="btn btn-ghost btn-sm" id="showDuplicatesBtn">🔍 JANコード重複を確認する</button>
+      <button class="btn btn-ghost btn-sm" id="showNameDuplicatesBtn">🔍 商品名重複を確認する</button>
+    </div>
     <div id="duplicatesResult" style="margin-top:12px;"></div>
 
     <div style="margin-top:20px;padding:14px 16px;background:var(--red-dim);border:1px solid var(--red);border-radius:8px;">
@@ -11035,6 +11038,66 @@ window.addEventListener('storageReady', function(){
           try{ renderProductTable(); }catch(e){}
           // ボタン再クリックで一覧更新
           document.getElementById('showDuplicatesBtn').click();
+        });
+      });
+    });
+
+    // 商品名+メーカー重複チェック
+    document.getElementById('showNameDuplicatesBtn').addEventListener('click', ()=>{
+      const resultEl = document.getElementById('duplicatesResult');
+      // 商品名（正規化）＋メーカー＋規格 でグループ化
+      const byNameBrand = {};
+      products.forEach(p=>{
+        const key = (cleanName(p.name)||'').trim()+'||'+(p.brand||'').trim();
+        if(!key || key === '||') return;
+        if(!byNameBrand[key]) byNameBrand[key] = [];
+        byNameBrand[key].push(p);
+      });
+      const dupGroups = Object.entries(byNameBrand).filter(([,arr])=>arr.length>1);
+      if(dupGroups.length === 0){
+        resultEl.innerHTML = '<div style="padding:12px;background:var(--teal-light);border-radius:8px;color:var(--teal);font-size:13px;font-weight:600;">✅ 商品名＋メーカーが重複している商品はありません</div>';
+        return;
+      }
+      let html = '<div style="font-size:13px;color:var(--text-2);margin-bottom:10px;">'+dupGroups.length+'件の商品名＋メーカーで重複が見つかりました。</div>';
+      dupGroups.forEach(([key, arr])=>{
+        const [name, brand] = key.split('||');
+        html += '<div style="background:var(--bg-2,#f5f3f0);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px;">';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:8px;">'+escapeHtml(name)+(brand?' <span style="font-size:11px;color:var(--text-3);font-weight:400;">('+escapeHtml(brand)+')</span>':'')+'</div>';
+        arr.forEach(p=>{
+          const _br = p.branchId||'taniyabe';
+          const _stk = p.branchStock ? Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0) : (p.stock||0);
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:white;border-radius:7px;margin-bottom:6px;">'
+            + '<div style="flex:1;">'
+            + '<div style="font-size:12px;color:var(--text-2);">'
+            + '規格: <b>'+escapeHtml(p.spec||'—')+'</b>'
+            + ' ／ 支店: '+escapeHtml(branchName(_br))
+            + ' ／ 在庫合計: <b style="color:'+((_stk>0)?'var(--teal)':'var(--red)')+';">'+_stk+'</b>'
+            + (p.barcode?' ／ JAN: '+escapeHtml(p.barcode):'')
+            + (p.createdAt?' ／ 登録: '+p.createdAt.slice(0,10):'')
+            + '</div>'
+            + '</div>'
+            + '<button class="btn btn-ghost btn-sm" style="font-size:11px;white-space:nowrap;margin-right:4px;" data-ndup-edit="'+escapeHtml(p.id)+'">編集</button>'
+            + '<button class="btn btn-red btn-sm" style="font-size:11px;white-space:nowrap;" data-ndup-del="'+escapeHtml(p.id)+'">削除</button>'
+            + '</div>';
+        });
+        html += '</div>';
+      });
+      resultEl.innerHTML = html;
+      resultEl.querySelectorAll('[data-ndup-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ openEditModal(btn.dataset.ndupEdit); });
+      });
+      resultEl.querySelectorAll('[data-ndup-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const pid = btn.dataset.ndupDel;
+          const p = products.find(x=>x.id===pid);
+          if(!p) return;
+          const ok = await showConfirm('「'+cleanName(p.name)+'」規格:'+( p.spec||'—')+'（'+branchName(p.branchId||'taniyabe')+'）を削除しますか？\nこの操作は取り消せません。');
+          if(!ok) return;
+          const idx = products.findIndex(x=>x.id===pid);
+          if(idx>=0) products.splice(idx,1);
+          await saveProducts();
+          try{ renderProductTable(); }catch(e){}
+          document.getElementById('showNameDuplicatesBtn').click();
         });
       });
     });
