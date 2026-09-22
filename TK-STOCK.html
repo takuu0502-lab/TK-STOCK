@@ -10106,7 +10106,57 @@ window.addEventListener('storageReady', function(){
           scInput.value = '';
         }
       });
+      // フォーカスが外れたとき自動で戻す（モーダルや他のUI操作中は除く）
+      scInput.addEventListener('blur', ()=>{
+        setTimeout(()=>{
+          const activeEl = document.activeElement;
+          // モーダル・ボタン・数値入力以外にフォーカスが行った場合は戻す
+          if(activeEl && activeEl !== scInput &&
+             !activeEl.closest('#barcodeSelectModal') &&
+             activeEl.tagName !== 'BUTTON' &&
+             activeEl.id !== 'scScanQtyEdit' &&
+             activeEl.type !== 'number'){
+            scInput.focus();
+          }
+        }, 200);
+      });
     }
+    // ドキュメントレベルのキーダウンでバーコードスキャナーの入力を補足
+    // （他の要素にフォーカスが当たっていても、数字列+Enterはスキャナーとして処理）
+    let _scBuffer = '';
+    let _scBufferTimer = null;
+    function _scDocKeydown(e){
+      if(stockcountPhase !== 'counting') return;
+      // 入力フォーカスがテキスト系の入力フィールドならスキップ（ユーザーの手入力を妨げない）
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      const type = document.activeElement ? (document.activeElement.type||'') : '';
+      const isUserInput = (tag === 'INPUT' && (type==='text'||type==='search'||type==='number')) || tag === 'TEXTAREA';
+      // scBarcodeInput自体はここで処理しない（上のリスナーが担当）
+      if(document.activeElement && document.activeElement.id === 'scBarcodeInput') return;
+      if(isUserInput) return;
+      if(e.key === 'Enter'){
+        if(_scBuffer.length >= 4){
+          _handleStockcountBarcode(_scBuffer.trim());
+        }
+        _scBuffer = '';
+        if(_scBufferTimer){ clearTimeout(_scBufferTimer); _scBufferTimer = null; }
+        return;
+      }
+      if(e.key.length === 1){
+        _scBuffer += e.key;
+        if(_scBufferTimer) clearTimeout(_scBufferTimer);
+        _scBufferTimer = setTimeout(()=>{ _scBuffer = ''; }, 500);
+      }
+    }
+    document.addEventListener('keydown', _scDocKeydown);
+    // このビューが破棄されるときにリスナーを解除
+    const _scCleanupObserver = new MutationObserver(()=>{
+      if(!document.getElementById('scBarcodeInput')){
+        document.removeEventListener('keydown', _scDocKeydown);
+        _scCleanupObserver.disconnect();
+      }
+    });
+    _scCleanupObserver.observe(document.body, {childList:true, subtree:true});
     const scCameraBtn = document.getElementById('scCameraBtn');
     if(scCameraBtn){
       scCameraBtn.addEventListener('click', ()=>{
@@ -10176,13 +10226,14 @@ window.addEventListener('storageReady', function(){
     currentStockcountDraft.counts[p.id] = newCount;
     await saveStockcountDraft();
 
-    // リスト側の入力欄・ボーダーを即時更新
-    const listRow = wrap.querySelector('[data-pid="'+p.id+'"]');
+    // リスト側の入力欄・ボーダーを即時更新（wrap はスコープ外のため getElementById で取得）
+    const _scWrap = document.getElementById('stockcountContent');
+    const listRow = _scWrap ? _scWrap.querySelector('[data-pid="'+p.id+'"]') : null;
     if(listRow){ listRow.value = newCount; listRow.closest('div[style]').style.borderColor='var(--teal)'; }
     // ヘッダーの件数表示を更新
-    const totalAll2 = brProducts.length;
+    const totalAll2 = _scWrap ? _scWrap.querySelectorAll('[data-pid]').length : 0;
     const countedNow = Object.keys(currentStockcountDraft.counts).length;
-    const subEl = wrap.querySelector('[style*="入力済み"]');
+    const subEl = _scWrap ? _scWrap.querySelector('[style*="入力済み"]') : null;
     if(subEl) subEl.textContent = '入力済み '+countedNow+' / '+totalAll2+' 件';
     const goBtn = document.getElementById('scGoReview');
     if(goBtn) goBtn.textContent = '差異を確認する（'+countedNow+'件入力済み）';
