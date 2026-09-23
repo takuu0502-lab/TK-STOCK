@@ -1776,9 +1776,13 @@
           <input type="text" id="ptBrand" placeholder="例：ブリヂストン" style="width:100%;box-sizing:border-box;">
         </div>
         <div class="field" style="flex:1;min-width:160px;position:relative;">
-          <label>対象銘柄</label>
-          <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;" autocomplete="off">
+          <label>対象銘柄（複数可）</label>
+          <div id="ptModelChipsWrap" style="display:flex;flex-wrap:wrap;gap:5px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);cursor:text;min-height:38px;align-items:center;" onclick="document.getElementById('ptModelInput').focus()">
+            <div id="ptModelChips" style="display:contents;"></div>
+            <input type="text" id="ptModelInput" placeholder="銘柄を入力…" style="border:none;outline:none;background:transparent;color:var(--text-1);font-size:13px;min-width:120px;flex:1;" autocomplete="off">
+          </div>
           <div id="ptModelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:9999;max-height:200px;overflow-y:auto;"></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Enterまたは選択で追加。空欄=全銘柄共通</div>
           <label style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;font-weight:400;cursor:pointer;">
             <input type="checkbox" id="ptModelExact" style="accent-color:var(--teal);width:14px;height:14px;"> 完全一致で照合する
           </label>
@@ -14561,10 +14565,11 @@ window.addEventListener('storageReady', function(){
     let best = null, bestScore = -1;
     for(const t of popTemplates){
       const tb = (t.brand || '').trim();
-      const tm = (t.model || '').trim();
+      // models配列 or 旧model文字列に対応
+      const tmList = Array.isArray(t.models) && t.models.length > 0 ? t.models : (t.model ? [t.model] : []);
       const branchList = Array.isArray(t.branch) ? t.branch : (t.branch ? [t.branch] : []);
       const matchBrand  = !tb || brand.startsWith(tb);
-      const matchModel  = !tm || (t.modelExact ? model === tm : model.includes(tm));
+      const matchModel  = tmList.length === 0 || tmList.some(tm => t.modelExact ? model === tm.trim() : model.includes(tm.trim()));
       const matchBranch = branchList.length === 0 || branchList.includes(myBranchId);
       // 製造年条件：テンプレートにmfgYearMaxが設定されている場合、商品の製造年がそれ以下でないとマッチしない
       const matchMfgYear = !t.mfgYearMax || (productMfgYear && productMfgYear <= t.mfgYearMax);
@@ -14611,7 +14616,8 @@ window.addEventListener('storageReady', function(){
     wrap.innerHTML = popTemplates.map((t, i) => {
       const branchLabel = {'taniyabe':'谷田部店','katsuta':'勝田店','iwama':'岩間店'};
       const brandTag  = t.brand ? `<span style="background:var(--amber);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(t.brand)}</span>` : '';
-      const modelTag  = t.model ? `<span style="background:var(--teal);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(t.model)}</span>` : '<span style="font-size:11px;color:var(--text-3);">全商品共通</span>';
+      const _tmList = Array.isArray(t.models) && t.models.length > 0 ? t.models : (t.model ? [t.model] : []);
+      const modelTag  = _tmList.length > 0 ? _tmList.map(m=>`<span style="background:var(--teal);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(m)}</span>`).join(' ') : '<span style="font-size:11px;color:var(--text-3);">全商品共通</span>';
       const bList = Array.isArray(t.branch) ? t.branch : (t.branch ? [t.branch] : []);
       const branchTag = bList.length > 0
         ? bList.map(b => `<span style="background:#6366f1;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;">${escapeHtml(branchLabel[b]||b)}</span>`).join('')
@@ -14783,7 +14789,11 @@ window.addEventListener('storageReady', function(){
     const t = (_editingPopTemplateIdx !== null) ? popTemplates[_editingPopTemplateIdx] : null;
     document.getElementById('ptName').value   = t ? (t.name   || '') : '';
     document.getElementById('ptBrand').value  = t ? (t.brand  || '') : '';
-    document.getElementById('ptModel').value  = t ? (t.model  || '') : '';
+    // models配列 or 旧model文字列を読み込み
+    _ptModels = t ? (Array.isArray(t.models) ? t.models.slice() : (t.model ? [t.model] : [])) : [];
+    _ptRenderModelChips();
+    const _ptModelInp = document.getElementById('ptModelInput');
+    if(_ptModelInp) _ptModelInp.value = '';
     document.getElementById('ptModelExact').checked = t ? !!t.modelExact : false;
     const savedBranches = t ? (Array.isArray(t.branch) ? t.branch : (t.branch ? [t.branch] : [])) : [];
     document.querySelectorAll('.pt-branch-chk').forEach(chk => { chk.checked = savedBranches.includes(chk.value); });
@@ -14966,15 +14976,38 @@ window.addEventListener('storageReady', function(){
     if(w){ w.document.write(finalHtml); w.document.close(); }
   });
 
-  // 対象銘柄サジェスト
+  // 対象銘柄 チップ入力＋サジェスト
+  let _ptModels = []; // 選択中の銘柄配列
+  function _ptRenderModelChips(){
+    const wrap = document.getElementById('ptModelChips');
+    if(!wrap) return;
+    wrap.innerHTML = _ptModels.map((m,i)=>`
+      <span style="display:inline-flex;align-items:center;gap:4px;background:var(--teal);color:#fff;font-size:12px;padding:3px 8px;border-radius:20px;white-space:nowrap;">
+        ${escapeHtml(m)}
+        <span data-chip-i="${i}" style="cursor:pointer;font-size:14px;line-height:1;opacity:.8;" onmousedown="event.preventDefault();">×</span>
+      </span>`).join('');
+    wrap.querySelectorAll('[data-chip-i]').forEach(x=>{
+      x.addEventListener('mousedown', ()=>{
+        _ptModels.splice(Number(x.dataset.chipI), 1);
+        _ptRenderModelChips();
+      });
+    });
+  }
+  function _ptAddModel(name){
+    name = name.trim();
+    if(!name || _ptModels.includes(name)) return;
+    _ptModels.push(name);
+    _ptRenderModelChips();
+    const inp = document.getElementById('ptModelInput');
+    if(inp){ inp.value=''; inp.focus(); }
+  }
   (function(){
-    const inp = document.getElementById('ptModel');
+    const inp = document.getElementById('ptModelInput');
     const sug = document.getElementById('ptModelSuggest');
     if(!inp || !sug) return;
     function _showSuggest(){
       const brand = (document.getElementById('ptBrand').value||'').trim().toLowerCase();
       const q = inp.value.trim().toLowerCase();
-      // productsから銘柄一覧を生成（ブランド絞り込み＋入力で絞り込み）
       const _tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
       const names = [...new Set(
         products
@@ -14991,10 +15024,7 @@ window.addEventListener('storageReady', function(){
       if(names.length === 0){ sug.style.display='none'; return; }
       sug.innerHTML = names.map(n=>`<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-soft);" onmousedown="event.preventDefault();">${escapeHtml(n)}</div>`).join('');
       sug.querySelectorAll('div').forEach(d=>{
-        d.addEventListener('mousedown', ()=>{
-          inp.value = d.textContent;
-          sug.style.display='none';
-        });
+        d.addEventListener('mousedown', ()=>{ _ptAddModel(d.textContent); sug.style.display='none'; });
         d.addEventListener('mouseover', ()=>{ d.style.background='var(--bg-2)'; });
         d.addEventListener('mouseout',  ()=>{ d.style.background=''; });
       });
@@ -15003,6 +15033,10 @@ window.addEventListener('storageReady', function(){
     inp.addEventListener('input', _showSuggest);
     inp.addEventListener('focus', _showSuggest);
     inp.addEventListener('blur', ()=>{ setTimeout(()=>{ sug.style.display='none'; }, 150); });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); const v=inp.value.trim(); if(v){ _ptAddModel(v); sug.style.display='none'; } }
+      if(e.key==='Backspace' && !inp.value && _ptModels.length){ _ptModels.pop(); _ptRenderModelChips(); }
+    });
     document.getElementById('ptBrand').addEventListener('input', ()=>{ if(document.activeElement===inp) _showSuggest(); });
   })();
 
@@ -15013,7 +15047,8 @@ window.addEventListener('storageReady', function(){
   document.getElementById('ptSaveBtn').addEventListener('click', async () => {
     const name        = document.getElementById('ptName').value.trim();
     const brand       = document.getElementById('ptBrand').value.trim();
-    const model       = document.getElementById('ptModel').value.trim();
+    const models      = _ptModels.slice(); // 銘柄配列
+    const model       = models[0] || '';   // 後方互換用
     const modelExact  = document.getElementById('ptModelExact').checked;
     const branch = [...document.querySelectorAll('.pt-branch-chk:checked')].map(c => c.value); // [] = 全支店
     const _mfgYearMaxRaw = document.getElementById('ptMfgYearMax').value.trim();
@@ -15026,11 +15061,11 @@ window.addEventListener('storageReady', function(){
     let entry;
     if(type === 'pdf'){
       if(!_ptCurrentPdfBase64){ msg.innerHTML = '<div class="msg msg-err">PDFをアップロードしてください。</div>'; return; }
-      entry = { name, brand, model, modelExact, mfgYearMax, wheelPrice4, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
+      entry = { name, brand, model, models, modelExact, mfgYearMax, wheelPrice4, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
     } else {
       const html = document.getElementById('ptHtml').value.trim();
       if(!html){ msg.innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
-      entry = { name, brand, model, modelExact, mfgYearMax, wheelPrice4, branch, type: 'html', orient: _ptCurrentOrient, html };
+      entry = { name, brand, model, models, modelExact, mfgYearMax, wheelPrice4, branch, type: 'html', orient: _ptCurrentOrient, html };
     }
     msg.innerHTML = '<div class="msg msg-ok">保存中…</div>';
     if(_editingPopTemplateIdx !== null){
