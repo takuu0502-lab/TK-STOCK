@@ -14518,6 +14518,18 @@ window.addEventListener('storageReady', function(){
     const price1Tax  = retailPrice ? Math.floor(retailPrice * 1.1) : null;
     const sell4Tax   = sp ? Math.floor(sp * 1.1) * 4 : null;
     const openPrice4 = retailPrice ? Math.floor(retailPrice * 1.1) * 4 : null;
+    // ホイール4本価格：手動設定 > ホイールメニュー梅（ベーシック）自動取得
+    let _wp4 = wheelPrice4 ? Number(wheelPrice4) : null;
+    if(!_wp4){
+      const _inchMatch = sizeStr.match(/R(\d+)/i);
+      if(_inchMatch){
+        const _inch = _inchMatch[1];
+        const _wKey = getWheelMenuKey(_inch, '');
+        const _wTiers = (wheelMenuSettings[_wKey]||[]).filter(t=>t.name||t.price);
+        const _basic = _wTiers[0];
+        if(_basic && _basic.price) _wp4 = Math.floor(Number(_basic.price) * 1.1) * 4;
+      }
+    }
     const branchName = currentUser ? (currentUser.branchName || currentUser.branchId || '') : '';
 
     const priceBlock = price1Tax
@@ -14533,7 +14545,7 @@ window.addEventListener('storageReady', function(){
       .replace(/\{\{PRICE_1\}\}/g,      price1Tax   ? '¥'+price1Tax.toLocaleString('ja-JP')   : '―')
       .replace(/\{\{PRICE_4\}\}/g,      sell4Tax    ? '¥'+sell4Tax.toLocaleString('ja-JP')    : '―')
       .replace(/\{\{OPEN_PRICE_4\}\}/g, openPrice4  ? '¥'+openPrice4.toLocaleString('ja-JP')  : '―')
-      .replace(/\{\{WHEEL_PRICE_4\}\}/g, wheelPrice4 ? '¥'+Number(wheelPrice4).toLocaleString('ja-JP') : '―')
+      .replace(/\{\{WHEEL_PRICE_4\}\}/g, _wp4 ? '¥'+_wp4.toLocaleString('ja-JP') : '―')
       .replace(/\{\{PRICE_BLOCK\}\}/g,  priceBlock)
       .replace(/\{\{SHOP\}\}/g,         escapeHtml(branchName));
   }
@@ -14834,7 +14846,18 @@ window.addEventListener('storageReady', function(){
       const price1Tax   = retailPrice ? Math.floor(retailPrice * 1.1) : null;
       const sell4Tax    = sp ? Math.floor(sp * 1.1) * 4 : null;
       const openPrice4  = retailPrice ? Math.floor(retailPrice * 1.1) * 4 : null;
-      const wheelPrice4 = template.wheelPrice4 ? Number(template.wheelPrice4) : null;
+      // ホイール4本価格：手動設定 > ホイールメニュー梅（ベーシック）自動取得
+      let wheelPrice4 = template.wheelPrice4 ? Number(template.wheelPrice4) : null;
+      if(!wheelPrice4){
+        const _inchMatch = (p.spec||'').match(/R(\d+)/i);
+        if(_inchMatch){
+          const _inch = _inchMatch[1];
+          const _wKey = getWheelMenuKey(_inch, '');
+          const _wTiers = (wheelMenuSettings[_wKey]||[]).filter(t=>t.name||t.price);
+          const _basic = _wTiers[0]; // 梅＝ベーシック
+          if(_basic && _basic.price) wheelPrice4 = Math.floor(Number(_basic.price) * 1.1) * 4;
+        }
+      }
       const MM = 2.83465; // 1mm in pt
 
       const values = {
