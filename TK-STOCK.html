@@ -1775,9 +1775,10 @@
           <label>対象ブランド（前方一致）</label>
           <input type="text" id="ptBrand" placeholder="例：ブリヂストン" style="width:100%;box-sizing:border-box;">
         </div>
-        <div class="field" style="flex:1;min-width:160px;">
+        <div class="field" style="flex:1;min-width:160px;position:relative;">
           <label>対象銘柄</label>
-          <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;">
+          <input type="text" id="ptModel" placeholder="例：REGNO GR-XⅢ" style="width:100%;box-sizing:border-box;" autocomplete="off">
+          <div id="ptModelSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:9999;max-height:200px;overflow-y:auto;"></div>
           <label style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;font-weight:400;cursor:pointer;">
             <input type="checkbox" id="ptModelExact" style="accent-color:var(--teal);width:14px;height:14px;"> 完全一致で照合する
           </label>
@@ -14964,6 +14965,44 @@ window.addEventListener('storageReady', function(){
     const w = window.open('', '_blank', 'width=900,height=700');
     if(w){ w.document.write(finalHtml); w.document.close(); }
   });
+
+  // 対象銘柄サジェスト
+  (function(){
+    const inp = document.getElementById('ptModel');
+    const sug = document.getElementById('ptModelSuggest');
+    if(!inp || !sug) return;
+    function _showSuggest(){
+      const brand = (document.getElementById('ptBrand').value||'').trim().toLowerCase();
+      const q = inp.value.trim().toLowerCase();
+      // productsから銘柄一覧を生成（ブランド絞り込み＋入力で絞り込み）
+      const names = [...new Set(
+        products
+          .filter(p => {
+            const pb = (p.brand||'').toLowerCase();
+            if(brand && !pb.startsWith(brand)) return false;
+            const nm = cleanName(p.name||'').toLowerCase();
+            return !q || nm.includes(q);
+          })
+          .map(p => cleanName(p.name||''))
+          .filter(Boolean)
+      )].sort().slice(0, 30);
+      if(names.length === 0){ sug.style.display='none'; return; }
+      sug.innerHTML = names.map(n=>`<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-soft);" onmousedown="event.preventDefault();">${escapeHtml(n)}</div>`).join('');
+      sug.querySelectorAll('div').forEach(d=>{
+        d.addEventListener('mousedown', ()=>{
+          inp.value = d.textContent;
+          sug.style.display='none';
+        });
+        d.addEventListener('mouseover', ()=>{ d.style.background='var(--bg-2)'; });
+        d.addEventListener('mouseout',  ()=>{ d.style.background=''; });
+      });
+      sug.style.display='block';
+    }
+    inp.addEventListener('input', _showSuggest);
+    inp.addEventListener('focus', _showSuggest);
+    inp.addEventListener('blur', ()=>{ setTimeout(()=>{ sug.style.display='none'; }, 150); });
+    document.getElementById('ptBrand').addEventListener('input', ()=>{ if(document.activeElement===inp) _showSuggest(); });
+  })();
 
   document.getElementById('ptCancelBtn').addEventListener('click', () => {
     document.getElementById('popTemplateModal').classList.remove('show');
