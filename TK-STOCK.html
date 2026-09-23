@@ -14692,17 +14692,35 @@ window.addEventListener('storageReady', function(){
       const curFont = f.font || 'HelveticaBold';
       const fontSel = fontOpts.replace(`value="${curFont}"`, `value="${curFont}" selected`);
       const alignSel = alignOpts.replace(`value="${f.align}"`, `value="${f.align}" selected`);
+      const enabled = f.enabled !== false; // デフォルトtrue
+      const disabledStyle = enabled ? '' : 'opacity:0.35;pointer-events:none;';
       return `
-      <tr style="border-top:1px solid var(--line);">
-        <td style="padding:6px 8px;font-weight:600;color:var(--text-1);white-space:nowrap;">${f.label}</td>
-        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fx" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.x}"></td>
-        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fy" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.y}"></td>
-        <td style="padding:4px 4px;text-align:center;"><input type="number" class="pt-fs" data-i="${i}" style="width:52px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.size}"></td>
-        <td style="padding:4px 4px;text-align:center;"><select class="pt-ff" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:11px;max-width:160px;">${fontSel}</select></td>
-        <td style="padding:4px 4px;text-align:center;"><input type="color" class="pt-fc" data-i="${i}" style="width:38px;height:28px;border:none;cursor:pointer;background:none;" value="${f.color}"></td>
-        <td style="padding:4px 4px;text-align:center;"><select class="pt-fa" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;">${alignSel}</select></td>
+      <tr style="border-top:1px solid var(--line);" id="pt-row-${i}">
+        <td style="padding:6px 8px;white-space:nowrap;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" class="pt-fe" data-i="${i}" ${enabled?'checked':''} style="width:16px;height:16px;cursor:pointer;" title="表示する">
+          <span style="font-weight:600;color:var(--text-1);">${f.label}</span>
+        </td>
+        <td style="padding:4px 4px;text-align:center;${disabledStyle}"><input type="number" class="pt-fx" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.x}"></td>
+        <td style="padding:4px 4px;text-align:center;${disabledStyle}"><input type="number" class="pt-fy" data-i="${i}" style="width:58px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.y}"></td>
+        <td style="padding:4px 4px;text-align:center;${disabledStyle}"><input type="number" class="pt-fs" data-i="${i}" style="width:52px;padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;" value="${f.size}"></td>
+        <td style="padding:4px 4px;text-align:center;${disabledStyle}"><select class="pt-ff" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:11px;max-width:160px;">${fontSel}</select></td>
+        <td style="padding:4px 4px;text-align:center;${disabledStyle}"><input type="color" class="pt-fc" data-i="${i}" style="width:38px;height:28px;border:none;cursor:pointer;background:none;" value="${f.color}"></td>
+        <td style="padding:4px 4px;text-align:center;${disabledStyle}"><select class="pt-fa" data-i="${i}" style="padding:4px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-1);color:var(--text-1);font-size:12px;">${alignSel}</select></td>
       </tr>`;
     }).join('');
+    // チェックボックスで行の有効/無効を切り替え
+    tbody.querySelectorAll('.pt-fe').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const i = chk.dataset.i;
+        const row = document.getElementById('pt-row-'+i);
+        if(!row) return;
+        const cells = row.querySelectorAll('td:not(:first-child)');
+        cells.forEach(td => {
+          td.style.opacity = chk.checked ? '' : '0.35';
+          td.style.pointerEvents = chk.checked ? '' : 'none';
+        });
+      });
+    });
   }
 
   function _ptReadFields(){
@@ -14712,6 +14730,7 @@ window.addEventListener('storageReady', function(){
     // DOMのデータ-i最大値でフィールド配列サイズを確定
     const _maxI = Math.max(...[...document.querySelectorAll('.pt-fx')].map(el=>Number(el.dataset.i)), -1);
     const fields = _base.slice(0, _maxI + 1 > 0 ? Math.max(_maxI + 1, _base.length) : _base.length);
+    document.querySelectorAll('.pt-fe').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].enabled = el.checked; });
     document.querySelectorAll('.pt-fx').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].x = Number(el.value)||0; });
     document.querySelectorAll('.pt-fy').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].y = Number(el.value)||0; });
     document.querySelectorAll('.pt-fs').forEach(el => { const i = Number(el.dataset.i); if(fields[i]) fields[i].size = Number(el.value)||14; });
@@ -14802,6 +14821,7 @@ window.addEventListener('storageReady', function(){
       };
 
       for(const field of (template.pdfFields || [])){
+        if(field.enabled === false) continue;
         const text = values[field.key] || '';
         if(!text) continue;
         const fs   = field.size || 14;
