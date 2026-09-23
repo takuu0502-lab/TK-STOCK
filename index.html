@@ -14975,9 +14975,11 @@ window.addEventListener('storageReady', function(){
       const brand = (document.getElementById('ptBrand').value||'').trim().toLowerCase();
       const q = inp.value.trim().toLowerCase();
       // productsから銘柄一覧を生成（ブランド絞り込み＋入力で絞り込み）
+      const _tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
       const names = [...new Set(
         products
           .filter(p => {
+            if(_tireCatId && p.majorId !== _tireCatId) return false;
             const pb = (p.brand||'').toLowerCase();
             if(brand && !pb.startsWith(brand)) return false;
             const nm = cleanName(p.name||'').toLowerCase();
