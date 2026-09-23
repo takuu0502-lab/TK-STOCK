@@ -14525,8 +14525,8 @@ window.addEventListener('storageReady', function(){
       if(_inchMatch){
         const _inch = _inchMatch[1];
         const _wKey = getWheelMenuKey(_inch, '');
-        const _wTiers = (wheelMenuSettings[_wKey]||[]).filter(t=>t.name||t.price);
-        const _basic = _wTiers[0];
+        const _allWTiers = wheelMenuSettings[_wKey] || [];
+        const _basic = _allWTiers.find(t => t.label === '梅');
         if(_basic && _basic.price) _wp4 = Math.floor(Number(_basic.price) * 1.1) * 4;
       }
     }
@@ -14853,8 +14853,9 @@ window.addEventListener('storageReady', function(){
         if(_inchMatch){
           const _inch = _inchMatch[1];
           const _wKey = getWheelMenuKey(_inch, '');
-          const _wTiers = (wheelMenuSettings[_wKey]||[]).filter(t=>t.name||t.price);
-          const _basic = _wTiers[0]; // 梅＝ベーシック
+          const _allWTiers = wheelMenuSettings[_wKey] || [];
+          // ラベルで梅を直接検索（filterで除外されないよう）
+          const _basic = _allWTiers.find(t => t.label === '梅');
           if(_basic && _basic.price) wheelPrice4 = Math.floor(Number(_basic.price) * 1.1) * 4;
         }
       }
