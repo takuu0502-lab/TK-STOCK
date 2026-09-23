@@ -1822,7 +1822,8 @@
           <strong>使用できるプレースホルダー：</strong><br>
           <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{BRAND}}</code> ブランド名 &nbsp;
           <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{MODEL}}</code> 商品名（銘柄） &nbsp;
-          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SIZE}}</code> タイヤサイズ<br>
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SIZE}}</code> タイヤサイズ &nbsp;
+          <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{SIZE_WINTER}}</code> タイヤサイズ（冬）<br>
           <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_1}}</code> 1本税込価格 &nbsp;
           <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{PRICE_4}}</code> 4本セット税込価格 &nbsp;
           <code style="background:var(--bg-3);padding:1px 5px;border-radius:4px;">{{OPEN_PRICE_4}}</code> メーカー希望小売価格4本合計（税込）&nbsp;
@@ -14528,6 +14529,7 @@ window.addEventListener('storageReady', function(){
       .replace(/\{\{BRAND\}\}/g,        escapeHtml(brand))
       .replace(/\{\{MODEL\}\}/g,        escapeHtml(model))
       .replace(/\{\{SIZE\}\}/g,         escapeHtml(sizeStr))
+      .replace(/\{\{SIZE_WINTER\}\}/g,   escapeHtml(sizeStr))
       .replace(/\{\{PRICE_1\}\}/g,      price1Tax   ? '¥'+price1Tax.toLocaleString('ja-JP')   : '―')
       .replace(/\{\{PRICE_4\}\}/g,      sell4Tax    ? '¥'+sell4Tax.toLocaleString('ja-JP')    : '―')
       .replace(/\{\{OPEN_PRICE_4\}\}/g, openPrice4  ? '¥'+openPrice4.toLocaleString('ja-JP')  : '―')
@@ -14639,6 +14641,7 @@ window.addEventListener('storageReady', function(){
   // デフォルトフィールド定義（PDF用）
   const _PT_DEFAULT_FIELDS = [
     { key: 'SIZE',         label: 'タイヤサイズ',                  x: 105, y: 148, size: 42, font: 'HelveticaBold', color: '#111111', align: 'center' },
+    { key: 'SIZE_WINTER',  label: 'タイヤサイズ（冬）',             x: 105, y: 160, size: 42, font: 'HelveticaBold', color: '#111111', align: 'center', enabled: false },
     { key: 'PRICE_1',      label: '1本税込価格',                   x: 105, y: 198, size: 52, font: 'HelveticaBold', color: '#c8102e', align: 'center' },
     { key: 'PRICE_4',      label: '4本セット税込価格',              x: 105, y: 248, size: 32, font: 'HelveticaBold', color: '#ffffff', align: 'center' },
     { key: 'OPEN_PRICE_4', label: 'メーカー希望小売価格4本合計(税込)', x: 105, y: 290, size: 24, font: 'HelveticaBold', color: '#111111', align: 'center' },
@@ -14835,10 +14838,11 @@ window.addEventListener('storageReady', function(){
       const MM = 2.83465; // 1mm in pt
 
       const values = {
-        SIZE:         p.spec || '',
-        PRICE_1:      price1Tax   ? price1Tax.toLocaleString('ja-JP')   : '',
-        PRICE_4:      sell4Tax    ? sell4Tax.toLocaleString('ja-JP')    : '',
-        OPEN_PRICE_4: openPrice4  ? openPrice4.toLocaleString('ja-JP')  : '',
+        SIZE:          p.spec || '',
+        SIZE_WINTER:   p.spec || '',
+        PRICE_1:       price1Tax   ? price1Tax.toLocaleString('ja-JP')   : '',
+        PRICE_4:       sell4Tax    ? sell4Tax.toLocaleString('ja-JP')    : '',
+        OPEN_PRICE_4:  openPrice4  ? openPrice4.toLocaleString('ja-JP')  : '',
         WHEEL_PRICE_4: wheelPrice4 ? wheelPrice4.toLocaleString('ja-JP') : '',
       };
 
