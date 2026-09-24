@@ -11139,6 +11139,16 @@ window.addEventListener('storageReady', function(){
             if(_detailInschRefresh) _detailInschRefresh();
           }
           _lnkArea2.style.display = 'none';
+        } else {
+          // リンクエリア非表示でも残っている入庫予定を自動完了
+          const _scanBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+          const _scanPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_scanBr&&s.productId===p.id);
+          if(_scanPendInsch.length > 0){
+            _scanPendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
+            await saveIncomingSchedules();
+            renderIncomingScheduleList();
+            if(_detailInschRefresh) _detailInschRefresh();
+          }
         }
         const _scanPrintOpts = _linkedCo ? { customerName: _linkedCo.customerName, installDate: _linkedCo.installDate||'' } : {};
         const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'枚');
@@ -15989,6 +15999,16 @@ window.addEventListener('storageReady', function(){
     };
     transactions.unshift(_tx);
     await saveTransactions();
+    // 入庫時：この商品の保留中入庫予定を自動完了
+    if(kind === 'in'){
+      const _disBr = getOperationBranch();
+      const _pendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_disBr&&s.productId===pFresh.id);
+      if(_pendInsch.length > 0){
+        _pendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
+        await saveIncomingSchedules();
+        renderIncomingScheduleList();
+      }
+    }
     try{ renderCatTree(); }catch(e){ console.error('renderCatTree error', e); }
     try{ renderProductTable(); }catch(e){ console.error('renderProductTable error', e); }
     try{ renderHistory(); }catch(e){ console.error('renderHistory error', e); }
