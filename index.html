@@ -14305,8 +14305,7 @@ window.addEventListener('storageReady', function(){
 
   function _syncYearStockToStockField(){
     const years = Object.keys(_modalYearStock);
-    if(years.length === 0) return;
-    const total = Object.values(_modalYearStock).reduce((s,v)=>s+(v||0),0);
+    const total = years.length === 0 ? 0 : Object.values(_modalYearStock).reduce((s,v)=>s+(v||0),0);
     const stockEl = document.getElementById('f_stock');
     if(stockEl) stockEl.value = total;
   }
@@ -16174,7 +16173,10 @@ window.addEventListener('storageReady', function(){
         _ysKeys.forEach(yr=>{ if((_modalYearStock[yr]||0) > 0) p._branchYearStock[_editBranch][yr] = _modalYearStock[yr]; });
         recalcBranchStockFromYearStock(p);
       } else {
-        // 年別在庫なし → 通常の在庫数をそのまま使用
+        // 年別在庫なし → 通常の在庫数をそのまま使用（年別在庫データもクリア）
+        if(p._branchYearStock && p._branchYearStock[_editBranch]){
+          delete p._branchYearStock[_editBranch];
+        }
         p.branchStock[_editBranch] = stock;
       }
       if(!p.branchLocation) p.branchLocation = {};
