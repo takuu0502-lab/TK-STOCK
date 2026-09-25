@@ -4657,6 +4657,17 @@ window.addEventListener('storageReady', function(){
     }catch(e){ console.warn('refreshLiveData error', e); }
   }
 
+  // iPad / モバイル：画面復帰時（スリープ解除・アプリ切替後）に強制データ更新
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible'){
+      refreshLiveData(true);
+    }
+  });
+  // iOS Safari の BFCache（戻る・進む）対策
+  window.addEventListener('pageshow', (e)=>{
+    if(e.persisted){ refreshLiveData(true); }
+  });
+
   // ─────────────────────────────────────────────────────────────────────
   // 在庫数専用バックアップ：小さいパスに確実に保存・適用する仕組み
   // shared/branchStock/{productId}/{branchId} = {c: count, t: updatedAt}
@@ -11097,22 +11108,26 @@ window.addEventListener('storageReady', function(){
         +'在庫：'+currentStk0+' → '+(currentStk0+qty)+' 本（'+escapeHtml(branchLabel0)+'）'
       );
       if(!confirmed0) return;
-      addBranchStock(p, brId, qty);
+      // 確認後・保存前にFirebaseから最新データを取得（iPad等で古いデータ上書き防止）
+      await refreshProductFromFirebase(p.id);
+      const pFreshScan = products.find(x=>x.id===p.id) || p;
+      _receiveScanProduct = pFreshScan;
+      addBranchStock(pFreshScan, brId, qty);
       if(locId){
-        if(!p.branchLocation) p.branchLocation = {};
-        p.branchLocation[brId] = locId;
+        if(!pFreshScan.branchLocation) pFreshScan.branchLocation = {};
+        pFreshScan.branchLocation[brId] = locId;
       }
-      p.updatedAt = Date.now();
+      pFreshScan.updatedAt = Date.now();
       btn.disabled = true;
       // 在庫数を専用パスに先行保存
-      await _saveStockSnapshot(p.id, p.branchStock, p.updatedAt);
+      await _saveStockSnapshot(pFreshScan.id, pFreshScan.branchStock, pFreshScan.updatedAt);
       try{
         await saveProducts();
         renderProductTable();
         document.getElementById('receiveScanProductArea').style.display = 'none';
         const msg = document.getElementById('receiveScanDoneMsg');
         const branchLabel = branchName(brId);
-        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'<br>在庫：'+p.branchStock[brId]+'（'+branchLabel+'）</span>';
+        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(pFreshScan.brand)+' '+escapeHtml(pFreshScan.name)+' × '+qty+'<br>在庫：'+pFreshScan.branchStock[brId]+'（'+branchLabel+'）</span>';
         document.getElementById('receiveScanDoneArea').style.display = 'block';
         btn.disabled = false;
         // 印刷確認ダイアログ
