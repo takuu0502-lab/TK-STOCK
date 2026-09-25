@@ -9432,7 +9432,7 @@ window.addEventListener('storageReady', function(){
         h += '<option value="'+ew+'"'+(wVal===ew?' selected':'')+'>'+ew+'</option>';
       });
     }
-    for(let ww=135;ww<=355;ww+=10){
+    for(let ww=135;ww<=385;ww+=10){
       h += '<option value="'+ww+'"'+(wVal===String(ww)?' selected':'')+'>'+ww+'</option>';
     }
     h += '</select>';
@@ -12702,7 +12702,7 @@ window.addEventListener('storageReady', function(){
               html += '<option value="'+ew+'"'+(selectedTireWidth===ew?' selected':'')+'>'+ew+'</option>';
             });
           }
-          for(let w=135; w<=355; w+=10){
+          for(let w=135; w<=385; w+=10){
             const val=String(w);
             html += '<option value="'+val+'"'+(selectedTireWidth===val?' selected':'')+'>'+val+'</option>';
           }
@@ -13986,7 +13986,7 @@ window.addEventListener('storageReady', function(){
     const wSel = document.getElementById('f_spec_width');
     let wOpts = '<option value=""></option>';
     extraWidths.forEach(v=>{ wOpts += '<option value="'+v+'">'+v+'</option>'; });
-    for(let w=135; w<=355; w+=10){ wOpts += '<option value="'+w+'">'+w+'</option>'; }
+    for(let w=135; w<=385; w+=10){ wOpts += '<option value="'+w+'">'+w+'</option>'; }
     wSel.innerHTML = wOpts;
     const aSel = document.getElementById('f_spec_aspect');
     let aOpts = '<option value=""></option>';
