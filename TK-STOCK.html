@@ -2121,7 +2121,7 @@
     </div>
     <div class="row">
       <div class="field" style="flex:0 0 120px;">
-        <label>現在庫数</label>
+        <label id="f_stock_label">現在庫数（自店舗）</label>
         <input type="number" id="f_stock" min="0" value="0" style="width:100%;">
       </div>
       <div class="field" style="flex:0 0 150px;">
@@ -14416,7 +14416,13 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_wheel_pcd').value    = ws.pcd    || '';
     document.getElementById('f_wheel_offset').value = ws.offset || '';
     document.getElementById('f_wheel_color').value  = ws.color  || '';
-    document.getElementById('f_stock').value = getStock(p);
+    // 在庫数は常に自店舗の値をセット（全支店表示中でも合計値を誤書込みしないよう）
+    const _fStockBr = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _fStockVal = p.branchStock ? (p.branchStock[_fStockBr] || 0) : (p.stock || 0);
+    document.getElementById('f_stock').value = _fStockVal;
+    // ラベルに支店名を表示
+    const _fStockLbl = document.getElementById('f_stock_label');
+    if(_fStockLbl) _fStockLbl.textContent = '現在庫数（'+branchName(_fStockBr)+'）';
     document.getElementById('f_minstock').value = p.minStock;
     // 支店別固定仕入れ価格：自支店の固定価格があればそれを、なければ計算価格を表示
     const _editBranch2 = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
