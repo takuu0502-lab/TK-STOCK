@@ -6987,8 +6987,8 @@ window.addEventListener('storageReady', function(){
         if(!name){ errorEl.textContent=(type==='custody'?'取引先名':'お客様名')+'を入力してください。'; errorEl.style.display='block'; customerInput.focus(); return; }
         if(!date){ errorEl.textContent='取付予定日を入力してください。'; errorEl.style.display='block'; dateInput.focus(); return; }
         const _isCustody = type === 'custody';
-        if(_isCustody && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。（預かり出庫には必須です）'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
-        if(useInbound && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。'; errorEl.style.display='block'; inboundDateInput.focus(); return; }
+        // 入庫予定セクションが表示されている場合のみ入庫予定日を必須チェック
+        if(useInbound && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。'+ (_isCustody?'（預かり出庫には必須です）':''); errorEl.style.display='block'; inboundDateInput.focus(); return; }
         const needsNotification = document.getElementById('prov_notify_yes').checked;
         cleanup({ customerName: name, scheduledDate: date, carName: car, inboundDate: useInbound ? inboundDate : '', type, needsNotification });
       }
