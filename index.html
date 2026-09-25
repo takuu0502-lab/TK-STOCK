@@ -15639,6 +15639,23 @@ window.addEventListener('storageReady', function(){
           incomingSchedules.push({ id:uid('isch'), productId:p.id, productName:p.name, brand:p.brand||'', spec:p.spec||'', branchId:_custBranch, qty, expectedDate:formResult.inboundDate, customerName, carName:carName||'', installDate:scheduledDate||'', inboundType:'customerOrder', customerOrderId:_custCoId||'', createdAt:new Date().toISOString(), createdBy:_custUser, status:'pending' });
           await saveIncomingSchedules();
         }
+        // 預かり在庫タブに自動登録
+        const _ccEntry = {
+          id: uid('cc'), branchId: _custBranch,
+          customerName,
+          productId: p.id,
+          saleDate: new Date().toISOString().slice(0,10),
+          pattern: ((p.brand ? p.brand+' ' : '') + cleanName(p.name)).trim(),
+          size: p.spec || '',
+          initialQty: qty,
+          note: carName || '',
+          logs: [],
+          createdAt: new Date().toISOString(),
+          sourceProvId: entry.id
+        };
+        custodyContracts.unshift(_ccEntry);
+        await saveCustodyContracts();
+        renderCustodyTab();
         renderProductTable(); renderHistory(); renderProvisionalList(); renderDetailProvList();
         if(_detailInschRefresh) _detailInschRefresh();
         if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">📦 預かり出庫として登録しました。</div>';
