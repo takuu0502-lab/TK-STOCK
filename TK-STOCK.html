@@ -10413,25 +10413,8 @@ window.addEventListener('storageReady', function(){
         }
       }
     }
-    // バーコードで1件ヒットした後、同じ銘柄ベース名＋同じスペック（サイズ）の商品が複数あれば選択モーダルを表示
-    // ※ 例：「BLIZZAK VRX3」と「BLIZZAK VRX3(2025)」— 括弧内の年号等を除いたベース名が一致する場合のみ候補に含める
-    if(p){
-      // ベース名：cleanName後に括弧（半角・全角）内を除去して比較
-      const _stripParen = s => s.replace(/[(（][^)）]*[)）]/g,'').trim();
-      const _dupBaseName = _stripParen(cleanName(p.name||'')).toLowerCase();
-      const _dupSpec = normSpecSize ? normSpecSize(p.spec||'') : (p.spec||'').trim().toLowerCase();
-      const _dupCands = products.filter(q =>
-        !q.deleted &&
-        q.id !== p.id &&
-        _stripParen(cleanName(q.name||'')).toLowerCase() === _dupBaseName &&
-        (normSpecSize ? normSpecSize(q.spec||'') : (q.spec||'').trim().toLowerCase()) === _dupSpec
-      );
-      if(_dupCands.length > 0){
-        p = await showBarcodeSelectModal([p, ..._dupCands]);
-        if(!p) return;
-        _scBarcodeProductCache[code] = p.id; // 選択結果をキャッシュ
-      }
-    }
+    // バーコードで複数ヒットした場合のみ選択モーダルを表示
+    // ※ バーコードが1件だけに完全一致する場合は候補追加しない（重複登録なし＝その商品で確定）
     const resultEl = document.getElementById('scScanResult');
     const innerEl = document.getElementById('scScanResultInner');
     if(!resultEl || !innerEl) return;
