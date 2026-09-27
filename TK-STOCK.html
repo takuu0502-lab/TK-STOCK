@@ -10340,15 +10340,16 @@ window.addEventListener('storageReady', function(){
         }
       }
     }
-    // バーコードで1件ヒットした後、同じ名前・スペックの商品が同支店に複数あれば選択モーダルを表示
+    // バーコードで1件ヒットした後、同じ名前・スペックの商品が複数あれば選択モーダルを表示
     if(p){
       const _normName = cleanName(p.name||'').trim().toLowerCase();
-      const _normSpec = (p.spec||'').trim().toLowerCase();
+      // スペックはサイズ部分だけで比較（「165/65R15」と「165/65R15 81Q」も同一視）
+      const _normSpec = normSpecSize ? normSpecSize(p.spec||'') : (p.spec||'').trim().toLowerCase();
       const _dupCands = products.filter(q =>
         !q.deleted &&
         q.id !== p.id &&
         cleanName(q.name||'').trim().toLowerCase() === _normName &&
-        (q.spec||'').trim().toLowerCase() === _normSpec
+        (normSpecSize ? normSpecSize(q.spec||'') : (q.spec||'').trim().toLowerCase()) === _normSpec
       );
       if(_dupCands.length > 0){
         p = await showBarcodeSelectModal([p, ..._dupCands]);
