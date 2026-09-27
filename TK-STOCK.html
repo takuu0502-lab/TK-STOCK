@@ -16276,6 +16276,8 @@ window.addEventListener('storageReady', function(){
         if(_autoNewCatEntry) _newProd.catalogKey = _autoNewCatEntry.b+'||'+_autoNewCatEntry.m+'||'+_autoNewCatEntry.s;
       }
       products.push(_newProd);
+      // 新規登録時：内部バーコード（SHバーコード）を自動発行
+      try{ _newProd.internalBarcode = await generateShBarcode(); }catch(_){}
       if(productType === 'order') _savedProductForOrder = _newProd;
     }
     // JANコード辞書に自動保存
