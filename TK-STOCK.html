@@ -3908,6 +3908,7 @@ window.addEventListener('storageReady', function(){
     getBrands().forEach(brand=>{
       const basisEl = document.querySelector('[data-cost-rule-basis="'+brand+'"]');
       const percentEl = document.querySelector('[data-cost-rule-percent="'+brand+'"]');
+      if(!basisEl || !percentEl) return; // 要素が見つからない場合はスキップ（エラー防止）
       const basis = basisEl.value;
       if(basis){
         byBrand[brand] = {basis: basis, percent: Number(percentEl.value) || 0};
@@ -3920,7 +3921,7 @@ window.addEventListener('storageReady', function(){
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-cost-model-rule-basis="'+key+'"]');
         const percentEl = document.querySelector('[data-cost-model-rule-percent="'+key+'"]');
-        if(!basisEl) return;
+        if(!basisEl || !percentEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
         if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
