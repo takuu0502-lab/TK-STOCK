@@ -10340,15 +10340,17 @@ window.addEventListener('storageReady', function(){
         }
       }
     }
-    // バーコードで1件ヒットした後、同じブランド＋同じスペック（サイズ）の商品が複数あれば選択モーダルを表示
-    // ※ 例：「BLIZZAK VRX3」と「BLIZZAK VRX3(2025)」のように名前が違っても同一サイズなら候補として表示
+    // バーコードで1件ヒットした後、同じ銘柄ベース名＋同じスペック（サイズ）の商品が複数あれば選択モーダルを表示
+    // ※ 例：「BLIZZAK VRX3」と「BLIZZAK VRX3(2025)」— 括弧内の年号等を除いたベース名が一致する場合のみ候補に含める
     if(p){
-      const _dupBrand = (p.brand||'').trim().toLowerCase();
+      // ベース名：cleanName後に括弧（半角・全角）内を除去して比較
+      const _stripParen = s => s.replace(/[(（][^)）]*[)）]/g,'').trim();
+      const _dupBaseName = _stripParen(cleanName(p.name||'')).toLowerCase();
       const _dupSpec = normSpecSize ? normSpecSize(p.spec||'') : (p.spec||'').trim().toLowerCase();
       const _dupCands = products.filter(q =>
         !q.deleted &&
         q.id !== p.id &&
-        (q.brand||'').trim().toLowerCase() === _dupBrand &&
+        _stripParen(cleanName(q.name||'')).toLowerCase() === _dupBaseName &&
         (normSpecSize ? normSpecSize(q.spec||'') : (q.spec||'').trim().toLowerCase()) === _dupSpec
       );
       if(_dupCands.length > 0){
