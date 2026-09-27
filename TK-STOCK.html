@@ -10340,16 +10340,16 @@ window.addEventListener('storageReady', function(){
         }
       }
     }
-    // バーコードで1件ヒットした後、同じ名前・スペックの商品が複数あれば選択モーダルを表示
+    // バーコードで1件ヒットした後、同じブランド＋同じスペック（サイズ）の商品が複数あれば選択モーダルを表示
+    // ※ 例：「BLIZZAK VRX3」と「BLIZZAK VRX3(2025)」のように名前が違っても同一サイズなら候補として表示
     if(p){
-      const _normName = cleanName(p.name||'').trim().toLowerCase();
-      // スペックはサイズ部分だけで比較（「165/65R15」と「165/65R15 81Q」も同一視）
-      const _normSpec = normSpecSize ? normSpecSize(p.spec||'') : (p.spec||'').trim().toLowerCase();
+      const _dupBrand = (p.brand||'').trim().toLowerCase();
+      const _dupSpec = normSpecSize ? normSpecSize(p.spec||'') : (p.spec||'').trim().toLowerCase();
       const _dupCands = products.filter(q =>
         !q.deleted &&
         q.id !== p.id &&
-        cleanName(q.name||'').trim().toLowerCase() === _normName &&
-        (normSpecSize ? normSpecSize(q.spec||'') : (q.spec||'').trim().toLowerCase()) === _normSpec
+        (q.brand||'').trim().toLowerCase() === _dupBrand &&
+        (normSpecSize ? normSpecSize(q.spec||'') : (q.spec||'').trim().toLowerCase()) === _dupSpec
       );
       if(_dupCands.length > 0){
         p = await showBarcodeSelectModal([p, ..._dupCands]);
