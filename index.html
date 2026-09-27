@@ -3921,29 +3921,29 @@ window.addEventListener('storageReady', function(){
   }
 
   document.getElementById('saveCostPricingRules').addEventListener('click', async ()=>{
-    if(!allCostRules[pricingActiveBranch]) allCostRules[pricingActiveBranch] = defaultCostRules();
-    allCostRules[pricingActiveBranch].default = {
-      basis: document.getElementById('cr_default_basis').value,
-      percent: Number(document.getElementById('cr_default_percent').value) || 0
-    };
-    const byBrand = {};
-    getBrands().forEach(brand=>{
-      const basisEl = document.querySelector('[data-cost-rule-basis="'+brand+'"]');
-      const percentEl = document.querySelector('[data-cost-rule-percent="'+brand+'"]');
-      if(!basisEl || !percentEl) return; // 要素が見つからない場合はスキップ（エラー防止）
-      const basis = basisEl.value;
-      if(basis){
-        byBrand[brand] = {basis: basis, percent: Number(percentEl.value) || 0};
-      }
-    });
-    const byModel = Object.assign({}, allCostRules[pricingActiveBranch].byModel || {});
-    expandedCostBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
-      models.forEach(model=>{
-        const key = brand+'||'+model;
-        const basisEl = document.querySelector('[data-cost-model-rule-basis="'+key+'"]');
+    try{
+      if(!allCostRules[pricingActiveBranch]) allCostRules[pricingActiveBranch] = defaultCostRules();
+      allCostRules[pricingActiveBranch].default = {
+        basis: (document.getElementById('cr_default_basis')||{value:'wholesale'}).value,
+        percent: Number((document.getElementById('cr_default_percent')||{value:0}).value) || 0
+      };
+      const byBrand = {};
+      document.querySelectorAll('[data-cost-rule-basis]').forEach(basisEl=>{
+        const brand = basisEl.dataset.costRuleBasis;
+        if(!brand) return;
+        const percentEl = document.querySelector('[data-cost-rule-percent="'+brand+'"]');
+        if(!percentEl) return;
+        const basis = basisEl.value;
+        if(basis){
+          byBrand[brand] = {basis: basis, percent: Number(percentEl.value) || 0};
+        }
+      });
+      const byModel = Object.assign({}, allCostRules[pricingActiveBranch].byModel || {});
+      document.querySelectorAll('[data-cost-model-rule-basis]').forEach(basisEl=>{
+        const key = basisEl.dataset.costModelRuleBasis;
+        if(!key) return;
         const percentEl = document.querySelector('[data-cost-model-rule-percent="'+key+'"]');
-        if(!basisEl || !percentEl) return;
+        if(!percentEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
         if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
@@ -3952,18 +3952,21 @@ window.addEventListener('storageReady', function(){
           delete byModel[key];
         }
       });
-    });
-    allCostRules[pricingActiveBranch].byBrand = byBrand;
-    allCostRules[pricingActiveBranch].byModel = byModel;
-    const _saved = await saveCostRules();
-    if(!_saved){
-      showToast('⚠️ 保存に失敗しました。時間をおいて再度お試しください。', 'error');
-      return;
+      allCostRules[pricingActiveBranch].byBrand = byBrand;
+      allCostRules[pricingActiveBranch].byModel = byModel;
+      const _saved = await saveCostRules();
+      if(!_saved){
+        showToast('⚠️ 保存に失敗しました（DB接続エラー）。再度お試しください。');
+        return;
+      }
+      updateCurrentCostRules();
+      showToast('仕入れ価格の設定を保存しました。');
+      updateCostRuleDebug();
+      renderPriceCatalog();
+    } catch(e){
+      console.error('saveCostPricingRules error:', e);
+      showToast('⚠️ 保存エラー: ' + e.message);
     }
-    updateCurrentCostRules();
-    showToast('仕入れ価格の設定を保存しました。');
-    updateCostRuleDebug();
-    renderPriceCatalog();
   });
 
   document.getElementById('saveCostPricingRulesAllBranches').addEventListener('click', async ()=>{
