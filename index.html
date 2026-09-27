@@ -3627,18 +3627,32 @@ window.addEventListener('storageReady', function(){
     }
     catch(e){ console.error('save allCostRules failed', e); return false; }
   }
-  function costRuleFor(brand, model){
-    const modelKey = brand+'||'+model;
-    const mr = costRules.byModel && costRules.byModel[modelKey];
+  function costRuleFor(brand, model, productName){
+    // 商品名から派生したモデル名（ブランドプレフィックスを除去）
+    // 例: "BLIZZAK VRX3(2025)" → "VRX3(2025)"。カタログモデル名と異なる場合のみ使用
+    let nameModel = null;
+    if(productName){
+      const _pre = brand+' ';
+      const _derived = ((productName||'').startsWith(_pre) ? (productName).slice(_pre.length) : productName).trim();
+      if(_derived && _derived !== model) nameModel = _derived;
+    }
+    // 1. 商品名ベースのモデルキーを最優先（カタログキーより詳細な場合 例: VRX3(2025) > VRX3）
+    if(nameModel){
+      const nmr = costRules.byModel && costRules.byModel[brand+'||'+nameModel];
+      if(nmr && (nmr.percent > 0 || nmr.basis === 'cost')) return nmr;
+    }
+    // 2. カタログモデルキー
+    const mr = costRules.byModel && costRules.byModel[brand+'||'+model];
     if(mr && (mr.percent > 0 || mr.basis === 'cost')) return mr;
+    // 3. ブランドルール
     const br = costRules.byBrand && costRules.byBrand[brand];
     if(br && (br.percent > 0 || br.basis === 'cost')) return br;
     return costRules.default || {basis:'wholesale',percent:0};
   }
-  function computeCostPrice(brand, model, wholesale, retail){
+  function computeCostPrice(brand, model, wholesale, retail, productName){
     // SEIBERLING・TOPRUN・LUFT RV系: r.w はそのまま仕入れ価格（卸価格＝A表価格）
     if(brand === 'SEIBERLING' || brand === 'TOPRUN' || /^LUFT/i.test(brand)) return wholesale || null;
-    const rule = costRuleFor(brand, model);
+    const rule = costRuleFor(brand, model, productName);
     const base = rule.basis === 'wholesale' ? wholesale : retail;
     if(!base) return null;
     const pct = Number(rule.percent) || 0;
@@ -7929,7 +7943,7 @@ window.addEventListener('storageReady', function(){
         const r=item.r, i=item.origIdx, cp=item.cp; _catI++;
         const cKey = r.b+'||'+r.m+'||'+r.s+'||'+cp.id; // idも含めてユニーク化
         const checked = catalogQuoteSelection.has(cKey);
-        const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t);
+        const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t, cp.name);
         const _indivSellFixed = getBranchFixedSell(cp, _catOwnBranchId);
         const sell = _indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         const _yearBadgeForBranch = (brId) => {
@@ -7986,7 +8000,7 @@ window.addEventListener('storageReady', function(){
         const checked = catalogQuoteSelection.has(cKey);
         const _catProds = findAllProductsForCatalogEntry(r);
         const _catProd = _catProds[0] || null;
-        let cost = computeCostPrice(r.b, r.m, r.w, r.t);
+        let cost = computeCostPrice(r.b, r.m, r.w, r.t, _catProd ? _catProd.name : null);
         // 自支店の支店別固定仕入れ価格を優先表示
         for(const _cp of _catProds){
           const _bfc = getBranchFixedCost(_cp, _catOwnBranchId);
@@ -8308,7 +8322,7 @@ window.addEventListener('storageReady', function(){
       let cost = _manBrFixed !== null ? _manBrFixed : (p.costPrice || 0);
       if(!cost){
         const catEntry = findCatalogEntryForProduct(p);
-        if(catEntry){ const computed = computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t); if(computed !== null) cost = computed; }
+        if(catEntry){ const computed = computeCostPrice(catEntry.b, catEntry.m, catEntry.w, catEntry.t, p.name); if(computed !== null) cost = computed; }
       }
       return '<tr data-manual-idx="'+i+'">'
         + (forceTire ? '<td class="no-print"><input type="checkbox" data-manual-chk="'+i+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"></td>' : '')
@@ -14585,7 +14599,7 @@ window.addEventListener('storageReady', function(){
     const _editBranchFixed = getBranchFixedCost(p, _editBranch2);
     const _editCatEntry = findCatalogEntryForProduct(p);
     const _editComputedCost = _editCatEntry
-      ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t) ?? (p.costPrice || 0))
+      ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t, p.name) ?? (p.costPrice || 0))
       : (p.costPrice || 0);
     document.getElementById('f_cost').value = (_editBranchFixed !== null ? _editBranchFixed : _editComputedCost) || '';
     const _editBranchSell = getBranchFixedSell(p, _editBranch2);
@@ -15282,13 +15296,17 @@ window.addEventListener('storageReady', function(){
       if(_branchFixed !== null){
         cost = _branchFixed;
       } else {
-        const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t);
+        const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t, p.name);
         if(computed !== null){
           cost = computed; costIsAuto = true;
-          // ツールチップ用：適用ルール情報を構築
-          const _cRule = costRuleFor(catalogEntry.b, catalogEntry.m);
-          const _cMk = catalogEntry.b+'||'+catalogEntry.m;
-          const _cLevel = (costRules.byModel && costRules.byModel[_cMk] && (costRules.byModel[_cMk].percent > 0 || costRules.byModel[_cMk].basis === 'cost')) ? '銘柄別ルール'
+          // ツールチップ用：適用ルール情報を構築（商品名ベースのルールも考慮）
+          const _cRule = costRuleFor(catalogEntry.b, catalogEntry.m, p.name);
+          const _pre2 = catalogEntry.b+' ';
+          const _nameMod = (p.name||'').startsWith(_pre2) ? (p.name).slice(_pre2.length) : (p.name||'');
+          const _nameMk = catalogEntry.b+'||'+_nameMod;
+          const _catMk = catalogEntry.b+'||'+catalogEntry.m;
+          const _cLevel = (costRules.byModel && costRules.byModel[_nameMk] && _nameMod !== catalogEntry.m && (costRules.byModel[_nameMk].percent > 0 || costRules.byModel[_nameMk].basis === 'cost')) ? '銘柄別ルール（商品名）'
+            : (costRules.byModel && costRules.byModel[_catMk] && (costRules.byModel[_catMk].percent > 0 || costRules.byModel[_catMk].basis === 'cost')) ? '銘柄別ルール'
             : (costRules.byBrand && costRules.byBrand[catalogEntry.b] && (costRules.byBrand[catalogEntry.b].percent > 0 || costRules.byBrand[catalogEntry.b].basis === 'cost')) ? 'ブランド別ルール'
             : 'デフォルトルール';
           const _cBasisLabel = _cRule.basis === 'wholesale' ? 'A表価格（卸価格）' : '希望小売価格';
