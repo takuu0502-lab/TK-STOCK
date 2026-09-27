@@ -10039,19 +10039,40 @@ window.addEventListener('storageReady', function(){
       }
     }
 
-    // 棚卸し履歴
-    const brHistory = inventoryHistory.filter(h=>h.branchId===_br).slice().reverse().slice(0,5);
+    // 棚卸し履歴（月別）
+    const brHistory = inventoryHistory.filter(h=>h.branchId===_br).slice().reverse();
     if(brHistory.length > 0){
-      html += '<div style="font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:10px;">過去の棚卸し履歴</div>';
-      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      // 年月リストを生成
+      const _monthSet = new Map();
       brHistory.forEach(h=>{
-        const sd = new Date(h.startedAt);
+        const d = new Date(h.completedAt);
+        const key = d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0');
+        if(!_monthSet.has(key)) _monthSet.set(key, []);
+        _monthSet.get(key).push(h);
+      });
+      const _monthKeys = [..._monthSet.keys()];
+      const _selMonthKey = window._scHistMonthFilter || _monthKeys[0];
+      // 存在しない月が選択されていたら最新月に戻す
+      const _validMonthKey = _monthKeys.includes(_selMonthKey) ? _selMonthKey : _monthKeys[0];
+
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+      html += '<div style="font-size:13px;font-weight:700;color:var(--text-2);">📅 棚卸し履歴</div>';
+      html += '<select id="scHistMonthSel" style="font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);">';
+      _monthKeys.forEach(k=>{
+        html += '<option value="'+k+'"'+(k===_validMonthKey?' selected':'')+'>'+k+'</option>';
+      });
+      html += '</select>';
+      html += '</div>';
+
+      const _monthItems = _monthSet.get(_validMonthKey) || [];
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      _monthItems.forEach(h=>{
         const ed = new Date(h.completedAt);
         const diffCount = h.items.filter(i=>i.diff!==0).length;
         html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">';
         html += '<div>';
-        html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+ed.toLocaleDateString('ja-JP')+'　'+escapeHtml(h.completedBy||h.startedBy||'—')+'</div>';
-        html += '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">商品数：'+h.items.length+'件　差異あり：'+diffCount+'件</div>';
+        html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+ed.toLocaleDateString('ja-JP')+' '+ed.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'　'+escapeHtml(h.completedBy||h.startedBy||'—')+'</div>';
+        html += '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">商品数：'+h.items.length+'件　差異あり：<span style="color:'+(diffCount>0?'var(--red)':'var(--teal)')+';">'+diffCount+'件</span></div>';
         html += '</div>';
         html += '<button class="btn btn-ghost btn-sm sc-hist-btn" data-hist-id="'+escapeHtml(h.id)+'" style="font-size:12px;">詳細を見る</button>';
         html += '</div>';
@@ -10088,6 +10109,15 @@ window.addEventListener('storageReady', function(){
         await saveStockcountDraft();
         stockcountPhase = 'counting';
         stockcountCatFilter = null;
+        renderStockcountTab();
+      });
+    }
+
+    // 月セレクター切替
+    const _scHistSel = document.getElementById('scHistMonthSel');
+    if(_scHistSel){
+      _scHistSel.addEventListener('change', ()=>{
+        window._scHistMonthFilter = _scHistSel.value;
         renderStockcountTab();
       });
     }
