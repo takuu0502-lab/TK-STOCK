@@ -17203,9 +17203,14 @@ window.addEventListener('storageReady', function(){
         order.status = 'completed';
         order.completedAt = new Date().toISOString();
         await saveCustomerOrders();
-        if(order.incomingSchedId){
+        // customerOrderId または incomingSchedId で紐づく入庫予定をすべて完了にする
+        const _linkedByCoId = incomingSchedules.filter(s=>s.customerOrderId===orderId&&s.status==='pending');
+        if(_linkedByCoId.length > 0){
+          _linkedByCoId.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
+          await saveIncomingSchedules();
+        } else if(order.incomingSchedId){
           const _linkedSched = incomingSchedules.find(s=>s.id===order.incomingSchedId);
-          if(_linkedSched) _linkedSched.status = 'done';
+          if(_linkedSched){ _linkedSched.status='done'; _linkedSched.completedAt=new Date().toISOString(); }
           await saveIncomingSchedules();
         }
 
