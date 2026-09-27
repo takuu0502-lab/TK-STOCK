@@ -9949,6 +9949,8 @@ window.addEventListener('storageReady', function(){
   let stockcountPhase = 'idle';     // 'idle' | 'counting' | 'review'
   let stockcountCatFilter = null;   // 選択中カテゴリID (null=すべて)
   let stockcountDiffOnly = false;   // 差異ありのみ表示
+  // バーコード→選択済み商品IDのキャッシュ（リロード後も復元される）
+  const _scBarcodeProductCache = {};
 
   async function loadInventoryHistory(){
     try{
@@ -9965,12 +9967,18 @@ window.addEventListener('storageReady', function(){
     try{
       const r = await window.storage.get('stockcountDraft_'+_br, SHARED);
       currentStockcountDraft = r ? JSON.parse(r) : null;
+      // バーコード選択キャッシュを復元
+      if(currentStockcountDraft && currentStockcountDraft._barcodeCache){
+        Object.assign(_scBarcodeProductCache, currentStockcountDraft._barcodeCache);
+      }
     } catch(e){ currentStockcountDraft = null; }
   }
   async function saveStockcountDraft(){
     const _br = getOperationBranch();
     try{
       if(currentStockcountDraft){
+        // バーコード選択キャッシュもドラフトに含めて保存
+        currentStockcountDraft._barcodeCache = Object.assign({}, _scBarcodeProductCache);
         await window.storage.set('stockcountDraft_'+_br, JSON.stringify(currentStockcountDraft), SHARED);
       } else {
         await window.storage.set('stockcountDraft_'+_br, '', SHARED);
@@ -10312,9 +10320,6 @@ window.addEventListener('storageReady', function(){
       renderStockcountTab();
     });
   }
-
-  // 棚卸しスキャン中：バーコード→選択済み商品IDのキャッシュ（同一棚卸しセッション内で有効）
-  const _scBarcodeProductCache = {};
 
   async function _handleStockcountBarcode(code){
     if(!code || !currentStockcountDraft) return;
