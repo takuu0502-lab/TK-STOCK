@@ -10539,7 +10539,7 @@ window.addEventListener('storageReady', function(){
     const diffItems = items.filter(x=>x.diff!==0);
 
     let html = '<div style="max-width:800px;margin:0 auto;">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;position:sticky;top:0;z-index:10;background:var(--bg-0);padding:12px 0 12px;border-bottom:1px solid var(--line);">';
     html += '<div>';
     html += '<h2 class="section-title" style="margin:0 0 4px;">📋 棚卸し　差異確認</h2>';
     html += '<div style="font-size:12.5px;color:var(--text-3);">入力済み '+items.length+' 件　差異あり '+diffItems.length+' 件</div>';
