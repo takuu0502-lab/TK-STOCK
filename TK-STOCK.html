@@ -10316,10 +10316,10 @@ window.addEventListener('storageReady', function(){
   async function _handleStockcountBarcode(code){
     if(!code || !currentStockcountDraft) return;
     const _br = getOperationBranch();
-    // バーコードで商品を検索（複数ヒット時は選択画面）。自店舗商品を先頭に並べるが絞り込みはしない
+    // バーコードで商品を検索（複数ヒット時は選択画面）
     let _scAllMatches = findAllByBarcode(code);
     // 自店舗商品が1件だけの場合のみ自動選択（複数ある場合は必ず選択モーダル表示）
-    const _scOwnMatches = _scAllMatches.filter(p => (p.branchId||'taniyabe') === _br);
+    const _scOwnMatches = _scAllMatches.filter(q => (q.branchId||'taniyabe') === _br);
     if(_scOwnMatches.length === 1 && _scAllMatches.length > 1) _scAllMatches = _scOwnMatches;
     let p = _scAllMatches.length === 1 ? _scAllMatches[0] : null;
     if(_scAllMatches.length > 1){
@@ -10338,6 +10338,21 @@ window.addEventListener('storageReady', function(){
             .sort((a,b)=>b.score-a.score);
           if(scored.length>0 && scored[0].score>=0.5) p = scored[0].pr;
         }
+      }
+    }
+    // バーコードで1件ヒットした後、同じ名前・スペックの商品が同支店に複数あれば選択モーダルを表示
+    if(p){
+      const _normName = cleanName(p.name||'').trim().toLowerCase();
+      const _normSpec = (p.spec||'').trim().toLowerCase();
+      const _dupCands = products.filter(q =>
+        !q.deleted &&
+        q.id !== p.id &&
+        cleanName(q.name||'').trim().toLowerCase() === _normName &&
+        (q.spec||'').trim().toLowerCase() === _normSpec
+      );
+      if(_dupCands.length > 0){
+        p = await showBarcodeSelectModal([p, ..._dupCands]);
+        if(!p) return;
       }
     }
     const resultEl = document.getElementById('scScanResult');
