@@ -10565,21 +10565,28 @@ window.addEventListener('storageReady', function(){
     html += '<th style="text-align:right;padding:10px 10px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">システム</th>';
     html += '<th style="text-align:right;padding:10px 10px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">実数</th>';
     html += '<th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">差異</th>';
+    html += '<th style="text-align:center;padding:10px 8px;font-size:11px;color:var(--text-3);font-weight:600;white-space:nowrap;">操作</th>';
     html += '</tr></thead><tbody>';
     if(displayItems.length === 0){
-      html += '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-3);font-size:13px;">差異のある商品はありません</td></tr>';
+      html += '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-3);font-size:13px;">差異のある商品はありません</td></tr>';
     }
     displayItems.forEach(item=>{
       const diffColor = item.diff > 0 ? 'var(--teal)' : item.diff < 0 ? 'var(--red)' : 'var(--text-3)';
       const diffStr = item.diff > 0 ? '+'+item.diff : String(item.diff);
-      html += '<tr style="border-bottom:1px solid var(--line-soft);">';
+      const pid = item.p.id;
+      html += '<tr style="border-bottom:1px solid var(--line-soft);" data-pid="'+pid+'">';
       html += '<td style="padding:10px 14px;">';
       html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.p.name))+(item.p.spec?' <span style="font-size:11px;color:var(--text-3);">'+escapeHtml(item.p.spec)+'</span>':'')+'</div>';
       html += '<div style="font-size:11px;color:var(--text-3);">'+(item.p.brand?escapeHtml(item.p.brand):'')+'</div>';
       html += '</td>';
       html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;">'+item.sysQty+'</td>';
-      html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;font-weight:600;">'+item.actQty+'</td>';
-      html += '<td style="text-align:right;padding:10px 14px;font-size:14px;font-weight:700;color:'+diffColor+';font-family:monospace;">'+(item.diff===0?'—':diffStr)+'</td>';
+      html += '<td style="text-align:right;padding:6px 10px;">';
+      html += '<input type="number" class="sc-review-qty" data-pid="'+pid+'" data-sysqty="'+item.sysQty+'" value="'+item.actQty+'" min="0" style="width:64px;text-align:right;font-size:13px;font-family:monospace;font-weight:600;padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg-1);color:var(--text-1);">';
+      html += '</td>';
+      html += '<td class="sc-diff-cell" data-pid="'+pid+'" style="text-align:right;padding:10px 14px;font-size:14px;font-weight:700;color:'+diffColor+';font-family:monospace;">'+(item.diff===0?'—':diffStr)+'</td>';
+      html += '<td style="text-align:center;padding:6px 8px;">';
+      html += '<button class="sc-review-del btn btn-ghost btn-sm" data-pid="'+pid+'" style="color:var(--red);padding:4px 8px;font-size:12px;" title="削除">✕</button>';
+      html += '</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -10590,6 +10597,49 @@ window.addEventListener('storageReady', function(){
     document.getElementById('scFilterAll').addEventListener('click', ()=>{ stockcountDiffOnly=false; renderStockcountTab(); });
     document.getElementById('scFilterDiff').addEventListener('click', ()=>{ stockcountDiffOnly=true; renderStockcountTab(); });
     document.getElementById('scBackToCounting').addEventListener('click', ()=>{ stockcountPhase='counting'; renderStockcountTab(); });
+
+    // 実数編集
+    wrap.querySelectorAll('.sc-review-qty').forEach(input=>{
+      input.addEventListener('change', async ()=>{
+        const pid = input.dataset.pid;
+        const sysQty = parseInt(input.dataset.sysqty)||0;
+        const newVal = Math.max(0, parseInt(input.value)||0);
+        input.value = newVal;
+        if(currentStockcountDraft && currentStockcountDraft.counts){
+          currentStockcountDraft.counts[pid] = newVal;
+          await saveStockcountDraft();
+        }
+        // 差異セルを即時更新
+        const diff = newVal - sysQty;
+        const diffCell = wrap.querySelector('.sc-diff-cell[data-pid="'+pid+'"]');
+        if(diffCell){
+          const diffColor = diff > 0 ? 'var(--teal)' : diff < 0 ? 'var(--red)' : 'var(--text-3)';
+          const diffStr = diff > 0 ? '+'+diff : diff < 0 ? String(diff) : '—';
+          diffCell.style.color = diffColor;
+          diffCell.textContent = diffStr;
+        }
+      });
+    });
+
+    // 行削除
+    wrap.querySelectorAll('.sc-review-del').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const pid = btn.dataset.pid;
+        const row = wrap.querySelector('tr[data-pid="'+pid+'"]');
+        const prodName = row ? row.querySelector('div')?.textContent : pid;
+        const ok = await showConfirm('「'+prodName+'」のスキャン結果を取り消しますか？');
+        if(!ok) return;
+        if(currentStockcountDraft && currentStockcountDraft.counts){
+          delete currentStockcountDraft.counts[pid];
+          // バーコードキャッシュからも削除
+          Object.keys(_scBarcodeProductCache).forEach(bc=>{
+            if(_scBarcodeProductCache[bc]===pid) delete _scBarcodeProductCache[bc];
+          });
+          await saveStockcountDraft();
+        }
+        renderStockcountTab();
+      });
+    });
 
     document.getElementById('scConfirm').addEventListener('click', async ()=>{
       const ok = await showConfirm('棚卸しを確定しますか？\n実数に基づいて'+_br+'の在庫を更新します。\n\n対象：'+items.length+'件（差異あり：'+diffItems.length+'件）');
