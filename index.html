@@ -3727,6 +3727,7 @@ window.addEventListener('storageReady', function(){
       if(p.branchStock[branchId] < 0) p.branchStock[branchId] = 0;
     }
     p.stock = p.branchStock[branchId] || 0;
+    p.updatedAt = Date.now(); // 在庫更新時は必ずupdatedAtを更新（Firebase保存時の競合でデータが失われないように）
   }
 
   /** branchStockを直接減算する共通ヘルパー */
@@ -3756,6 +3757,7 @@ window.addEventListener('storageReady', function(){
       p.branchStock[branchId] = Math.max(0, (p.branchStock[branchId]||0) - qty);
     }
     p.stock = p.branchStock[branchId] || 0;
+    p.updatedAt = Date.now(); // 在庫更新時は必ずupdatedAtを更新
   }
 
   /** 年別在庫から減算（出庫時に使用）。戻り値: 実際に減算した数 */
