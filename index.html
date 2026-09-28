@@ -15652,9 +15652,7 @@ window.addEventListener('storageReady', function(){
           const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'\n入荷予定日: '+sched.expectedDate);
           if(!ok) return;
           const opBranch = getOperationBranch();
-          if(!p2.branchStock) p2.branchStock={};
-          p2.branchStock[opBranch]=(p2.branchStock[opBranch]||0)+sched.qty;
-          p2.stock=p2.branchStock[opBranch];
+          addBranchStock(p2, opBranch, sched.qty); // updatedAt も更新される
           transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
             type:'in', qty:sched.qty, date:new Date().toISOString(),
             user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
@@ -17804,8 +17802,7 @@ window.addEventListener('storageReady', function(){
         if(_inboundNow){
           for(const ci of _coItems){
             const _p = ci.product;
-            if(!_p.branchStock) _p.branchStock = {};
-            _p.branchStock[_coBr] = (_p.branchStock[_coBr]||0) + ci.qty;
+            addBranchStock(_p, _coBr, ci.qty); // updatedAt も更新される
             transactions.push({ id:uid('tx'), productId:_p.id, name:_p.name, brand:_p.brand||'', spec:_p.spec||'', type:'in', qty:ci.qty, date:new Date().toISOString(), user:currentUser?currentUser.displayName:'', branchId:_coBr, customerName:customerName||'', note:'客注品入荷 ('+customerName+')' });
           }
           await saveProducts();
@@ -18088,9 +18085,7 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'本\n入荷予定日: '+sched.expectedDate);
         if(!ok) return;
         const opBranch = getOperationBranch();
-        if(!p2.branchStock) p2.branchStock={};
-        p2.branchStock[opBranch]=(p2.branchStock[opBranch]||0)+sched.qty;
-        p2.stock=p2.branchStock[opBranch];
+        addBranchStock(p2, opBranch, sched.qty); // updatedAt も更新される
         transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
           type:'in', qty:sched.qty, date:new Date().toISOString(),
           user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
