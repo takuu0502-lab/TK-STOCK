@@ -14775,7 +14775,7 @@ window.addEventListener('storageReady', function(){
       const matchMfgYear = !t.mfgYearMax || (productMfgYear && productMfgYear <= t.mfgYearMax);
       if(!matchBrand || !matchModel || !matchBranch || !matchMfgYear) continue;
       // 支店一致:8点、製造年条件一致:4点、ブランド一致:2点、銘柄一致:1点
-      const score = (branchList.length > 0 ? 8 : 0) + (t.mfgYearMax ? 4 : 0) + (tb ? 2 : 0) + (tm ? 1 : 0);
+      const score = (branchList.length > 0 ? 8 : 0) + (t.mfgYearMax ? 4 : 0) + (tb ? 2 : 0) + (tmList.length > 0 ? 1 : 0);
       if(score > bestScore){ bestScore = score; best = t; }
     }
     return best;
