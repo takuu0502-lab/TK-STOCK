@@ -14478,19 +14478,47 @@ window.addEventListener('storageReady', function(){
 
     // 分類区切り行（全件印刷 or 大分類未絞り込み時に表示）
     const _showCatDivider = selectedMajor === null && !_printOnlySelected;
+    // 分類小計（在庫合計金額列が有効かつ全件印刷時のみ）
+    const _showSubtotal = _showCatDivider && colTotalVal;
+    // 総列数計算（小計行のcolspan用）
+    const _totalColCount = 1 + [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colTotalVal?1:0) + (colYearMfg?1:0);
+    // 在庫合計金額列は右から何番目か（小計を右端に揃えるためのcolspan計算）
+    const _colsAfterTotalVal = colYearMfg ? 1 : 0; // 在庫合計金額の右側にある列数
+
     let _prevMajorId = null;
-    const rows = list.map(p=>{
+    let _prevCatName = '';
+    let _catSubtotal = 0;
+    let rows = '';
+
+    // 小計行HTML生成
+    function _makeSubtotalRow(catName, subtotal){
+      const _leftSpan = _totalColCount - _colsAfterTotalVal - 1; // 在庫合計金額列の左側の列数
+      let _subRow = '<tr style="background:#f0f0f0;font-weight:700;">';
+      _subRow += '<td colspan="'+_leftSpan+'" style="text-align:right;padding:4pt 8pt;font-size:8.5pt;border-top:1pt solid #bbb;color:#444;">【'+escapeHtml(catName||'未分類')+'】 小計</td>';
+      _subRow += '<td style="text-align:right;font-family:monospace;padding:4pt 5pt;border-top:1pt solid #bbb;color:#1a3a7a;">&yen;'+subtotal.toLocaleString('ja-JP')+'</td>';
+      if(_colsAfterTotalVal > 0) _subRow += '<td colspan="'+_colsAfterTotalVal+'" style="border-top:1pt solid #bbb;"></td>';
+      _subRow += '</tr>';
+      return _subRow;
+    }
+
+    for(const p of list){
       const brand = p.brand || '';
       const isTW = p.majorId===tireCatId || p.majorId===wheelCatId;
       const catName = (majorById(p.majorId)||{}).name||'';
       const _locId2 = (p.branchLocation&&ownBranch in p.branchLocation)?p.branchLocation[ownBranch]:(p.locationId||'');
       const locName = _locId2 && locations.find(l=>l.id===_locId2) ? locations.find(l=>l.id===_locId2).name : '—';
-      // 分類区切り行
-      let _dividerRow = '';
+
+      // カテゴリが変わったら区切り行（と小計行）を挿入
       if(_showCatDivider && p.majorId !== _prevMajorId){
-        const _colCount = [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colTotalVal?1:0) + (colYearMfg?1:0) + 1;
-        _dividerRow = '<tr><td colspan="'+_colCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1pt solid #bbb;">【'+escapeHtml(catName||'未分類')+'】</td></tr>';
+        // 前カテゴリの小計行を出力
+        if(_showSubtotal && _prevMajorId !== null){
+          rows += _makeSubtotalRow(_prevCatName, _catSubtotal);
+          _catSubtotal = 0;
+        }
+        // 新カテゴリの見出し行
+        rows += '<tr><td colspan="'+_totalColCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1.5pt solid #999;">【'+escapeHtml(catName||'未分類')+'】</td></tr>';
         _prevMajorId = p.majorId;
+        _prevCatName = catName;
       }
 
       let tdCols = '<td>'+escapeHtml(p.name)+'</td>';
@@ -14498,7 +14526,6 @@ window.addEventListener('storageReady', function(){
       if(colPartno)   tdCols += '<td style="color:#666;font-size:11px;">'+escapeHtml(p.partno||'—')+'</td>';
       if(colSpec){
         let _specStr = p.spec || '';
-        // 規格・仕様が空でホイールスペックがある場合は自動補完
         if(!_specStr.trim() && p.wheelSpec){
           const _ws2 = p.wheelSpec;
           const _p2 = [];
@@ -14521,11 +14548,22 @@ window.addEventListener('storageReady', function(){
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     { const _ec = getEffectiveCostForBranch(p, ownBranch); tdCols += '<td style="text-align:right;font-family:monospace;">'+(_ec ? '&yen;'+Number(_ec).toLocaleString('ja-JP') : '—')+'</td>'; }
-      if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _effCost = getEffectiveCostForBranch(p, ownBranch); const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
+      if(colTotalVal){
+        const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0);
+        const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+        const _effCost = getEffectiveCostForBranch(p, ownBranch);
+        const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty);
+        if(_showSubtotal) _catSubtotal += _tv;
+        tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>';
+      }
       if(colYearMfg){ const _ys = getBranchYearStock(p, ownBranch); const _ysEntries = Object.entries(_ys).filter(([,q])=>(q||0)>0).sort((a,b)=>b[0]-a[0]); tdCols += '<td style="font-size:11px;color:#555;">'+(_ysEntries.length ? _ysEntries.map(([yr,q])=>yr+'年製 '+q+'本').join(' / ') : '—')+'</td>'; }
 
-      return _dividerRow + '<tr>'+tdCols+'</tr>';
-    }).join('');
+      rows += '<tr>'+tdCols+'</tr>';
+    }
+    // 最後のカテゴリの小計行
+    if(_showSubtotal && _prevMajorId !== null){
+      rows += _makeSubtotalRow(_prevCatName, _catSubtotal);
+    }
 
     const css = `
       @page{size:A4 landscape;margin:10mm 12mm;}
