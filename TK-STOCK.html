@@ -15169,6 +15169,27 @@ window.addEventListener('storageReady', function(){
   ['f_spec_width','f_spec_aspect','f_spec_inch','f_spec_li1','f_spec_li2'].forEach(id=>{
     document.getElementById(id).addEventListener('change', updateSpecFromTireSelects);
   });
+  // ホイールスペック変更時に規格・仕様へ自動反映
+  function updateSpecFromWheelSpec(){
+    const inch   = document.getElementById('f_wheel_inch').value;
+    const j      = document.getElementById('f_wheel_j').value;
+    const holes  = document.getElementById('f_wheel_holes').value;
+    const pcd    = document.getElementById('f_wheel_pcd').value;
+    const offset = document.getElementById('f_wheel_offset').value;
+    const color  = document.getElementById('f_wheel_color').value.trim();
+    const parts = [];
+    if(inch)   parts.push(inch+'インチ');
+    if(j)      parts.push(j+'J');
+    if(holes)  parts.push(holes+'穴');
+    if(pcd)    parts.push('PCD'+pcd);
+    if(offset) parts.push('+'+offset);
+    if(color)  parts.push(color);
+    document.getElementById('f_spec').value = parts.join(' ');
+  }
+  ['f_wheel_inch','f_wheel_j','f_wheel_holes','f_wheel_pcd','f_wheel_offset'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', updateSpecFromWheelSpec);
+  });
+  document.getElementById('f_wheel_color').addEventListener('input', updateSpecFromWheelSpec);
   function prefillSpecTireSelects(spec){
     // Match both standard "195/65R15" and truck "6.50R16" formats
     const match = (spec||'').match(/^(\d+(?:\.\d+)?)(\/\d{2,3})?(R\d{2,4}(?:\.\d)?)/);
