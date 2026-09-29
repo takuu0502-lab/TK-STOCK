@@ -11141,14 +11141,14 @@ window.addEventListener('storageReady', function(){
         // 警告音：低音2連続
         osc.frequency.setValueAtTime(220, ctx.currentTime);
         osc.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.setValueAtTime(0.9, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.4);
       } else {
         // 成功音：短い高音
         osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.setValueAtTime(0.8, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.12);
