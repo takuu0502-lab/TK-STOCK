@@ -5432,8 +5432,8 @@ window.addEventListener('storageReady', function(){
         if(!_snap) continue;
         let _applied = false;
         for(const [bid, entry] of Object.entries(_snap)){
-          // スナップショットの方が新しい場合だけ上書き
-          if((entry.t||0) > (prod.updatedAt||0)){
+          // スナップショットが同じか新しい場合は上書き（同時刻でもスナップショットを信頼）
+          if((entry.t||0) >= (prod.updatedAt||0)){
             prod.branchStock[bid] = entry.c;
             _applied = true;
           }
@@ -19212,7 +19212,15 @@ window.addEventListener('storageReady', function(){
         batchItems.push({ name:p.name+_yrLabel, spec:p.spec||'', qty:item.qty, itemType:'stock' });
       }
       if(batchItems.length>0) inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:batchItems });
-      await saveProducts();
+      // 在庫スナップショットを専用パスに先行保存（saveProducts失敗時の復元用）
+      for(const item of inboundCart){
+        const _sp = products.find(x=>x.id===item.productId);
+        if(_sp && _sp.branchStock) await _saveStockSnapshot(_sp.id, _sp.branchStock, _sp.updatedAt);
+      }
+      const _saveResult = await saveProducts();
+      if(!_saveResult){
+        showToast('⚠️ 在庫の保存に失敗しました。通信状況を確認して再度お試しください。', 5000);
+      }
       await saveTransactions();
       renderCatTree(); renderProductTable(); renderHistory(); renderInboundSession();
       const count = inboundCart.length;
