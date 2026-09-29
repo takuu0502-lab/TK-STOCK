@@ -11346,7 +11346,11 @@ window.addEventListener('storageReady', function(){
       html += '<tr style="border-bottom:1px solid var(--line-soft);" data-pid="'+pid+'">';
       html += '<td style="padding:10px 14px;">';
       html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.p.name))+'</div>';
-      if(item.p.spec) html += '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(item.p.spec)+'</div>';
+      // スペック表示：specフィールド優先、なければwheelSpecから生成
+      const _ws = item.p.wheelSpec;
+      const _wsStr = _ws ? [_ws.inch?_ws.inch+'インチ':'', _ws.j?_ws.j:'', _ws.holes?_ws.holes+'穴':'', _ws.pcd?'PCD'+_ws.pcd:'', _ws.offset?_ws.offset:''].filter(Boolean).join(' ') : '';
+      const _specStr = item.p.spec || _wsStr;
+      if(_specStr) html += '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(_specStr)+'</div>';
       html += '<div style="font-size:11px;color:var(--text-3);margin-top:1px;">'+(item.p.brand?escapeHtml(item.p.brand):'')+'</div>';
       html += '</td>';
       html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;">'+item.sysQty+'</td>';
