@@ -14352,8 +14352,16 @@ window.addEventListener('storageReady', function(){
     const sortedBranches = [ownBranch];
 
     // カテゴリ名取得
-    const catLabel = selectedMajor ? (majorById(selectedMajor)||{}).name||'' : 'すべて';
-    const subLabel = selectedSub ? (subById(selectedMajor, selectedSub)||{}).name||'' : '';
+    let catLabel, subLabel;
+    if(_printOnlySelected){
+      // 選択商品の実際の分類を列挙
+      const _selMajorNames = [...new Set(list.map(p=>(majorById(p.majorId)||{}).name).filter(Boolean))];
+      catLabel = _selMajorNames.length > 0 ? _selMajorNames.join('・') : 'すべて';
+      subLabel = '';
+    } else {
+      catLabel = selectedMajor ? (majorById(selectedMajor)||{}).name||'' : 'すべて';
+      subLabel = selectedSub ? (subById(selectedMajor, selectedSub)||{}).name||'' : '';
+    }
     const branchLabel = selectedBranchFilter ? branchName(selectedBranchFilter) : '自店舗';
     const printDate = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
 
