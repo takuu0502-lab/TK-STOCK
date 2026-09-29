@@ -11529,13 +11529,52 @@ window.addEventListener('storageReady', function(){
     });
   }
 
+  function _downloadInventoryHistoryCSV(h){
+    if(!h || !Array.isArray(h.items)) return;
+    const dateStr = new Date(h.completedAt).toLocaleDateString('ja-JP').replace(/\//g,'-');
+    const brName = branchName ? branchName(h.branchId) : h.branchId;
+    const header = ['商品名','スペック','ブランド','品番','仕入価格','システム在庫','実数'];
+    const csvRows = [header];
+    // 差異ありを先に、差異なしを後に
+    const sorted = h.items.filter(i=>i.diff!==0).concat(h.items.filter(i=>i.diff===0));
+    sorted.forEach(item=>{
+      // productIdで現在の商品データから品番・仕入価格を取得
+      const prod = products.find(p=>p.id===item.productId);
+      const partno = prod ? (prod.partno||'') : '';
+      const cost = prod ? (getEffectiveCostForBranch ? getEffectiveCostForBranch(prod, h.branchId) : (prod.cost||'')) : '';
+      csvRows.push([
+        item.name||'',
+        item.spec||'',
+        item.brand||'',
+        partno,
+        cost||'',
+        item.systemQty,
+        item.actualQty
+      ]);
+    });
+    const csv = csvRows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    const bom = '﻿';
+    const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '棚卸し結果_'+brName+'_'+dateStr+'.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function _showInventoryHistoryDetail(h){
     if(!h || !Array.isArray(h.items)){ showToast('この記録の詳細データが見つかりません。'); return; }
     const diffItems = h.items.filter(i=>i.diff!==0);
     let html = '<div style="max-width:700px;">';
-    html += '<h3 style="margin-top:0;">📋 棚卸し結果　'+new Date(h.completedAt).toLocaleDateString('ja-JP')+'</h3>';
-    html += '<div style="font-size:12px;color:var(--text-3);margin-bottom:16px;">担当：'+escapeHtml(h.completedBy||h.startedBy||'—')+'　商品数：'+h.items.length+'件　差異あり：'+diffItems.length+'件</div>';
-    html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;max-height:60vh;overflow-y:auto;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">';
+    html += '<h3 style="margin:0;">📋 棚卸し結果　'+new Date(h.completedAt).toLocaleDateString('ja-JP')+'</h3>';
+    html += '<button id="_scHistCsvBtn" class="btn btn-ghost btn-sm" style="font-size:12px;">⬇ CSVダウンロード</button>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text-3);margin-bottom:16px;">担当：'+escapeHtml(h.completedBy||h.startedBy||'—')+'　商品数：'+h.items.length+'件　差異あり：<span style="color:var(--red);font-weight:600;">'+diffItems.length+'件</span></div>';
+    html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;max-height:55vh;overflow-y:auto;">';
     html += '<table style="width:100%;border-collapse:collapse;">';
     html += '<thead><tr style="background:var(--bg-1);border-bottom:2px solid var(--line);position:sticky;top:0;">';
     html += '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-3);">商品名</th>';
@@ -11546,7 +11585,8 @@ window.addEventListener('storageReady', function(){
     h.items.filter(i=>i.diff!==0).concat(h.items.filter(i=>i.diff===0)).forEach(item=>{
       const diffColor = item.diff>0?'var(--teal)':item.diff<0?'var(--red)':'var(--text-3)';
       const diffStr = item.diff>0?'+'+item.diff:String(item.diff);
-      html += '<tr style="border-bottom:1px solid var(--line-soft);">';
+      const rowBg = item.diff!==0 ? 'background:rgba(var(--red-rgb,220,53,69),0.04);' : '';
+      html += '<tr style="border-bottom:1px solid var(--line-soft);'+rowBg+'">';
       html += '<td style="padding:8px 12px;font-size:12.5px;">'+escapeHtml(item.name)+(item.spec?' <span style="color:var(--text-3);font-size:11px;">'+escapeHtml(item.spec)+'</span>':'')+'</td>';
       html += '<td style="text-align:right;padding:8px;font-size:12.5px;font-family:monospace;">'+item.systemQty+'</td>';
       html += '<td style="text-align:right;padding:8px;font-size:12.5px;font-family:monospace;font-weight:600;">'+item.actualQty+'</td>';
@@ -11564,6 +11604,9 @@ window.addEventListener('storageReady', function(){
     document.getElementById('confirmMessage').style.maxHeight = '70vh';
     document.getElementById('confirmMessage').style.overflowY = 'auto';
     document.getElementById('confirmMessage').style.whiteSpace = 'normal';
+    // CSVボタンにイベント登録
+    const csvBtn = document.getElementById('_scHistCsvBtn');
+    if(csvBtn) csvBtn.addEventListener('click', ()=>_downloadInventoryHistoryCSV(h));
     const okBtn = document.getElementById('confirmOkBtn');
     const cancelBtn = document.getElementById('confirmCancelBtn');
     if(okBtn) okBtn.style.display = 'none';
