@@ -11543,23 +11543,45 @@ window.addEventListener('storageReady', function(){
     if(!h || !Array.isArray(h.items)) return;
     const dateStr = new Date(h.completedAt).toLocaleDateString('ja-JP').replace(/\//g,'-');
     const brName = branchName ? branchName(h.branchId) : h.branchId;
-    const header = ['商品名','スペック','ブランド','品番','仕入価格','システム在庫','実数'];
+    const header = ['大分類','中分類','商品名','スペック','ブランド','品番','仕入価格','実数','合計金額'];
     const csvRows = [header];
-    // 差異ありを先に、差異なしを後に
-    const sorted = h.items.filter(i=>i.diff!==0).concat(h.items.filter(i=>i.diff===0));
-    sorted.forEach(item=>{
-      // productIdで現在の商品データから品番・仕入価格を取得
+
+    // 分類順ソート（大分類→中分類→商品名）
+    const _catOrder = new Map(categories.map((c,i)=>[c.id,i]));
+    const _getSubOrder = (majorId) => {
+      const _maj = categories.find(c=>c.id===majorId);
+      return _maj ? new Map((_maj.subs||[]).map((s,i)=>[s.id,i])) : new Map();
+    };
+    const sortedItems = h.items.slice().sort((a,b)=>{
+      const pa = products.find(p=>p.id===a.productId);
+      const pb = products.find(p=>p.id===b.productId);
+      const ao = _catOrder.get(pa?.majorId) ?? 999;
+      const bo = _catOrder.get(pb?.majorId) ?? 999;
+      if(ao !== bo) return ao - bo;
+      const subMap = _getSubOrder(pa?.majorId);
+      const aso = subMap.get(pa?.subId) ?? 999;
+      const bso = subMap.get(pb?.subId) ?? 999;
+      if(aso !== bso) return aso - bso;
+      return (a.name||'').localeCompare(b.name||'','ja');
+    });
+
+    sortedItems.forEach(item=>{
       const prod = products.find(p=>p.id===item.productId);
       const partno = prod ? (prod.partno||'') : '';
-      const cost = prod ? (getEffectiveCostForBranch ? getEffectiveCostForBranch(prod, h.branchId) : (prod.cost||'')) : '';
+      const cost = prod ? (getEffectiveCostForBranch ? getEffectiveCostForBranch(prod, h.branchId) : (prod.cost||0)) : 0;
+      const totalVal = cost ? cost * item.actualQty : '';
+      const majorName = prod ? ((categories.find(c=>c.id===prod.majorId)||{}).name||'') : '';
+      const subName = prod ? (((categories.find(c=>c.id===prod.majorId)||{}).subs||[]).find(s=>s.id===prod.subId)||{}).name||'' : '';
       csvRows.push([
+        majorName,
+        subName,
         item.name||'',
         item.spec||'',
         item.brand||'',
         partno,
         cost||'',
-        item.systemQty,
-        item.actualQty
+        item.actualQty,
+        totalVal
       ]);
     });
     const csv = csvRows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
