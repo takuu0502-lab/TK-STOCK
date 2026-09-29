@@ -14348,6 +14348,26 @@ window.addEventListener('storageReady', function(){
     });
     if(!_printOnlySelected && stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
 
+    // 全件印刷（分類未絞り込み）時は分類順に並び替え
+    if(!_printOnlySelected && selectedMajor === null){
+      // categoriesの順番をもとに大分類→中分類→商品名でソート
+      const _catOrder = new Map(categories.map((c,i)=>[c.id, i]));
+      const _subOrder = (majorId) => {
+        const _maj = majorById(majorId);
+        return _maj ? new Map((_maj.subs||[]).map((s,i)=>[s.id, i])) : new Map();
+      };
+      list = list.slice().sort((a,b)=>{
+        const _ao = _catOrder.get(a.majorId) ?? 999;
+        const _bo = _catOrder.get(b.majorId) ?? 999;
+        if(_ao !== _bo) return _ao - _bo;
+        const _subMap = _subOrder(a.majorId);
+        const _aso = _subMap.get(a.subId) ?? 999;
+        const _bso = _subMap.get(b.subId) ?? 999;
+        if(_aso !== _bso) return _aso - _bso;
+        return (a.name||'').localeCompare(b.name||'', 'ja');
+      });
+    }
+
     // 印刷は自店舗のみ
     const sortedBranches = [ownBranch];
 
