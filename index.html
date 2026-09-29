@@ -11560,13 +11560,13 @@ window.addEventListener('storageReady', function(){
     document.getElementById('confirmMessage').innerHTML = html;
     document.getElementById('confirmMessage').style.maxHeight = '70vh';
     document.getElementById('confirmMessage').style.overflowY = 'auto';
-    const okBtn = document.getElementById('confirmOk');
-    const cancelBtn = document.getElementById('confirmCancel');
-    okBtn.style.display = 'none';
-    cancelBtn.textContent = '閉じる';
+    const okBtn = document.getElementById('confirmOkBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    if(okBtn) okBtn.style.display = 'none';
+    if(cancelBtn) cancelBtn.textContent = '閉じる';
     modal.classList.add('show');
-    const close = ()=>{ modal.classList.remove('show'); okBtn.style.display=''; cancelBtn.textContent='キャンセル'; document.getElementById('confirmMessage').style.maxHeight=''; };
-    cancelBtn.onclick = close;
+    const close = ()=>{ modal.classList.remove('show'); if(okBtn) okBtn.style.display=''; if(cancelBtn) cancelBtn.textContent='キャンセル'; document.getElementById('confirmMessage').style.maxHeight=''; };
+    if(cancelBtn) cancelBtn.onclick = close;
   }
 
   // 棚卸しデータ初期化（storageReady後に呼ぶ）
