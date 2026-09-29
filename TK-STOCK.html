@@ -10809,7 +10809,7 @@ window.addEventListener('storageReady', function(){
       html += '<div style="display:flex;flex-direction:column;gap:8px;">';
       _monthItems.forEach(h=>{
         const ed = new Date(h.completedAt);
-        const diffCount = h.items.filter(i=>i.diff!==0).length;
+        const diffCount = (h.items||[]).filter(i=>i.diff!==0).length;
         html += '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">';
         html += '<div>';
         html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+ed.toLocaleDateString('ja-JP')+' '+ed.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'　'+escapeHtml(h.completedBy||h.startedBy||'—')+'</div>';
