@@ -11406,8 +11406,7 @@ window.addEventListener('storageReady', function(){
       if(item.p.brand) _rvDetails.push(escapeHtml(item.p.brand));
       if(_rvMfYear) _rvDetails.push('<span style="color:var(--amber);font-weight:600;">'+_rvMfYear+'年製</span>');
       if(_rvCost) _rvDetails.push('仕入 ¥'+_rvCost.toLocaleString('ja-JP'));
-      if(_rvRetail) _rvDetails.push('小売 ¥'+_rvRetail.toLocaleString('ja-JP'));
-      if(item.p.barcode) _rvDetails.push('JAN:'+escapeHtml(item.p.barcode));
+      if(item.p.partno) _rvDetails.push('品番:'+escapeHtml(item.p.partno));
       if(_rvDetails.length) html += '<div style="font-size:11px;color:var(--text-3);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;">'+_rvDetails.map(d=>'<span>'+d+'</span>').join('<span style="opacity:.4;">·</span>')+'</div>';
       html += '</td>';
       html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;">'+item.sysQty+'</td>';
