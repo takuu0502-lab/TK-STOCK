@@ -14410,12 +14410,26 @@ window.addEventListener('storageReady', function(){
     if(colTotalVal) thCols += '<th style="text-align:right;">在庫合計金額</th>';
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
-    const rows = list.sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(p=>{
+    // 全件印刷時は既に分類順ソート済みなので名前再ソートしない。分類絞り込み時のみ名前順
+    if(_printOnlySelected || selectedMajor !== null){
+      list = list.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
+    }
+    // 全件印刷時の分類区切り行用
+    const _showCatDivider = !_printOnlySelected && selectedMajor === null;
+    let _prevMajorId = null;
+    const rows = list.map(p=>{
       const brand = p.brand || '';
       const isTW = p.majorId===tireCatId || p.majorId===wheelCatId;
       const catName = (majorById(p.majorId)||{}).name||'';
       const _locId2 = (p.branchLocation&&ownBranch in p.branchLocation)?p.branchLocation[ownBranch]:(p.locationId||'');
       const locName = _locId2 && locations.find(l=>l.id===_locId2) ? locations.find(l=>l.id===_locId2).name : '—';
+      // 分類区切り行
+      let _dividerRow = '';
+      if(_showCatDivider && p.majorId !== _prevMajorId){
+        const _colCount = [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colTotalVal?1:0) + (colYearMfg?1:0) + 1;
+        _dividerRow = '<tr><td colspan="'+_colCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1pt solid #bbb;">【'+escapeHtml(catName||'未分類')+'】</td></tr>';
+        _prevMajorId = p.majorId;
+      }
 
       let tdCols = '<td>'+escapeHtml(p.name)+'</td>';
       if(colBrand)    tdCols = '<td>'+escapeHtml(brand)+'</td>' + tdCols;
@@ -14435,7 +14449,7 @@ window.addEventListener('storageReady', function(){
       if(colTotalVal){ const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0); const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0); const _effCost = getEffectiveCostForBranch(p, ownBranch); const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty); tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>'; }
       if(colYearMfg){ const _ys = getBranchYearStock(p, ownBranch); const _ysEntries = Object.entries(_ys).filter(([,q])=>(q||0)>0).sort((a,b)=>b[0]-a[0]); tdCols += '<td style="font-size:11px;color:#555;">'+(_ysEntries.length ? _ysEntries.map(([yr,q])=>yr+'年製 '+q+'本').join(' / ') : '—')+'</td>'; }
 
-      return '<tr>'+tdCols+'</tr>';
+      return _dividerRow + '<tr>'+tdCols+'</tr>';
     }).join('');
 
     const css = `
