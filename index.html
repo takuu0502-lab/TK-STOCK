@@ -10894,6 +10894,11 @@ window.addEventListener('storageReady', function(){
         filtered = filtered.filter(p=> p.subId===window._scSubFilter);
       }
     }
+    // テキスト検索フィルタ
+    if(window._scTextFilter && window._scTextFilter.trim()){
+      const _kw = window._scTextFilter.trim().toLowerCase();
+      filtered = filtered.filter(p=> (p.name||'').toLowerCase().includes(_kw) || (p.spec||'').toLowerCase().includes(_kw) || (p.brand||'').toLowerCase().includes(_kw));
+    }
 
     const totalAll = brProducts.length;
     const countedAll = Object.keys(counts).length;
@@ -10922,6 +10927,12 @@ window.addEventListener('storageReady', function(){
     html += '<div id="scScanResult" style="display:none;margin-top:12px;background:var(--bg-1);border:2px solid var(--teal);border-radius:8px;padding:14px 16px;">';
     html += '<div id="scScanResultInner"></div>';
     html += '</div>';
+    html += '</div>';
+
+    // テキスト検索ボックス
+    html += '<div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">';
+    html += '<input type="text" id="scTextFilter" placeholder="商品名・サイズで絞り込み…" value="'+(window._scTextFilter||'')+'" style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--bg-1);color:var(--text-1);">';
+    if(window._scTextFilter) html += '<button class="btn btn-ghost btn-sm" id="scTextFilterClear">✕ クリア</button>';
     html += '</div>';
 
     // 大分類フィルタ
@@ -10989,6 +11000,22 @@ window.addEventListener('storageReady', function(){
         renderStockcountTab();
       });
     });
+
+    // テキスト検索イベント
+    const _scTF = document.getElementById('scTextFilter');
+    if(_scTF){
+      _scTF.addEventListener('input', ()=>{
+        window._scTextFilter = _scTF.value;
+        renderStockcountTab();
+      });
+    }
+    const _scTFC = document.getElementById('scTextFilterClear');
+    if(_scTFC){
+      _scTFC.addEventListener('click', ()=>{
+        window._scTextFilter = '';
+        renderStockcountTab();
+      });
+    }
 
     // 実数入力
     wrap.querySelectorAll('.sc-count-input').forEach(inp=>{
