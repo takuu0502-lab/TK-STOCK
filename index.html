@@ -10973,7 +10973,13 @@ window.addEventListener('storageReady', function(){
       const actQty = counted ? counts[p.id] : '';
       html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-2);border:1px solid '+(counted?'var(--teal)':'var(--line)')+';border-radius:8px;">';
       html += '<div style="flex:1;min-width:0;">';
-      html += '<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+(p.spec?' <span style="font-size:12px;color:var(--text-3);">'+escapeHtml(p.spec)+'</span>':'')+'</div>';
+      // ホイールスペック文字列生成
+      const _scListWs = p.wheelSpec;
+      const _scListWsStr = _scListWs ? [_scListWs.inch?_scListWs.inch+'インチ':'', _scListWs.j||'', _scListWs.holes?_scListWs.holes+'穴':'', _scListWs.pcd?'PCD'+_scListWs.pcd:'', _scListWs.offset||''].filter(Boolean).join(' ') : '';
+      const _scListSpec = p.spec || _scListWsStr;
+      html += '<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+(_scListSpec?' <span style="font-size:12px;color:var(--text-3);">'+escapeHtml(_scListSpec)+'</span>':'')+'</div>';
+      // 品番表示
+      if(p.partno) html += '<div style="font-size:11px;color:var(--text-2);margin-top:1px;">品番: '+escapeHtml(p.partno)+'</div>';
       html += '<div style="font-size:11.5px;color:var(--text-3);margin-top:2px;">'+(p.brand?escapeHtml(p.brand)+'　':'')+'システム在庫：<strong style="color:var(--text-1);">'+sysQty+'本</strong>'+(_scProvQtyProv2>0?' <span title="'+_scProvTipProv+'" style="cursor:default;color:var(--amber);font-size:10.5px;font-weight:700;">（うち仮出庫 '+_scProvQtyProv2+'本）</span>':'')+(_scProvQty>0?' <span title="'+_scProvTip+'" style="cursor:default;color:#e8a020;font-size:10.5px;font-weight:700;">（うち預かり '+_scProvQty+'本）</span>':'')+'</div>';
       html += '</div>';
       html += '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">';
