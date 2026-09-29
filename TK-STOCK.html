@@ -11133,19 +11133,8 @@ window.addEventListener('storageReady', function(){
     if(!code || !currentStockcountDraft) return;
     const _br = getOperationBranch();
 
-    // 同一セッション内で既に選択済みのバーコードはモーダルを出さず直接カウント
-    // ただし同じバーコードに在庫ありの候補が複数ある場合は毎回モーダルを表示する
-    const _cacheCheckAllMatches = findAllByBarcode(code);
-    const _cacheCheckWithStock = _cacheCheckAllMatches.filter(q => {
-      const _s = q.branchStock ? (q.branchStock[_br]||0) : (q.stock||0);
-      return _s > 0;
-    });
-    const _cacheOwnBranch = _cacheCheckAllMatches.filter(q => (q.branchId||'taniyabe') === _br);
-    const _cacheCandidates = _cacheCheckWithStock.length > 0 ? _cacheCheckWithStock
-                           : _cacheOwnBranch.length > 0 ? _cacheOwnBranch
-                           : _cacheCheckAllMatches;
-    const _hasMultipleCandidates = _cacheCandidates.length > 1;
-    if(!_hasMultipleCandidates && _scBarcodeProductCache[code]){
+    // 同一セッション内で既に選択済みのバーコードはモーダルを出さず直接カウント（連続スキャン対応）
+    if(_scBarcodeProductCache[code]){
       const _cached = products.find(x=>x.id===_scBarcodeProductCache[code]);
       if(_cached){
         // キャッシュヒット → 以降の処理へ直接ジャンプ
