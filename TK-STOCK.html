@@ -5280,11 +5280,6 @@ window.addEventListener('storageReady', function(){
       if(_bsAutoCount) await saveProducts();
     }
 
-    // デフォルトでタイヤを選択
-    if(selectedMajor === null){
-      const _defTire = categories.find(c=>c.name==='タイヤ');
-      if(_defTire){ selectedMajor = _defTire.id; expanded.add(_defTire.id); }
-    }
     renderCatTree();
     renderSpecSearchPanel();
     renderProductTable();
@@ -7292,11 +7287,7 @@ window.addEventListener('storageReady', function(){
       if(tab === 'list'){
         specPanelOpen = true;
         document.getElementById('openSpecSearch').classList.add('active');
-        // デフォルト：タイヤ選択・在庫あり（他店含む）ON
-        if(selectedMajor === null){
-          const _defTire = categories.find(c=>c.name==='タイヤ');
-          if(_defTire){ selectedMajor = _defTire.id; expanded.add(_defTire.id); }
-        }
+        // スペック検索パネル展開時は現在の選択を維持
         if(!stockOnlyFilter){ stockOnlyFilter = true; }
         renderCatTree();
         renderSpecSearchPanel();
@@ -7838,9 +7829,7 @@ window.addEventListener('storageReady', function(){
     stopAllScanners();
     specPanelOpen = false;
     // ホームに戻る際もタイヤをデフォルト選択に復元
-    const _homeTire = categories.find(c=>c.name==='タイヤ');
-    selectedMajor = _homeTire ? _homeTire.id : null;
-    if(_homeTire) expanded.add(_homeTire.id);
+    selectedMajor = null;
     selectedSub = null;
     selectedSubSub = null;
     resetSpecSelections();
