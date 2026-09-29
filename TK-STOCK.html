@@ -11165,9 +11165,7 @@ window.addEventListener('storageReady', function(){
 
     // バーコードで商品を検索（複数ヒット時は選択画面）
     let _scAllMatches = findAllByBarcode(code);
-    // 自店舗商品が1件だけの場合のみ自動選択（複数ある場合は必ず選択モーダル表示）
-    const _scOwnMatches = _scAllMatches.filter(q => (q.branchId||'taniyabe') === _br);
-    if(_scOwnMatches.length === 1 && _scAllMatches.length > 1) _scAllMatches = _scOwnMatches;
+    // 棚卸しでは自動絞り込みをせず、複数ヒット時は必ずモーダルで選択させる
     let p = _scAllMatches.length === 1 ? _scAllMatches[0] : null;
     if(_scAllMatches.length > 1){
       p = await showBarcodeSelectModal(_scAllMatches);
