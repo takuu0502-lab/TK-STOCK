@@ -10875,7 +10875,8 @@ window.addEventListener('storageReady', function(){
   function _renderStockcountCounting(wrap){
     const _br = getOperationBranch();
     const counts = currentStockcountDraft.counts || {};
-    const brProducts = products.filter(p=> !p.deleted);
+    // deleted商品でも現操作支店に在庫があれば棚卸し対象に含める（在庫一覧には表示されているため）
+    const brProducts = products.filter(p=> !p.deleted || (p.branchStock && (p.branchStock[_br]||0) > 0) || (!p.branchStock && (p.stock||0) > 0));
 
     // カテゴリ一覧（大分類）
     const cats = [{id: null, name: 'すべて'}, ...categories.map(c=>({id:c.id, name:c.name}))];
