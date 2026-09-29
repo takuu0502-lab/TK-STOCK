@@ -11390,6 +11390,7 @@ window.addEventListener('storageReady', function(){
       const diffStr = item.diff > 0 ? '+'+item.diff : String(item.diff);
       const pid = item.p.id;
       html += '<tr style="border-bottom:1px solid var(--line-soft);" data-pid="'+pid+'">';
+      const _rvBr = getOperationBranch();
       html += '<td style="padding:10px 14px;">';
       html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(item.p.name))+'</div>';
       // スペック表示：specフィールド優先、なければwheelSpecから生成
@@ -11397,7 +11398,17 @@ window.addEventListener('storageReady', function(){
       const _wsStr = _ws ? [_ws.inch?_ws.inch+'インチ':'', _ws.j?_ws.j:'', _ws.holes?_ws.holes+'穴':'', _ws.pcd?'PCD'+_ws.pcd:'', _ws.offset?_ws.offset:''].filter(Boolean).join(' ') : '';
       const _specStr = item.p.spec || _wsStr;
       if(_specStr) html += '<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(_specStr)+'</div>';
-      html += '<div style="font-size:11px;color:var(--text-3);margin-top:1px;">'+(item.p.brand?escapeHtml(item.p.brand):'')+'</div>';
+      // ブランド＋詳細情報
+      const _rvMfYear = getBranchManufactureYear ? getBranchManufactureYear(item.p, _rvBr) : null;
+      const _rvCost = getEffectiveCostForBranch ? getEffectiveCostForBranch(item.p, _rvBr) : (item.p.cost||0);
+      const _rvRetail = item.p.retailPrice || 0;
+      const _rvDetails = [];
+      if(item.p.brand) _rvDetails.push(escapeHtml(item.p.brand));
+      if(_rvMfYear) _rvDetails.push('<span style="color:var(--amber);font-weight:600;">'+_rvMfYear+'年製</span>');
+      if(_rvCost) _rvDetails.push('仕入 ¥'+_rvCost.toLocaleString('ja-JP'));
+      if(_rvRetail) _rvDetails.push('小売 ¥'+_rvRetail.toLocaleString('ja-JP'));
+      if(item.p.barcode) _rvDetails.push('JAN:'+escapeHtml(item.p.barcode));
+      if(_rvDetails.length) html += '<div style="font-size:11px;color:var(--text-3);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;">'+_rvDetails.map(d=>'<span>'+d+'</span>').join('<span style="opacity:.4;">·</span>')+'</div>';
       html += '</td>';
       html += '<td style="text-align:right;padding:10px;font-size:13px;font-family:monospace;">'+item.sysQty+'</td>';
       html += '<td style="text-align:right;padding:6px 10px;">';
