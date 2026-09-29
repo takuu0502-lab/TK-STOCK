@@ -11054,6 +11054,7 @@ window.addEventListener('storageReady', function(){
              !activeEl.closest('#barcodeSelectModal') &&
              activeEl.tagName !== 'BUTTON' &&
              activeEl.id !== 'scScanQtyEdit' &&
+             activeEl.id !== 'scTextFilter' &&
              activeEl.type !== 'number'){
             scInput.focus();
           }
