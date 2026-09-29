@@ -11546,24 +11546,23 @@ window.addEventListener('storageReady', function(){
     const header = ['大分類','中分類','商品名','スペック','ブランド','品番','仕入価格','実数','合計金額'];
     const csvRows = [header];
 
-    // 分類順ソート（大分類→中分類→商品名）
-    const _catOrder = new Map(categories.map((c,i)=>[c.id,i]));
-    const _getSubOrder = (majorId) => {
-      const _maj = categories.find(c=>c.id===majorId);
-      return _maj ? new Map((_maj.subs||[]).map((s,i)=>[s.id,i])) : new Map();
-    };
-    const sortedItems = h.items.slice().sort((a,b)=>{
-      const pa = products.find(p=>p.id===a.productId);
-      const pb = products.find(p=>p.id===b.productId);
-      const ao = _catOrder.get(pa?.majorId) ?? 999;
-      const bo = _catOrder.get(pb?.majorId) ?? 999;
-      if(ao !== bo) return ao - bo;
-      const subMap = _getSubOrder(pa?.majorId);
-      const aso = subMap.get(pa?.subId) ?? 999;
-      const bso = subMap.get(pb?.subId) ?? 999;
-      if(aso !== bso) return aso - bso;
-      return (a.name||'').localeCompare(b.name||'','ja');
+    // 分類順ソート（グループ化方式：大分類→中分類→商品名）
+    const _csvSorted = [];
+    categories.forEach(cat=>{
+      const catItems = h.items.filter(i=>{ const p=products.find(x=>x.id===i.productId); return p && p.majorId===cat.id; });
+      if(catItems.length===0) return;
+      (cat.subs||[]).forEach(sub=>{
+        catItems.filter(i=>{ const p=products.find(x=>x.id===i.productId); return p && p.subId===sub.id; })
+          .sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja')).forEach(i=>_csvSorted.push(i));
+      });
+      const subIds = new Set((cat.subs||[]).map(s=>s.id));
+      catItems.filter(i=>{ const p=products.find(x=>x.id===i.productId); return !p||!subIds.has(p.subId); })
+        .sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja')).forEach(i=>_csvSorted.push(i));
     });
+    const _catIds2 = new Set(categories.map(c=>c.id));
+    h.items.filter(i=>{ const p=products.find(x=>x.id===i.productId); return !p||!_catIds2.has(p.majorId); })
+      .sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja')).forEach(i=>_csvSorted.push(i));
+    const sortedItems = _csvSorted;
 
     sortedItems.forEach(item=>{
       const prod = products.find(p=>p.id===item.productId);
@@ -14434,25 +14433,25 @@ window.addEventListener('storageReady', function(){
     });
     if(!_printOnlySelected && stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
 
-    // 大分類→中分類→商品名でソート（全件 or 選択商品問わず常に適用）
-    const _catOrderMap = {};
-    categories.forEach((c,i)=>{ _catOrderMap[c.id] = i; });
-    const _subOrderMap = {};
-    categories.forEach(c=>{
-      _subOrderMap[c.id] = {};
-      (c.subs||[]).forEach((s,i)=>{ _subOrderMap[c.id][s.id] = i; });
+    // 大分類→中分類→商品名でソート（グループ化方式）
+    const _sortedList = [];
+    categories.forEach(cat=>{
+      const catProds = list.filter(p=>p.majorId===cat.id);
+      if(catProds.length===0) return;
+      (cat.subs||[]).forEach(sub=>{
+        const subProds = catProds.filter(p=>p.subId===sub.id).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
+        subProds.forEach(p=>_sortedList.push(p));
+      });
+      // 中分類なし（subIdが subs に存在しない）商品
+      const subIds = new Set((cat.subs||[]).map(s=>s.id));
+      const noSubProds = catProds.filter(p=>!subIds.has(p.subId)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
+      noSubProds.forEach(p=>_sortedList.push(p));
     });
-    list = list.slice().sort((a,b)=>{
-      const ao = (_catOrderMap[a.majorId] !== undefined) ? _catOrderMap[a.majorId] : 999;
-      const bo = (_catOrderMap[b.majorId] !== undefined) ? _catOrderMap[b.majorId] : 999;
-      if(ao !== bo) return ao - bo;
-      const aSubMap = (_subOrderMap[a.majorId]||{});
-      const bSubMap = (_subOrderMap[b.majorId]||{});
-      const aso = (aSubMap[a.subId] !== undefined) ? aSubMap[a.subId] : 999;
-      const bso = (bSubMap[b.subId] !== undefined) ? bSubMap[b.subId] : 999;
-      if(aso !== bso) return aso - bso;
-      return (a.name||'').localeCompare(b.name||'', 'ja');
-    });
+    // カテゴリ未設定商品を最後に追加
+    const _catIds = new Set(categories.map(c=>c.id));
+    const _noCatProds = list.filter(p=>!_catIds.has(p.majorId)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
+    _noCatProds.forEach(p=>_sortedList.push(p));
+    list = _sortedList;
 
     // 印刷は自店舗のみ
     const sortedBranches = [ownBranch];
