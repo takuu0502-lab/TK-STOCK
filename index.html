@@ -10875,8 +10875,11 @@ window.addEventListener('storageReady', function(){
   function _renderStockcountCounting(wrap){
     const _br = getOperationBranch();
     const counts = currentStockcountDraft.counts || {};
-    // deleted商品でも現操作支店に在庫があれば棚卸し対象に含める（在庫一覧には表示されているため）
-    const brProducts = products.filter(p=> !p.deleted || (p.branchStock && (p.branchStock[_br]||0) > 0) || (!p.branchStock && (p.stock||0) > 0));
+    // 在庫一覧と同じく、自店舗に在庫ある商品のみ棚卸し対象とする（deleted商品でも在庫があれば含める）
+    const brProducts = products.filter(p=> {
+      const _stk = p.branchStock ? (p.branchStock[_br]||0) : (p.stock||0);
+      return _stk > 0;
+    });
 
     // カテゴリ一覧（大分類）
     const cats = [{id: null, name: 'すべて'}, ...categories.map(c=>({id:c.id, name:c.name}))];
@@ -11163,15 +11166,19 @@ window.addEventListener('storageReady', function(){
       }
     }
 
-    // バーコードで商品を検索（複数ヒット時は選択画面）
-    let _scAllMatches = findAllByBarcode(code);
-    // 棚卸しでは在庫ありの商品のみ候補にする（在庫0は除外）
+    // バーコードで商品を検索 — 在庫一覧と同じ基準（自店舗在庫 > 0）で絞る
+    const _scAllMatches = findAllByBarcode(code);
+    // 1st優先: 自店舗に在庫ありの商品
     const _scWithStock = _scAllMatches.filter(q => {
       const _qStk = q.branchStock ? (q.branchStock[_br]||0) : (q.stock||0);
       return _qStk > 0;
     });
-    // 在庫ありが1件以上あればそちらを優先、全件在庫0なら元の全件を使う
-    const _scCandidates = _scWithStock.length > 0 ? _scWithStock : _scAllMatches;
+    // 2nd優先: 自店舗の商品（在庫0でも）
+    const _scOwnBranch = _scAllMatches.filter(q => (q.branchId||'taniyabe') === _br);
+    // 在庫ありが最優先、なければ自店舗商品、それもなければ全件
+    const _scCandidates = _scWithStock.length > 0 ? _scWithStock
+                        : _scOwnBranch.length > 0 ? _scOwnBranch
+                        : _scAllMatches;
     let p = _scCandidates.length === 1 ? _scCandidates[0] : null;
     if(_scCandidates.length > 1){
       p = await showBarcodeSelectModal(_scCandidates);
