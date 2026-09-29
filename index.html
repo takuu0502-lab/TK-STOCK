@@ -10818,7 +10818,10 @@ window.addEventListener('storageReady', function(){
         html += '<div style="font-size:13px;font-weight:600;color:var(--text-1);">'+ed.toLocaleDateString('ja-JP')+' '+ed.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'　'+escapeHtml(h.completedBy||h.startedBy||'—')+'</div>';
         html += '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">商品数：'+(h.items||[]).length+'件　差異あり：<span style="color:'+(diffCount>0?'var(--red)':'var(--teal)')+';">'+diffCount+'件</span></div>';
         html += '</div>';
+        html += '<div style="display:flex;gap:6px;">';
+        html += '<button class="btn btn-ghost btn-sm sc-hist-csv-btn" data-hist-idx="'+idx+'" style="font-size:12px;">⬇ CSV</button>';
         html += '<button class="btn btn-ghost btn-sm sc-hist-btn" data-hist-idx="'+idx+'" style="font-size:12px;">詳細を見る</button>';
+        html += '</div>';
         html += '</div>';
       });
       html += '</div>';
@@ -10873,6 +10876,13 @@ window.addEventListener('storageReady', function(){
         const h = window._scHistLookupCurrent && window._scHistLookupCurrent.get(btn.dataset.histIdx);
         if(!h) return;
         _showInventoryHistoryDetail(h);
+      });
+    });
+    wrap.querySelectorAll('.sc-hist-csv-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const h = window._scHistLookupCurrent && window._scHistLookupCurrent.get(btn.dataset.histIdx);
+        if(!h) return;
+        _downloadInventoryHistoryCSV(h);
       });
     });
   }
