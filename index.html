@@ -10865,7 +10865,7 @@ window.addEventListener('storageReady', function(){
 
     wrap.querySelectorAll('.sc-hist-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        const h = inventoryHistory.find(x=>x.id===btn.dataset.histId);
+        const h = inventoryHistory.find(x=>String(x.id)===btn.dataset.histId);
         if(!h) return;
         _showInventoryHistoryDetail(h);
       });
