@@ -5124,6 +5124,24 @@ window.addEventListener('storageReady', function(){
         p.branchStock = {};
         BRANCHES.forEach(b=>{ p.branchStock[b.id] = b.id==='taniyabe' ? (p.stock||0) : 0; });
       }
+      // ホイールスペックが登録済みで規格・仕様が空欄の商品に自動補完
+      if(!p.spec || !p.spec.trim()){
+        const _ws = p.wheelSpec;
+        if(_ws){
+          const _inch = _ws.inch || '';
+          const _j    = _ws.j    || '';
+          const _holes= _ws.holes|| '';
+          const _pcd  = _ws.pcd  || '';
+          const _off  = (_ws.offset !== undefined && _ws.offset !== '') ? _ws.offset : '';
+          const _parts = [];
+          if(_inch && _j) _parts.push(_inch+'x'+_j);
+          else if(_inch)  _parts.push(_inch);
+          if(_holes && _pcd) _parts.push(_holes+'/'+_pcd);
+          else if(_pcd)      _parts.push(_pcd);
+          if(_off) _parts.push('+'+_off);
+          if(_parts.length){ p.spec = _parts.join(' '); migrated = true; }
+        }
+      }
       // catalogKeyバックフィル（_fromCatalogがあるのにcatalogKeyがない既存商品に付与）
       if(p._fromCatalog && !p.catalogKey && p.spec && p.name){
         const _bfEntry = getCatalog().find(r => {
