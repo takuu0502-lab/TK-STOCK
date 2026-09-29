@@ -11165,10 +11165,16 @@ window.addEventListener('storageReady', function(){
 
     // バーコードで商品を検索（複数ヒット時は選択画面）
     let _scAllMatches = findAllByBarcode(code);
-    // 棚卸しでは自動絞り込みをせず、複数ヒット時は必ずモーダルで選択させる
-    let p = _scAllMatches.length === 1 ? _scAllMatches[0] : null;
-    if(_scAllMatches.length > 1){
-      p = await showBarcodeSelectModal(_scAllMatches);
+    // 棚卸しでは在庫ありの商品のみ候補にする（在庫0は除外）
+    const _scWithStock = _scAllMatches.filter(q => {
+      const _qStk = q.branchStock ? (q.branchStock[_br]||0) : (q.stock||0);
+      return _qStk > 0;
+    });
+    // 在庫ありが1件以上あればそちらを優先、全件在庫0なら元の全件を使う
+    const _scCandidates = _scWithStock.length > 0 ? _scWithStock : _scAllMatches;
+    let p = _scCandidates.length === 1 ? _scCandidates[0] : null;
+    if(_scCandidates.length > 1){
+      p = await showBarcodeSelectModal(_scCandidates);
       if(!p) return;
       _scBarcodeProductCache[code] = p.id; // 選択結果をキャッシュ
     }
