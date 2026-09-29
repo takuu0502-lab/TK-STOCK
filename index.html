@@ -14434,25 +14434,25 @@ window.addEventListener('storageReady', function(){
     });
     if(!_printOnlySelected && stockOnlyFilter) list = list.filter(p => (p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0)) > 0);
 
-    // 全件印刷（分類未絞り込み）時は分類順に並び替え
-    if(!_printOnlySelected && selectedMajor === null){
-      // categoriesの順番をもとに大分類→中分類→商品名でソート
-      const _catOrder = new Map(categories.map((c,i)=>[c.id, i]));
-      const _subOrder = (majorId) => {
-        const _maj = majorById(majorId);
-        return _maj ? new Map((_maj.subs||[]).map((s,i)=>[s.id, i])) : new Map();
-      };
-      list = list.slice().sort((a,b)=>{
-        const _ao = _catOrder.get(a.majorId) ?? 999;
-        const _bo = _catOrder.get(b.majorId) ?? 999;
-        if(_ao !== _bo) return _ao - _bo;
-        const _subMap = _subOrder(a.majorId);
-        const _aso = _subMap.get(a.subId) ?? 999;
-        const _bso = _subMap.get(b.subId) ?? 999;
-        if(_aso !== _bso) return _aso - _bso;
-        return (a.name||'').localeCompare(b.name||'', 'ja');
-      });
-    }
+    // 大分類→中分類→商品名でソート（全件 or 選択商品問わず常に適用）
+    const _catOrderMap = {};
+    categories.forEach((c,i)=>{ _catOrderMap[c.id] = i; });
+    const _subOrderMap = {};
+    categories.forEach(c=>{
+      _subOrderMap[c.id] = {};
+      (c.subs||[]).forEach((s,i)=>{ _subOrderMap[c.id][s.id] = i; });
+    });
+    list = list.slice().sort((a,b)=>{
+      const ao = (_catOrderMap[a.majorId] !== undefined) ? _catOrderMap[a.majorId] : 999;
+      const bo = (_catOrderMap[b.majorId] !== undefined) ? _catOrderMap[b.majorId] : 999;
+      if(ao !== bo) return ao - bo;
+      const aSubMap = (_subOrderMap[a.majorId]||{});
+      const bSubMap = (_subOrderMap[b.majorId]||{});
+      const aso = (aSubMap[a.subId] !== undefined) ? aSubMap[a.subId] : 999;
+      const bso = (bSubMap[b.subId] !== undefined) ? bSubMap[b.subId] : 999;
+      if(aso !== bso) return aso - bso;
+      return (a.name||'').localeCompare(b.name||'', 'ja');
+    });
 
     // 印刷は自店舗のみ
     const sortedBranches = [ownBranch];
@@ -14460,7 +14460,6 @@ window.addEventListener('storageReady', function(){
     // カテゴリ名取得
     let catLabel, subLabel;
     if(_printOnlySelected){
-      // 選択商品の実際の分類を列挙
       const _selMajorNames = [...new Set(list.map(p=>(majorById(p.majorId)||{}).name).filter(Boolean))];
       catLabel = _selMajorNames.length > 0 ? _selMajorNames.join('・') : 'すべて';
       subLabel = '';
@@ -14485,12 +14484,8 @@ window.addEventListener('storageReady', function(){
     if(colTotalVal) thCols += '<th style="text-align:right;">在庫合計金額</th>';
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
-    // 全件印刷時は既に分類順ソート済みなので名前再ソートしない。分類絞り込み時のみ名前順
-    if(_printOnlySelected || selectedMajor !== null){
-      list = list.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
-    }
-    // 全件印刷時の分類区切り行用
-    const _showCatDivider = !_printOnlySelected && selectedMajor === null;
+    // 分類区切り行（全件印刷 or 大分類未絞り込み時に表示）
+    const _showCatDivider = selectedMajor === null && !_printOnlySelected;
     let _prevMajorId = null;
     const rows = list.map(p=>{
       const brand = p.brand || '';
