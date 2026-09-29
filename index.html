@@ -11004,9 +11004,14 @@ window.addEventListener('storageReady', function(){
     // テキスト検索イベント
     const _scTF = document.getElementById('scTextFilter');
     if(_scTF){
+      _scTF.focus();
+      _scTF.setSelectionRange(_scTF.value.length, _scTF.value.length);
       _scTF.addEventListener('input', ()=>{
         window._scTextFilter = _scTF.value;
+        const _pos = _scTF.selectionStart;
         renderStockcountTab();
+        const _newTF = document.getElementById('scTextFilter');
+        if(_newTF){ _newTF.focus(); _newTF.setSelectionRange(_pos, _pos); }
       });
     }
     const _scTFC = document.getElementById('scTextFilterClear');
@@ -11037,7 +11042,7 @@ window.addEventListener('storageReady', function(){
     // スキャン入力バーのイベント
     const scInput = document.getElementById('scBarcodeInput');
     if(scInput){
-      scInput.focus();
+      if(!window._scTextFilter) scInput.focus();
       scInput.addEventListener('keydown', e=>{
         if(e.key === 'Enter'){
           e.preventDefault();
