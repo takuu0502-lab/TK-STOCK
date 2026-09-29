@@ -11129,6 +11129,34 @@ window.addEventListener('storageReady', function(){
     });
   }
 
+  // 棚卸し用ビープ音（Web Audio API）
+  function _scPlayBeep(type){
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if(type === 'error'){
+        // 警告音：低音2連続
+        osc.frequency.setValueAtTime(220, ctx.currentTime);
+        osc.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      } else {
+        // 成功音：短い高音
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.12);
+      }
+      osc.onended = ()=>{ ctx.close(); };
+    } catch(e){ /* 音声非対応環境では無視 */ }
+  }
+
   async function _handleStockcountBarcode(code){
     if(!code || !currentStockcountDraft) return;
     const _br = getOperationBranch();
@@ -11154,6 +11182,7 @@ window.addEventListener('storageReady', function(){
         if(_subEl2) _subEl2.textContent = '入力済み '+_cntNow2+' / '+(_scWrap2?_scWrap2.querySelectorAll('[data-pid]').length:0)+' 件';
         const _goBtn2 = document.getElementById('scGoReview');
         if(_goBtn2) _goBtn2.textContent = '差異を確認する（'+_cntNow2+'件入力済み）';
+        _scPlayBeep('ok');
         _resultEl2.style.display = 'block';
         _resultEl2.style.borderColor = 'var(--teal)';
         _innerEl2.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--teal);">✅ '+escapeHtml(cleanName(_cached.name))+' <span style="color:var(--text-2);font-size:12px;">'+escapeHtml(_cached.spec||'')+'</span></div>'
@@ -11205,6 +11234,7 @@ window.addEventListener('storageReady', function(){
     const innerEl = document.getElementById('scScanResultInner');
     if(!resultEl || !innerEl) return;
     if(!p){
+      _scPlayBeep('error');
       resultEl.style.display = 'block';
       resultEl.style.borderColor = 'var(--red)';
       innerEl.innerHTML = '<div style="color:var(--red);font-size:13px;font-weight:600;">❌ 登録されていない商品です（'+escapeHtml(code)+'）</div>';
@@ -11233,6 +11263,7 @@ window.addEventListener('storageReady', function(){
     if(goBtn) goBtn.textContent = '差異を確認する（'+countedNow+'件入力済み）';
 
     // 結果パネルに商品名＋カウント数を表示（修正用入力欄つき）
+    _scPlayBeep('ok');
     resultEl.style.display = 'block';
     resultEl.style.borderColor = 'var(--teal)';
     innerEl.innerHTML = ''
