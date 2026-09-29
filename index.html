@@ -2325,7 +2325,7 @@
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirmTitle">確認</h3>
-    <p id="confirmMessage" style="font-size:13.5px;color:var(--text-2);line-height:1.6;margin-top:0;white-space:pre-wrap;"></p>
+    <div id="confirmMessage" style="font-size:13.5px;color:var(--text-2);line-height:1.6;margin-top:0;white-space:pre-wrap;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="confirmCancelBtn">キャンセル</button>
       <button class="btn btn-amber" id="confirmOkBtn">OK</button>
@@ -10780,8 +10780,8 @@ window.addEventListener('storageReady', function(){
       }
     }
 
-    // 棚卸し履歴（月別）
-    const brHistory = inventoryHistory.filter(h=>h.branchId===_br).slice().reverse();
+    // 棚卸し履歴（月別）- 棚卸し完了記録のみ（入出庫スキャン記録は除外）
+    const brHistory = inventoryHistory.filter(h=>h.branchId===_br && h.completedAt && Array.isArray(h.items)).slice().reverse();
     if(brHistory.length > 0){
       // 年月リストを生成
       const _monthSet = new Map();
@@ -11530,6 +11530,7 @@ window.addEventListener('storageReady', function(){
   }
 
   function _showInventoryHistoryDetail(h){
+    if(!h || !Array.isArray(h.items)){ showToast('この記録の詳細データが見つかりません。'); return; }
     const diffItems = h.items.filter(i=>i.diff!==0);
     let html = '<div style="max-width:700px;">';
     html += '<h3 style="margin-top:0;">📋 棚卸し結果　'+new Date(h.completedAt).toLocaleDateString('ja-JP')+'</h3>';
@@ -11556,16 +11557,26 @@ window.addEventListener('storageReady', function(){
 
     // 簡易モーダル表示（confirmModal を流用）
     const modal = document.getElementById('confirmModal');
+    const modalInner = modal.querySelector('.modal');
+    if(modalInner) modalInner.style.maxWidth = '720px';
     document.getElementById('confirmTitle').textContent = '棚卸し履歴';
     document.getElementById('confirmMessage').innerHTML = html;
     document.getElementById('confirmMessage').style.maxHeight = '70vh';
     document.getElementById('confirmMessage').style.overflowY = 'auto';
+    document.getElementById('confirmMessage').style.whiteSpace = 'normal';
     const okBtn = document.getElementById('confirmOkBtn');
     const cancelBtn = document.getElementById('confirmCancelBtn');
     if(okBtn) okBtn.style.display = 'none';
     if(cancelBtn) cancelBtn.textContent = '閉じる';
     modal.classList.add('show');
-    const close = ()=>{ modal.classList.remove('show'); if(okBtn) okBtn.style.display=''; if(cancelBtn) cancelBtn.textContent='キャンセル'; document.getElementById('confirmMessage').style.maxHeight=''; };
+    const close = ()=>{
+      modal.classList.remove('show');
+      if(modalInner) modalInner.style.maxWidth = '';
+      if(okBtn){ okBtn.style.display=''; }
+      if(cancelBtn){ cancelBtn.textContent='キャンセル'; cancelBtn.onclick=null; }
+      document.getElementById('confirmMessage').style.maxHeight='';
+      document.getElementById('confirmMessage').style.whiteSpace='';
+    };
     if(cancelBtn) cancelBtn.onclick = close;
   }
 
