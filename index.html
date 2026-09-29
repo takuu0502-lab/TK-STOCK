@@ -12150,6 +12150,8 @@ window.addEventListener('storageReady', function(){
       await refreshProductFromFirebase(p.id);
       const pFreshScan = products.find(x=>x.id===p.id) || p;
       _receiveScanProduct = pFreshScan;
+      const _stockBeforeScan = (pFreshScan.branchStock && pFreshScan.branchStock[brId]) || 0;
+      const _expectedStockScan = _stockBeforeScan + qty;
       addBranchStock(pFreshScan, brId, qty);
       if(locId){
         if(!pFreshScan.branchLocation) pFreshScan.branchLocation = {};
@@ -12161,11 +12163,19 @@ window.addEventListener('storageReady', function(){
       await _saveStockSnapshot(pFreshScan.id, pFreshScan.branchStock, pFreshScan.updatedAt);
       try{
         await saveProducts();
+        // ── 在庫整合性チェック（保存後にFirebaseの実値を再取得して検証）──
+        await refreshProductFromFirebase(pFreshScan.id);
+        const _pVerify = products.find(x=>x.id===pFreshScan.id);
+        const _actualStockScan = _pVerify ? ((_pVerify.branchStock && _pVerify.branchStock[brId]) || 0) : null;
+        if(_actualStockScan !== null && _actualStockScan !== _expectedStockScan){
+          showToast('⚠️ 在庫の誤差を検出：期待値 '+_expectedStockScan+'本 → 実際 '+_actualStockScan+'本。再度ページを更新して確認してください。', 8000);
+          console.warn('[在庫チェック] '+pFreshScan.name+' 期待:'+_expectedStockScan+' 実際:'+_actualStockScan);
+        }
         renderProductTable();
         document.getElementById('receiveScanProductArea').style.display = 'none';
         const msg = document.getElementById('receiveScanDoneMsg');
         const branchLabel = branchName(brId);
-        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(pFreshScan.brand)+' '+escapeHtml(pFreshScan.name)+' × '+qty+'<br>在庫：'+pFreshScan.branchStock[brId]+'（'+branchLabel+'）</span>';
+        msg.innerHTML = '✅ 入庫完了<br><span style="font-size:13px;font-weight:400;color:var(--text-2);">'+escapeHtml(pFreshScan.brand)+' '+escapeHtml(pFreshScan.name)+' × '+qty+'<br>在庫：'+(_actualStockScan !== null ? _actualStockScan : pFreshScan.branchStock[brId])+'（'+branchLabel+'）</span>';
         document.getElementById('receiveScanDoneArea').style.display = 'block';
         btn.disabled = false;
         // 印刷確認ダイアログ
@@ -19193,10 +19203,13 @@ window.addEventListener('storageReady', function(){
       if(msgEl) msgEl.innerHTML='<div class="msg">処理中...</div>';
       const batchDate = new Date().toISOString();
       const batchItems = [];
+      // 入庫前の在庫数を記録（整合性チェック用）
+      const _batchExpected = new Map();
       for(const item of inboundCart){
         const p = products.find(x=>x.id===item.productId);
         if(!p) continue;
         const opBranch3=getOperationBranch(); if(!p.branchStock) p.branchStock={};
+        const _stockBefore = (p.branchStock[opBranch3]||0);
         if(item.manufactureYear){
           // 年別在庫に追加
           addToYearStock(p, opBranch3, item.manufactureYear, item.qty);
@@ -19204,6 +19217,7 @@ window.addEventListener('storageReady', function(){
           addBranchStock(p, opBranch3, item.qty);
         }
         p.stock=p.branchStock[opBranch3];
+        _batchExpected.set(p.id, { name: p.name, branch: opBranch3, expected: _stockBefore + item.qty });
         const _yrLabel = item.manufactureYear ? ' ('+item.manufactureYear+'年製)' : '';
         transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode, name:p.name,
           type:'in', qty:item.qty, date:batchDate,
@@ -19222,6 +19236,20 @@ window.addEventListener('storageReady', function(){
         showToast('⚠️ 在庫の保存に失敗しました。通信状況を確認して再度お試しください。', 5000);
       }
       await saveTransactions();
+      // ── 在庫整合性チェック（保存後にFirebaseの実値を再取得して検証）──
+      const _batchErrors = [];
+      for(const [pid, info] of _batchExpected){
+        await refreshProductFromFirebase(pid);
+        const _pv = products.find(x=>x.id===pid);
+        const _actual = _pv ? ((_pv.branchStock && _pv.branchStock[info.branch]) || 0) : null;
+        if(_actual !== null && _actual !== info.expected){
+          _batchErrors.push(escapeHtml(info.name)+': 期待 '+info.expected+'本 → 実際 '+_actual+'本');
+          console.warn('[在庫チェック] '+info.name+' 期待:'+info.expected+' 実際:'+_actual);
+        }
+      }
+      if(_batchErrors.length > 0){
+        showToast('⚠️ 在庫の誤差を検出しました：\n'+_batchErrors.join('\n')+'\nページを更新して確認してください。', 10000);
+      }
       renderCatTree(); renderProductTable(); renderHistory(); renderInboundSession();
       const count = inboundCart.length;
       const printTargets = inboundCart.map(item=>({p:products.find(x=>x.id===item.productId),qty:item.qty})).filter(x=>x.p);
