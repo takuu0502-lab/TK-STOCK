@@ -11266,11 +11266,26 @@ window.addEventListener('storageReady', function(){
     _scPlayBeep('ok');
     resultEl.style.display = 'block';
     resultEl.style.borderColor = 'var(--teal)';
+    // 詳細情報を組み立て
+    const _scanMfYear = getBranchManufactureYear ? getBranchManufactureYear(p, _br) : null;
+    const _scanCost = getEffectiveCostForBranch ? getEffectiveCostForBranch(p, _br) : (p.cost||0);
+    const _scanRetail = p.retailPrice || 0;
+    const _scanWs = p.wheelSpec;
+    const _scanWsStr = _scanWs ? [_scanWs.inch?_scanWs.inch+'インチ':'', _scanWs.j||'', _scanWs.holes?_scanWs.holes+'穴':'', _scanWs.pcd?'PCD'+_scanWs.pcd:'', _scanWs.offset||''].filter(Boolean).join(' ') : '';
+    const _scanSpec = p.spec || _scanWsStr;
+    const _scanDetails = [];
+    if(_scanMfYear) _scanDetails.push('製造年：<strong>'+_scanMfYear+'年製</strong>');
+    if(_scanCost) _scanDetails.push('仕入：<strong>¥'+_scanCost.toLocaleString('ja-JP')+'</strong>');
+    if(_scanRetail) _scanDetails.push('小売：<strong>¥'+_scanRetail.toLocaleString('ja-JP')+'</strong>');
+    if(p.barcode) _scanDetails.push('JAN：'+escapeHtml(p.barcode));
+
     innerEl.innerHTML = ''
       + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-      + '<div>'
-      + '<div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+(p.spec?' <span style="font-size:13px;color:var(--text-3);">'+escapeHtml(p.spec)+'</span>':'')+' </div>'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+      + (_scanSpec?'<div style="font-size:12px;color:var(--text-2);margin-top:2px;">'+escapeHtml(_scanSpec)+'</div>':'')
       + '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">'+(p.brand?escapeHtml(p.brand)+'　':'')+'システム在庫：<strong style="color:var(--text-1);">'+sysQty+'本</strong></div>'
+      + (_scanDetails.length?'<div style="font-size:11px;color:var(--text-3);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px;">'+_scanDetails.map(d=>'<span>'+d+'</span>').join('')+'</div>':'')
       + '</div>'
       + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
       + '<span style="font-size:26px;font-weight:700;color:var(--teal);">'+newCount+'</span>'
