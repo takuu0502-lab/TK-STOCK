@@ -12179,13 +12179,13 @@ window.addEventListener('storageReady', function(){
         document.getElementById('receiveScanDoneArea').style.display = 'block';
         btn.disabled = false;
         // 印刷確認ダイアログ
-        // ── 紐づけ処理 ──
+        // ── 紐づけ処理（チェックボックスで選択されたものを完了） ──
         const _lnkArea2 = document.getElementById('receiveScanLinkArea');
+        let _linked = 0;
+        let _linkedCo = null;
         if(_lnkArea2 && _lnkArea2.style.display !== 'none'){
           const _checkedCO   = [..._lnkArea2.querySelectorAll('.lnk-co-chk:checked')].map(el=>el.dataset.coId);
           const _checkedISch = [..._lnkArea2.querySelectorAll('.lnk-isch-chk:checked')].map(el=>el.dataset.ischId);
-          let _linked = 0;
-          let _linkedCo = null;
           for(const coId of _checkedCO){
             const co = customerOrders.find(o=>o.id===coId);
             if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); _linked++; if(!_linkedCo) _linkedCo = co; }
@@ -12194,24 +12194,20 @@ window.addEventListener('storageReady', function(){
             const isch = incomingSchedules.find(s=>s.id===ischId);
             if(isch){ isch.status='completed'; isch.completedAt=new Date().toISOString(); _linked++; }
           }
-          if(_linked > 0){
-            await saveCustomerOrders();
-            await saveIncomingSchedules();
-            renderCustomerOrderList();
-            renderIncomingScheduleList();
-            if(_detailInschRefresh) _detailInschRefresh();
-          }
           _lnkArea2.style.display = 'none';
-        } else {
-          // リンクエリア非表示でも残っている入庫予定を自動完了
-          const _scanBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-          const _scanPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_scanBr&&s.productId===p.id);
-          if(_scanPendInsch.length > 0){
-            _scanPendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
-            await saveIncomingSchedules();
-            renderIncomingScheduleList();
-            if(_detailInschRefresh) _detailInschRefresh();
-          }
+        }
+        // ── チェックの有無に関わらず、この商品の残存pending入庫予定を全て自動完了 ──
+        const _scanBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+        const _scanPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_scanBr&&s.productId===p.id);
+        for(const _si of _scanPendInsch){
+          _si.status='done'; _si.completedAt=new Date().toISOString(); _linked++;
+        }
+        if(_linked > 0){
+          await saveCustomerOrders();
+          await saveIncomingSchedules();
+          renderCustomerOrderList();
+          renderIncomingScheduleList();
+          if(_detailInschRefresh) _detailInschRefresh();
         }
         const _scanPrintOpts = _linkedCo ? { customerName: _linkedCo.customerName, installDate: _linkedCo.installDate||'' } : {};
         const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p.brand)+' '+escapeHtml(p.name)+' × '+qty+'枚');
@@ -16566,8 +16562,9 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
           +'<div style="font-size:13px;">数量：<strong>'+s.qty+'本</strong>　担当：<span style="color:var(--text-2);">'+escapeHtml(s.createdBy||'')+'</span></div>'
-          +(_isOwnBrEntry ? '<div style="display:flex;gap:6px;">'
+          +(_isOwnBrEntry ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
           +'<button class="btn btn-teal btn-sm" data-insch-confirm="'+s.id+'" style="font-size:12px;padding:4px 12px;">入庫確定</button>'
+          +'<button class="btn btn-ghost btn-sm" data-insch-done-nostock="'+s.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--text-3);color:var(--text-2);">📦 入庫済みマーク</button>'
           +'<button class="btn btn-ghost btn-sm" data-insch-edit="'+s.id+'" style="font-size:12px;padding:4px 10px;border-color:var(--teal);color:var(--teal);">編集</button>'
           +'<button class="btn btn-ghost btn-sm" data-insch-delete="'+s.id+'" style="font-size:12px;padding:4px 10px;color:var(--red);">削除</button>'
           +'</div>' : '')
@@ -16601,6 +16598,26 @@ window.addEventListener('storageReady', function(){
           renderDetailInschList();
           const msgEl = document.getElementById('detailActionMsg');
           if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫確定しました（'+sched.qty+'）</div>';
+            setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
+        });
+      });
+      el.querySelectorAll('[data-insch-done-nostock]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!canWriteData()) return;
+          const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschDoneNostock);
+          if(!sched) return;
+          const ok = await showConfirm('この商品はすでに入庫済みですか？\n\n在庫数は変更せず、入庫予定のみ完了にします。\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'本');
+          if(!ok) return;
+          sched.status = 'done';
+          sched.completedAt = new Date().toISOString();
+          // 紐づく客注もあれば完了に
+          const _linkedCo = sched.customerOrderId ? customerOrders.find(o=>o.id===sched.customerOrderId) : null;
+          if(_linkedCo && _linkedCo.status === 'pending'){ _linkedCo.status = 'completed'; _linkedCo.completedAt = new Date().toISOString(); await saveCustomerOrders(); }
+          await saveIncomingSchedules();
+          renderProductTable(); renderHistory(); renderIncomingScheduleList();
+          renderDetailInschList();
+          const msgEl = document.getElementById('detailActionMsg');
+          if(msgEl){ msgEl.innerHTML='<div class="msg msg-ok">入庫済みとしてマークしました（在庫数変更なし）</div>';
             setTimeout(()=>{ const e=document.getElementById('detailActionMsg'); if(e) e.innerHTML=''; },3000); }
         });
       });
@@ -19019,13 +19036,18 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'本\n入荷予定日: '+sched.expectedDate);
         if(!ok) return;
         const opBranch = getOperationBranch();
+        const _ischStockBefore = (p2.branchStock && p2.branchStock[opBranch]) || 0;
+        const _ischExpected = _ischStockBefore + sched.qty;
         addBranchStock(p2, opBranch, sched.qty); // updatedAt も更新される
         transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
           type:'in', qty:sched.qty, date:new Date().toISOString(),
           user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
         const batchDate = new Date().toISOString();
         inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:[{ name:p2.name, spec:p2.spec||'', qty:sched.qty, itemType:'stock' }] });
-        sched.status='done';
+        sched.status='done'; sched.completedAt=new Date().toISOString();
+        // 同じ商品の他のpending入庫予定も自動完了
+        const _otherPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===opBranch&&s.productId===p2.id&&s.id!==sched.id);
+        _otherPendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
         // 客注品の場合は仮出庫自動登録
         if(sched.inboundType==='customerOrder' && sched.customerName){
           const provEntry = {
@@ -19053,7 +19075,21 @@ window.addEventListener('storageReady', function(){
         } else {
           showToast('入庫確定しました（'+sched.qty+'）');
         }
-        await saveProducts(); await saveTransactions(); await saveIncomingSchedules();
+        // 在庫スナップショット先行保存（保存失敗時の復元用）
+        await _saveStockSnapshot(p2.id, p2.branchStock, p2.updatedAt);
+        const _ischSaveResult = await saveProducts();
+        await saveTransactions(); await saveIncomingSchedules();
+        // 在庫整合性チェック
+        if(_ischSaveResult){
+          await refreshProductFromFirebase(p2.id);
+          const _ischVerify = products.find(x=>x.id===p2.id);
+          const _ischActual = _ischVerify ? ((_ischVerify.branchStock&&_ischVerify.branchStock[opBranch])||0) : null;
+          if(_ischActual !== null && _ischActual !== _ischExpected){
+            showToast('⚠️ 在庫の誤差を検出：期待値 '+_ischExpected+'本 → 実際 '+_ischActual+'本。ページを更新して確認してください。', 8000);
+          }
+        } else {
+          showToast('⚠️ 在庫の保存に失敗しました。通信状況を確認して再度お試しください。', 5000);
+        }
         const _printOpts = (sched.inboundType==='customerOrder' && sched.customerName)
           ? { customerName: sched.customerName, installDate: sched.scheduledDate||'' } : {};
         const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
@@ -19236,6 +19272,30 @@ window.addEventListener('storageReady', function(){
         showToast('⚠️ 在庫の保存に失敗しました。通信状況を確認して再度お試しください。', 5000);
       }
       await saveTransactions();
+      // ── 一括入庫：対象商品の pending 入庫予定・客注を自動完了（根本対策） ──
+      {
+        const _batchBr = getOperationBranch();
+        let _inschChanged = false;
+        let _coChanged = false;
+        for(const item of inboundCart){
+          // pending入庫予定を完了
+          const _pendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===_batchBr&&s.productId===item.productId);
+          for(const _si of _pendInsch){
+            _si.status = 'done';
+            _si.completedAt = new Date().toISOString();
+            _inschChanged = true;
+            // 紐づく客注も完了
+            const _co = _si.customerOrderId ? customerOrders.find(o=>o.id===_si.customerOrderId) : null;
+            if(_co && _co.status==='pending'){ _co.status='completed'; _co.completedAt=new Date().toISOString(); _coChanged=true; }
+          }
+        }
+        if(_inschChanged) await saveIncomingSchedules();
+        if(_coChanged) await saveCustomerOrders();
+        if(_inschChanged || _coChanged){
+          renderCustomerOrderList && renderCustomerOrderList();
+          renderIncomingScheduleList && renderIncomingScheduleList();
+        }
+      }
       // ── 在庫整合性チェック（保存後にFirebaseの実値を再取得して検証）──
       const _batchErrors = [];
       for(const [pid, info] of _batchExpected){
