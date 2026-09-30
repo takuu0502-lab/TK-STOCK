@@ -15488,7 +15488,8 @@ window.addEventListener('storageReady', function(){
         });
       });
     }
-    _syncYearStockToStockField();
+    // 年別在庫がある場合のみ同期（初期化時に年別在庫なし商品のf_stockを0に上書きしないよう）
+    if(Object.keys(_modalYearStock).length > 0) _syncYearStockToStockField();
   }
 
   function _syncYearStockToStockField(){
