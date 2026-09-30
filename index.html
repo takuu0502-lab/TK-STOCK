@@ -21159,6 +21159,7 @@ window.addEventListener('storageReady', function(){
                   sections.push({
                     brandMap: _pendingBrandMap || _curBrandMap,
                     modelMap: mMap,
+                    sizeCol: _modelIdx,
                     startRow: ri+1
                   });
                   if(_pendingBrandMap) _curBrandMap = _pendingBrandMap;
@@ -21169,23 +21170,38 @@ window.addEventListener('storageReady', function(){
             if(sections.length === 0) continue;
             // 各セクションのデータ行を処理
             for(let si=0; si<sections.length; si++){
-              const {brandMap, modelMap, startRow} = sections[si];
+              const {brandMap, modelMap, sizeCol, startRow} = sections[si];
               const endRow = si+1 < sections.length ? sections[si+1].startRow - 2 : rows.length;
               for(let ri=startRow; ri<endRow; ri++){
                 const row = rows[ri];
                 if(!row) continue;
-                const sv = String(row[2]||'');
+                // サイズ検出: 「商品名」列(sizeCol)がそのままサイズ列（旧形式はfallback index2）
+                const sv = String(row[sizeCol]||'') || String(row[2]||'');
                 const sm = sv.replace(/\s+/g,' ').match(/(\d+(?:\/\d+)?R\d+(?:\s*\d+PR)?(?:\s*\d+(?:\/\d+)?[A-Z])?)/);
                 if(!sm) continue;
                 const size = sm[1].trim();
                 const nextRow = rows[ri+1] || [];
                 for(const [ciStr, modelName] of Object.entries(modelMap)){
                   const ci = parseInt(ciStr);
-                  const priceV = row[ci+1];
-                  if(typeof priceV==='number' && priceV>=1000 && priceV<=500000){
+                  // 価格検索: offset+1（旧形式）またはoffset+2〜+8（横型新形式）をスキャン
+                  let priceV = null;
+                  let priceOffset = null;
+                  for(let offset = 1; offset <= 8; offset++){
+                    const v = row[ci+offset];
+                    if(typeof v==='number' && v>=1000 && v<=500000){
+                      priceV = v;
+                      priceOffset = offset;
+                      break;
+                    }
+                  }
+                  if(priceV !== null){
                     let msrp = null;
-                    if(nextRow[ci]==='メ希' && typeof nextRow[ci+1]==='number'){
-                      msrp = Math.round(nextRow[ci+1]);
+                    // メ希: 次行の同列に'メ希'があり、同オフセットに希望小売価格
+                    if(nextRow[ci]==='メ希'){
+                      const nv = nextRow[ci+priceOffset];
+                      if(typeof nv==='number') msrp = Math.round(nv);
+                    } else if(typeof nextRow[ci+priceOffset]==='number' && nextRow[ci]==='メ希'){
+                      msrp = Math.round(nextRow[ci+priceOffset]);
                     }
                     const brand = _getBsBrand(modelName, brandMap[ci]);
                     items.push({s:size, m:modelName, b:brand, w:Math.round(priceV), t:msrp});
