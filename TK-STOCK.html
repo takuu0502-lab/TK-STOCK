@@ -9353,7 +9353,11 @@ window.addEventListener('storageReady', function(){
         for(const p of list){
           const qty = p.branchStock ? (p.branchStock[_svBr]||0) : ((p.branchId||'taniyabe')===_svBr ? (p.stock||0) : 0);
           if(qty <= 0) continue;
-          if(p.costPrice && p.costPrice > 0){ _totalCost += qty * p.costPrice; _hasCost = true; }
+          // 預かり在庫分を除外（預かり品は自社資産ではないため）
+          const _custodyQty = (custodyContracts||[]).filter(c=>c.productId===p.id&&c.branchId===_svBr).reduce((s,r)=>s+_custodyRemaining(r),0);
+          const _ownQty = Math.max(0, qty - _custodyQty);
+          if(_ownQty <= 0) continue;
+          if(p.costPrice && p.costPrice > 0){ _totalCost += _ownQty * p.costPrice; _hasCost = true; }
         }
         const _catLabel = selectedMajor ? ((majorById(selectedMajor)||{}).name||'') : 'すべて';
         if(_hasCost){
