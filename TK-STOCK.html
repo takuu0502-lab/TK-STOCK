@@ -35,7 +35,8 @@
     get: async (key, shared) => {
       try {
         const path = shared ? 'shared/' + key : 'local/' + key;
-        const snapshot = await get(ref(db, path));
+        const _timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 12000));
+        const snapshot = await Promise.race([get(ref(db, path)), _timeout]);
         if (snapshot.exists()) return { value: snapshot.val() };
         return null;
       } catch(e) {
@@ -1187,10 +1188,11 @@
 
   <!-- データ読み込み中オーバーレイ -->
   <div id="dataLoadingOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:16px;padding:28px 36px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
-      <div style="font-size:28px;margin-bottom:12px;">⏳</div>
-      <div style="font-size:15px;font-weight:700;color:#222;margin-bottom:6px;">データ読み込み中…</div>
-      <div style="font-size:12px;color:#666;">完了するまでお待ちください</div>
+    <div style="background:#fff;border-radius:16px;padding:28px 36px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.25);max-width:320px;">
+      <div id="dataLoadingIcon" style="font-size:28px;margin-bottom:12px;">⏳</div>
+      <div id="dataLoadingTitle" style="font-size:15px;font-weight:700;color:#222;margin-bottom:6px;">データ読み込み中…</div>
+      <div id="dataLoadingMsg" style="font-size:12px;color:#666;">完了するまでお待ちください</div>
+      <button id="dataLoadingReload" onclick="location.reload()" style="display:none;margin-top:14px;padding:8px 20px;background:#B8650C;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🔄 再読み込み</button>
     </div>
   </div>
 
@@ -5073,6 +5075,17 @@ window.addEventListener('storageReady', function(){
 
   async function loadData(){
     _setDataLoading(true);
+    // 20秒でタイムアウトエラーを表示
+    const _loadTimer = setTimeout(()=>{
+      const icon = document.getElementById('dataLoadingIcon');
+      const title = document.getElementById('dataLoadingTitle');
+      const msg = document.getElementById('dataLoadingMsg');
+      const btn = document.getElementById('dataLoadingReload');
+      if(icon) icon.textContent = '⚠️';
+      if(title){ title.textContent = '接続がタイムアウトしました'; title.style.color = '#C2402C'; }
+      if(msg) msg.textContent = 'Firebaseに接続できません。ネットワークを確認して再読み込みしてください。';
+      if(btn) btn.style.display = 'inline-block';
+    }, 20000);
     try{
     await loadPriceRules();
     await loadCostRules();
@@ -5338,6 +5351,7 @@ window.addEventListener('storageReady', function(){
       }
     }
     } finally {
+      clearTimeout(_loadTimer);
       _setDataLoading(false);
     }
   }
