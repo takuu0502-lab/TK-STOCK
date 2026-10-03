@@ -5806,6 +5806,111 @@ window.addEventListener('storageReady', function(){
     try{ await window.storage.set('categories', JSON.stringify(categories), SHARED); }
     catch(e){ console.error('save categories failed', e); }
   }
+
+  // ===== 分類編集モーダル =====
+  function _openCatEditModal(){
+    const modal = document.getElementById('catEditModal');
+    if(!modal) return;
+    modal.classList.add('open');
+    if(!modal._evtInit){
+      modal._evtInit = true;
+      modal.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+      document.getElementById('catEditModalClose').addEventListener('click', function(){ document.getElementById('catEditModal').classList.remove('open'); });
+    }
+    renderCatEditModal();
+  }
+  window._openCatEditModal = _openCatEditModal;
+
+  async function _cemMoveMajor(idx, dir){
+    const ni = idx + dir;
+    if(ni < 0 || ni >= categories.length) return;
+    [categories[idx], categories[ni]] = [categories[ni], categories[idx]];
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+    renderCatEditModal();
+  }
+  async function _cemMoveSub(majorId, idx, dir){
+    const cat = majorById(majorId);
+    if(!cat) return;
+    const ni = idx + dir;
+    if(ni < 0 || ni >= cat.subs.length) return;
+    [cat.subs[idx], cat.subs[ni]] = [cat.subs[ni], cat.subs[idx]];
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+    renderCatEditModal();
+  }
+  async function _cemRenameMajor(id, newName){
+    const cat = categories.find(c=>c.id===id);
+    if(!cat || !newName.trim()) return;
+    cat.name = newName.trim();
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+  }
+  async function _cemRenameSub(majorId, id, newName){
+    const cat = majorById(majorId);
+    if(!cat) return;
+    const sub = cat.subs.find(s=>s.id===id);
+    if(!sub || !newName.trim()) return;
+    sub.name = newName.trim();
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+  }
+  function renderCatEditModal(){
+    const body = document.getElementById('catEditModalBody');
+    if(!body) return;
+    let html = '<div style="padding-bottom:8px;">';
+    categories.forEach((cat, mi) => {
+      const isFirst = mi === 0, isLast = mi === categories.length - 1;
+      html += '<div style="border:1px solid var(--line);border-radius:7px;margin-bottom:8px;overflow:hidden;">'
+        + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-2);">'
+        + '<span style="font-size:12px;color:var(--text-3);flex-shrink:0;">大分類</span>'
+        + '<input class="cem-name-input" data-cem-rename="major" data-id="'+cat.id+'" value="'+escapeHtml(cat.name)+'" style="flex:1;font-size:13px;font-weight:600;border:1px solid transparent;border-radius:4px;padding:3px 6px;background:transparent;color:var(--text-1);min-width:0;" />'
+        + '<div style="display:flex;gap:3px;flex-shrink:0;">'
+        + '<button class="cem-btn" data-cem="move-major" data-idx="'+mi+'" data-dir="-1" '+(isFirst?'disabled style="opacity:0.3;"':'')+'>↑</button>'
+        + '<button class="cem-btn" data-cem="move-major" data-idx="'+mi+'" data-dir="1" '+(isLast?'disabled style="opacity:0.3;"':'')+'>↓</button>'
+        + '<button class="cem-btn danger" data-cem="delete-major" data-id="'+cat.id+'">削除</button>'
+        + '</div></div>';
+      if(cat.subs && cat.subs.length){
+        cat.subs.forEach((sub, si) => {
+          const sf = si===0, sl = si===cat.subs.length-1;
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 20px;border-top:1px solid var(--line);">'
+            + '<span style="font-size:11px;color:var(--text-3);flex-shrink:0;">中分類</span>'
+            + '<input class="cem-name-input" data-cem-rename="sub" data-id="'+sub.id+'" data-major-id="'+cat.id+'" value="'+escapeHtml(sub.name)+'" style="flex:1;font-size:12px;border:1px solid transparent;border-radius:4px;padding:2px 6px;background:transparent;color:var(--text-2);min-width:0;" />'
+            + '<div style="display:flex;gap:3px;flex-shrink:0;">'
+            + '<button class="cem-btn" data-cem="move-sub" data-major-id="'+cat.id+'" data-idx="'+si+'" data-dir="-1" '+(sf?'disabled style="opacity:0.3;"':'')+'>↑</button>'
+            + '<button class="cem-btn" data-cem="move-sub" data-major-id="'+cat.id+'" data-idx="'+si+'" data-dir="1" '+(sl?'disabled style="opacity:0.3;"':'')+'>↓</button>'
+            + '<button class="cem-btn danger" data-cem="delete-sub" data-id="'+sub.id+'" data-major-id="'+cat.id+'">削除</button>'
+            + '</div></div>';
+        });
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    body.innerHTML = html;
+    body.querySelectorAll('.cem-name-input').forEach(inp => {
+      inp.addEventListener('focus', function(){ this.style.border='1px solid var(--amber)'; this.style.background='var(--bg-1)'; });
+      inp.addEventListener('blur', async function(){
+        this.style.border='1px solid transparent'; this.style.background='transparent';
+        if(this.dataset.cemRename === 'major') await _cemRenameMajor(this.dataset.id, this.value);
+        else await _cemRenameSub(this.dataset.majorId, this.dataset.id, this.value);
+      });
+      inp.addEventListener('keydown', function(e){
+        if(e.key==='Enter'){ e.preventDefault(); this.blur(); }
+        if(e.key==='Escape'){ this.blur(); }
+      });
+    });
+    body.querySelectorAll('[data-cem]').forEach(btn => {
+      if(btn.disabled) return;
+      btn.addEventListener('click', async function(){
+        if(!canWriteData()) return;
+        const action = this.dataset.cem;
+        const id = this.dataset.id;
+        const majorId = this.dataset.majorId;
+        const idx = parseInt(this.dataset.idx);
+        const dir = parseInt(this.dataset.dir);
+        if(action === 'move-major') await _cemMoveMajor(idx, dir);
+        else if(action === 'move-sub') await _cemMoveSub(majorId, idx, dir);
+        else if(action === 'delete-major'){ await handleCatAction('delete-major', undefined, id); renderSpecSearchPanel(); renderProductTable(); renderCatEditModal(); }
+        else if(action === 'delete-sub'){ await handleCatAction('delete-sub', majorId, id); renderSpecSearchPanel(); renderProductTable(); renderCatEditModal(); }
+      });
+    });
+  }
   async function loadSuppliers(){
     try{
       const r = await window.storage.get('suppliers', SHARED);
@@ -13976,7 +14081,7 @@ window.addEventListener('storageReady', function(){
     html += '<div class="spec-search-actions" style="justify-content:space-between;align-items:center;">'
       + '<button class="btn btn-amber" id="specSearchGo">検索</button>'
       + '<div style="display:flex;align-items:center;gap:10px;">'
-      + (canWriteData() ? '<button id="catEditModalBtn" style="font-size:11px;padding:4px 10px;border:1px solid var(--line);background:var(--bg-2);border-radius:5px;cursor:pointer;color:var(--text-2);" onclick="_openCatEditModal()">⚙ 分類を編集</button>' : '')
+      + (canWriteData() ? '<button id="catEditModalBtn" style="font-size:11px;padding:4px 10px;border:1px solid var(--line);background:var(--bg-2);border-radius:5px;cursor:pointer;color:var(--text-2);" onclick="window._openCatEditModal&&window._openCatEditModal()">⚙ 分類を編集</button>' : '')
       + '<div id="stockValueDisplay" style="text-align:right;min-width:180px;"></div>'
       + '</div>'
       + '</div>';
@@ -21949,111 +22054,6 @@ window.addEventListener('storageReady', function(){
   }, true); // capture=trueで確実にstopPropagation前に動作
 });
 
-// ===== 分類編集モーダル =====
-function _openCatEditModal(){
-  const modal = document.getElementById('catEditModal');
-  modal.classList.add('open');
-  // イベント登録（初回のみ）
-  if(!modal._evtInit){
-    modal._evtInit = true;
-    modal.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
-    document.getElementById('catEditModalClose').addEventListener('click', function(){ document.getElementById('catEditModal').classList.remove('open'); });
-  }
-  renderCatEditModal();
-}
-async function _cemMoveMajor(idx, dir){
-  const ni = idx + dir;
-  if(ni < 0 || ni >= categories.length) return;
-  [categories[idx], categories[ni]] = [categories[ni], categories[idx]];
-  await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
-  renderCatEditModal();
-}
-async function _cemMoveSub(majorId, idx, dir){
-  const cat = majorById(majorId);
-  if(!cat) return;
-  const ni = idx + dir;
-  if(ni < 0 || ni >= cat.subs.length) return;
-  [cat.subs[idx], cat.subs[ni]] = [cat.subs[ni], cat.subs[idx]];
-  await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
-  renderCatEditModal();
-}
-async function _cemRenameMajor(id, newName){
-  const cat = categories.find(c=>c.id===id);
-  if(!cat || !newName.trim()) return;
-  cat.name = newName.trim();
-  await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
-}
-async function _cemRenameSub(majorId, id, newName){
-  const cat = majorById(majorId);
-  if(!cat) return;
-  const sub = cat.subs.find(s=>s.id===id);
-  if(!sub || !newName.trim()) return;
-  sub.name = newName.trim();
-  await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
-}
-
-function renderCatEditModal(){
-  const body = document.getElementById('catEditModalBody');
-  let html = '<div style="padding-bottom:8px;">';
-  categories.forEach((cat, mi) => {
-    const isFirst = mi === 0, isLast = mi === categories.length - 1;
-    html += '<div style="border:1px solid var(--line);border-radius:7px;margin-bottom:8px;overflow:hidden;">'
-      + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-2);">'
-      + '<span style="font-size:12px;color:var(--text-3);flex-shrink:0;">大分類</span>'
-      + '<input class="cem-name-input" data-cem-rename="major" data-id="'+cat.id+'" value="'+escapeHtml(cat.name)+'" style="flex:1;font-size:13px;font-weight:600;border:1px solid transparent;border-radius:4px;padding:3px 6px;background:transparent;color:var(--text-1);min-width:0;" />'
-      + '<div style="display:flex;gap:3px;flex-shrink:0;">'
-      + '<button class="cem-btn" data-cem="move-major" data-idx="'+mi+'" data-dir="-1" '+(isFirst?'disabled style="opacity:0.3;"':'')+'>↑</button>'
-      + '<button class="cem-btn" data-cem="move-major" data-idx="'+mi+'" data-dir="1" '+(isLast?'disabled style="opacity:0.3;"':'')+'>↓</button>'
-      + '<button class="cem-btn danger" data-cem="delete-major" data-id="'+cat.id+'">削除</button>'
-      + '</div></div>';
-    if(cat.subs && cat.subs.length){
-      cat.subs.forEach((sub, si) => {
-        const sf = si===0, sl = si===cat.subs.length-1;
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 20px;border-top:1px solid var(--line);">'
-          + '<span style="font-size:11px;color:var(--text-3);flex-shrink:0;">中分類</span>'
-          + '<input class="cem-name-input" data-cem-rename="sub" data-id="'+sub.id+'" data-major-id="'+cat.id+'" value="'+escapeHtml(sub.name)+'" style="flex:1;font-size:12px;border:1px solid transparent;border-radius:4px;padding:2px 6px;background:transparent;color:var(--text-2);min-width:0;" />'
-          + '<div style="display:flex;gap:3px;flex-shrink:0;">'
-          + '<button class="cem-btn" data-cem="move-sub" data-major-id="'+cat.id+'" data-idx="'+si+'" data-dir="-1" '+(sf?'disabled style="opacity:0.3;"':'')+'>↑</button>'
-          + '<button class="cem-btn" data-cem="move-sub" data-major-id="'+cat.id+'" data-idx="'+si+'" data-dir="1" '+(sl?'disabled style="opacity:0.3;"':'')+'>↓</button>'
-          + '<button class="cem-btn danger" data-cem="delete-sub" data-id="'+sub.id+'" data-major-id="'+cat.id+'">削除</button>'
-          + '</div></div>';
-      });
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  body.innerHTML = html;
-
-  body.querySelectorAll('.cem-name-input').forEach(inp => {
-    inp.addEventListener('focus', function(){ this.style.border='1px solid var(--amber)'; this.style.background='var(--bg-1)'; });
-    inp.addEventListener('blur', async function(){
-      this.style.border='1px solid transparent'; this.style.background='transparent';
-      if(this.dataset.cemRename === 'major') await _cemRenameMajor(this.dataset.id, this.value);
-      else await _cemRenameSub(this.dataset.majorId, this.dataset.id, this.value);
-    });
-    inp.addEventListener('keydown', function(e){
-      if(e.key==='Enter'){ e.preventDefault(); this.blur(); }
-      if(e.key==='Escape'){ this.blur(); }
-    });
-  });
-
-  body.querySelectorAll('[data-cem]').forEach(btn => {
-    if(btn.disabled) return;
-    btn.addEventListener('click', async function(){
-      if(!canWriteData()) return;
-      const action = this.dataset.cem;
-      const id = this.dataset.id;
-      const majorId = this.dataset.majorId;
-      const idx = parseInt(this.dataset.idx);
-      const dir = parseInt(this.dataset.dir);
-      if(action === 'move-major') await _cemMoveMajor(idx, dir);
-      else if(action === 'move-sub') await _cemMoveSub(majorId, idx, dir);
-      else if(action === 'delete-major'){ await handleCatAction('delete-major', undefined, id); renderSpecSearchPanel(); renderProductTable(); renderCatEditModal(); }
-      else if(action === 'delete-sub'){ await handleCatAction('delete-sub', majorId, id); renderSpecSearchPanel(); renderProductTable(); renderCatEditModal(); }
-    });
-  });
-}
-</script>
 
 <!-- 分類編集モーダル -->
 <div id="catEditModal">
