@@ -4023,11 +4023,17 @@ window.addEventListener('storageReady', function(){
 
   async function loadPriceRules(){
     try{
+      // _fbGetError をリセットしてからGETし、エラーかどうかを判定する
+      window._fbGetError = null;
       const r = await window.storage.get('allPriceRules', SHARED);
       if(r){
         allPriceRules = JSON.parse(r.value);
+      } else if(window._fbGetError){
+        // Firebase読み取りエラー（ネットワーク・権限）→ マイグレーションは実行しない
+        // allPriceRulesはデフォルト状態のままにし、Firebaseを上書きしない
+        console.error('loadPriceRules: Firebase read error, skipping migration to prevent data loss:', window._fbGetError);
       } else {
-        // 旧データからマイグレーション
+        // キーが存在しない（初回起動）→ 旧データからマイグレーション
         const old = await window.storage.get('priceRules', SHARED);
         const oldRules = old ? JSON.parse(old.value) : defaultPriceRules();
         if(!oldRules.byModel) oldRules.byModel = {};
@@ -4037,7 +4043,7 @@ window.addEventListener('storageReady', function(){
         allPriceRules['taniyabe'] = oldRules;
         await savePriceRules();
       }
-    }catch(e){ allPriceRules = {}; }
+    }catch(e){ console.error('loadPriceRules exception', e); allPriceRules = {}; }
     _ensureAllPriceRules();
     updateCurrentPriceRules();
   }
@@ -4297,9 +4303,12 @@ window.addEventListener('storageReady', function(){
 
   async function loadCostRules(){
     try{
+      window._fbGetError = null;
       const r = await window.storage.get('allCostRules', SHARED);
       if(r){
         allCostRules = JSON.parse(r.value);
+      } else if(window._fbGetError){
+        console.error('loadCostRules: Firebase read error, skipping migration to prevent data loss:', window._fbGetError);
       } else {
         const old = await window.storage.get('costRules', SHARED);
         const oldRules = old ? JSON.parse(old.value) : defaultCostRules();
@@ -4310,7 +4319,7 @@ window.addEventListener('storageReady', function(){
         allCostRules['taniyabe'] = oldRules;
         await saveCostRules();
       }
-    }catch(e){ allCostRules = {}; }
+    }catch(e){ console.error('loadCostRules exception', e); allCostRules = {}; }
     _ensureAllCostRules();
     updateCurrentCostRules();
   }
