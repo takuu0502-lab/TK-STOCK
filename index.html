@@ -230,12 +230,6 @@
   .cat-row:hover .cat-actions{display:flex;}
   .icon-btn{background:transparent;border:none;color:var(--text-3);font-size:12px;padding:2px 5px;line-height:1;border-radius:4px;cursor:pointer;}
   .icon-btn:hover{color:var(--text-1);background:var(--bg-3);}
-  /* chip edit buttons (spec panel) */
-  .chip-pair{display:inline-flex;align-items:center;gap:2px;vertical-align:middle;}
-  .chip-pair .chip-edit-actions{display:none;align-items:center;gap:1px;}
-  .chip-pair:hover .chip-edit-actions{display:inline-flex;}
-  .chip-edit-actions button{background:var(--bg-2);border:1px solid var(--line);cursor:pointer;font-size:10px;padding:2px 4px;border-radius:3px;color:var(--text-2);line-height:1;white-space:nowrap;}
-  .chip-edit-actions button:hover{background:var(--bg-3);color:var(--text-1);}
   /* category edit modal */
   #catEditModal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;}
   #catEditModal.open{display:flex;}
@@ -13932,17 +13926,9 @@ window.addEventListener('storageReady', function(){
       const borderStyle = active
         ? 'border-color:'+col+';background:'+col+';color:#fff;'
         : 'border-color:'+col+';';
-      html += '<span class="chip-pair">'
-        + '<span class="chip'+(active?' active':'')+'" data-spec-major="'+cat.id+'" style="'+borderStyle+'">'
+      html += '<span class="chip'+(active?' active':'')+'" data-spec-major="'+cat.id+'" style="'+borderStyle+'">'
         + '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':col)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
-        + escapeHtml(cat.name)+'</span>'
-        + (canWriteData() ? '<span class="chip-edit-actions">'
-          + '<button data-chip-action="rename-major" data-chip-id="'+cat.id+'" title="名称変更">✏</button>'
-          + '<button data-chip-action="move-major-up" data-chip-id="'+cat.id+'" title="上へ">↑</button>'
-          + '<button data-chip-action="move-major-down" data-chip-id="'+cat.id+'" title="下へ">↓</button>'
-          + '<button data-chip-action="delete-major" data-chip-id="'+cat.id+'" title="削除">×</button>'
-          + '</span>' : '')
-        + '</span>';
+        + escapeHtml(cat.name)+'</span>';
     });
     if(canWriteData()){
       html += '<span class="chip" id="specAddMajorBtn" style="border-color:var(--text-3);color:var(--text-3);cursor:pointer;">＋ 大分類を追加</span>';
@@ -13959,17 +13945,9 @@ window.addEventListener('storageReady', function(){
         m.subs.forEach((sub, si)=>{
           const active = selectedSub === sub.id;
           const subCol = colorForSubItem(selectedMajor, si);
-          html += '<span class="chip-pair">'
-            + '<span class="chip'+(active?' active':'')+'" data-spec-sub="'+sub.id+'" style="'+(active?'border-color:'+subCol+';background:'+subCol+';color:#fff;':'border-color:'+subCol+';')+'">'
+          html += '<span class="chip'+(active?' active':'')+'" data-spec-sub="'+sub.id+'" style="'+(active?'border-color:'+subCol+';background:'+subCol+';color:#fff;':'border-color:'+subCol+';')+'">'
             + '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(active?'rgba(255,255,255,0.85)':subCol)+';margin-right:5px;flex-shrink:0;vertical-align:middle;margin-top:-1px;"></span>'
-            + escapeHtml(sub.name)+'</span>'
-            + (canWriteData() ? '<span class="chip-edit-actions">'
-              + '<button data-chip-action="rename-sub" data-chip-id="'+sub.id+'" data-chip-major="'+selectedMajor+'" title="名称変更">✏</button>'
-              + '<button data-chip-action="move-sub-up" data-chip-id="'+sub.id+'" data-chip-major="'+selectedMajor+'" title="上へ">↑</button>'
-              + '<button data-chip-action="move-sub-down" data-chip-id="'+sub.id+'" data-chip-major="'+selectedMajor+'" title="下へ">↓</button>'
-              + '<button data-chip-action="delete-sub" data-chip-id="'+sub.id+'" data-chip-major="'+selectedMajor+'" title="削除">×</button>'
-              + '</span>' : '')
-            + '</span>';
+            + escapeHtml(sub.name)+'</span>';
         });
         if(canWriteData()){
           html += '<span class="chip" id="specAddSubBtn" data-spec-add-sub="'+selectedMajor+'" style="border-color:var(--text-3);color:var(--text-3);cursor:pointer;">＋ 中分類を追加</span>';
