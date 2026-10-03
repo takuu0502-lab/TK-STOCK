@@ -16611,7 +16611,18 @@ window.addEventListener('storageReady', function(){
     if(hist.length === 0){
       histHtml = '<div class="empty-state">入出庫履歴はまだありません。</div>';
     } else {
-      histHtml = hist.map(t=>{
+      // 現在の在庫数から逆算して各時点の残数を計算
+      const currentStock = (p.branchStock && p.branchStock[_detHistOwnBranch]) != null
+        ? (p.branchStock[_detHistOwnBranch] || 0)
+        : (p.stock || 0);
+      let running = currentStock;
+      // hist は新しい順なので、古い順(逆順)に積み上げてから各時点を求める
+      const runningTotals = [];
+      for(let i = 0; i < hist.length; i++){
+        runningTotals[i] = running;
+        running -= (hist[i].type === 'in' ? hist[i].qty : -hist[i].qty);
+      }
+      histHtml = hist.map((t, i)=>{
         const d = new Date(t.date);
         const dateStr = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
         const resTag = t.itemType === 'reserved' ? '<span class="res-tag">予約品</span>' : '';
@@ -16619,10 +16630,14 @@ window.addEventListener('storageReady', function(){
           (t.customerName ? escapeHtml(t.customerName)+'様' : ''),
           (t.user ? '担当: '+escapeHtml(t.user) : '')
         ].filter(Boolean).join('　');
+        const afterQty = runningTotals[i];
         return '<div class="hist-row">'
           + '<span class="hist-type '+(t.type==='in'?'hist-in':'hist-out')+'">'+(t.type==='in'?'入庫':'出庫')+'</span>'
           + '<div class="hist-info"><div class="hist-name">'+dateStr+resTag+'</div>'+(_histSub?'<div class="hist-sub">'+_histSub+'</div>':'')+'</div>'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-left:auto;">'
           + '<div class="hist-qty" style="color:'+(t.type==='in'?'var(--teal)':'var(--red)')+';">'+(t.type==='in'?'+':'-')+t.qty+'</div>'
+          + '<div style="font-size:11px;color:var(--text-3);background:var(--bg-2);border:1px solid var(--line);border-radius:4px;padding:2px 6px;white-space:nowrap;">残 '+afterQty+'</div>'
+          + '</div>'
           + '</div>';
       }).join('');
     }
