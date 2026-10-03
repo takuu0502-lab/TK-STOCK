@@ -1055,7 +1055,12 @@
       <label id="beColLbl-partno"   style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="partno"   checked style="accent-color:var(--amber);cursor:pointer;">品番</label>
       <label id="beColLbl-wheelspec" style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="wheelspec" style="accent-color:var(--amber);cursor:pointer;">ホイールスペック</label>
     </div>
-    <!-- 中分類一括変更 -->
+    <!-- 大分類・中分類一括変更 -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">大分類を一括変更：</span>
+      <select id="beBulkMajor" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);flex:1;min-width:120px;"></select>
+      <button class="btn btn-ghost btn-sm" id="beApplyMajor" style="white-space:nowrap;">チェック行に適用</button>
+    </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
       <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">中分類を一括変更：</span>
       <select id="beBulkSub" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);flex:1;min-width:120px;"></select>
@@ -14154,8 +14159,12 @@ window.addEventListener('storageReady', function(){
     }
 
     const _beBulkSub = document.getElementById('beBulkSub');
+    const _beBulkMajor = document.getElementById('beBulkMajor');
 
     function _beInitBulkSelects(){
+      // 大分類セレクト
+      _beBulkMajor.innerHTML = '<option value="">（大分類を選択）</option>'
+        + (categories||[]).map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
       // 全大分類の中分類をまとめて列挙
       _beBulkSub.innerHTML = '<option value="">（中分類を選択）</option>'
         + (categories||[]).flatMap(c=>(c.subs||[]).map(s=>`<option value="${s.id}">[${escapeHtml(c.name)}] ${escapeHtml(s.name)}</option>`)).join('');
@@ -14264,6 +14273,26 @@ window.addEventListener('storageReady', function(){
       _beTbody.querySelectorAll('.be-chk').forEach(c=>c.checked=e.target.checked);
       _beUpdateCount();
     });
+    document.getElementById('beApplyMajor').addEventListener('click', ()=>{
+      const majorId = _beBulkMajor.value;
+      if(!majorId) return;
+      // チェック済み行の大分類を一括変更し、中分類をリセット
+      _beTbody.querySelectorAll('.be-chk:checked').forEach(chk=>{
+        const pid = chk.dataset.pid;
+        const majorSel = _beTbody.querySelector(`.be-major[data-pid="${pid}"]`);
+        const subSel   = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+        if(majorSel){ majorSel.value = majorId; majorSel.style.borderColor = 'var(--teal)'; }
+        if(subSel){
+          // 選択した大分類の中分類でセレクトを再構築
+          const cat = categories.find(c=>c.id===majorId);
+          subSel.innerHTML = '<option value="">（中分類なし）</option>'
+            + (cat&&cat.subs||[]).map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+          subSel.value = '';
+          subSel.style.borderColor = 'var(--teal)';
+        }
+      });
+    });
+
     document.getElementById('beApplySub').addEventListener('click', ()=>{
       const subId = _beBulkSub.value;
       if(!subId) return;
