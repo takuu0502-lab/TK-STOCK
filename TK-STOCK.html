@@ -6534,7 +6534,7 @@ window.addEventListener('storageReady', function(){
       row.initialQty=qty;
       row.note=(document.getElementById('cer_note').value||'').trim();
       await saveCustodyContracts();
-      ov.remove(); renderCustodyTab();
+      ov.remove(); renderCustodyTab(); try{ renderProductTable(); }catch(e){}
     });
   }
 
@@ -6565,7 +6565,7 @@ window.addEventListener('storageReady', function(){
       if(l.type==='use') l.vehicleNo=((document.getElementById('cel_vehicle')||{}).value||'').trim();
       l.note=((document.getElementById('cel_note')||{}).value||'').trim();
       await saveCustodyContracts();
-      ov.remove(); renderCustodyTab();
+      ov.remove(); renderCustodyTab(); try{ renderProductTable(); }catch(e){}
     }, '保存する');
   }
   async function custodyDeleteLog(rowId, logId){
@@ -6577,7 +6577,7 @@ window.addEventListener('storageReady', function(){
     await saveCustodyContracts();
     // モーダルを閉じてから再描画
     document.querySelectorAll('.custody-overlay').forEach(e=>e.remove());
-    renderCustodyTab();
+    renderCustodyTab(); try{ renderProductTable(); }catch(e){}
   }
   window.custodyEditLog=custodyEditLog;
   window.custodyDeleteLog=custodyDeleteLog;
@@ -6747,6 +6747,7 @@ window.addEventListener('storageReady', function(){
     custodyContracts=custodyContracts.filter(x=>x.id!==rowId);
     await saveCustodyContracts();
     renderCustodyTab();
+    try{ renderProductTable(); }catch(e){}
   }
 
   // グローバルスコープに公開（onclick属性から呼び出せるようにする）
