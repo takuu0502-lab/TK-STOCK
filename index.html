@@ -4042,8 +4042,11 @@ window.addEventListener('storageReady', function(){
     updateCurrentPriceRules();
   }
   async function savePriceRules(){
-    try{ await window.storage.set('allPriceRules', JSON.stringify(allPriceRules), SHARED); }
-    catch(e){ console.error('save allPriceRules failed', e); }
+    try{
+      const result = await window.storage.set('allPriceRules', JSON.stringify(allPriceRules), SHARED);
+      if(!result){ console.error('savePriceRules: storage.set returned null — write failed'); return false; }
+      return true;
+    }catch(e){ console.error('save allPriceRules failed', e); return false; }
   }
   function ruleFor(brand, model){
     const modelKey = brand+'||'+model;
@@ -4217,8 +4220,9 @@ window.addEventListener('storageReady', function(){
     });
     allPriceRules[pricingActiveBranch].byBrand = byBrand;
     allPriceRules[pricingActiveBranch].byModel = byModel;
-    await savePriceRules();
+    const _prSaveOk = await savePriceRules();
     updateCurrentPriceRules();
+    if(_prSaveOk === false){ showToast('⚠️ 保存に失敗しました。ネットワークを確認してください。'); return; }
     showToast('【'+branchName(pricingActiveBranch)+'】販売価格の設定を保存しました。');
     renderPriceCatalog();
   });
