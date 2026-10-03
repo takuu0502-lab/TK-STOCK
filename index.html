@@ -35,7 +35,8 @@
     get: async (key, shared) => {
       try {
         const path = shared ? 'shared/' + key : 'local/' + key;
-        const snapshot = await get(ref(db, path));
+        const _timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 15000));
+        const snapshot = await Promise.race([get(ref(db, path)), _timeout]);
         if (snapshot.exists()) return { value: snapshot.val() };
         return null;
       } catch(e) {
