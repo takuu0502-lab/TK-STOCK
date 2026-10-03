@@ -5111,12 +5111,23 @@ window.addEventListener('storageReady', function(){
     await loadPopTemplates();
     await loadPopFiles();
     try{
+      window._fbGetError = null;
       const c = await window.storage.get('categories', SHARED);
-      categories = c ? JSON.parse(c.value) : [];
+      if(c){
+        categories = JSON.parse(c.value);
+      } else if(window._fbGetError){
+        // 読み取りエラー → デフォルトで上書きしない（既存カテゴリーIDを破壊しない）
+        console.error('loadData: categories read error, keeping defaults without saving');
+        categories = defaultCategories(); // 表示用のみ、saveしない
+      } else {
+        categories = []; // キーが存在しない（初回）→ 下のif文でデフォルト保存
+      }
     }catch(e){ categories = []; }
     if(!categories || categories.length === 0){
-      categories = defaultCategories();
-      await saveCategories();
+      if(!window._fbGetError){ // 読み取りエラー時は保存しない
+        categories = defaultCategories();
+        await saveCategories();
+      }
     } else {
       // 「セット品」カテゴリが未登録の場合は自動追加
       if(!categories.find(c=>c.name==='セット品')){
