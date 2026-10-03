@@ -35,7 +35,7 @@
     get: async (key, shared) => {
       try {
         const path = shared ? 'shared/' + key : 'local/' + key;
-        const _timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 15000));
+        const _timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 60000));
         const snapshot = await Promise.race([get(ref(db, path)), _timeout]);
         if (snapshot.exists()) return { value: snapshot.val() };
         return null;
@@ -1200,7 +1200,7 @@
     <div class="brand-row">
       <div style="display:flex;flex-direction:column;gap:5px;">
         <div class="brand" id="brandHome" style="cursor:pointer;" title="ホームに戻る"><span class="dot"></span>TK-STOCK</div>
-        <button id="reloadDataBtn" onclick="location.reload()" style="display:flex;align-items:center;gap:5px;background:var(--bg-1);border:1.5px solid var(--line);border-radius:16px;padding:3px 12px;font-size:11.5px;font-weight:600;color:var(--text-2);cursor:pointer;white-space:nowrap;transition:all 0.2s;width:fit-content;">
+        <button id="reloadDataBtn" onclick="try{localStorage.removeItem('_tk_pv');localStorage.removeItem('_tk_pd');localStorage.removeItem('_tk_cv');localStorage.removeItem('_tk_cc');}catch(e){}location.reload()" style="display:flex;align-items:center;gap:5px;background:var(--bg-1);border:1.5px solid var(--line);border-radius:16px;padding:3px 12px;font-size:11.5px;font-weight:600;color:var(--text-2);cursor:pointer;white-space:nowrap;transition:all 0.2s;width:fit-content;">
           <span>🔄</span><span>データ更新</span><span id="reloadBtnTime" style="color:var(--text-3);font-weight:400;"></span>
         </button>
         <span id="reloadStaleWarning" style="display:none;font-size:11px;font-weight:700;color:#b45309;">⚠️ 30分以上経過。入庫・出庫前に更新してください</span>
@@ -3950,10 +3950,21 @@ window.addEventListener('storageReady', function(){
   }
   async function loadImportedCatalogs(){
     try{
-      const r = await window.storage.get('importedCatalogs', SHARED);
-      console.log('[loadImportedCatalogs] raw:', r ? ('length='+String(r.value||'').length) : 'null');
-      importedCatalogs = r ? JSON.parse(r.value) : [];
-      console.log('[loadImportedCatalogs] loaded', importedCatalogs.length, 'catalogs');
+      // バージョンチェック：変更があった場合のみFirebaseから再取得
+      const _cv = await window.storage.get('catalogs_v', SHARED);
+      const _fbCv = _cv ? _cv.value : null;
+      const _lcCv = _lsGet('_tk_cv');
+      const _lcCd = _lsGet('_tk_cc');
+      if(_fbCv && _fbCv === _lcCv && _lcCd){
+        console.log('[loadImportedCatalogs] cache hit');
+        importedCatalogs = JSON.parse(_lcCd);
+      } else {
+        const r = await window.storage.get('importedCatalogs', SHARED);
+        console.log('[loadImportedCatalogs] raw:', r ? ('length='+String(r.value||'').length) : 'null');
+        importedCatalogs = r ? JSON.parse(r.value) : [];
+        if(_fbCv && r){ _lsSet('_tk_cv', _fbCv); _lsSet('_tk_cc', r.value); }
+        console.log('[loadImportedCatalogs] loaded', importedCatalogs.length, 'catalogs');
+      }
     }catch(e){ console.error('[loadImportedCatalogs] error', e); importedCatalogs = []; }
     rebuildImportedItems();
     // 管理タブが開いていればブランドルールを再描画（カタログ読込完了後）
@@ -3972,6 +3983,11 @@ window.addEventListener('storageReady', function(){
       console.error('[saveImportedCatalogs] storage.set returned null — write failed');
       return false;
     }
+    // バージョン更新（他クライアントのキャッシュを無効化）
+    const _ts = String(Date.now());
+    window.storage.set('catalogs_v', _ts, SHARED); // fire-and-forget
+    _lsSet('_tk_cv', _ts);
+    _lsSet('_tk_cc', json);
     console.log('[saveImportedCatalogs] save OK');
     return true;
   }
@@ -4004,6 +4020,13 @@ window.addEventListener('storageReady', function(){
     if(mode === 'ceil')  return Math.ceil(price / unit) * unit;
     return Math.round(price / unit) * unit;
   }
+  // ── localStorageキャッシュヘルパー ──────────────────────────────
+  function _lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function _lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ console.warn('[cache] ls write failed:',k,e.name); } }
+  function _lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  function _lsClearProducts(){ _lsDel('_tk_pv'); _lsDel('_tk_pd'); }
+  function _lsClearCatalogs(){ _lsDel('_tk_cv'); _lsDel('_tk_cc'); }
+
   // 支店別ルール（全支店分を保持）
   let allPriceRules = {};
   let priceRules = defaultPriceRules(); // 現在の支店のルール（計算用）
@@ -5076,7 +5099,7 @@ window.addEventListener('storageReady', function(){
       if(title){ title.textContent = '接続がタイムアウトしました'; title.style.color = '#C2402C'; }
       if(msg) msg.textContent = 'Firebaseに接続できません。ネットワークを確認して再読み込みしてください。';
       if(btn) btn.style.display = 'inline-block';
-    }, 20000);
+    }, 90000);
     try{
     await loadPriceRules();
     await loadCostRules();
@@ -5105,8 +5128,20 @@ window.addEventListener('storageReady', function(){
       }
     }
     try{
-      const p = await window.storage.get('products', SHARED);
-      products = p ? JSON.parse(p.value) : [];
+      // バージョンチェック：変更があった場合のみFirebaseから全件取得
+      const _pv = await window.storage.get('products_v', SHARED);
+      const _fbPv = _pv ? _pv.value : null;
+      const _lcPv = _lsGet('_tk_pv');
+      const _lcPd = _lsGet('_tk_pd');
+      if(_fbPv && _fbPv === _lcPv && _lcPd){
+        console.log('[products] cache hit');
+        try{ products = JSON.parse(_lcPd); }catch(e){ products = []; }
+      } else {
+        console.log('[products] cache miss, loading from Firebase');
+        const p = await window.storage.get('products', SHARED);
+        products = p ? JSON.parse(p.value) : [];
+        if(_fbPv && p){ _lsSet('_tk_pv', _fbPv); _lsSet('_tk_pd', p ? p.value : '[]'); }
+      }
     }catch(e){ products = []; }
     // 初回ロード時：専用パスの在庫スナップショットを適用（在庫数の信頼性向上）
     await _applyStockSnapshots();
@@ -5389,28 +5424,35 @@ window.addEventListener('storageReady', function(){
     if(!force && now - _lastRefreshAt < _REFRESH_THROTTLE_MS) return;
     _lastRefreshAt = now;
     try{
-      const _rp = await window.storage.get('products', SHARED);
-      if(_rp && _rp.value){
-        const _fbProds = JSON.parse(_rp.value);
-        if(Array.isArray(_fbProds)){
-          // マージ方式：updatedAtが新しい方を優先（ローカルの未保存変更を保護）
-          const _fbMap = new Map(_fbProds.map(p=>[p.id, p]));
-          const _localMap = new Map(products.map(p=>[p.id, p]));
-          const _merged = [];
-          for(const [id, fp] of _fbMap){
-            const lp = _localMap.get(id);
-            // ローカルの方が新しければローカルを維持、そうでなければFirebase版を使用
-            if(lp && (lp.updatedAt||0) > (fp.updatedAt||0)){
-              _merged.push(lp);
-            } else {
-              _merged.push(fp);
+      // バージョンチェック：products_vが変わった場合のみ全件取得
+      const _rpv = await window.storage.get('products_v', SHARED);
+      const _fbPv = _rpv ? _rpv.value : null;
+      if(_fbPv && _fbPv === _lsGet('_tk_pv')){
+        // バージョン同じ → 他ユーザーの変更なし、ダウンロードスキップ
+      } else {
+        const _rp = await window.storage.get('products', SHARED);
+        if(_rp && _rp.value){
+          const _fbProds = JSON.parse(_rp.value);
+          if(Array.isArray(_fbProds)){
+            // マージ方式：updatedAtが新しい方を優先（ローカルの未保存変更を保護）
+            const _fbMap = new Map(_fbProds.map(p=>[p.id, p]));
+            const _localMap = new Map(products.map(p=>[p.id, p]));
+            const _merged = [];
+            for(const [id, fp] of _fbMap){
+              const lp = _localMap.get(id);
+              if(lp && (lp.updatedAt||0) > (fp.updatedAt||0)){
+                _merged.push(lp);
+              } else {
+                _merged.push(fp);
+              }
             }
+            for(const [id, lp] of _localMap){
+              if(!_fbMap.has(id)) _merged.push(lp);
+            }
+            products = _merged;
           }
-          // Firebaseにない新規ローカル商品も保持
-          for(const [id, lp] of _localMap){
-            if(!_fbMap.has(id)) _merged.push(lp);
-          }
-          products = _merged;
+          // キャッシュ更新
+          if(_fbPv){ _lsSet('_tk_pv', _fbPv); _lsSet('_tk_pd', _rp.value); }
         }
       }
       const _rpob = await window.storage.get('provisionalOutbounds', SHARED);
@@ -5534,6 +5576,11 @@ window.addEventListener('storageReady', function(){
     if(result){
       // トランザクション成功 → ローカルをFirebaseの確定値で同期
       try{ products = JSON.parse(result.value); }catch(_){}
+      // バージョン更新（他クライアントのキャッシュを無効化）
+      const _ts = String(Date.now());
+      window.storage.set('products_v', _ts, SHARED); // fire-and-forget
+      _lsSet('_tk_pv', _ts);
+      _lsSet('_tk_pd', result.value);
       return result; // 成功を示す値を返す
     } else {
       // 失敗時：最大2回まで自動リトライ（指数バックオフ）
