@@ -236,6 +236,24 @@
   .chip-pair:hover .chip-edit-actions{display:inline-flex;}
   .chip-edit-actions button{background:var(--bg-2);border:1px solid var(--line);cursor:pointer;font-size:10px;padding:2px 4px;border-radius:3px;color:var(--text-2);line-height:1;white-space:nowrap;}
   .chip-edit-actions button:hover{background:var(--bg-3);color:var(--text-1);}
+  /* category edit modal */
+  #catEditModal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;}
+  #catEditModal.open{display:flex;}
+  #catEditModalBox{background:var(--bg-1);border-radius:10px;width:520px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25);}
+  #catEditModalHeader{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+  #catEditModalHeader h3{margin:0;font-size:15px;}
+  #catEditModalBody{overflow-y:auto;padding:12px 18px;flex:1;}
+  .cem-major-row{display:flex;align-items:center;gap:6px;padding:5px 4px;border-radius:5px;}
+  .cem-major-row:hover{background:var(--bg-2);}
+  .cem-major-name{flex:1;font-size:13px;font-weight:600;}
+  .cem-sub-row{display:flex;align-items:center;gap:6px;padding:3px 4px 3px 18px;border-radius:5px;}
+  .cem-sub-row:hover{background:var(--bg-2);}
+  .cem-sub-name{flex:1;font-size:12px;color:var(--text-2);}
+  .cem-btn{background:none;border:1px solid var(--line);border-radius:3px;cursor:pointer;font-size:11px;padding:2px 6px;color:var(--text-2);white-space:nowrap;}
+  .cem-btn:hover{background:var(--bg-3);color:var(--text-1);}
+  .cem-btn.danger:hover{background:#fee2e2;color:#dc2626;border-color:#dc2626;}
+  .cem-section-toggle{cursor:pointer;font-size:11px;color:var(--text-3);user-select:none;}
+  .cem-subs{padding-left:0;}
   .cat-row.add-row{color:var(--text-3);font-style:normal;font-size:12px;}
   .cat-row.drag-over{background:var(--amber-dim);border:1px dashed var(--amber);}
   .cat-row.add-row:hover{color:var(--amber);}
@@ -13952,7 +13970,10 @@ window.addEventListener('storageReady', function(){
 
     html += '<div class="spec-search-actions" style="justify-content:space-between;align-items:center;">'
       + '<button class="btn btn-amber" id="specSearchGo">検索</button>'
+      + '<div style="display:flex;align-items:center;gap:10px;">'
+      + (canWriteData() ? '<button id="catEditModalBtn" style="font-size:11px;padding:4px 10px;border:1px solid var(--line);background:var(--bg-2);border-radius:5px;cursor:pointer;color:var(--text-2);">⚙ 分類を編集</button>' : '')
       + '<div id="stockValueDisplay" style="text-align:right;min-width:180px;"></div>'
+      + '</div>'
       + '</div>';
     html += '</div>';
     panel.innerHTML = html;
@@ -21898,6 +21919,98 @@ window.addEventListener('storageReady', function(){
     _priceTipHideTimer = setTimeout(()=>{ _tipEl.style.display='none'; }, 3000);
   }, true); // capture=trueで確実にstopPropagation前に動作
 });
+</script>
+
+<!-- 分類編集モーダル -->
+<div id="catEditModal">
+  <div id="catEditModalBox">
+    <div id="catEditModalHeader">
+      <h3>⚙ 分類を編集</h3>
+      <button id="catEditModalClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">✕</button>
+    </div>
+    <div id="catEditModalBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function openCatEditModal(){
+    renderCatEditModal();
+    document.getElementById('catEditModal').classList.add('open');
+  }
+  function closeCatEditModal(){
+    document.getElementById('catEditModal').classList.remove('open');
+  }
+
+  document.getElementById('catEditModal').addEventListener('click', function(e){
+    if(e.target === this) closeCatEditModal();
+  });
+  document.getElementById('catEditModalClose').addEventListener('click', closeCatEditModal);
+
+  // ボタンはrenderSpecSearchPanel後に動的生成されるためdocument委任
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id === 'catEditModalBtn') openCatEditModal();
+  });
+
+  function renderCatEditModal(){
+    const body = document.getElementById('catEditModalBody');
+    let html = '';
+    categories.forEach((cat, mi) => {
+      html += '<div class="cem-major-row">'
+        + '<span class="cem-major-name">📁 '+escapeHtml(cat.name)+'</span>'
+        + '<button class="cem-btn" data-cem="move-major-up" data-idx="'+mi+'" title="上へ">↑</button>'
+        + '<button class="cem-btn" data-cem="move-major-down" data-idx="'+mi+'" title="下へ">↓</button>'
+        + '<button class="cem-btn" data-cem="rename-major" data-id="'+cat.id+'" title="名称変更">✏ 名前</button>'
+        + '<button class="cem-btn danger" data-cem="delete-major" data-id="'+cat.id+'" title="削除">✕</button>'
+        + '</div>';
+      if(cat.subs && cat.subs.length){
+        cat.subs.forEach((sub, si) => {
+          html += '<div class="cem-sub-row">'
+            + '<span class="cem-sub-name">└ '+escapeHtml(sub.name)+'</span>'
+            + '<button class="cem-btn" data-cem="move-sub-up" data-major-id="'+cat.id+'" data-idx="'+si+'" title="上へ">↑</button>'
+            + '<button class="cem-btn" data-cem="move-sub-down" data-major-id="'+cat.id+'" data-idx="'+si+'" title="下へ">↓</button>'
+            + '<button class="cem-btn" data-cem="rename-sub" data-major-id="'+cat.id+'" data-id="'+sub.id+'" title="名称変更">✏ 名前</button>'
+            + '<button class="cem-btn danger" data-cem="delete-sub" data-major-id="'+cat.id+'" data-id="'+sub.id+'" title="削除">✕</button>'
+            + '</div>';
+        });
+      }
+    });
+    body.innerHTML = html;
+
+    body.querySelectorAll('[data-cem]').forEach(btn => {
+      btn.addEventListener('click', async function(){
+        if(!canWriteData()) return;
+        const action = this.dataset.cem;
+        const id = this.dataset.id;
+        const majorId = this.dataset.majorId;
+        const idx = parseInt(this.dataset.idx);
+
+        if(action === 'rename-major'){
+          await handleCatAction('rename-major', undefined, id);
+        } else if(action === 'delete-major'){
+          await handleCatAction('delete-major', undefined, id);
+        } else if(action === 'move-major-up'){
+          if(idx > 0){ [categories[idx-1],categories[idx]]=[categories[idx],categories[idx-1]]; await saveCategories(); renderCatTree(); }
+        } else if(action === 'move-major-down'){
+          if(idx < categories.length-1){ [categories[idx],categories[idx+1]]=[categories[idx+1],categories[idx]]; await saveCategories(); renderCatTree(); }
+        } else if(action === 'rename-sub'){
+          await handleCatAction('rename-sub', majorId, id);
+        } else if(action === 'delete-sub'){
+          await handleCatAction('delete-sub', majorId, id);
+        } else if(action === 'move-sub-up'){
+          const cat = majorById(majorId);
+          if(cat && idx > 0){ [cat.subs[idx-1],cat.subs[idx]]=[cat.subs[idx],cat.subs[idx-1]]; await saveCategories(); renderCatTree(); }
+        } else if(action === 'move-sub-down'){
+          const cat = majorById(majorId);
+          if(cat && idx < cat.subs.length-1){ [cat.subs[idx],cat.subs[idx+1]]=[cat.subs[idx+1],cat.subs[idx]]; await saveCategories(); renderCatTree(); }
+        }
+        renderSpecSearchPanel();
+        renderProductTable();
+        renderCatEditModal();
+      });
+    });
+  }
+})();
 </script>
 </body>
 </html>
