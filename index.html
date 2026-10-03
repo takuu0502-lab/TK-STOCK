@@ -6431,7 +6431,7 @@ window.addEventListener('storageReady', function(){
       };
       custodyContracts.unshift(row);
       await saveCustodyContracts();
-      ov.remove(); renderCustodyTab();
+      ov.remove(); renderCustodyTab(); try{ renderProductTable(); }catch(e){}
     }, '登録する');
   }
 
@@ -6679,7 +6679,7 @@ window.addEventListener('storageReady', function(){
       if(!row.logs) row.logs=[];
       row.logs.push({id:uid('cl'),type:'add',qty,date,note,createdAt:new Date().toISOString()});
       await saveCustodyContracts();
-      ov.remove(); renderCustodyTab();
+      ov.remove(); renderCustodyTab(); try{ renderProductTable(); }catch(e){}
     }, '追加する');
   }
   window.custodyAddQty=custodyAddQty;
@@ -6709,7 +6709,7 @@ window.addEventListener('storageReady', function(){
       if(!row.logs) row.logs=[];
       row.logs.push({id:uid('cl'),type:'use',qty,vehicleNo,date,note,createdAt:new Date().toISOString()});
       await saveCustodyContracts();
-      ov.remove(); renderCustodyTab();
+      ov.remove(); renderCustodyTab(); try{ renderProductTable(); }catch(e){}
     }, '記録する');
   }
 
@@ -6736,7 +6736,7 @@ window.addEventListener('storageReady', function(){
       if(!row.logs) row.logs=[];
       row.logs.push({id:uid('cl'),type:'sale',qty,vehicleNo:'',date,note,createdAt:new Date().toISOString()});
       await saveCustodyContracts();
-      ov.remove(); renderCustodyTab();
+      ov.remove(); renderCustodyTab(); try{ renderProductTable(); }catch(e){}
     }, '記録する');
   }
 
