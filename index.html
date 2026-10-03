@@ -13971,7 +13971,7 @@ window.addEventListener('storageReady', function(){
     html += '<div class="spec-search-actions" style="justify-content:space-between;align-items:center;">'
       + '<button class="btn btn-amber" id="specSearchGo">検索</button>'
       + '<div style="display:flex;align-items:center;gap:10px;">'
-      + (canWriteData() ? '<button id="catEditModalBtn" style="font-size:11px;padding:4px 10px;border:1px solid var(--line);background:var(--bg-2);border-radius:5px;cursor:pointer;color:var(--text-2);">⚙ 分類を編集</button>' : '')
+      + (canWriteData() ? '<button id="catEditModalBtn" style="font-size:11px;padding:4px 10px;border:1px solid var(--line);background:var(--bg-2);border-radius:5px;cursor:pointer;color:var(--text-2);" onclick="document.getElementById(\'catEditModal\').classList.add(\'open\');window._renderCatEditModal&&window._renderCatEditModal();">⚙ 分類を編集</button>' : '')
       + '<div id="stockValueDisplay" style="text-align:right;min-width:180px;"></div>'
       + '</div>'
       + '</div>';
@@ -21934,10 +21934,6 @@ window.addEventListener('storageReady', function(){
 
 <script>
 (function(){
-  function openCatEditModal(){
-    renderCatEditModal();
-    document.getElementById('catEditModal').classList.add('open');
-  }
   function closeCatEditModal(){
     document.getElementById('catEditModal').classList.remove('open');
   }
@@ -21946,11 +21942,6 @@ window.addEventListener('storageReady', function(){
     if(e.target === this) closeCatEditModal();
   });
   document.getElementById('catEditModalClose').addEventListener('click', closeCatEditModal);
-
-  // ボタンはrenderSpecSearchPanel後に動的生成されるためdocument委任
-  document.addEventListener('click', function(e){
-    if(e.target && e.target.id === 'catEditModalBtn') openCatEditModal();
-  });
 
   function renderCatEditModal(){
     const body = document.getElementById('catEditModalBody');
@@ -22010,6 +22001,7 @@ window.addEventListener('storageReady', function(){
       });
     });
   }
+  window._renderCatEditModal = renderCatEditModal;
 })();
 </script>
 </body>
