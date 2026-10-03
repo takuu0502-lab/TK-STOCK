@@ -21926,7 +21926,7 @@ window.addEventListener('storageReady', function(){
   <div id="catEditModalBox">
     <div id="catEditModalHeader">
       <h3>⚙ 分類を編集</h3>
-      <button id="catEditModalClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-2);">✕</button>
+      <button id="catEditModalClose" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-2);line-height:1;">✕</button>
     </div>
     <div id="catEditModalBody"></div>
   </div>
@@ -21937,67 +21937,106 @@ window.addEventListener('storageReady', function(){
   function closeCatEditModal(){
     document.getElementById('catEditModal').classList.remove('open');
   }
-
   document.getElementById('catEditModal').addEventListener('click', function(e){
     if(e.target === this) closeCatEditModal();
   });
   document.getElementById('catEditModalClose').addEventListener('click', closeCatEditModal);
 
+  async function moveMajor(idx, dir){
+    const ni = idx + dir;
+    if(ni < 0 || ni >= categories.length) return;
+    [categories[idx], categories[ni]] = [categories[ni], categories[idx]];
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+    renderCatEditModal();
+  }
+  async function moveSub(majorId, idx, dir){
+    const cat = majorById(majorId);
+    if(!cat) return;
+    const ni = idx + dir;
+    if(ni < 0 || ni >= cat.subs.length) return;
+    [cat.subs[idx], cat.subs[ni]] = [cat.subs[ni], cat.subs[idx]];
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+    renderCatEditModal();
+  }
+  async function renameMajorInline(id, newName){
+    const cat = categories.find(c=>c.id===id);
+    if(!cat || !newName.trim()) return;
+    cat.name = newName.trim();
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+  }
+  async function renameSubInline(majorId, id, newName){
+    const cat = majorById(majorId);
+    if(!cat) return;
+    const sub = cat.subs.find(s=>s.id===id);
+    if(!sub || !newName.trim()) return;
+    sub.name = newName.trim();
+    await saveCategories(); renderCatTree(); renderSpecSearchPanel(); renderProductTable();
+  }
+
   function renderCatEditModal(){
     const body = document.getElementById('catEditModalBody');
-    let html = '';
+    let html = '<div style="padding-bottom:8px;">';
     categories.forEach((cat, mi) => {
-      html += '<div class="cem-major-row">'
-        + '<span class="cem-major-name">📁 '+escapeHtml(cat.name)+'</span>'
-        + '<button class="cem-btn" data-cem="move-major-up" data-idx="'+mi+'" title="上へ">↑</button>'
-        + '<button class="cem-btn" data-cem="move-major-down" data-idx="'+mi+'" title="下へ">↓</button>'
-        + '<button class="cem-btn" data-cem="rename-major" data-id="'+cat.id+'" title="名称変更">✏ 名前</button>'
-        + '<button class="cem-btn danger" data-cem="delete-major" data-id="'+cat.id+'" title="削除">✕</button>'
-        + '</div>';
+      const isFirst = mi === 0, isLast = mi === categories.length - 1;
+      html += '<div style="border:1px solid var(--line);border-radius:7px;margin-bottom:8px;overflow:hidden;">'
+        // 大分類ヘッダー行
+        + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg-2);">'
+        + '<span style="font-size:12px;color:var(--text-3);flex-shrink:0;">大分類</span>'
+        + '<input class="cem-name-input" data-cem-rename="major" data-id="'+cat.id+'" value="'+escapeHtml(cat.name)+'" style="flex:1;font-size:13px;font-weight:600;border:1px solid transparent;border-radius:4px;padding:3px 6px;background:transparent;color:var(--text-1);min-width:0;" />'
+        + '<div style="display:flex;gap:3px;flex-shrink:0;">'
+        + '<button class="cem-btn" data-cem="move-major" data-idx="'+mi+'" data-dir="-1" '+(isFirst?'disabled style="opacity:0.3;"':'')+' title="上へ">↑</button>'
+        + '<button class="cem-btn" data-cem="move-major" data-idx="'+mi+'" data-dir="1" '+(isLast?'disabled style="opacity:0.3;"':'')+' title="下へ">↓</button>'
+        + '<button class="cem-btn danger" data-cem="delete-major" data-id="'+cat.id+'" title="削除">削除</button>'
+        + '</div></div>';
+      // 中分類リスト
       if(cat.subs && cat.subs.length){
         cat.subs.forEach((sub, si) => {
-          html += '<div class="cem-sub-row">'
-            + '<span class="cem-sub-name">└ '+escapeHtml(sub.name)+'</span>'
-            + '<button class="cem-btn" data-cem="move-sub-up" data-major-id="'+cat.id+'" data-idx="'+si+'" title="上へ">↑</button>'
-            + '<button class="cem-btn" data-cem="move-sub-down" data-major-id="'+cat.id+'" data-idx="'+si+'" title="下へ">↓</button>'
-            + '<button class="cem-btn" data-cem="rename-sub" data-major-id="'+cat.id+'" data-id="'+sub.id+'" title="名称変更">✏ 名前</button>'
-            + '<button class="cem-btn danger" data-cem="delete-sub" data-major-id="'+cat.id+'" data-id="'+sub.id+'" title="削除">✕</button>'
-            + '</div>';
+          const sf = si===0, sl = si===cat.subs.length-1;
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 20px;border-top:1px solid var(--line);">'
+            + '<span style="font-size:11px;color:var(--text-3);flex-shrink:0;">中分類</span>'
+            + '<input class="cem-name-input" data-cem-rename="sub" data-id="'+sub.id+'" data-major-id="'+cat.id+'" value="'+escapeHtml(sub.name)+'" style="flex:1;font-size:12px;border:1px solid transparent;border-radius:4px;padding:2px 6px;background:transparent;color:var(--text-2);min-width:0;" />'
+            + '<div style="display:flex;gap:3px;flex-shrink:0;">'
+            + '<button class="cem-btn" data-cem="move-sub" data-major-id="'+cat.id+'" data-idx="'+si+'" data-dir="-1" '+(sf?'disabled style="opacity:0.3;"':'')+' title="上へ">↑</button>'
+            + '<button class="cem-btn" data-cem="move-sub" data-major-id="'+cat.id+'" data-idx="'+si+'" data-dir="1" '+(sl?'disabled style="opacity:0.3;"':'')+' title="下へ">↓</button>'
+            + '<button class="cem-btn danger" data-cem="delete-sub" data-id="'+sub.id+'" data-major-id="'+cat.id+'" title="削除">削除</button>'
+            + '</div></div>';
         });
       }
+      html += '</div>';
     });
+    html += '</div>';
     body.innerHTML = html;
 
+    // インライン名前変更：フォーカスアウト or Enter で保存
+    body.querySelectorAll('.cem-name-input').forEach(inp => {
+      inp.addEventListener('focus', function(){ this.style.border='1px solid var(--amber)'; this.style.background='var(--bg-1)'; });
+      inp.addEventListener('blur', async function(){
+        this.style.border='1px solid transparent'; this.style.background='transparent';
+        const type = this.dataset.cemRename;
+        if(type === 'major') await renameMajorInline(this.dataset.id, this.value);
+        else await renameSubInline(this.dataset.majorId, this.dataset.id, this.value);
+      });
+      inp.addEventListener('keydown', function(e){
+        if(e.key==='Enter'){ e.preventDefault(); this.blur(); }
+        if(e.key==='Escape'){ this.blur(); }
+      });
+    });
+
+    // ボタン操作
     body.querySelectorAll('[data-cem]').forEach(btn => {
+      if(btn.disabled) return;
       btn.addEventListener('click', async function(){
         if(!canWriteData()) return;
         const action = this.dataset.cem;
         const id = this.dataset.id;
         const majorId = this.dataset.majorId;
         const idx = parseInt(this.dataset.idx);
-
-        if(action === 'rename-major'){
-          await handleCatAction('rename-major', undefined, id);
-        } else if(action === 'delete-major'){
-          await handleCatAction('delete-major', undefined, id);
-        } else if(action === 'move-major-up'){
-          if(idx > 0){ [categories[idx-1],categories[idx]]=[categories[idx],categories[idx-1]]; await saveCategories(); renderCatTree(); }
-        } else if(action === 'move-major-down'){
-          if(idx < categories.length-1){ [categories[idx],categories[idx+1]]=[categories[idx+1],categories[idx]]; await saveCategories(); renderCatTree(); }
-        } else if(action === 'rename-sub'){
-          await handleCatAction('rename-sub', majorId, id);
-        } else if(action === 'delete-sub'){
-          await handleCatAction('delete-sub', majorId, id);
-        } else if(action === 'move-sub-up'){
-          const cat = majorById(majorId);
-          if(cat && idx > 0){ [cat.subs[idx-1],cat.subs[idx]]=[cat.subs[idx],cat.subs[idx-1]]; await saveCategories(); renderCatTree(); }
-        } else if(action === 'move-sub-down'){
-          const cat = majorById(majorId);
-          if(cat && idx < cat.subs.length-1){ [cat.subs[idx],cat.subs[idx+1]]=[cat.subs[idx+1],cat.subs[idx]]; await saveCategories(); renderCatTree(); }
-        }
-        renderSpecSearchPanel();
-        renderProductTable();
-        renderCatEditModal();
+        const dir = parseInt(this.dataset.dir);
+        if(action === 'move-major') await moveMajor(idx, dir);
+        else if(action === 'move-sub') await moveSub(majorId, idx, dir);
+        else if(action === 'delete-major') await handleCatAction('delete-major', undefined, id);
+        else if(action === 'delete-sub') await handleCatAction('delete-sub', majorId, id);
+        if(action.startsWith('delete')){ renderSpecSearchPanel(); renderProductTable(); renderCatEditModal(); }
       });
     });
   }
