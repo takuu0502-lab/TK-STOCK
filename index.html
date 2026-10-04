@@ -18995,7 +18995,7 @@ window.addEventListener('storageReady', function(){
         const borderColor = hasOver ? 'var(--red)' : 'var(--line)';
         const cancelLabel = isCustody ? '取り消し' : '取り消し';
         /* 商品リスト */
-        const itemRows = _items.map(item=>{
+        const itemRows = _items.map((item, itemIdx)=>{
           const p2 = products.find(x=>x.id===item.productId);
           const allProvQty = p2 ? provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_plOwnBranch).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===item.productId).reduce((ss,i)=>ss+i.qty,0),0) : 0;
           const _p2Stk = p2 ? getStock(p2) : 0;
@@ -19011,7 +19011,10 @@ window.addEventListener('storageReady', function(){
             +(_dispSpec?'<div style="font-size:12px;color:var(--text-2);">'+escapeHtml(_dispSpec)+'</div>':'')
             +(itemOver?'<div style="font-size:11px;color:var(--red);">⚠️ 在庫'+_p2Stk+' / 仮出庫計'+allProvQty+'</div>':'')
             +'</div>'
+            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
             +'<div style="font-size:14px;font-weight:700;color:'+(itemOver?'var(--red)':'var(--amber)')+';">×'+item.qty+'</div>'
+            +'<button class="btn btn-ghost btn-sm prov-item-out-btn" data-prov-id="'+entry.id+'" data-item-idx="'+itemIdx+'" style="font-size:11px;padding:2px 7px;color:var(--amber);border-color:var(--amber);white-space:nowrap;">出庫</button>'
+            +'</div>'
             +'</div>';
         }).join('');
         return '<div id="prov-entry-'+entry.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
@@ -19094,6 +19097,41 @@ window.addEventListener('storageReady', function(){
       btn.addEventListener('click', ()=>{
         const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
         if(entry) printProvLabel(entry);
+      });
+    });
+
+    wrap.querySelectorAll('.prov-item-out-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!canWriteData()) return;
+        const entry = provisionalOutbounds.find(x=>x.id===btn.dataset.provId);
+        if(!entry) return;
+        const itemIdx = parseInt(btn.dataset.itemIdx, 10);
+        const item = entry.items[itemIdx];
+        if(!item) return;
+        const p = products.find(x=>x.id===item.productId);
+        const nameStr = cleanName(item.name || (p&&p.name) || '—');
+        const ok = await showConfirm('以下を出庫確定します。\n\nお客様: '+entry.customerName+'様'+(entry.carName?'\n車種: '+entry.carName:'')+('\n\n ・ '+nameStr+' × '+item.qty+'本'));
+        if(!ok) return;
+        const entryBranch = entry.branchId || 'taniyabe';
+        if(p){
+          if(!p.branchStock) p.branchStock={};
+          const curStk2 = p.branchStock[entryBranch]||0;
+          if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(entryBranch)+'在庫: '+curStk2+'）'); return; }
+          p.branchStock[entryBranch] = curStk2 - item.qty;
+          p.stock = p.branchStock[entryBranch];
+          const batchDate = new Date().toISOString();
+          transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
+            type:'out', qty:item.qty, date:batchDate,
+            user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch,
+            customerName:entry.customerName||'' });
+        }
+        entry.items.splice(itemIdx, 1);
+        if(entry.items.length === 0){
+          entry.status = 'confirmed';
+          entry.updatedAt = Date.now();
+        }
+        await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
+        renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
       });
     });
 
