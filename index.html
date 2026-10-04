@@ -4278,6 +4278,10 @@ window.addEventListener('storageReady', function(){
     });
     allPriceRules[pricingActiveBranch].byBrand = byBrand;
     allPriceRules[pricingActiveBranch].byModel = byModel;
+    console.log('[savePricingRules] expandedBrands:', Array.from(expandedBrandModels));
+    console.log('[savePricingRules] byModel:', JSON.stringify(byModel));
+    console.log('[savePricingRules] byBrand:', JSON.stringify(byBrand));
+    window._debugAllPriceRules = allPriceRules;
     const _prSaveOk = await savePriceRules();
     updateCurrentPriceRules();
     if(_prSaveOk === false){ showToast('⚠️ 保存に失敗しました。ネットワークを確認してください。'); return; }
