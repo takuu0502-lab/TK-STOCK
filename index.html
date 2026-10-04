@@ -8877,10 +8877,15 @@ window.addEventListener('storageReady', function(){
         const checked = catalogQuoteSelection.has(cKey);
         const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t, cp.name);
         const _indivSellFixed = getBranchFixedSell(cp, _catOwnBranchId);
-        const _indivHasModelRule = priceRules.byModel && priceRules.byModel[r.b+'||'+r.m];
-        const _indivRuleSell = _indivHasModelRule ? getEffectiveSellPrice(r.b, r.m, r.w, r.t) : null;
+        // 商品名からモデル名を導出（例: "BLIZZAK VRX3(2025)" → "VRX3(2025)"）し、カタログモデル名より優先してルール検索
+        const _cpCleanName = cleanName(cp.name||'');
+        const _cpBrandPre = r.b+' ';
+        const _cpDerivedModel = _cpCleanName.startsWith(_cpBrandPre) ? _cpCleanName.slice(_cpBrandPre.length) : _cpCleanName;
+        const _indivModelKey = (priceRules.byModel && priceRules.byModel[r.b+'||'+_cpDerivedModel]) ? r.b+'||'+_cpDerivedModel : r.b+'||'+r.m;
+        const _indivHasModelRule = priceRules.byModel && priceRules.byModel[_indivModelKey];
+        const _indivEffModel = (priceRules.byModel && priceRules.byModel[r.b+'||'+_cpDerivedModel]) ? _cpDerivedModel : r.m;
+        const _indivRuleSell = _indivHasModelRule ? getEffectiveSellPrice(r.b, _indivEffModel, r.w, r.t) : null;
         const sell = _indivRuleSell !== null ? _indivRuleSell : (_indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t));
-        if(r.m && r.m.indexOf('VRX3(2025)')!==-1) console.log('[DEBUG catalog_prod] r.b='+r.b+' r.m='+r.m+' r.w='+r.w+' r.t='+r.t+' hasRule='+!!_indivHasModelRule+' ruleSell='+_indivRuleSell+' fixedSell='+_indivSellFixed+' sell='+sell+' rule='+JSON.stringify(priceRules.byModel&&priceRules.byModel[r.b+'||'+r.m]));
         const _yearBadgeForBranch = (brId) => {
           if(hasYearStock(cp, brId)) return yearStockBadgesHtml(cp, brId, false, _prodPriceTip(brId));
           const _yr = getBranchManufactureYear(cp, brId);
