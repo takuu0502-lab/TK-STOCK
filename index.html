@@ -4251,7 +4251,14 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, allPriceRules[pricingActiveBranch].byModel || {});
     expandedBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
+      const _catMods = getCatalog().filter(r=>r.b===brand).map(r=>r.m);
+      const _tireCatForMods = categories.find(c=>c.name==='タイヤ');
+      const _prodMods = products.filter(p=>(p.brand||'')=== brand && _tireCatForMods && p.majorId===_tireCatForMods.id).map(p=>{
+        const _n = cleanName(p.name||'');
+        const _pre = brand+' ';
+        return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
+      });
+      const models = Array.from(new Set([..._catMods,..._prodMods])).filter(m=>m).sort((a,b)=>a.localeCompare(b,'ja'));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
@@ -4295,7 +4302,14 @@ window.addEventListener('storageReady', function(){
     });
     const byModel = Object.assign({}, allPriceRules[pricingActiveBranch].byModel || {});
     expandedBrandModels.forEach(brand=>{
-      const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
+      const _catMods = getCatalog().filter(r=>r.b===brand).map(r=>r.m);
+      const _tireCatForMods = categories.find(c=>c.name==='タイヤ');
+      const _prodMods = products.filter(p=>(p.brand||'')=== brand && _tireCatForMods && p.majorId===_tireCatForMods.id).map(p=>{
+        const _n = cleanName(p.name||'');
+        const _pre = brand+' ';
+        return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
+      });
+      const models = Array.from(new Set([..._catMods,..._prodMods])).filter(m=>m).sort((a,b)=>a.localeCompare(b,'ja'));
       models.forEach(model=>{
         const key = brand+'||'+model;
         const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
