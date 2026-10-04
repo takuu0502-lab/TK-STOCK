@@ -7570,8 +7570,9 @@ window.addEventListener('storageReady', function(){
     // 分類フィルター (null=すべて)
     let _catFilter = null;
     let _subFilter = null; // 中分類フィルター
-    // バーコードキャッシュ（重複時の選択結果を記憶）
-    let _bcCache = {};
+    // 直前スキャンのキャッシュ（同じバーコードを連続スキャン時のみ再利用）
+    let _lastBc = null;
+    let _lastPid = null;
 
     // 自支店ID取得
     const _ownBr = () => currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -7765,30 +7766,42 @@ window.addEventListener('storageReady', function(){
 
       let p = null;
 
-      // 全商品から一致するものを検索
-      const _allMatches = typeof findAllByBarcode === 'function'
-        ? findAllByBarcode(bc)
-        : products.filter(x =>
-            (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
-            || (x.barcode && x.barcode.toLowerCase() === bc)
-          );
-      const brId = _ownBr();
-      // 自支店在庫ありを優先
-      const _withStock = _allMatches.filter(q => (q.branchStock ? (q.branchStock[brId]||0) : (q.stock||0)) > 0);
-      const _candidates = _withStock.length > 0 ? _withStock : _allMatches;
-
-      if(_candidates.length === 0){
-        _msgEl.style.color='var(--red)';
-        _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
-        setTimeout(()=>_input.focus(), 30);
-        return;
-      } else if(_candidates.length === 1){
-        p = _candidates[0];
-      } else {
-        // 複数ヒット → 毎回選択ダイアログ表示（製造年違い・重複登録を都度選択）
-        p = await showBarcodeSelectModal(_candidates);
-        if(!p){ setTimeout(()=>_input.focus(), 30); return; }
+      // 直前と同じバーコード → キャッシュ使用（連続スキャン対応）
+      if(bc === _lastBc && _lastPid){
+        p = products.find(x => x.id === _lastPid);
       }
+
+      if(!p){
+        // 全商品から一致するものを検索
+        const _allMatches = typeof findAllByBarcode === 'function'
+          ? findAllByBarcode(bc)
+          : products.filter(x =>
+              (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
+              || (x.barcode && x.barcode.toLowerCase() === bc)
+            );
+        const brId = _ownBr();
+        // 自支店在庫ありを優先
+        const _withStock = _allMatches.filter(q => (q.branchStock ? (q.branchStock[brId]||0) : (q.stock||0)) > 0);
+        const _candidates = _withStock.length > 0 ? _withStock : _allMatches;
+
+        if(_candidates.length === 0){
+          _lastBc = null; _lastPid = null;
+          _msgEl.style.color='var(--red)';
+          _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
+          setTimeout(()=>_input.focus(), 30);
+          return;
+        } else if(_candidates.length === 1){
+          p = _candidates[0];
+        } else {
+          // 複数ヒット → 選択ダイアログ
+          p = await showBarcodeSelectModal(_candidates);
+          if(!p){ setTimeout(()=>_input.focus(), 30); return; }
+        }
+      }
+
+      // 直前バーコードを更新（別の商品をスキャンしたらキャッシュリセット）
+      _lastBc = bc;
+      _lastPid = p.id;
 
       if(!p){ setTimeout(()=>_input.focus(), 30); return; }
 
@@ -7839,7 +7852,7 @@ window.addEventListener('storageReady', function(){
       const ok = await showConfirm('スキャンデータをリセットしますか？');
       if(!ok) return;
       _counts.clear();
-      _bcCache = {};
+      _lastBc = null; _lastPid = null;
       _catFilter = null;
       _subFilter = null;
       _msgEl.textContent = '';
