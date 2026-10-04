@@ -7765,37 +7765,29 @@ window.addEventListener('storageReady', function(){
 
       let p = null;
 
-      // キャッシュヒット（同一セッションで既に選択済み）
-      if(_bcCache[bc]){
-        p = products.find(x => x.id === _bcCache[bc]);
-      }
+      // 全商品から一致するものを検索
+      const _allMatches = typeof findAllByBarcode === 'function'
+        ? findAllByBarcode(bc)
+        : products.filter(x =>
+            (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
+            || (x.barcode && x.barcode.toLowerCase() === bc)
+          );
+      const brId = _ownBr();
+      // 自支店在庫ありを優先
+      const _withStock = _allMatches.filter(q => (q.branchStock ? (q.branchStock[brId]||0) : (q.stock||0)) > 0);
+      const _candidates = _withStock.length > 0 ? _withStock : _allMatches;
 
-      if(!p){
-        // 全商品から一致するものを検索
-        const _allMatches = typeof findAllByBarcode === 'function'
-          ? findAllByBarcode(bc)
-          : products.filter(x =>
-              (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
-              || (x.barcode && x.barcode.toLowerCase() === bc)
-            );
-        const brId = _ownBr();
-        // 自支店在庫ありを優先
-        const _withStock = _allMatches.filter(q => (q.branchStock ? (q.branchStock[brId]||0) : (q.stock||0)) > 0);
-        const _candidates = _withStock.length > 0 ? _withStock : _allMatches;
-
-        if(_candidates.length === 0){
-          _msgEl.style.color='var(--red)';
-          _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
-          setTimeout(()=>_input.focus(), 30);
-          return;
-        } else if(_candidates.length === 1){
-          p = _candidates[0];
-        } else {
-          // 複数ヒット → 選択ダイアログ（重複登録・製造年違い対応）
-          p = await showBarcodeSelectModal(_candidates);
-          if(!p){ setTimeout(()=>_input.focus(), 30); return; }
-          _bcCache[bc] = p.id; // 次回から自動選択
-        }
+      if(_candidates.length === 0){
+        _msgEl.style.color='var(--red)';
+        _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
+        setTimeout(()=>_input.focus(), 30);
+        return;
+      } else if(_candidates.length === 1){
+        p = _candidates[0];
+      } else {
+        // 複数ヒット → 毎回選択ダイアログ表示（製造年違い・重複登録を都度選択）
+        p = await showBarcodeSelectModal(_candidates);
+        if(!p){ setTimeout(()=>_input.focus(), 30); return; }
       }
 
       if(!p){ setTimeout(()=>_input.focus(), 30); return; }
