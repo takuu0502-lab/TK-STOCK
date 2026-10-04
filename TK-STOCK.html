@@ -8868,7 +8868,9 @@ window.addEventListener('storageReady', function(){
         const checked = catalogQuoteSelection.has(cKey);
         const _indivCost = getBranchFixedCost(cp, _catOwnBranchId) ?? computeCostPrice(r.b, r.m, r.w, r.t, cp.name);
         const _indivSellFixed = getBranchFixedSell(cp, _catOwnBranchId);
-        const sell = _indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+        const _indivHasModelRule = priceRules.byModel && priceRules.byModel[r.b+'||'+r.m];
+        const _indivRuleSell = _indivHasModelRule ? getEffectiveSellPrice(r.b, r.m, r.w, r.t) : null;
+        const sell = _indivRuleSell !== null ? _indivRuleSell : (_indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t));
         const _yearBadgeForBranch = (brId) => {
           if(hasYearStock(cp, brId)) return yearStockBadgesHtml(cp, brId, false, _prodPriceTip(brId));
           const _yr = getBranchManufactureYear(cp, brId);
@@ -8929,11 +8931,18 @@ window.addEventListener('storageReady', function(){
           const _bfc = getBranchFixedCost(_cp, _catOwnBranchId);
           if(_bfc !== null){ cost = _bfc; break; }
         }
-        // 自支店の支店別固定販売価格を優先表示
+        // 銘柄別ルールが設定されている場合はルールを優先、なければ固定価格を使用
+        const _modelRuleKey = r.b+'||'+r.m;
+        const _hasModelPriceRule = priceRules.byModel && priceRules.byModel[_modelRuleKey];
         let sell = null;
-        for(const _cp of _catProds){
-          const _sf = getBranchFixedSell(_cp, _catOwnBranchId);
-          if(_sf !== null){ sell = _sf; break; }
+        if(_hasModelPriceRule){
+          sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+        }
+        if(sell === null){
+          for(const _cp of _catProds){
+            const _sf = getBranchFixedSell(_cp, _catOwnBranchId);
+            if(_sf !== null){ sell = _sf; break; }
+          }
         }
         if(sell === null) sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         // 製造年tooltip（年別在庫対応）
