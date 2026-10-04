@@ -9657,9 +9657,10 @@ window.addEventListener('storageReady', function(){
     const _selMajorCat = selectedMajor ? majorById(selectedMajor) : null;
     const _isTireView = _selMajorCat && _selMajorCat.name === 'タイヤ';
     const _noFilter = !recentFilter && !oldMfgFilter && !keywordFilter && !nameSortFilter;
-    const _autoBrandSort = _isTireView && _noFilter && !brandSortFilter && !ownStockOnlyFilter;
+    const _autoSizeSort = _isTireView && (ownStockOnlyFilter || stockOnlyFilter) && !brandSortFilter && !nameSortFilter && !recentFilter && !oldMfgFilter;
+    const _autoBrandSort = _isTireView && _noFilter && !brandSortFilter && !ownStockOnlyFilter && !stockOnlyFilter;
 
-    if(_isTireView && ownStockOnlyFilter && !brandSortFilter && !nameSortFilter && !recentFilter && !oldMfgFilter){
+    if(_isTireView && (ownStockOnlyFilter || stockOnlyFilter) && !brandSortFilter && !nameSortFilter && !recentFilter && !oldMfgFilter){
       // サイズ昇順: タイヤ幅 → 扁平率 → インチ
       const _parseTireSpec = spec => {
         const m = (spec||'').match(/^(\d+)\/?(\d*)[Rr]?(\d+(?:\.\d+)?)/);
