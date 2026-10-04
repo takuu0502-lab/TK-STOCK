@@ -4160,7 +4160,7 @@ window.addEventListener('storageReady', function(){
         html += '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">銘柄ごとに個別の基準・割引率を設定できます（未設定の銘柄はこのブランドの設定が使われます）。</div>';
         models.forEach(model=>{
           const key = brand+'||'+model;
-          const mrule = _pr.byModel[key];
+          const mrule = (_pr.byModel||{})[key];
           html += '<div class="brand-rule-row model-rule-row">'
             + '<span class="brand-rule-name" style="width:150px;flex:0 0 150px;font-size:12.5px;">'+escapeHtml(model)+'</span>'
             + '<select data-model-rule-basis="'+escapeHtml(key)+'">'
@@ -4259,7 +4259,7 @@ window.addEventListener('storageReady', function(){
         if(!basisEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
-        if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
+        if(basis){
           byModel[key] = {basis: basis, percent: pct};
         } else {
           delete byModel[key];
@@ -4303,7 +4303,7 @@ window.addEventListener('storageReady', function(){
         if(!basisEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl ? percentEl.value : 0) || 0;
-        if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')){
+        if(basis){
           byModel[key] = {basis: basis, percent: pct};
         } else {
           delete byModel[key];
