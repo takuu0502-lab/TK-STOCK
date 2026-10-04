@@ -8868,6 +8868,40 @@ window.addEventListener('storageReady', function(){
       item.type !== 'catalog' || !_cpKeys.has((item.r.m||'')+'||'+(item.r.s||''))
     );
 
+    // 展開後に正確な販売価格で再ソート（catalog_prodは商品名からモデルを導出して価格算出）
+    if(forceTire){
+      const _getItemSellPrice = (item) => {
+        if(item.type === 'catalog_prod'){
+          const r = item.r, cp = item.cp;
+          const _n = cleanName(cp.name||'');
+          const _pre = r.b+' ';
+          const _dm = _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
+          const _mKey = (priceRules.byModel && priceRules.byModel[r.b+'||'+_dm]) ? _dm : r.m;
+          const _fixed = getBranchFixedSell(cp, _catOwnBranchId);
+          const _rule = (priceRules.byModel && priceRules.byModel[r.b+'||'+_mKey]) ? getEffectiveSellPrice(r.b, _mKey, r.w, r.t) : null;
+          return _rule !== null ? _rule : (_fixed !== null ? _fixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t));
+        } else if(item.type === 'catalog'){
+          return getEffectiveSellPrice(item.r.b, item.r.m, item.r.w, item.r.t);
+        } else {
+          const _f = getBranchFixedSell(item.p, _catOwnBranchId);
+          return _f !== null ? _f : (item.p.sellPrice || null);
+        }
+      };
+      _expandedItemsFinal.sort((a, b) => {
+        const sa = _getItemSellPrice(a), sb = _getItemSellPrice(b);
+        if(estimateSortOrder === 'price_asc'){
+          if(sa===null&&sb===null) return 0; if(sa===null) return 1; if(sb===null) return -1;
+          return sa - sb;
+        } else if(estimateSortOrder === 'price_desc'){
+          if(sa===null&&sb===null) return 0; if(sa===null) return 1; if(sb===null) return -1;
+          return sb - sa;
+        } else {
+          const na = item => item.type==='catalog'||item.type==='catalog_prod' ? item.r.b+(item.type==='catalog_prod'?cleanName(item.cp.name||''):item.r.m) : item.p.name;
+          return na(a).localeCompare(na(b), 'ja');
+        }
+      });
+    }
+
     let _catI=0, _manI=0;
     const rows = _expandedItemsFinal.map(item=>{
       if(item.type==='catalog_prod'){
