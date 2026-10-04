@@ -9653,7 +9653,13 @@ window.addEventListener('storageReady', function(){
       });
       return;
     }
-    if(brandSortFilter){
+    // タイヤ大分類選択中・フィルターなし・ソート指定なしの場合は自動でブランド順
+    const _selMajorCat = selectedMajor ? majorById(selectedMajor) : null;
+    const _isTireView = _selMajorCat && _selMajorCat.name === 'タイヤ';
+    const _noFilter = !recentFilter && !oldMfgFilter && !keywordFilter && !nameSortFilter;
+    const _autoBrandSort = _isTireView && _noFilter && !brandSortFilter;
+
+    if(brandSortFilter || _autoBrandSort){
       filteredList.sort((a,b)=>{
         const ba = (a.brand||'').localeCompare(b.brand||'','ja');
         if(ba !== 0) return ba;
