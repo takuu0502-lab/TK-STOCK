@@ -4259,13 +4259,16 @@ window.addEventListener('storageReady', function(){
         return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
       });
       const models = Array.from(new Set([..._catMods,..._prodMods])).filter(m=>m).sort((a,b)=>a.localeCompare(b,'ja'));
+      const _allBasisEls = Array.from(document.querySelectorAll('[data-model-rule-basis]'));
+      const _allPctEls   = Array.from(document.querySelectorAll('[data-model-rule-percent]'));
       models.forEach(model=>{
         const key = brand+'||'+model;
-        const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
-        const percentEl = document.querySelector('[data-model-rule-percent="'+key+'"]');
+        // querySelector は || や () を CSS 特殊文字として誤解釈するため getAttribute で比較
+        const basisEl   = _allBasisEls.find(el => el.getAttribute('data-model-rule-basis')   === key);
+        const percentEl = _allPctEls.find(el   => el.getAttribute('data-model-rule-percent') === key);
         if(!basisEl) return;
         const basis = basisEl.value;
-        const pct = Number(percentEl.value) || 0;
+        const pct = Number(percentEl ? percentEl.value : 0) || 0;
         if(basis){
           byModel[key] = {basis: basis, percent: pct};
         } else {
@@ -4310,10 +4313,12 @@ window.addEventListener('storageReady', function(){
         return _n.startsWith(_pre) ? _n.slice(_pre.length) : _n;
       });
       const models = Array.from(new Set([..._catMods,..._prodMods])).filter(m=>m).sort((a,b)=>a.localeCompare(b,'ja'));
+      const _allBasisEls2 = Array.from(document.querySelectorAll('[data-model-rule-basis]'));
+      const _allPctEls2   = Array.from(document.querySelectorAll('[data-model-rule-percent]'));
       models.forEach(model=>{
         const key = brand+'||'+model;
-        const basisEl = document.querySelector('[data-model-rule-basis="'+key+'"]');
-        const percentEl = document.querySelector('[data-model-rule-percent="'+key+'"]');
+        const basisEl   = _allBasisEls2.find(el => el.getAttribute('data-model-rule-basis')   === key);
+        const percentEl = _allPctEls2.find(el   => el.getAttribute('data-model-rule-percent') === key);
         if(!basisEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl ? percentEl.value : 0) || 0;
