@@ -9653,11 +9653,25 @@ window.addEventListener('storageReady', function(){
       });
       return;
     }
-    // タイヤ大分類選択中・フィルターなし・ソート指定なしの場合は自動でブランド順
+    // タイヤ大分類選択中・自店舗在庫ありフィルター時はサイズ昇順
     const _selMajorCat = selectedMajor ? majorById(selectedMajor) : null;
     const _isTireView = _selMajorCat && _selMajorCat.name === 'タイヤ';
     const _noFilter = !recentFilter && !oldMfgFilter && !keywordFilter && !nameSortFilter;
-    const _autoBrandSort = _isTireView && _noFilter && !brandSortFilter;
+    const _autoBrandSort = _isTireView && _noFilter && !brandSortFilter && !ownStockOnlyFilter;
+
+    if(_isTireView && ownStockOnlyFilter && !brandSortFilter && !nameSortFilter && !recentFilter && !oldMfgFilter){
+      // サイズ昇順: タイヤ幅 → 扁平率 → インチ
+      const _parseTireSpec = spec => {
+        const m = (spec||'').match(/^(\d+)\/?(\d*)[Rr]?(\d+(?:\.\d+)?)/);
+        if(!m) return [9999,9999,9999];
+        return [parseInt(m[1])||9999, parseInt(m[2])||9999, parseFloat(m[3])||9999];
+      };
+      filteredList.sort((a,b)=>{
+        const [aw,aa,ai] = _parseTireSpec(a.spec);
+        const [bw,ba,bi] = _parseTireSpec(b.spec);
+        return aw-bw || aa-ba || ai-bi || (a.brand||'').localeCompare(b.brand||'','ja');
+      });
+    } else
 
     if(brandSortFilter || _autoBrandSort){
       filteredList.sort((a,b)=>{
