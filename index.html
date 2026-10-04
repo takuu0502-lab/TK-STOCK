@@ -2929,16 +2929,15 @@
 <!-- 在庫確認モード モーダル -->
 <div class="modal-overlay" id="invCheckModal">
   <div class="modal" style="max-width:860px;width:96vw;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
       <h3 style="margin:0;font-size:17px;">📋 在庫確認モード</h3>
       <div style="display:flex;gap:8px;align-items:center;">
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
-          <input type="checkbox" id="invCheckTireOnly" checked style="accent-color:var(--teal);"> タイヤのみ
-        </label>
         <button class="btn btn-ghost btn-sm" id="invCheckClearBtn" style="color:var(--red);border-color:var(--red);">リセット</button>
         <button class="btn btn-ghost btn-sm" id="invCheckClose">閉じる</button>
       </div>
     </div>
+    <!-- 分類フィルター -->
+    <div id="invCheckCatFilter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0;"></div>
     <!-- スキャン入力 -->
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
       <input type="text" id="invCheckInput" placeholder="バーコードをスキャン または 入力…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="none"
@@ -7564,10 +7563,14 @@ window.addEventListener('storageReady', function(){
     const _emptyEl = document.getElementById('invCheckEmpty');
     const _msgEl   = document.getElementById('invCheckMsg');
     const _sumBar  = document.getElementById('invCheckSummaryBar');
-    const _tireChk = document.getElementById('invCheckTireOnly');
+    const _catFilterEl = document.getElementById('invCheckCatFilter');
 
     // スキャン数記録：Map<productId, number>
     let _counts = new Map();
+    // 分類フィルター (null=すべて)
+    let _catFilter = null;
+    // バーコードキャッシュ（重複時の選択結果を記憶）
+    let _bcCache = {};
 
     // 自支店ID取得
     const _ownBr = () => currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
@@ -7580,21 +7583,31 @@ window.addEventListener('storageReady', function(){
         .reduce((s, po) => s + (po.items||[]).filter(i=>i.productId===productId).reduce((ss,i)=>ss+i.qty,0), 0);
     }
 
-    // タイヤカテゴリIDを返す
-    function _tireCatId(){
-      return (categories.find(c=>c.name==='タイヤ')||{}).id || null;
-    }
-
-    // 対象商品リストを返す（タイヤonly or 全商品）
+    // 対象商品リストを返す（分類フィルター適用）
     function _targetProducts(){
       const brId = _ownBr();
-      const onlyTire = _tireChk && _tireChk.checked;
-      const tireCid  = _tireCatId();
       return products.filter(p => {
-        if(onlyTire && tireCid && p.majorId !== tireCid) return false;
-        // 自支店在庫または他支店でも登録あり
+        if(_catFilter && p.majorId !== _catFilter) return false;
         const stk = p.branchStock ? (p.branchStock[brId]||0) : (p.stock||0);
         return stk > 0 || _counts.has(p.id);
+      });
+    }
+
+    // 分類フィルターボタンを描画
+    function _renderCatFilter(){
+      if(!_catFilterEl) return;
+      const cats = [{id: null, name: 'すべて'}, ...categories.map(c=>({id:c.id, name:c.name}))];
+      _catFilterEl.innerHTML = cats.map(c=>{
+        const active = _catFilter === c.id;
+        return '<button class="btn btn-sm '+(active?'btn-teal':'btn-ghost')+'" data-ic-cat="'+(c.id||'')+'" style="font-size:12px;">'
+          + escapeHtml(c.name) + '</button>';
+      }).join('');
+      _catFilterEl.querySelectorAll('[data-ic-cat]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          _catFilter = btn.dataset.icCat || null;
+          _renderCatFilter();
+          _render();
+        });
       });
     }
 
@@ -7718,20 +7731,47 @@ window.addEventListener('storageReady', function(){
     }
 
     // バーコードでスキャン処理
-    function _doScan(barcode){
+    async function _doScan(barcode){
       const bc = (barcode||'').trim().toLowerCase();
       if(!bc) return;
-      // SHバーコード（sh-...）または通常JANコードで検索
-      const p = products.find(x =>
-        (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
-        || (x.barcode && x.barcode.toLowerCase() === bc)
-      );
-      if(!p){
-        _msgEl.style.color='var(--red)';
-        _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
-        setTimeout(()=>_input.focus(), 30);
-        return;
+
+      let p = null;
+
+      // キャッシュヒット（同一セッションで既に選択済み）
+      if(_bcCache[bc]){
+        p = products.find(x => x.id === _bcCache[bc]);
       }
+
+      if(!p){
+        // 全商品から一致するものを検索
+        const _allMatches = typeof findAllByBarcode === 'function'
+          ? findAllByBarcode(bc)
+          : products.filter(x =>
+              (x.internalBarcode && x.internalBarcode.toLowerCase() === bc)
+              || (x.barcode && x.barcode.toLowerCase() === bc)
+            );
+        const brId = _ownBr();
+        // 自支店在庫ありを優先
+        const _withStock = _allMatches.filter(q => (q.branchStock ? (q.branchStock[brId]||0) : (q.stock||0)) > 0);
+        const _candidates = _withStock.length > 0 ? _withStock : _allMatches;
+
+        if(_candidates.length === 0){
+          _msgEl.style.color='var(--red)';
+          _msgEl.textContent = '⚠ 商品が見つかりません：'+bc;
+          setTimeout(()=>_input.focus(), 30);
+          return;
+        } else if(_candidates.length === 1){
+          p = _candidates[0];
+        } else {
+          // 複数ヒット → 選択ダイアログ（重複登録・製造年違い対応）
+          p = await showBarcodeSelectModal(_candidates);
+          if(!p){ setTimeout(()=>_input.focus(), 30); return; }
+          _bcCache[bc] = p.id; // 次回から自動選択
+        }
+      }
+
+      if(!p){ setTimeout(()=>_input.focus(), 30); return; }
+
       _counts.set(p.id, (_counts.get(p.id)||0) + 1);
       _msgEl.style.color='var(--teal)';
       _msgEl.textContent = '✅ '+cleanName(p.name)+(p.spec?' ('+p.spec+')':'')+'　→ '+_counts.get(p.id)+'本';
@@ -7741,6 +7781,7 @@ window.addEventListener('storageReady', function(){
 
     // 開く
     document.getElementById('invCheckModeBtn').addEventListener('click', ()=>{
+      _renderCatFilter();
       _render();
       _modal.classList.add('show');
       setTimeout(()=>_input.focus(), 150);
@@ -7778,12 +7819,10 @@ window.addEventListener('storageReady', function(){
       const ok = await showConfirm('スキャンデータをリセットしますか？');
       if(!ok) return;
       _counts.clear();
+      _bcCache = {};
       _msgEl.textContent = '';
       _render();
     });
-
-    // タイヤのみ切替
-    if(_tireChk){ _tireChk.addEventListener('change', ()=>{ _render(); }); }
 
     // 閉じる
     document.getElementById('invCheckClose').addEventListener('click', ()=>{
