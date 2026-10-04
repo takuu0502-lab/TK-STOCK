@@ -8880,6 +8880,7 @@ window.addEventListener('storageReady', function(){
         const _indivHasModelRule = priceRules.byModel && priceRules.byModel[r.b+'||'+r.m];
         const _indivRuleSell = _indivHasModelRule ? getEffectiveSellPrice(r.b, r.m, r.w, r.t) : null;
         const sell = _indivRuleSell !== null ? _indivRuleSell : (_indivSellFixed !== null ? _indivSellFixed : getEffectiveSellPrice(r.b, r.m, r.w, r.t));
+        if(r.m && r.m.indexOf('VRX3(2025)')!==-1) console.log('[DEBUG catalog_prod] r.b='+r.b+' r.m='+r.m+' r.w='+r.w+' r.t='+r.t+' hasRule='+!!_indivHasModelRule+' ruleSell='+_indivRuleSell+' fixedSell='+_indivSellFixed+' sell='+sell+' rule='+JSON.stringify(priceRules.byModel&&priceRules.byModel[r.b+'||'+r.m]));
         const _yearBadgeForBranch = (brId) => {
           if(hasYearStock(cp, brId)) return yearStockBadgesHtml(cp, brId, false, _prodPriceTip(brId));
           const _yr = getBranchManufactureYear(cp, brId);
@@ -8947,6 +8948,7 @@ window.addEventListener('storageReady', function(){
         if(_hasModelPriceRule){
           sell = getEffectiveSellPrice(r.b, r.m, r.w, r.t);
         }
+        if(r.m && r.m.indexOf('VRX3(2025)')!==-1) console.log('[DEBUG catalog] r.b='+r.b+' r.m='+r.m+' r.w='+r.w+' r.t='+r.t+' hasRule='+!!_hasModelPriceRule+' sell='+sell+' rule='+JSON.stringify(priceRules.byModel&&priceRules.byModel[_modelRuleKey]));
         if(sell === null){
           for(const _cp of _catProds){
             const _sf = getBranchFixedSell(_cp, _catOwnBranchId);
