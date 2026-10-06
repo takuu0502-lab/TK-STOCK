@@ -1833,6 +1833,11 @@
           <label>ホイール4本価格（税込・円）</label>
           <input type="number" id="ptWheelPrice4" min="0" placeholder="例：44000（空欄＝非表示）" style="width:100%;box-sizing:border-box;">
           <div style="font-size:11px;color:var(--text-3);margin-top:4px;">{{WHEEL_PRICE_4}} で表示</div>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--text-2);cursor:pointer;">
+            <input type="checkbox" id="ptUseKeiPrice" style="accent-color:var(--amber);width:14px;height:14px;">
+            軽自動車価格を使う
+          </label>
+          <div style="font-size:10px;color:var(--text-3);margin-top:2px;line-height:1.4;">価格手動入力が空欄のとき軽自動車用ホイールメニューの価格を自動取得</div>
         </div>
       </div>
       <!-- タイプ・向き切替 -->
@@ -16172,7 +16177,7 @@ window.addEventListener('storageReady', function(){
 
   // テンプレートHTMLにプレースホルダーを適用
   // retailPrice = メーカー希望小売価格（税抜）, sellPrice = 販売価格（税抜）
-  function _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, wheelPrice4){
+  function _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, wheelPrice4, useKeiPrice){
     const sp       = sellPrice !== undefined ? sellPrice : retailPrice;
     const brand    = p.brand || '';
     const model    = cleanName(p.name) || '';
@@ -16186,7 +16191,8 @@ window.addEventListener('storageReady', function(){
       const _inchMatch = sizeStr.match(/R(\d+)/i);
       if(_inchMatch){
         const _inch = _inchMatch[1];
-        const _wKey = getWheelMenuKey(_inch, '');
+        const _vType = useKeiPrice ? 'kei' : '';
+        const _wKey = getWheelMenuKey(_inch, _vType);
         const _allWTiers = wheelMenuSettings[_wKey] || [];
         const _basic = _allWTiers.find(t => t.label === '松');
         if(_basic && _basic.price) _wp4 = Math.floor(Number(_basic.price) * 1.1) * 4;
@@ -16245,7 +16251,7 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const templateHtml = (matched && matched.html) ? matched.html : _getDefaultPOPHtml(matched && matched.orient);
-    const finalHtml = _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, matched && matched.wheelPrice4);
+    const finalHtml = _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, matched && matched.wheelPrice4, matched && matched.useKeiPrice);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
     w.document.write(finalHtml);
@@ -16456,6 +16462,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.pt-branch-chk').forEach(chk => { chk.checked = savedBranches.includes(chk.value); });
     document.getElementById('ptMfgYearMax').value = t ? (t.mfgYearMax || '') : '';
     document.getElementById('ptWheelPrice4').value = t ? (t.wheelPrice4 || '') : '';
+    document.getElementById('ptUseKeiPrice').checked = t ? !!t.useKeiPrice : false;
     document.getElementById('ptHtml').value  = t ? (t.html  || '') : '';
     document.getElementById('ptMsg').innerHTML = '';
     _ptCurrentPdfBase64 = t ? (t.pdfBase64 || null) : null;
@@ -16520,7 +16527,8 @@ window.addEventListener('storageReady', function(){
         const _inchMatch = (p.spec||'').match(/R(\d+)/i);
         if(_inchMatch){
           const _inch = _inchMatch[1];
-          const _wKey = getWheelMenuKey(_inch, '');
+          const _vTypePdf = template.useKeiPrice ? 'kei' : '';
+          const _wKey = getWheelMenuKey(_inch, _vTypePdf);
           const _allWTiers = wheelMenuSettings[_wKey] || [];
           // ラベルで松（プレミアム）を直接検索
           const _basic = _allWTiers.find(t => t.label === '松');
@@ -16628,7 +16636,7 @@ window.addEventListener('storageReady', function(){
     const html = document.getElementById('ptHtml').value.trim();
     if(!html){ alert('HTMLを入力してください。'); return; }
     const sampleProduct = { brand: 'ブリヂストン', name: 'REGNO GR-XⅢ', spec: '195/65R15 91H' };
-    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, 22000, 18000);
+    const finalHtml = _applyPOPPlaceholders(html, sampleProduct, 22000, 18000, null, false);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(w){ w.document.write(finalHtml); w.document.close(); }
   });
@@ -16712,17 +16720,18 @@ window.addEventListener('storageReady', function(){
     const mfgYearMax = _mfgYearMaxRaw ? parseInt(_mfgYearMaxRaw, 10) : null;
     const _wheelPrice4Raw = document.getElementById('ptWheelPrice4').value.trim();
     const wheelPrice4 = _wheelPrice4Raw ? parseInt(_wheelPrice4Raw, 10) : null;
+    const useKeiPrice = document.getElementById('ptUseKeiPrice').checked;
     const type   = _ptCurrentType;
     const msg   = document.getElementById('ptMsg');
     if(!name){ msg.innerHTML = '<div class="msg msg-err">テンプレート名を入力してください。</div>'; return; }
     let entry;
     if(type === 'pdf'){
       if(!_ptCurrentPdfBase64){ msg.innerHTML = '<div class="msg msg-err">PDFをアップロードしてください。</div>'; return; }
-      entry = { name, brand, model, models, modelExact, mfgYearMax, wheelPrice4, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
+      entry = { name, brand, model, models, modelExact, mfgYearMax, wheelPrice4, useKeiPrice, branch, type: 'pdf', pdfBase64: _ptCurrentPdfBase64, pdfFields: _ptReadFields() };
     } else {
       const html = document.getElementById('ptHtml').value.trim();
       if(!html){ msg.innerHTML = '<div class="msg msg-err">HTMLを入力してください。</div>'; return; }
-      entry = { name, brand, model, models, modelExact, mfgYearMax, wheelPrice4, branch, type: 'html', orient: _ptCurrentOrient, html };
+      entry = { name, brand, model, models, modelExact, mfgYearMax, wheelPrice4, useKeiPrice, branch, type: 'html', orient: _ptCurrentOrient, html };
     }
     msg.innerHTML = '<div class="msg msg-ok">保存中…</div>';
     if(_editingPopTemplateIdx !== null){
