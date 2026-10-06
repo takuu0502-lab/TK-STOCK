@@ -19089,18 +19089,21 @@ window.addEventListener('storageReady', function(){
         if(!ok) return;
         const batchDate = new Date().toISOString();
         const entryBranch = entry.branchId || 'taniyabe'; // 仮出庫登録時の支店を使用
+        const _confirmNow = Date.now();
         for(const item of entry.items){
           const p = products.find(x=>x.id===item.productId);
           if(!p) continue;
           if(!p.branchStock) p.branchStock={}; const curStk2=p.branchStock[entryBranch]||0;
           if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(entryBranch)+'在庫: '+curStk2+'）'); return; }
+          p.updatedAt = _confirmNow;
           p.branchStock[entryBranch] = curStk2 - item.qty; p.stock = p.branchStock[entryBranch];
+          await _saveStockSnapshot(p.id, p.branchStock, _confirmNow);
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
             user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch,
             customerName:entry.customerName||'' });
         }
-        entry.status = 'confirmed'; entry.updatedAt = Date.now();
+        entry.status = 'confirmed'; entry.updatedAt = _confirmNow;
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
         renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
       });
@@ -19126,12 +19129,15 @@ window.addEventListener('storageReady', function(){
         const ok = await showConfirm('以下を出庫確定します。\n\nお客様: '+entry.customerName+'様'+(entry.carName?'\n車種: '+entry.carName:'')+('\n\n ・ '+nameStr+' × '+item.qty+'本'));
         if(!ok) return;
         const entryBranch = entry.branchId || 'taniyabe';
+        const _itemNow = Date.now();
         if(p){
           if(!p.branchStock) p.branchStock={};
           const curStk2 = p.branchStock[entryBranch]||0;
           if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(entryBranch)+'在庫: '+curStk2+'）'); return; }
+          p.updatedAt = _itemNow;
           p.branchStock[entryBranch] = curStk2 - item.qty;
           p.stock = p.branchStock[entryBranch];
+          await _saveStockSnapshot(p.id, p.branchStock, _itemNow);
           const batchDate = new Date().toISOString();
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
@@ -19141,7 +19147,7 @@ window.addEventListener('storageReady', function(){
         entry.items.splice(itemIdx, 1);
         if(entry.items.length === 0){
           entry.status = 'confirmed';
-          entry.updatedAt = Date.now();
+          entry.updatedAt = _itemNow;
         }
         await saveProducts(); await saveTransactions(); await saveProvisionalOutbounds();
         renderCatTree(); renderProductTable(); renderHistory(); renderProvisionalList();
