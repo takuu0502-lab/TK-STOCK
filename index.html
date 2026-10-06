@@ -1741,6 +1741,7 @@
         <label style="font-size:12px;color:var(--text-3);">車種区分</label>
         <select id="wheelMenuVehicleSel" style="padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;margin-left:8px;">
           <option value="">乗用車</option>
+          <option value="kei">軽自動車</option>
           <option value="suv">SUV・クロカン（ランクル・ハイラックス・プラドなど）</option>
         </select>
       </div>
@@ -2819,6 +2820,7 @@
         <span style="font-size:13px;color:var(--text-2);">車種：</span>
         <select id="wheelPickerVehicleSel" style="padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;">
           <option value="">乗用車</option>
+          <option value="kei">軽自動車</option>
           <option value="suv">SUV・クロカン</option>
         </select>
       </div>
@@ -10439,8 +10441,18 @@ window.addEventListener('storageReady', function(){
     sel.value = inch || '15';
     const vsel = document.getElementById('wheelPickerVehicleSel');
     if(vsel) vsel.value = '';
+    function _updateKeiOption(){
+      if(!vsel) return;
+      const _curInch = parseInt(sel.value, 10);
+      const keiOpt = vsel.querySelector('option[value="kei"]');
+      if(keiOpt){
+        keiOpt.style.display = (_curInch >= 12 && _curInch <= 15) ? '' : 'none';
+        if(keiOpt.style.display === 'none' && vsel.value === 'kei') vsel.value = '';
+      }
+    }
+    _updateKeiOption();
     renderWheelTierList(sel.value, vsel ? vsel.value : '');
-    sel.onchange = ()=> renderWheelTierList(sel.value, vsel ? vsel.value : '');
+    sel.onchange = ()=>{ _updateKeiOption(); renderWheelTierList(sel.value, vsel ? vsel.value : ''); };
     if(vsel) vsel.onchange = ()=> renderWheelTierList(sel.value, vsel.value);
     modal.classList.add('show');
   }
@@ -10495,8 +10507,9 @@ window.addEventListener('storageReady', function(){
         const s2 = (wheelMenuSettings[key2] || []).filter(t=>t.name||t.price);
         const t2 = s2[ti];
         if(!t2) return;
-        // specラベル：乗用車は「18インチ（乗用車）」、SUVは「18インチ（SUV/クロカン）※ランクル・ハイラックス・プラドなど」
+        // specラベル：乗用車は「18インチ（乗用車）」、軽自動車は「13インチ（軽自動車）」、SUVは「18インチ（SUV/クロカン）※ランクル・ハイラックス・プラドなど」
         let specLabel = inch2+'インチ（乗用車）';
+        if(vType2 === 'kei') specLabel = inch2+'インチ（軽自動車）';
         if(vType2 === 'suv') specLabel = inch2+'インチ（SUV/クロカン）※ランクル・ハイラックス・プラドなど';
         quoteWheelLines.push({
           id: uid('qw'),
@@ -20680,9 +20693,10 @@ window.addEventListener('storageReady', function(){
   let wheelMenuSettings = {}; // { "15": [...], "15|suv": [...], ... }
   const WHEEL_TIERS = ['梅','竹','松'];
   const WHEEL_INCHES = Array.from({length:11},(_,i)=>String(12+i)); // 12〜22
-  // 車種区分: key='' は乗用車（後方互換）、key='suv' はSUV・クロカン
+  // 車種区分: key='' は乗用車（後方互換）、key='kei' は軽自動車（12〜15インチ）、key='suv' はSUV・クロカン
   const WHEEL_VEHICLE_TYPES = [
     {key: '', label: '乗用車'},
+    {key: 'kei', label: '軽自動車', inchMax: 15},
     {key: 'suv', label: 'SUV・クロカン（ランクル・ハイラックス・プラドなど）'}
   ];
 
@@ -20763,8 +20777,18 @@ window.addEventListener('storageReady', function(){
     const sel = document.getElementById('wheelMenuInchSel');
     if(!sel || sel._wmInit) return;
     sel._wmInit = true;
-    sel.addEventListener('change', renderWheelMenuEditor);
     const vsel = document.getElementById('wheelMenuVehicleSel');
+    function _updateKeiOptAdmin(){
+      if(!vsel) return;
+      const _ci = parseInt(sel.value, 10);
+      const _kei = vsel.querySelector('option[value="kei"]');
+      if(_kei){
+        _kei.style.display = (_ci >= 12 && _ci <= 15) ? '' : 'none';
+        if(_kei.style.display === 'none' && vsel.value === 'kei') vsel.value = '';
+      }
+    }
+    _updateKeiOptAdmin();
+    sel.addEventListener('change', ()=>{ _updateKeiOptAdmin(); renderWheelMenuEditor(); });
     if(vsel) vsel.addEventListener('change', renderWheelMenuEditor);
     renderWheelMenuEditor();
     document.getElementById('wheelMenuSaveBtn').addEventListener('click', async ()=>{
