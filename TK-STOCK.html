@@ -16177,14 +16177,18 @@ window.addEventListener('storageReady', function(){
 
   // テンプレートHTMLにプレースホルダーを適用
   // retailPrice = メーカー希望小売価格（税抜）, sellPrice = 販売価格（税抜）
-  function _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, wheelPrice4, useKeiPrice){
+  function _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, wheelPrice4, useKeiPrice, wholesalePrice){
     const sp       = sellPrice !== undefined ? sellPrice : retailPrice;
     const brand    = p.brand || '';
     const model    = cleanName(p.name) || '';
     const sizeStr  = p.spec || '';
-    const price1Tax  = retailPrice ? Math.floor(retailPrice * 1.1) : null;
+    // price1Tax: メーカー定価があればそれを使用、なければ販売価格
+    const _p1Base  = retailPrice || sp;
+    const price1Tax  = _p1Base ? Math.floor(_p1Base * 1.1) : null;
     const sell4Tax   = sp ? Math.floor(sp * 1.1) * 4 : null;
-    const openPrice4 = retailPrice ? Math.floor(retailPrice * 1.1) * 4 : null;
+    // openPrice4: メーカー定価 > A表価格 > なし（非表示）
+    const openPrice4 = retailPrice ? Math.floor(retailPrice * 1.1) * 4
+      : wholesalePrice ? Math.floor(wholesalePrice * 1.1) * 4 : null;
     // ホイール4本価格：手動設定 > ホイールメニュー梅（ベーシック）自動取得
     let _wp4 = wheelPrice4 ? Number(wheelPrice4) : null;
     if(!_wp4){
@@ -16244,14 +16248,14 @@ window.addEventListener('storageReady', function(){
     return best;
   }
 
-  function printTirePOP(p, retailPrice, sellPrice){
+  function printTirePOP(p, retailPrice, sellPrice, wholesalePrice){
     const matched = _findMatchingPOPTemplate(p);
     if(matched && matched.type === 'pdf'){
-      _printPOPFromPDF(matched, p, retailPrice, sellPrice);
+      _printPOPFromPDF(matched, p, retailPrice, sellPrice, wholesalePrice);
       return;
     }
     const templateHtml = (matched && matched.html) ? matched.html : _getDefaultPOPHtml(matched && matched.orient);
-    const finalHtml = _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, matched && matched.wheelPrice4, matched && matched.useKeiPrice);
+    const finalHtml = _applyPOPPlaceholders(templateHtml, p, retailPrice, sellPrice, matched && matched.wheelPrice4, matched && matched.useKeiPrice, wholesalePrice);
     const w = window.open('', '_blank', 'width=900,height=700');
     if(!w){ alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。'); return; }
     w.document.write(finalHtml);
@@ -16498,7 +16502,7 @@ window.addEventListener('storageReady', function(){
   }
 
   // PDFにテキストを描画してダウンロード
-  async function _printPOPFromPDF(template, p, retailPrice, sellPrice){
+  async function _printPOPFromPDF(template, p, retailPrice, sellPrice, wholesalePrice){
     try {
       const sp = sellPrice !== undefined ? sellPrice : retailPrice;
       const PDFLib = await _loadPDFLib();
@@ -16518,9 +16522,13 @@ window.addEventListener('storageReady', function(){
         return f;
       }
 
-      const price1Tax   = retailPrice ? Math.floor(retailPrice * 1.1) : null;
+      // price1Tax: メーカー定価があればそれを使用、なければ販売価格
+      const _p1BasePdf = retailPrice || sp;
+      const price1Tax   = _p1BasePdf ? Math.floor(_p1BasePdf * 1.1) : null;
       const sell4Tax    = sp ? Math.floor(sp * 1.1) * 4 : null;
-      const openPrice4  = retailPrice ? Math.floor(retailPrice * 1.1) * 4 : null;
+      // openPrice4: メーカー定価 > A表価格 > なし（非表示）
+      const openPrice4  = retailPrice ? Math.floor(retailPrice * 1.1) * 4
+        : wholesalePrice ? Math.floor(wholesalePrice * 1.1) * 4 : null;
       // ホイール4本価格：手動設定 > ホイールメニュー梅（ベーシック）自動取得
       let wheelPrice4 = template.wheelPrice4 ? Number(template.wheelPrice4) : null;
       if(!wheelPrice4){
@@ -17382,7 +17390,7 @@ window.addEventListener('storageReady', function(){
     }
     document.getElementById('detailEdit').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('detailQrBtn').addEventListener('click', ()=> openQrModal(p));
-    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || sell) : sell, sell));
+    document.getElementById('detailPopBtn').addEventListener('click', ()=> printTirePOP(p, catalogEntry ? (catalogEntry.t || null) : null, sell, catalogEntry ? (catalogEntry.w || null) : null));
     document.getElementById('detailDelete').style.display = isAdminUser() ? 'inline-block' : 'none';
     // 複製ボタン（管理者以上のみ）
     const _dupBtn = document.getElementById('detailDuplicate');
