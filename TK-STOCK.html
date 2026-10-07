@@ -21324,10 +21324,10 @@ window.addEventListener('storageReady', function(){
       const brandUrlCount = prods.filter(p=>p.url).length;
       html += '<div style="border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden;">'
         // ブランド行
-        + '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg-2);flex-wrap:wrap;">'
-        + '<span style="font-weight:700;font-size:13.5px;min-width:120px;">'+escapeHtml(brand)+'</span>'
-        + '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">'+prods.length+'件'+(brandUrlCount?'・URL設定済'+brandUrlCount+'件':'')+'</span>'
-        + '<input type="url" data-burl-brand="'+escapeHtml(brand)+'" value="'+escapeHtml(brandUrlExisting)+'" placeholder="ブランド全体のURL（https://…）" style="'+_inputStyle+'flex:1;min-width:180px;">'
+        + '<div style="display:flex;align-items:center;gap:6px;padding:9px 12px;background:var(--bg-2);flex-wrap:nowrap;">'
+        + '<span style="font-weight:700;font-size:13.5px;min-width:90px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(brand)+'</span>'
+        + '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;flex-shrink:0;">'+prods.length+'件'+(brandUrlCount?'・URL設定済'+brandUrlCount+'件':'')+'</span>'
+        + '<input type="url" data-burl-brand="'+escapeHtml(brand)+'" value="'+escapeHtml(brandUrlExisting)+'" placeholder="ブランド全体のURL（https://…）" style="'+_inputStyle+'flex:1;min-width:0;">'
         + '<button class="btn btn-teal btn-sm" data-burl-apply-brand="'+escapeHtml(brand)+'" style="white-space:nowrap;">全銘柄に設定</button>'
         + (brandUrlCount ? '<button class="btn btn-ghost btn-sm" data-burl-clear-brand="'+escapeHtml(brand)+'" style="color:var(--red);white-space:nowrap;">クリア</button>' : '')
         + '<button class="btn btn-ghost btn-sm" data-burl-toggle="'+escapeHtml(brand)+'" style="white-space:nowrap;">銘柄別 '+(isOpen?'▲':'▼')+'（'+models.length+'）</button>'
@@ -21340,10 +21340,10 @@ window.addEventListener('storageReady', function(){
           const mProds = modelProds(brand, model);
           const mUrl = mProds.map(p=>p.url||'').find(u=>u)||'';
           const mUrlCount = mProds.filter(p=>p.url).length;
-          html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-1);border-radius:6px;flex-wrap:wrap;">'
-            + '<span style="font-size:12.5px;min-width:120px;flex:0 0 120px;">'+escapeHtml(model)+'</span>'
-            + '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;">'+mProds.length+'件'+(mUrlCount?'・設定済'+mUrlCount+'件':'')+'</span>'
-            + '<input type="url" data-burl-model="'+escapeHtml(brand+'||'+model)+'" value="'+escapeHtml(mUrl)+'" placeholder="https://…" style="'+_inputStyle+'flex:1;min-width:160px;">'
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-1);border-radius:6px;flex-wrap:nowrap;">'
+            + '<span style="font-size:12.5px;min-width:80px;max-width:150px;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(model)+'</span>'
+            + '<span style="font-size:11px;color:var(--text-3);white-space:nowrap;flex-shrink:0;">'+mProds.length+'件'+(mUrlCount?'・設定済'+mUrlCount+'件':'')+'</span>'
+            + '<input type="url" data-burl-model="'+escapeHtml(brand+'||'+model)+'" value="'+escapeHtml(mUrl)+'" placeholder="https://…" style="'+_inputStyle+'flex:1;min-width:0;">'
             + '<button class="btn btn-teal btn-sm" data-burl-apply-model="'+escapeHtml(brand+'||'+model)+'" style="white-space:nowrap;">設定</button>'
             + (mUrlCount ? '<button class="btn btn-ghost btn-sm" data-burl-clear-model="'+escapeHtml(brand+'||'+model)+'" style="color:var(--red);white-space:nowrap;">クリア</button>' : '')
             + '</div>';
