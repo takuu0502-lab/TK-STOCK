@@ -5189,6 +5189,25 @@ window.addEventListener('storageReady', function(){
         else categories.push(setcat);
         await saveCategories();
       }
+      // 「アルミホイール」小分類（インチ別）が未登録の場合は自動追加（12〜22インチ）
+      {
+        const _wheelCat = categories.find(c=>c.name==='ホイール');
+        if(_wheelCat && _wheelCat.subs){
+          const _aluminumSub = _wheelCat.subs.find(s=>s.name==='アルミホイール');
+          if(_aluminumSub){
+            if(!_aluminumSub.subsubs) _aluminumSub.subsubs = [];
+            const _inchNames = ['12インチ','13インチ','14インチ','15インチ','16インチ','17インチ','18インチ','19インチ','20インチ','21インチ','22インチ'];
+            let _inchDirty = false;
+            for(const _in of _inchNames){
+              if(!_aluminumSub.subsubs.find(ss=>ss.name===_in)){
+                _aluminumSub.subsubs.push({id: uid('ss'), name: _in});
+                _inchDirty = true;
+              }
+            }
+            if(_inchDirty) await saveCategories();
+          }
+        }
+      }
     }
     try{
       // バージョンチェック：変更があった場合のみFirebaseから全件取得
