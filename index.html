@@ -10110,7 +10110,7 @@ window.addEventListener('storageReady', function(){
               cell += '<td style="padding:6px 10px;vertical-align:middle;text-align:left;background:'+_bBg+';">'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
                 + '<div style="flex-shrink:0;">'
-                + '<span style="font-size:22px;font-weight:700;line-height:1;color:'+bColor+';">'+bStk+'</span>'
+                + (_yrPriceTip ? '<span data-price-tip="'+_yrPriceTip.replace(/"/g,'&quot;')+'" style="cursor:default;font-size:22px;font-weight:700;line-height:1;color:'+bColor+';">'+bStk+'</span>' : '<span style="font-size:22px;font-weight:700;line-height:1;color:'+bColor+';">'+bStk+'</span>')
                 + (bLow ? '<div><span class="low-flag" style="font-size:10px;">在庫少</span></div>' : '')
                 + '</div>'
                 + ((_yearBadgeHtml || badges) ? '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">'
