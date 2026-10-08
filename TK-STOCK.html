@@ -9853,6 +9853,28 @@ window.addEventListener('storageReady', function(){
       });
     } else
 
+    // ホイール大分類選択中は インチ昇順 → J幅昇順 で自動ソート
+    if(_isWheelCat && !brandSortFilter && !nameSortFilter && !recentFilter && !oldMfgFilter){
+      const _parseWheelSpec = p => {
+        // wheelSpec フィールドを優先
+        if(p.wheelSpec && p.wheelSpec.inch){
+          return { inch: parseFloat(p.wheelSpec.inch)||9999, j: parseFloat(p.wheelSpec.j)||9999 };
+        }
+        // specフィールドからパース: "15x6 ..." or "15インチ 6.0J ..."
+        const spec = p.spec || '';
+        const m1 = spec.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)/); // "15x6"形式
+        if(m1) return { inch: parseFloat(m1[1])||9999, j: parseFloat(m1[2])||9999 };
+        const m2 = spec.match(/(\d+(?:\.\d+)?)インチ.*?(\d+(?:\.\d+)?)J/); // "15インチ 6.0J"形式
+        if(m2) return { inch: parseFloat(m2[1])||9999, j: parseFloat(m2[2])||9999 };
+        return { inch: 9999, j: 9999 };
+      };
+      filteredList.sort((a,b)=>{
+        const wa = _parseWheelSpec(a);
+        const wb = _parseWheelSpec(b);
+        return wa.inch - wb.inch || wa.j - wb.j || (a.name||'').localeCompare(b.name||'','ja');
+      });
+    } else
+
     if(brandSortFilter || _autoBrandSort){
       filteredList.sort((a,b)=>{
         const ba = (a.brand||'').localeCompare(b.brand||'','ja');
