@@ -1042,6 +1042,7 @@
       <label id="beColLbl-brand"    style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="brand"    checked style="accent-color:var(--amber);cursor:pointer;">ブランド名</label>
       <label id="beColLbl-major"    style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="major"    checked style="accent-color:var(--amber);cursor:pointer;">大分類</label>
       <label id="beColLbl-sub"      style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sub"      checked style="accent-color:var(--amber);cursor:pointer;">中分類</label>
+      <label id="beColLbl-subsub"    style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="subsub"    checked style="accent-color:var(--amber);cursor:pointer;">小分類</label>
       <label id="beColLbl-spec"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="spec"     checked style="accent-color:var(--amber);cursor:pointer;">規格</label>
       <label id="beColLbl-cost"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="cost"     checked style="accent-color:var(--amber);cursor:pointer;">仕入れ原価</label>
       <label id="beColLbl-sell"     style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--bg-1);"><input type="checkbox" class="be-col-chk" data-col="sell"     checked style="accent-color:var(--amber);cursor:pointer;">販売価格</label>
@@ -1055,10 +1056,15 @@
       <select id="beBulkMajor" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);flex:1;min-width:120px;"></select>
       <button class="btn btn-ghost btn-sm" id="beApplyMajor" style="white-space:nowrap;">チェック行に適用</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
       <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">中分類を一括変更：</span>
       <select id="beBulkSub" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);flex:1;min-width:120px;"></select>
       <button class="btn btn-ghost btn-sm" id="beApplySub" style="white-space:nowrap;">チェック行に適用</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-2);border-radius:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--text-2);white-space:nowrap;font-weight:600;">小分類を一括変更：</span>
+      <select id="beBulkSubSub" style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);flex:1;min-width:120px;"></select>
+      <button class="btn btn-ghost btn-sm" id="beApplySubSub" style="white-space:nowrap;">チェック行に適用</button>
     </div>
     <div style="border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:380px;">
       <table id="bulkEditTable" style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1068,6 +1074,7 @@
           <th data-be-col="brand"    style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">ブランド名</th>
           <th data-be-col="major"    style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">大分類</th>
           <th data-be-col="sub"      style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">中分類</th>
+          <th data-be-col="subsub"    style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">小分類</th>
           <th data-be-col="spec"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">規格</th>
           <th data-be-col="cost"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">仕入れ原価</th>
           <th data-be-col="sell"     style="padding:8px 10px;text-align:left;color:var(--text-3);white-space:nowrap;">販売価格</th>
@@ -14444,10 +14451,20 @@ window.addEventListener('storageReady', function(){
       return '<option value="">中分類なし</option>'
         + major.subs.map(s=>`<option value="${s.id}"${s.id===selectedId?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
     }
+    // ヘルパー: 小分類オプションHTML (majorId, subIdから)
+    function _beSubSubOpts(majorId, subId, selectedId){
+      const major = (categories||[]).find(c=>c.id===majorId);
+      if(!major || !major.subs) return '<option value="">-</option>';
+      const sub = major.subs.find(s=>s.id===subId);
+      if(!sub || !sub.subsubs || !sub.subsubs.length) return '<option value="">-</option>';
+      return '<option value="">-</option>'
+        + sub.subsubs.map(ss=>`<option value="${ss.id}"${ss.id===selectedId?' selected':''}>${escapeHtml(ss.name)}</option>`).join('');
+    }
 
     const _beBulkSub = document.getElementById('beBulkSub');
     const _beBulkMajor = document.getElementById('beBulkMajor');
 
+    const _beBulkSubSub = document.getElementById('beBulkSubSub');
     function _beInitBulkSelects(){
       // 大分類セレクト
       _beBulkMajor.innerHTML = '<option value="">（大分類を選択）</option>'
@@ -14455,6 +14472,9 @@ window.addEventListener('storageReady', function(){
       // 全大分類の中分類をまとめて列挙
       _beBulkSub.innerHTML = '<option value="">（中分類を選択）</option>'
         + (categories||[]).flatMap(c=>(c.subs||[]).map(s=>`<option value="${s.id}">[${escapeHtml(c.name)}] ${escapeHtml(s.name)}</option>`)).join('');
+      // 全小分類をまとめて列挙
+      _beBulkSubSub.innerHTML = '<option value="">（小分類を選択）</option>'
+        + (categories||[]).flatMap(c=>(c.subs||[]).flatMap(s=>(s.subsubs||[]).map(ss=>`<option value="${ss.id}">[${escapeHtml(s.name)}] ${escapeHtml(ss.name)}</option>`))).join('');
     }
 
     function _beGetFiltered(){
@@ -14512,6 +14532,7 @@ window.addEventListener('storageReady', function(){
           <td data-be-col="brand"    style="padding:4px 6px;"><input type="text" class="be-brand" data-pid="${p.id}" value="${escapeHtml(p.brand||'')}" placeholder="例) ブリヂストン" style="${inpStyle('100%')}"></td>
           <td data-be-col="major"    style="padding:4px 6px;"><select class="be-major" data-pid="${p.id}" style="${selStyle}">${_beMajorOpts(p.majorId||'')}</select></td>
           <td data-be-col="sub"      style="padding:4px 6px;"><select class="be-sub" data-pid="${p.id}" style="${selStyle}">${_beSubOpts(p.majorId||'', p.subId||'')}</select></td>
+          <td data-be-col="subsub"    style="padding:4px 6px;"><select class="be-subsub" data-pid="${p.id}" style="${selStyle}">${_beSubSubOpts(p.majorId||'', p.subId||'', p.subSubId||'')}</select></td>
           <td data-be-col="spec"     style="padding:4px 6px;"><input type="text" class="be-spec" data-pid="${p.id}" value="${escapeHtml(p.spec||'')}" style="${inpStyle('120px')}"></td>
           <td data-be-col="cost"     style="padding:4px 6px;"><input type="number" class="be-cost" data-pid="${p.id}" value="${p.costPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
           <td data-be-col="sell"     style="padding:4px 6px;"><input type="number" class="be-sell" data-pid="${p.id}" value="${p.sellPrice||''}" placeholder="0" min="0" style="${inpStyle('80px')}"></td>
@@ -14525,15 +14546,29 @@ window.addEventListener('storageReady', function(){
       _beTbody.querySelectorAll('.be-major').forEach(sel=>{
         sel.addEventListener('change', ()=>{
           const pid = sel.dataset.pid;
-          const subSel = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+          const subSel    = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+          const subSubSel = _beTbody.querySelector(`.be-subsub[data-pid="${pid}"]`);
           if(subSel){ subSel.innerHTML = _beSubOpts(sel.value, ''); }
+          if(subSubSel){ subSubSel.innerHTML = '<option value="">-</option>'; }
+          const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
+          if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
+          sel.style.borderColor = 'var(--teal)';
+        });
+      });
+      // 中分類変更 → 小分類を更新
+      _beTbody.querySelectorAll('.be-sub').forEach(sel=>{
+        sel.addEventListener('change', ()=>{
+          const pid = sel.dataset.pid;
+          const majorSel  = _beTbody.querySelector(`.be-major[data-pid="${pid}"]`);
+          const subSubSel = _beTbody.querySelector(`.be-subsub[data-pid="${pid}"]`);
+          if(subSubSel && majorSel){ subSubSel.innerHTML = _beSubSubOpts(majorSel.value, sel.value, ''); }
           const chk = _beTbody.querySelector(`.be-chk[data-pid="${pid}"]`);
           if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
           sel.style.borderColor = 'var(--teal)';
         });
       });
       // 入力変更でハイライト＆自動チェック
-      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub,.be-partno,.be-ws-inch,.be-ws-j,.be-ws-holes,.be-ws-pcd,.be-ws-offset,.be-ws-color').forEach(inp=>{
+      _beTbody.querySelectorAll('.be-name,.be-brand,.be-spec,.be-cost,.be-sell,.be-minstock,.be-sub,.be-subsub,.be-partno,.be-ws-inch,.be-ws-j,.be-ws-holes,.be-ws-pcd,.be-ws-offset,.be-ws-color').forEach(inp=>{
         inp.addEventListener('change', ()=>{
           const chk = _beTbody.querySelector(`.be-chk[data-pid="${inp.dataset.pid}"]`);
           if(chk && !chk.checked){ chk.checked=true; _beUpdateCount(); }
@@ -14583,11 +14618,33 @@ window.addEventListener('storageReady', function(){
     document.getElementById('beApplySub').addEventListener('click', ()=>{
       const subId = _beBulkSub.value;
       if(!subId) return;
-      // チェック済み行の中分類を一括変更
+      // チェック済み行の中分類を一括変更（小分類もリセット）
       _beTbody.querySelectorAll('.be-chk:checked').forEach(chk=>{
         const pid = chk.dataset.pid;
-        const subSel = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+        const subSel    = _beTbody.querySelector(`.be-sub[data-pid="${pid}"]`);
+        const subSubSel = _beTbody.querySelector(`.be-subsub[data-pid="${pid}"]`);
+        const majorSel  = _beTbody.querySelector(`.be-major[data-pid="${pid}"]`);
         if(subSel){ subSel.value = subId; subSel.style.borderColor = 'var(--teal)'; }
+        if(subSubSel && majorSel){ subSubSel.innerHTML = _beSubSubOpts(majorSel.value, subId, ''); subSubSel.value = ''; }
+      });
+    });
+
+    document.getElementById('beApplySubSub').addEventListener('click', ()=>{
+      const subSubId = _beBulkSubSub.value;
+      if(!subSubId) return;
+      // チェック済み行の小分類を一括変更
+      _beTbody.querySelectorAll('.be-chk:checked').forEach(chk=>{
+        const pid = chk.dataset.pid;
+        const subSubSel = _beTbody.querySelector(`.be-subsub[data-pid="${pid}"]`);
+        if(subSubSel){
+          // セレクトにオプションがなければ全小分類から追加
+          if(!subSubSel.querySelector(`option[value="${subSubId}"]`)){
+            const allSS = (categories||[]).flatMap(c=>(c.subs||[]).flatMap(s=>(s.subsubs||[])));
+            const ss = allSS.find(x=>x.id===subSubId);
+            if(ss) subSubSel.innerHTML += `<option value="${ss.id}">${escapeHtml(ss.name)}</option>`;
+          }
+          subSubSel.value = subSubId; subSubSel.style.borderColor = 'var(--teal)';
+        }
       });
     });
 
@@ -14628,6 +14685,8 @@ window.addEventListener('storageReady', function(){
         if(brandVal !== (p.brand||''))               { p.brand=brandVal;  dirty=true; }
         if(majorVal !== (p.majorId||''))             { p.majorId=majorVal||null; dirty=true; }
         if(subVal   !== (p.subId||''))               { p.subId=subVal||null;     dirty=true; }
+        const subSubVal  = (_beTbody.querySelector(`.be-subsub[data-pid="${pid}"]`)?.value)||'';
+        if(subSubVal !== (p.subSubId||''))           { p.subSubId=subSubVal||null; dirty=true; }
         if(specVal  !== (p.spec||''))                { p.spec=specVal;    dirty=true; }
         if(costVal !== null && costVal !== (p.costPrice||0))     { p.costPrice=costVal;      dirty=true; }
         if(sellVal !== null && sellVal !== (p.sellPrice||0))     { p.sellPrice=sellVal;      dirty=true; }
