@@ -8753,8 +8753,8 @@ window.addEventListener('storageReady', function(){
               // ① 支店固定販売価格
               const _qFixed = getBranchFixedSell(_qp, _qBrId);
               if(_qFixed){ sell = _qFixed; }
-              // ② 手動設定の販売価格
-              else if(_qp.sellPrice){ sell = _qp.sellPrice; }
+              // ② 手動設定の販売価格（_sellManualフラグがある場合のみ）
+              else if(_qp._sellManual && _qp.sellPrice){ sell = _qp.sellPrice; }
               // ③ カタログエントリから計算（商品名からブランドプレフィックスを除去してルール検索）
               if(!sell){
                 const _qCat = findCatalogEntryForProduct(_qp);
@@ -8784,7 +8784,7 @@ window.addEventListener('storageReady', function(){
               const _r2EffModel = (priceRules.byModel && priceRules.byModel[r.b+'||'+_r2Derived]) ? _r2Derived : r.m;
               const _r2Fixed = getBranchFixedSell(_rProd2, _qBrId);
               sell = _r2Fixed !== null ? _r2Fixed
-                : (_rProd2.sellPrice || getEffectiveSellPrice(r.b, _r2EffModel, r.w, r.t));
+                : ((_rProd2._sellManual && _rProd2.sellPrice) ? _rProd2.sellPrice : getEffectiveSellPrice(r.b, _r2EffModel, r.w, r.t));
             } else {
               const _rClean3 = cleanName(r.m||'');
               const _rPre3 = r.b+' ';
@@ -9358,7 +9358,7 @@ window.addEventListener('storageReady', function(){
             if(_cqp){
               const _cqFixed = getBranchFixedSell(_cqp, _cqBrId);
               if(_cqFixed){ sell = _cqFixed; }
-              else if(_cqp.sellPrice){ sell = _cqp.sellPrice; }
+              else if(_cqp._sellManual && _cqp.sellPrice){ sell = _cqp.sellPrice; }
               if(!sell){
                 const _cqCat = findCatalogEntryForProduct(_cqp);
                 if(_cqCat){
@@ -9386,7 +9386,7 @@ window.addEventListener('storageReady', function(){
               const _rpEffModel = (priceRules.byModel && priceRules.byModel[r.b+'||'+_rpDerived]) ? _rpDerived : r.m;
               const _rpFixed = getBranchFixedSell(_rProd, _cqBrId);
               sell = _rpFixed !== null ? _rpFixed
-                : (_rProd.sellPrice || getEffectiveSellPrice(r.b, _rpEffModel, r.w, r.t));
+                : ((_rProd._sellManual && _rProd.sellPrice) ? _rProd.sellPrice : getEffectiveSellPrice(r.b, _rpEffModel, r.w, r.t));
             } else {
               const _rCleanFb = cleanName(r.m||'');
               const _rPreFb = r.b+' ';
