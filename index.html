@@ -8756,19 +8756,43 @@ window.addEventListener('storageReady', function(){
               if(_qFixed){ sell = _qFixed; }
               // ② 手動設定の販売価格
               else if(_qp.sellPrice){ sell = _qp.sellPrice; }
-              // ③ カタログエントリから計算（最も確実）
+              // ③ カタログエントリから計算（商品名からブランドプレフィックスを除去してルール検索）
               if(!sell){
                 const _qCat = findCatalogEntryForProduct(_qp);
-                if(_qCat) sell = getEffectiveSellPrice(_qCat.b, _qCat.m, _qCat.w, _qCat.t);
+                if(_qCat){
+                  const _qpClean = cleanName(_qp.name||'');
+                  const _qpPre = _qCat.b+' ';
+                  const _qpDerived = _qpClean.startsWith(_qpPre) ? _qpClean.slice(_qpPre.length) : _qpClean;
+                  const _qpEffModel = (priceRules.byModel && priceRules.byModel[_qCat.b+'||'+_qpDerived]) ? _qpDerived : _qCat.m;
+                  sell = getEffectiveSellPrice(_qCat.b, _qpEffModel, _qCat.w, _qCat.t);
+                }
               }
             }
             // ④ selectionに保存済みの値を使用
-            if(!sell) sell = r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+            if(!sell){
+              const _rClean2 = cleanName(r.m||'');
+              const _rPre2 = r.b+' ';
+              const _rDerived2 = _rClean2.startsWith(_rPre2) ? _rClean2.slice(_rPre2.length) : _rClean2;
+              const _rEffModel2 = (priceRules.byModel && priceRules.byModel[r.b+'||'+_rDerived2]) ? _rDerived2 : r.m;
+              sell = r._sellPrice || getEffectiveSellPrice(r.b, _rEffModel2, r.w, r.t);
+            }
           } else {
             const _rProd2 = findProductForCatalogEntry(r);
-            sell = (_rProd2 && _rProd2._sellManual && _rProd2.sellPrice)
-              ? _rProd2.sellPrice
-              : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+            if(_rProd2){
+              const _r2Clean = cleanName(_rProd2.name||'');
+              const _r2Pre = r.b+' ';
+              const _r2Derived = _r2Clean.startsWith(_r2Pre) ? _r2Clean.slice(_r2Pre.length) : _r2Clean;
+              const _r2EffModel = (priceRules.byModel && priceRules.byModel[r.b+'||'+_r2Derived]) ? _r2Derived : r.m;
+              const _r2Fixed = getBranchFixedSell(_rProd2, _qBrId);
+              sell = _r2Fixed !== null ? _r2Fixed
+                : (_rProd2.sellPrice || getEffectiveSellPrice(r.b, _r2EffModel, r.w, r.t));
+            } else {
+              const _rClean3 = cleanName(r.m||'');
+              const _rPre3 = r.b+' ';
+              const _rDerived3 = _rClean3.startsWith(_rPre3) ? _rClean3.slice(_rPre3.length) : _rClean3;
+              const _rEffModel3 = (priceRules.byModel && priceRules.byModel[r.b+'||'+_rDerived3]) ? _rDerived3 : r.m;
+              sell = getEffectiveSellPrice(r.b, _rEffModel3, r.w, r.t);
+            }
           }
           const _sellVal = (sell != null && sell > 0) ? sell : null;
           groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: _sellVal != null ? _sellVal : r.w, retailPrice: r.t||null });
@@ -9338,15 +9362,39 @@ window.addEventListener('storageReady', function(){
               else if(_cqp.sellPrice){ sell = _cqp.sellPrice; }
               if(!sell){
                 const _cqCat = findCatalogEntryForProduct(_cqp);
-                if(_cqCat) sell = getEffectiveSellPrice(_cqCat.b, _cqCat.m, _cqCat.w, _cqCat.t);
+                if(_cqCat){
+                  const _cqpClean = cleanName(_cqp.name||'');
+                  const _cqpPre = _cqCat.b+' ';
+                  const _cqpDerived = _cqpClean.startsWith(_cqpPre) ? _cqpClean.slice(_cqpPre.length) : _cqpClean;
+                  const _cqpEffModel = (priceRules.byModel && priceRules.byModel[_cqCat.b+'||'+_cqpDerived]) ? _cqpDerived : _cqCat.m;
+                  sell = getEffectiveSellPrice(_cqCat.b, _cqpEffModel, _cqCat.w, _cqCat.t);
+                }
               }
             }
-            if(!sell) sell = r._sellPrice || getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+            if(!sell){
+              const _cqRClean = cleanName(r.m||'');
+              const _cqRPre = r.b+' ';
+              const _cqRDerived = _cqRClean.startsWith(_cqRPre) ? _cqRClean.slice(_cqRPre.length) : _cqRClean;
+              const _cqREffModel = (priceRules.byModel && priceRules.byModel[r.b+'||'+_cqRDerived]) ? _cqRDerived : r.m;
+              sell = r._sellPrice || getEffectiveSellPrice(r.b, _cqREffModel, r.w, r.t);
+            }
           } else {
             const _rProd = findProductForCatalogEntry(r);
-            sell = (_rProd && _rProd._sellManual && _rProd.sellPrice)
-              ? _rProd.sellPrice
-              : getEffectiveSellPrice(r.b, r.m, r.w, r.t);
+            if(_rProd){
+              const _rpClean = cleanName(_rProd.name||'');
+              const _rpPre = r.b+' ';
+              const _rpDerived = _rpClean.startsWith(_rpPre) ? _rpClean.slice(_rpPre.length) : _rpClean;
+              const _rpEffModel = (priceRules.byModel && priceRules.byModel[r.b+'||'+_rpDerived]) ? _rpDerived : r.m;
+              const _rpFixed = getBranchFixedSell(_rProd, _cqBrId);
+              sell = _rpFixed !== null ? _rpFixed
+                : (_rProd.sellPrice || getEffectiveSellPrice(r.b, _rpEffModel, r.w, r.t));
+            } else {
+              const _rCleanFb = cleanName(r.m||'');
+              const _rPreFb = r.b+' ';
+              const _rDerivedFb = _rCleanFb.startsWith(_rPreFb) ? _rCleanFb.slice(_rPreFb.length) : _rCleanFb;
+              const _rEffModelFb = (priceRules.byModel && priceRules.byModel[r.b+'||'+_rDerivedFb]) ? _rDerivedFb : r.m;
+              sell = getEffectiveSellPrice(r.b, _rEffModelFb, r.w, r.t);
+            }
           }
           const _cqSellVal = (sell != null && sell > 0) ? sell : null;
           if(opts && opts.targetId){
