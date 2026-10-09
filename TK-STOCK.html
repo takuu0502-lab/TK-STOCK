@@ -22351,6 +22351,24 @@ window.addEventListener('storageReady', function(){
 
   initAuth();
 
+  // モーダル内のEnterキーによる誤登録防止
+  // input/textarea でEnterを押しても登録されないようにする（ボタンクリック時のみ登録）
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter') return;
+    const target = e.target;
+    const tagName = target.tagName;
+    // textarea はEnterで改行を許可
+    if(tagName === 'TEXTAREA') return;
+    // input 要素がモーダル内にある場合はEnterをブロック
+    if(tagName === 'INPUT'){
+      const modal = target.closest('.modal-overlay');
+      if(modal && modal.style.display !== 'none'){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  }, true);
+
   // グローバルカスタムツールチップ（data-price-tip属性を持つ要素用）
   const _tipEl = document.createElement('div');
   _tipEl.id = 'priceTip';
