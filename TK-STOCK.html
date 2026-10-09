@@ -9244,7 +9244,19 @@ window.addEventListener('storageReady', function(){
       cb.addEventListener('change', ()=>{
         const r = matches[Number(cb.dataset.catalogChk)];
         const cKey = r.b+'||'+r.m+'||'+r.s;
-        if(cb.checked) catalogQuoteSelection.set(cKey, r); else catalogQuoteSelection.delete(cKey);
+        if(cb.checked){
+          const _enrichR = Object.assign({}, r);
+          const _enrichProd = findProductForCatalogEntry(r);
+          if(_enrichProd){
+            const _enrichBrId = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+            const _enrichFixed = getBranchFixedSell(_enrichProd, _enrichBrId);
+            _enrichR._productId = _enrichProd.id;
+            _enrichR._sellPrice = _enrichFixed !== null ? _enrichFixed : (_enrichProd.sellPrice || null);
+          }
+          catalogQuoteSelection.set(cKey, _enrichR);
+        } else {
+          catalogQuoteSelection.delete(cKey);
+        }
         renderPriceCatalog(opts);
         renderEstSelectionBar();
       });
