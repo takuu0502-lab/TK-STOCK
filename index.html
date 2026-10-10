@@ -10464,11 +10464,17 @@ window.addEventListener('storageReady', function(){
         + (!isMulti && sortedItems[0].g.spec ? '<div class="quote-product-spec">'+escapeHtml(sortedItems[0].g.spec)+'</div>' : '')
         + tireRowsHtml
         + laborDetailHtml
-        + (wheelLinesTotal() > 0 ? '<div class="quote-line" style="color:var(--text-2);font-size:13px;padding:4px 0;border-top:1px dashed var(--line);margin-top:4px;">'
-          + '<span style="flex:1;">🔩 アルミホイール</span>'
-          + '<span class="quote-line-subtotal" style="color:var(--text-1);">¥'+wheelLinesTotal().toLocaleString('ja-JP')+'</span>'
-          + '<span style="width:28px;"></span>'
-          + '</div>' : '')
+        + (quoteWheelLines.length > 0 ? quoteWheelLines.map(w=>{
+            const wSub = (Number(w.qty)||0)*(Number(w.unitPrice)||0);
+            const wName = w.name + (w.spec ? '（'+w.spec+'）' : '');
+            return '<div class="quote-line-row quote-labor-mirror">'
+              + '<div class="quote-line-main" style="font-size:13px;color:var(--text-2);">'+escapeHtml(wName)+'</div>'
+              + '<span style="font-size:12px;color:var(--text-3);min-width:40px;text-align:center;">'+w.qty+'</span>'
+              + '<span style="width:100px;text-align:right;font-size:12.5px;color:var(--text-2);">¥'+(Number(w.unitPrice)||0).toLocaleString('ja-JP')+'</span>'
+              + '<span class="quote-line-subtotal">¥'+wSub.toLocaleString('ja-JP')+'</span>'
+              + '<span style="width:28px;"></span>'
+              + '</div>';
+          }).join('') : '')
         + '<div class="quote-block-subtotal-wrap">'
         +   '<div class="quote-block-subtotal"><span>小計</span><span>¥'+blockBase.toLocaleString('ja-JP')+'</span></div>'
         +   '<div class="quote-block-subtotal quote-tax-row"><span>税額（10%）</span><span>¥'+tax.toLocaleString('ja-JP')+'</span></div>'
