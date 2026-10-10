@@ -7722,9 +7722,13 @@ window.addEventListener('storageReady', function(){
           <td style="padding:8px 6px;text-align:center;">${stk}</td>
           <td style="padding:8px 6px;text-align:center;color:${prov>0?'var(--amber)':'var(--text-3)'};">${prov>0?prov:'—'}</td>
           <td style="padding:8px 6px;text-align:center;font-weight:600;">${net}</td>
-          <td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--teal);">
-            ${hasScanned ? scan : '<span style="color:var(--text-3);">—</span>'}
-            ${hasScanned ? `<button data-inv-minus="${p.id}" style="margin-left:4px;font-size:11px;padding:1px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg-2);cursor:pointer;color:var(--text-2);">−</button>` : ''}
+          <td style="padding:4px 6px;text-align:center;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:3px;">
+              <button data-inv-minus="${p.id}" style="font-size:13px;width:22px;height:22px;line-height:1;border:1px solid var(--line);border-radius:4px;background:var(--bg-2);cursor:pointer;color:var(--text-2);">−</button>
+              <input type="number" min="0" data-inv-input="${p.id}" value="${hasScanned ? scan : ''}" placeholder="—"
+                style="width:46px;text-align:center;font-size:13px;font-weight:700;color:var(--teal);padding:2px 3px;border:1px solid ${hasScanned?'var(--teal)':'var(--line)'};border-radius:6px;background:var(--bg-1);-moz-appearance:textfield;">
+              <button data-inv-plus="${p.id}" style="font-size:13px;width:22px;height:22px;line-height:1;border:1px solid var(--line);border-radius:4px;background:var(--bg-2);cursor:pointer;color:var(--text-2);">＋</button>
+            </div>
           </td>
           <td style="padding:8px 6px;text-align:center;font-weight:700;color:${diffColor};">
             ${diffStr}
@@ -7740,6 +7744,32 @@ window.addEventListener('storageReady', function(){
           const pid = btn.dataset.invMinus;
           const cur = _counts.get(pid)||0;
           if(cur <= 1) _counts.delete(pid); else _counts.set(pid, cur-1);
+          _render();
+        });
+      });
+
+      // ＋ ボタン
+      _tbody.querySelectorAll('[data-inv-plus]').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          e.stopPropagation();
+          const pid = btn.dataset.invPlus;
+          const cur = _counts.get(pid)||0;
+          _counts.set(pid, cur+1);
+          _render();
+        });
+      });
+
+      // 手入力フィールド
+      _tbody.querySelectorAll('[data-inv-input]').forEach(inp=>{
+        inp.addEventListener('keydown', e=>{
+          if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); }
+        });
+        inp.addEventListener('change', e=>{
+          e.stopPropagation();
+          const pid = inp.dataset.invInput;
+          const val = parseInt(inp.value, 10);
+          if(!val || val <= 0) _counts.delete(pid);
+          else _counts.set(pid, val);
           _render();
         });
       });
