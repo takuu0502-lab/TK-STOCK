@@ -7760,8 +7760,11 @@ window.addEventListener('storageReady', function(){
           );
           if(!ok){ setTimeout(()=>_input.focus(),30); return; }
           if(!p2.branchStock) p2.branchStock = {};
+          const _invFixNow = Date.now();
+          p2.updatedAt = _invFixNow;
           p2.branchStock[brId2] = newStk;
           p2.stock = newStk;
+          await _saveStockSnapshot(p2.id, p2.branchStock, _invFixNow);
           const adjQty = newStk - oldStk;
           transactions.unshift({
             id: uid('t'), productId: p2.id, barcode: p2.barcode, name: p2.name,
