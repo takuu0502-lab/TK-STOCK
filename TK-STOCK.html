@@ -12875,6 +12875,7 @@ window.addEventListener('storageReady', function(){
           if(!p) return;
           const ok = await showConfirm('「'+cleanName(p.name)+'」（'+branchName(p.branchId||'taniyabe')+'）を削除しますか？\nこの操作は取り消せません。');
           if(!ok) return;
+          _deletedProductIds.add(pid);
           const idx = products.findIndex(x=>x.id===pid);
           if(idx>=0) products.splice(idx,1);
           await saveProducts();
