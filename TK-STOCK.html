@@ -6246,10 +6246,16 @@ window.addEventListener('storageReady', function(){
         const year = _scanMfYear ? _scanMfYear+'年製' : '';
         const sub = [p.brand||'', p.spec||'', year].filter(Boolean).join('　');
         const stk = getStock(p);
+        // 全支店在庫を表示
+        const _allBrStk = BRANCHES.map(b=>{
+          const s = p.branchStock ? (p.branchStock[b.id]||0) : 0;
+          return s > 0 ? b.name+': '+s+'本' : null;
+        }).filter(Boolean).join(' / ');
         return '<button type="button" data-pick-idx="'+i+'" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg-2);cursor:pointer;transition:background .15s;">'
           +'<div style="font-size:14px;font-weight:700;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
           +(sub?'<div style="font-size:12px;color:var(--text-2);margin-top:3px;">'+escapeHtml(sub)+'</div>':'')
-          +'<div style="font-size:12px;color:'+(stk>0?'var(--teal)':'var(--red)')+';margin-top:3px;font-weight:600;">在庫: '+stk+'本</div>'
+          +'<div style="font-size:12px;color:'+(stk>0?'var(--teal)':'var(--red)')+';margin-top:3px;font-weight:600;">自店舗在庫: '+stk+'本</div>'
+          +(_allBrStk?'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">全支店: '+escapeHtml(_allBrStk)+'</div>':'')
           +'</button>';
       }).join('');
       overlay.classList.add('show');
@@ -12823,13 +12829,17 @@ window.addEventListener('storageReady', function(){
     // 重複商品管理
     document.getElementById('showDuplicatesBtn').addEventListener('click', ()=>{
       const resultEl = document.getElementById('duplicatesResult');
-      // JANコードが同一の商品グループを抽出（JANなしはIDで重複チェック対象外）
+      // JANコードが同一の商品グループを抽出（barcode・internalBarcode両方チェック）
       const byBarcode = {};
       products.forEach(p=>{
-        const key = (p.barcode||'').trim();
-        if(!key) return;
-        if(!byBarcode[key]) byBarcode[key] = [];
-        byBarcode[key].push(p);
+        // barcode と internalBarcode 両方をキーとして登録
+        const keys = new Set();
+        if((p.barcode||'').trim()) keys.add((p.barcode||'').trim());
+        if((p.internalBarcode||'').trim()) keys.add((p.internalBarcode||'').trim());
+        keys.forEach(key=>{
+          if(!byBarcode[key]) byBarcode[key] = [];
+          if(!byBarcode[key].find(x=>x.id===p.id)) byBarcode[key].push(p);
+        });
       });
       const dupGroups = Object.entries(byBarcode).filter(([,arr])=>arr.length>1);
       if(dupGroups.length === 0){
