@@ -8958,7 +8958,7 @@ window.addEventListener('storageReady', function(){
     const showCost = !isExternalUser() && (forceTire ? showCostInEstimate : showCostInList);
     // 支店別在庫列フラグ（商品一覧と同じロジック）
     const _catColOrder = ['katsuta', 'taniyabe', 'iwama'];
-    const _catOwnBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _catOwnBranchId = selectedBranchFilter || (currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe');
     const _catVisibleBranches = getVisibleBranches().slice().sort((a, b) => {
       if(a === _catOwnBranchId) return -1;
       if(b === _catOwnBranchId) return 1;
