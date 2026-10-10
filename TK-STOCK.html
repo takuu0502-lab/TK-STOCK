@@ -10463,6 +10463,11 @@ window.addEventListener('storageReady', function(){
         + (!isMulti && sortedItems[0].g.spec ? '<div class="quote-product-spec">'+escapeHtml(sortedItems[0].g.spec)+'</div>' : '')
         + tireRowsHtml
         + laborDetailHtml
+        + (wheelLinesTotal() > 0 ? '<div class="quote-line" style="color:var(--text-2);font-size:13px;padding:4px 0;border-top:1px dashed var(--line);margin-top:4px;">'
+          + '<span style="flex:1;">🔩 アルミホイール</span>'
+          + '<span class="quote-line-subtotal" style="color:var(--text-1);">¥'+wheelLinesTotal().toLocaleString('ja-JP')+'</span>'
+          + '<span style="width:28px;"></span>'
+          + '</div>' : '')
         + '<div class="quote-block-subtotal-wrap">'
         +   '<div class="quote-block-subtotal"><span>小計</span><span>¥'+blockBase.toLocaleString('ja-JP')+'</span></div>'
         +   '<div class="quote-block-subtotal quote-tax-row"><span>税額（10%）</span><span>¥'+tax.toLocaleString('ja-JP')+'</span></div>'
