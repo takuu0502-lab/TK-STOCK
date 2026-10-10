@@ -2944,7 +2944,10 @@
 <div class="modal-overlay" id="invCheckModal">
   <div class="modal" style="max-width:860px;width:96vw;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
-      <h3 style="margin:0;font-size:17px;">📋 在庫確認モード</h3>
+      <div>
+        <h3 style="margin:0;font-size:17px;">📋 在庫確認モード</h3>
+        <div id="invCheckBranchLabel" style="font-size:12px;color:var(--amber);margin-top:3px;font-weight:600;"></div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-ghost btn-sm" id="invCheckClearBtn" style="color:var(--red);border-color:var(--red);">リセット</button>
         <button class="btn btn-ghost btn-sm" id="invCheckClose">閉じる</button>
@@ -7607,8 +7610,8 @@ window.addEventListener('storageReady', function(){
     let _lastBc = null;
     let _lastPid = null;
 
-    // 自支店ID取得
-    const _ownBr = () => currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    // 自支店ID取得（在庫一覧で選択中の支店を優先。全支店合計=nullの場合はログイン支店にフォールバック）
+    const _ownBr = () => selectedBranchFilter || (currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe');
 
     // 仮出庫数（pending）を取得
     function _provQty(productId, branchId){
@@ -7850,6 +7853,12 @@ window.addEventListener('storageReady', function(){
 
     // 開く
     document.getElementById('invCheckModeBtn').addEventListener('click', ()=>{
+      // 確認中の支店ラベルを更新
+      const _brLabelEl = document.getElementById('invCheckBranchLabel');
+      if(_brLabelEl){
+        const _brName = branchName(_ownBr());
+        _brLabelEl.textContent = '📍 確認対象支店：' + _brName;
+      }
       _renderCatFilter();
       _render();
       _modal.classList.add('show');
