@@ -10439,7 +10439,7 @@ window.addEventListener('storageReady', function(){
         : items;
 
       const tireSub = sortedItems.reduce((s,{g})=>s+blockTotal(g),0);
-      const blockBase = tireSub + sharedLaborTotal();
+      const blockBase = tireSub + sharedLaborTotal() + wheelLinesTotal();
       const tax = Math.floor(blockBase * 0.1);
       const blockTotalWithTax = blockBase + tax;
 
