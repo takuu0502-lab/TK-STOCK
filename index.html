@@ -9102,7 +9102,10 @@ window.addEventListener('storageReady', function(){
         // 支店固定価格 > モデルルール > ブランド/デフォルトルール の順で優先
         const sell = _indivSellFixed !== null ? _indivSellFixed : (_indivRuleSell !== null ? _indivRuleSell : getEffectiveSellPrice(r.b, r.m, r.w, r.t));
         const _yearBadgeForBranch = (brId) => {
-          if(hasYearStock(cp, brId)) return yearStockBadgesHtml(cp, brId, false, _prodPriceTip(brId));
+          if(hasYearStock(cp, brId)){
+            const _b = yearStockBadgesHtml(cp, brId, false, _prodPriceTip(brId));
+            if(_b) return _b;
+          }
           const _yr = getBranchManufactureYear(cp, brId);
           return _yr ? '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-size:9px;font-weight:600;padding:1px 5px;border-radius:6px;white-space:nowrap;">🗓 '+_yr+'年製</div>' : '';
         };
@@ -9202,14 +9205,29 @@ window.addEventListener('storageReady', function(){
         const stockCell = _catShowMultiCols
           ? _catVisibleBranches.map(brId => {
               const bStk = stockForCatalogEntryByBranch(r, brId);
-              const _tip = _yearTooltip(brId);
               const _isOwnBranch = brId === _catOwnBranchId;
-              let _tipFull = _tip || '';
               const _priceTip = _priceTooltip(brId);
+              // catalog_prodと同スタイルの大きな年製バッジ（全マッチ商品から収集）
+              let _yearBadgeHtml = '';
+              _catProds.forEach(cp=>{
+                if(hasYearStock(cp, brId)){
+                  const _b = yearStockBadgesHtml(cp, brId, _isOwnBranch, _priceTip);
+                  if(_b) _yearBadgeHtml += _b;
+                } else {
+                  const _yr = getBranchManufactureYear(cp, brId);
+                  if(_yr && (cp.branchStock?cp.branchStock[brId]||0:0) > 0){
+                    const _diff = new Date().getFullYear() - _yr;
+                    const _bg = _diff<=0?'#e0f5f0':_diff===1?'#d4edda':_diff===2?'#fff3cd':'#fde8e8';
+                    const _col = _diff<=0?'var(--teal)':_diff===1?'#1a7a3c':_diff===2?'#b8650c':'#c0392b';
+                    _yearBadgeHtml += '<div style="display:inline-flex;align-items:center;gap:3px;background:'+_bg+';color:'+_col+';font-size:'+(_isOwnBranch?'10':'9')+'px;font-weight:600;padding:1px '+(_isOwnBranch?'6':'5')+'px;border-radius:'+(_isOwnBranch?'8':'6')+'px;white-space:nowrap;">🗓 '+_yr+'年製</div>';
+                  }
+                }
+              });
+              const _tip = _yearTooltip(brId); // tooltip用テキストは維持
+              let _tipFull = _tip || '';
               if(_priceTip) _tipFull += (_tipFull?'\n':'')+_priceTip;
               const _tipAttr = _tipFull ? ' title="'+_tipFull+'"' : '';
-              const _tipBadge = _tip ? '<span data-price-tip="'+_tipFull+'" style="cursor:'+(_tipFull&&!_isOwnBranch?'pointer':'default')+';font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
-              let _extra = _tipBadge;
+              let _extra = _yearBadgeHtml;
               _catProds.forEach(cp=>{
                 const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(i=>i.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
                 _extra += _makeInschBadges(cp.id, brId, 10, true);
