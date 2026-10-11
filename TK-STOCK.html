@@ -2274,6 +2274,18 @@
   </div>
 </div>
 
+<!-- 粗利アラートポップアップ -->
+<div id="grossProfitAlertBox" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:10999;min-width:320px;max-width:420px;background:#fff3f3;border:2px solid #e53935;border-radius:10px;padding:14px 18px;box-shadow:0 6px 24px rgba(229,57,53,0.18);font-family:sans-serif;">
+  <div style="display:flex;align-items:flex-start;gap:10px;">
+    <span style="font-size:22px;line-height:1;">⚠️</span>
+    <div style="flex:1;">
+      <div style="font-size:13.5px;font-weight:700;color:#c62828;margin-bottom:4px;">粗利アラート</div>
+      <div id="grossProfitAlertMsg" style="font-size:13px;color:#333;line-height:1.6;"></div>
+    </div>
+    <button onclick="document.getElementById('grossProfitAlertBox').style.display='none';" style="background:none;border:none;font-size:18px;color:#999;cursor:pointer;padding:0;line-height:1;">×</button>
+  </div>
+</div>
+
 <div id="printPreviewOverlay" style="display:none;">
   <div id="printPreviewInner">
     <div id="printPreviewToolbar">
@@ -10454,6 +10466,40 @@ window.addEventListener('storageReady', function(){
     return tireLinesTotal() - quoteDiscountAmt() + sharedLaborTotal() + wheelLinesTotal();
   }
 
+  // ---- 粗利アラート ----
+  let _grossAlertTimer = null;
+  function getCostForQuoteGroup(g){
+    if(g.productId){
+      const p = (typeof products !== 'undefined') ? products.find(x=>x.id===g.productId) : null;
+      if(p){
+        const brId = selectedBranchFilter || (currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe');
+        return getEffectiveCostForBranch(p, brId);
+      }
+    }
+    return null;
+  }
+  function checkGrossProfitAlert(gi){
+    const g = quoteGroups[gi];
+    if(!g) return;
+    const sell = Number(g.unitPrice)||0;
+    if(sell <= 0) return;
+    const cost = getCostForQuoteGroup(g);
+    if(cost == null || cost <= 0) return;
+    const margin = (sell - cost) / sell * 100;
+    if(margin <= 5){
+      const marginStr = margin.toFixed(1);
+      const box = document.getElementById('grossProfitAlertBox');
+      const msg = document.getElementById('grossProfitAlertMsg');
+      if(!box || !msg) return;
+      msg.innerHTML = '<strong>'+escapeHtml(g.name)+(g.spec?' '+escapeHtml(g.spec):'')+'</strong><br>'
+        +'販売単価 ¥'+sell.toLocaleString('ja-JP')+' ／ 仕入れ ¥'+cost.toLocaleString('ja-JP')+'<br>'
+        +'粗利率 <span style="color:#c62828;font-weight:700;font-size:15px;">'+marginStr+'%</span>（5%以下）';
+      box.style.display = 'block';
+      if(_grossAlertTimer) clearTimeout(_grossAlertTimer);
+      _grossAlertTimer = setTimeout(()=>{ box.style.display='none'; }, 8000);
+    }
+  }
+
   function renderQuoteLines(){
     const wrap = document.getElementById('quoteLinesWrap');
     if(quoteGroups.length === 0){
@@ -10546,7 +10592,7 @@ window.addEventListener('storageReady', function(){
     });
     wrap.querySelectorAll('[data-group-price]').forEach(inp=>{
       inp.addEventListener('input', ()=>{ quoteGroups[+inp.dataset.groupPrice].unitPrice=+inp.value||0; });
-      inp.addEventListener('blur', ()=>renderAll());
+      inp.addEventListener('blur', ()=>{ renderAll(); checkGrossProfitAlert(+inp.dataset.groupPrice); });
     });
   }
   function renderSharedLabor(){
