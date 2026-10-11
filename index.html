@@ -2789,6 +2789,25 @@
       <div id="quoteWheelWrap"></div>
     </div>
 
+    <!-- 特別割引 -->
+    <div class="quote-shared-labor-section no-print" id="quoteDiscountSection" style="margin-top:10px;">
+      <div class="quote-shared-labor-title">
+        <span>特別割引</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+        <span style="font-size:13px;color:var(--text-2);">タイヤ価格から</span>
+        <select id="quoteDiscountSel" style="padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-1);font-size:13px;font-weight:600;">
+          <option value="0">割引なし</option>
+          <option value="3">3% OFF</option>
+          <option value="5">5% OFF</option>
+          <option value="7">7% OFF</option>
+          <option value="10">10% OFF</option>
+        </select>
+        <span style="font-size:13px;color:var(--text-2);">割引</span>
+        <span id="quoteDiscountAmt" style="font-size:13.5px;font-weight:700;color:var(--red,#e53935);margin-left:auto;"></span>
+      </div>
+    </div>
+
     <div id="quoteTotalsWrap" style="margin-top:6px;"></div>
 
     <div class="field no-print" style="margin-top:14px;">
@@ -9466,6 +9485,9 @@ window.addEventListener('storageReady', function(){
         quoteGroups = groups;
         sharedLaborLines = [];
         quoteWheelLines = [];
+        quoteDiscountRate = 0;
+        const _dsel2 = document.getElementById('quoteDiscountSel');
+        if(_dsel2) _dsel2.value = '0';
         document.getElementById('quoteCustomer').value = '';
         document.getElementById('quoteCar').value = '';
         document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
@@ -10394,6 +10416,7 @@ window.addEventListener('storageReady', function(){
   let quoteGroups = [];
   let sharedLaborLines = [];
   let quoteWheelLines = [];
+  let quoteDiscountRate = 0; // 0, 3, 5, 7, 10 (%)
   const LABOR_PRESETS = ['組替・バランス・脱着','タイヤ処分料','ゴムバルブ','ナット','チッ素ガス','アライメント'];
 
   function openQuoteModal(){
@@ -10401,6 +10424,9 @@ window.addEventListener('storageReady', function(){
     quoteGroups = [];
     sharedLaborLines = [];
     quoteWheelLines = [];
+    quoteDiscountRate = 0;
+    const _dsel = document.getElementById('quoteDiscountSel');
+    if(_dsel) _dsel.value = '0';
     document.getElementById('quoteCustomer').value = '';
     document.getElementById('quoteCar').value = '';
     document.getElementById('quoteStaff').value = currentUser ? currentUser.displayName : '';
@@ -10418,8 +10444,15 @@ window.addEventListener('storageReady', function(){
   function wheelLinesTotal(){
     return quoteWheelLines.reduce((s,w)=>s+(Number(w.qty)||0)*(Number(w.unitPrice)||0),0);
   }
+  function tireLinesTotal(){
+    return quoteGroups.reduce((s,g)=>s+blockTotal(g),0);
+  }
+  function quoteDiscountAmt(){
+    if(!quoteDiscountRate) return 0;
+    return Math.floor(tireLinesTotal() * quoteDiscountRate / 100);
+  }
   function quoteGrandBase(){
-    return quoteGroups.reduce((s,g)=>s+blockTotal(g),0) + sharedLaborTotal() + wheelLinesTotal();
+    return tireLinesTotal() - quoteDiscountAmt() + sharedLaborTotal() + wheelLinesTotal();
   }
 
   function renderQuoteLines(){
@@ -10458,7 +10491,8 @@ window.addEventListener('storageReady', function(){
         : items;
 
       const tireSub = sortedItems.reduce((s,{g})=>s+blockTotal(g),0);
-      const blockBase = tireSub + sharedLaborTotal() + wheelLinesTotal();
+      const _discAmt = quoteDiscountRate > 0 ? Math.floor(tireSub * quoteDiscountRate / 100) : 0;
+      const blockBase = tireSub - _discAmt + sharedLaborTotal() + wheelLinesTotal();
       const tax = Math.floor(blockBase * 0.1);
       const blockTotalWithTax = blockBase + tax;
 
@@ -10493,6 +10527,13 @@ window.addEventListener('storageReady', function(){
               + '<span style="width:28px;"></span>'
               + '</div>';
           }).join('') : '')
+        + (_discAmt > 0 ? '<div class="quote-line-row quote-labor-mirror" style="color:var(--red,#e53935);">'
+          + '<div class="quote-line-main" style="font-size:13px;font-weight:600;color:var(--red,#e53935);">特別割引（'+quoteDiscountRate+'%）</div>'
+          + '<span style="width:40px;"></span>'
+          + '<span style="width:100px;"></span>'
+          + '<span class="quote-line-subtotal" style="color:var(--red,#e53935);">－¥'+_discAmt.toLocaleString('ja-JP')+'</span>'
+          + '<span style="width:28px;"></span>'
+          + '</div>' : '')
         + '<div class="quote-block-subtotal-wrap">'
         +   '<div class="quote-block-subtotal"><span>小計</span><span>¥'+blockBase.toLocaleString('ja-JP')+'</span></div>'
         +   '<div class="quote-block-subtotal quote-tax-row"><span>税額（10%）</span><span>¥'+tax.toLocaleString('ja-JP')+'</span></div>'
@@ -10604,9 +10645,21 @@ window.addEventListener('storageReady', function(){
     });
   }
 
-  function renderAll(){ renderQuoteLines(); renderSharedLabor(); renderWheelLines(); renderTotals(); }
+  function renderAll(){ renderQuoteLines(); renderSharedLabor(); renderWheelLines(); renderTotals(); renderDiscountAmt(); }
+
+  function renderDiscountAmt(){
+    const el = document.getElementById('quoteDiscountAmt');
+    if(!el) return;
+    const amt = quoteDiscountAmt();
+    el.textContent = amt > 0 ? '－¥'+amt.toLocaleString('ja-JP') : '';
+  }
 
   function renderSharedLaborAndLines(){ renderSharedLabor(); renderQuoteLines(); }
+
+  document.getElementById('quoteDiscountSel').addEventListener('change', function(){
+    quoteDiscountRate = Number(this.value) || 0;
+    renderAll();
+  });
 
   document.getElementById('addSharedLabor').addEventListener('click', ()=>{
     sharedLaborLines.push({id:uid('l'),name:'',qty:4,unitPrice:''});
@@ -10976,6 +11029,7 @@ window.addEventListener('storageReady', function(){
       groups: JSON.parse(JSON.stringify(quoteGroups)),
       laborLines: JSON.parse(JSON.stringify(sharedLaborLines)),
       wheelLines: JSON.parse(JSON.stringify(quoteWheelLines)),
+      discountRate: quoteDiscountRate,
       grandTotal: Math.round(quoteGrandBase() * 1.1)
     };
   }
@@ -10985,6 +11039,9 @@ window.addEventListener('storageReady', function(){
     quoteGroups = JSON.parse(JSON.stringify(q.groups));
     sharedLaborLines = JSON.parse(JSON.stringify(q.laborLines||[]));
     quoteWheelLines = JSON.parse(JSON.stringify(q.wheelLines||[]));
+    quoteDiscountRate = q.discountRate || 0;
+    const _dsel3 = document.getElementById('quoteDiscountSel');
+    if(_dsel3) _dsel3.value = String(quoteDiscountRate);
     document.getElementById('quoteCustomer').value = q.customer||'';
     document.getElementById('quoteCar').value = q.car||'';
     document.getElementById('quoteStaff').value = q.staff||'';
@@ -11127,7 +11184,8 @@ window.addEventListener('storageReady', function(){
       return sumA - sumB;
     }).map(([name, gList])=>{
       const tireSub = gList.reduce((s,g)=>s+blockTotal(g),0);
-      const base = tireSub + laborTotal + wheelTotal;
+      const _pDiscAmt = quoteDiscountRate > 0 ? Math.floor(tireSub * quoteDiscountRate / 100) : 0;
+      const base = tireSub - _pDiscAmt + laborTotal + wheelTotal;
       const tax = Math.floor(base*0.1);
       const total = base + tax;
       const isMulti = gList.length > 1;
@@ -11157,6 +11215,7 @@ window.addEventListener('storageReady', function(){
         +tireRowsHtml
         +laborRowsHtml
         +wheelRowsHtml
+        +(_pDiscAmt > 0 ? '<tr style="color:#c62828;"><td class="label"><strong>特別割引（'+quoteDiscountRate+'%）</strong></td><td class="num" colspan="2"></td><td class="num" style="color:#c62828;">－&yen;'+_pDiscAmt.toLocaleString('ja-JP')+'</td></tr>' : '')
         +'</table>'
         +'<div class="qpb-sep"></div>'
         +'<div class="qpb-total-row">'
