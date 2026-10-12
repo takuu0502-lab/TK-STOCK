@@ -9737,9 +9737,9 @@ window.addEventListener('storageReady', function(){
     var _wheelSpecSubs = _sharedWheelCat ? (_sharedWheelCat.subs||[]).filter(s=>s.name==='アルミホイール'||s.name==='スチールホイール').map(s=>s.id) : [];
     var _isWheelSpecMode = _isWheelCat && (selectedSub === null || _wheelSpecSubs.includes(selectedSub));
     var _wheelNonSpecMode = _isWheelCat && !_isWheelSpecMode;
-    // 自支店タブかどうか（総管理者は常に全表示）
+    // 自支店タブかどうか（総管理者・管理者は所有支店に関わらず全商品表示）
     const _myBranch = (currentUser && currentUser.branchId) || 'taniyabe';
-    const _isViewingOwnBranch = isSuperAdminUser() || !selectedBranchFilter || selectedBranchFilter === _myBranch;
+    const _isViewingOwnBranch = isAdminUser() || !selectedBranchFilter || selectedBranchFilter === _myBranch;
 
     let list = products.filter(p=>{
       if(selectedBranchFilter !== null){
