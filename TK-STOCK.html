@@ -9750,9 +9750,9 @@ window.addEventListener('storageReady', function(){
             && _sharedWheelSubIds.includes(p.subId);
           if(!isTire && !isWheelAlumSteel) return false;
         } else {
-          // 自支店タブ: 管理者は全商品表示。一般社員は自支店所有 + 他支店のタイヤ・ホイールのみ
+          // 自支店タブ: 全ユーザーが全支店の商品を閲覧可能（BRANCH_VISIBILITYで全支店閲覧許可済み）
           const isOwnedByBranch = (p.branchId || 'taniyabe') === selectedBranchFilter;
-          if(!isOwnedByBranch && !isAdminUser()){
+          if(false){ // 支店所有チェック無効化
             // キーワード検索中は全商品を対象（他支店商品も検索可能）
             if(keywordFilter && keywordFilter.trim()){
               // キーワード検索時はここではフィルターしない（後段のキーワードフィルターに委ねる）
@@ -13967,7 +13967,7 @@ window.addEventListener('storageReady', function(){
         +'</div>'
       +'</div>'
       +'<table>'
-        +'<thead><tr><th style="width:30pt;">No.</th><th style="text-align:left;">商品名</th><th style="text-align:left;width:60pt;">規格・サイズ</th><th style="text-align:left;width:70pt;">品番</th><th style="width:40pt;">数量</th></tr></thead>'
+        +'<thead><tr><th style="width:24pt;">No.</th><th style="text-align:left;">商品名</th><th style="text-align:left;width:80pt;white-space:nowrap;">規格・サイズ</th><th style="text-align:left;width:72pt;">品番</th><th style="width:36pt;">数量</th></tr></thead>'
         +'<tbody>'+rows+'</tbody>'
       +'</table>'
       +(note ? '<div class="op-note-label">備考</div><div class="op-note">'+escapeHtml(note)+'</div>' : '')
