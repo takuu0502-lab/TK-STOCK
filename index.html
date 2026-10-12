@@ -19656,22 +19656,24 @@ window.addEventListener('storageReady', function(){
           existing.expectedDate = expectedDate;
           existing.installDate = installDate;
           existing.needsNotification = _coNeedsNotify;
-          existing.updatedAt = new Date().toISOString();
+          existing.updatedAt = Date.now();
           existing.updatedBy = currentUser?currentUser.displayName:'';
           // 紐づくincomingSchedulesの日付・お客様名・数量を同期更新 / 削除分キャンセル
           let _ischChanged = false;
+          const _nowIsch = Date.now();
           incomingSchedules.filter(s => s.customerOrderId === _coEditOrderId && s.status === 'pending').forEach(s => {
             const matchItem = _coItems.find(ci => ci.product && ci.product.id === s.productId);
-            if(!matchItem){ s.status='cancelled'; s.completedAt=new Date().toISOString(); _ischChanged=true; return; }
+            if(!matchItem){ s.status='cancelled'; s.completedAt=new Date().toISOString(); s.updatedAt=_nowIsch; _ischChanged=true; return; }
             const newDate = matchItem.expectedDate ? matchItem.expectedDate : expectedDate;
             if(newDate) s.expectedDate = newDate;
             s.qty = matchItem.qty;
             s.customerName = customerName;
             s.carName = carName || '';
+            s.updatedAt = _nowIsch;
             _ischChanged = true;
           });
-          // 新規追加された商品の入庫予定を作成
-          const _existingCoIschIds = new Set(incomingSchedules.filter(s => s.customerOrderId === _coEditOrderId && s.status === 'pending').map(s => s.productId));
+          // 新規追加された商品の入庫予定を作成（既存の done/pending 両方を除外して重複防止）
+          const _existingCoIschIds = new Set(incomingSchedules.filter(s => s.customerOrderId === _coEditOrderId && (s.status === 'pending' || s.status === 'done')).map(s => s.productId));
           const _newCoItems = _coItems.filter(ci => !_existingCoIschIds.has(ci.product.id));
           if(_newCoItems.length > 0){
             const _coUser = currentUser ? currentUser.displayName : '';
