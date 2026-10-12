@@ -9750,9 +9750,9 @@ window.addEventListener('storageReady', function(){
             && _sharedWheelSubIds.includes(p.subId);
           if(!isTire && !isWheelAlumSteel) return false;
         } else {
-          // 自支店タブ: 自支店所有の商品 + 他支店のタイヤ・ホイールのみ
+          // 自支店タブ: 管理者は全商品表示。一般社員は自支店所有 + 他支店のタイヤ・ホイールのみ
           const isOwnedByBranch = (p.branchId || 'taniyabe') === selectedBranchFilter;
-          if(!isOwnedByBranch){
+          if(!isOwnedByBranch && !isAdminUser()){
             // キーワード検索中は全商品を対象（他支店商品も検索可能）
             if(keywordFilter && keywordFilter.trim()){
               // キーワード検索時はここではフィルターしない（後段のキーワードフィルターに委ねる）
