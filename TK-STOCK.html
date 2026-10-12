@@ -18924,8 +18924,19 @@ window.addEventListener('storageReady', function(){
       const _itemsHtml = _srcItems.map(si=>{
         const p = products.find(x=>x.id===si.productId);
         const nm = p ? cleanName(p.name) : (si.productName||'不明');
-        const sp = p ? (p.spec||'') : (si.spec||'');
         const _br = p ? (p.brand||'') : '';
+        // ホイールスペックがある場合はそこから表示文字列を生成
+        let sp;
+        if(p && p.wheelSpec && (p.wheelSpec.inch || p.wheelSpec.j || p.wheelSpec.pcd)){
+          const ws = p.wheelSpec;
+          const _wsSz = (ws.inch && ws.j) ? ws.inch+'x'+ws.j : (ws.inch ? String(ws.inch) : '');
+          const _wsHl = (ws.holes && ws.pcd) ? ws.holes+'/'+ws.pcd : (ws.pcd ? String(ws.pcd) : '');
+          const _wsOf = (ws.offset !== undefined && ws.offset !== '') ? '+'+ws.offset : '';
+          const _wsP = [_wsSz, _wsHl, _wsOf].filter(Boolean);
+          sp = _wsP.length > 0 ? _wsP.join(' ') : (p.spec||'');
+        } else {
+          sp = p ? (p.spec||'') : (si.spec||'');
+        }
         const _majorCat = p ? categories.find(c=>c.id===p.majorId) : null;
         const _siIsTire = (_majorCat && _majorCat.name==='タイヤ') || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sp||'');
         const _unit = _siIsTire ? '本' : '個';
