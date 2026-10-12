@@ -2409,13 +2409,16 @@
     <h3 style="margin-top:0;font-size:16px;">🛒 客注品の登録</h3>
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
       <div class="field">
-        <label style="font-size:13px;font-weight:600;">商品 <span style="color:var(--red);">*</span></label>
-        <div style="display:flex;gap:6px;margin-top:4px;">
-          <input type="text" id="co_product_search" placeholder="商品名・バーコードで検索" style="flex:1;box-sizing:border-box;" autocomplete="off">
-          <button class="btn btn-ghost btn-sm" id="co_product_search_btn" style="white-space:nowrap;">検索</button>
+        <label style="font-size:13px;font-weight:600;" id="co_product_label">商品 <span style="color:var(--red);">*</span></label>
+        <div id="co_items_list" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;"></div>
+        <div style="margin-top:8px;">
+          <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:4px;">＋ 商品を追加</div>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="co_product_search" placeholder="商品名・バーコードで検索" style="flex:1;box-sizing:border-box;" autocomplete="off">
+            <button class="btn btn-ghost btn-sm" id="co_product_search_btn" style="white-space:nowrap;">検索</button>
+          </div>
         </div>
         <div id="co_product_result" style="margin-top:6px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;display:none;"></div>
-        <div id="co_items_list" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;"></div>
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">お客様名 <span style="color:var(--red);">*</span></label>
@@ -19655,16 +19658,29 @@ window.addEventListener('storageReady', function(){
           existing.needsNotification = _coNeedsNotify;
           existing.updatedAt = new Date().toISOString();
           existing.updatedBy = currentUser?currentUser.displayName:'';
-          // 紐づくincomingSchedulesの日付・お客様名も同期更新
+          // 紐づくincomingSchedulesの日付・お客様名・数量を同期更新 / 削除分キャンセル
           let _ischChanged = false;
           incomingSchedules.filter(s => s.customerOrderId === _coEditOrderId && s.status === 'pending').forEach(s => {
             const matchItem = _coItems.find(ci => ci.product && ci.product.id === s.productId);
-            const newDate = (matchItem && matchItem.expectedDate) ? matchItem.expectedDate : expectedDate;
+            if(!matchItem){ s.status='cancelled'; s.completedAt=new Date().toISOString(); _ischChanged=true; return; }
+            const newDate = matchItem.expectedDate ? matchItem.expectedDate : expectedDate;
             if(newDate) s.expectedDate = newDate;
+            s.qty = matchItem.qty;
             s.customerName = customerName;
             s.carName = carName || '';
             _ischChanged = true;
           });
+          // 新規追加された商品の入庫予定を作成
+          const _existingCoIschIds = new Set(incomingSchedules.filter(s => s.customerOrderId === _coEditOrderId && s.status === 'pending').map(s => s.productId));
+          const _newCoItems = _coItems.filter(ci => !_existingCoIschIds.has(ci.product.id));
+          if(_newCoItems.length > 0){
+            const _coUser = currentUser ? currentUser.displayName : '';
+            for(const ci of _newCoItems){
+              const _ed = ci.expectedDate || expectedDate || '';
+              incomingSchedules.push({ id:uid('isch'), productId:ci.product.id, productName:ci.product.name, brand:ci.product.brand||'', spec:ci.product.spec||'', branchId:_coBr, qty:ci.qty, expectedDate:_ed, customerName, carName:carName||'', installDate:installDate||'', inboundType:'customerOrder', customerOrderId:_coEditOrderId, needsNotification:_coNeedsNotify, createdAt:new Date().toISOString(), createdBy:_coUser, status:'pending' });
+              _ischChanged = true;
+            }
+          }
           if(_ischChanged) await saveIncomingSchedules();
         }
       } else {
