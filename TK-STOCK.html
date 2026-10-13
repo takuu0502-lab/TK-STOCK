@@ -17138,8 +17138,16 @@ window.addEventListener('storageReady', function(){
       cost = _nonCatFixed !== null ? _nonCatFixed : (p.costPrice || 0);
     }
     const _branchSellFixed = getBranchFixedSell(p, _detBranch);
+    // 商品名ベースで銘柄を導出し、モデル別販売ルールを優先適用（costRuleForと同じロジック）
+    const _sellEffModel = (()=>{
+      if(!catalogEntry) return null;
+      const _spre = catalogEntry.b+' ';
+      const _sName = cleanName(p.name||'');
+      const _sDerived = _sName.startsWith(_spre) ? _sName.slice(_spre.length) : _sName;
+      return (priceRules.byModel && priceRules.byModel[catalogEntry.b+'||'+_sDerived] && _sDerived !== catalogEntry.m) ? _sDerived : catalogEntry.m;
+    })();
     const sell = _branchSellFixed !== null ? _branchSellFixed
-      : (catalogEntry ? (getEffectiveSellPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t) || p.sellPrice || 0) : p.sellPrice || 0);
+      : (catalogEntry ? (getEffectiveSellPrice(catalogEntry.b, _sellEffModel, catalogEntry.w, catalogEntry.t) || p.sellPrice || 0) : p.sellPrice || 0);
     const margin = (cost && sell) ? (sell - cost) : null;
     const _detHistOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const hist = transactions.filter(t=>t.productId===id&&(t.branchId||'taniyabe')===_detHistOwnBranch).slice(0, 100);
