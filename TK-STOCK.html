@@ -16565,7 +16565,12 @@ window.addEventListener('storageReady', function(){
     const model      = cleanName(p.name || '').trim();
     const myBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     // mfgYearが未指定の場合は商品から自動取得
-    const productMfgYear = mfgYear != null ? mfgYear : getBranchManufactureYear(p, myBranchId);
+    let productMfgYear = mfgYear != null ? mfgYear : getBranchManufactureYear(p, myBranchId);
+    // フォールバック: _branchYearStockから最新年を取得（年別在庫管理商品向け）
+    if(productMfgYear == null && p._branchYearStock && p._branchYearStock[myBranchId]){
+      const _ysYears = Object.keys(p._branchYearStock[myBranchId]).map(Number).filter(y=>y>=2000).sort((a,b)=>b-a);
+      if(_ysYears.length > 0) productMfgYear = _ysYears[0];
+    }
     let best = null, bestScore = -1;
     for(const t of popTemplates){
       const tb = (t.brand || '').trim();
