@@ -17769,7 +17769,7 @@ window.addEventListener('storageReady', function(){
         document.getElementById('f_spec').value = p.spec || '';
         document.getElementById('f_mfyear').value = '';  // 製造年は意図的に空（入力させる）
         _pendingCatalogKey = p.catalogKey || null;
-        _pendingFromCatalog = !!p._fromCatalog;
+        _pendingFromCatalog = false; // 複製品は手動登録品として扱う（_fromCatalog重複除去で隠れないように）
         document.getElementById('f_memo').value = p.memo || '';
         document.getElementById('f_list_memo').value = p.listMemo || '';
         document.getElementById('f_cost').value = p.costPrice || '';
