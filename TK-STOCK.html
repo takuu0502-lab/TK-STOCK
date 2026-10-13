@@ -21056,20 +21056,31 @@ window.addEventListener('storageReady', function(){
       el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 0;">要望はまだありません。</div>';
       return;
     }
+    const _fmtDate = iso => {
+      const d = new Date(iso);
+      return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    };
     el.innerHTML = featureRequests.map(r=>{
-      const d = new Date(r.date);
-      const ds = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const statusColor = r.status === 'done' ? 'var(--teal)' : 'var(--amber)';
       const statusLabel = r.status === 'done' ? '✅ 対応済' : '🔖 受付中';
-      return '<div style="background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:12px 14px;">'
+      const replies = r.replies || [];
+      const repliesHtml = replies.length > 0
+        ? '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">'
+          + replies.map(rep=>'<div style="background:var(--bg-2);border-left:3px solid var(--teal);border-radius:0 6px 6px 0;padding:8px 12px;">'
+            + '<div style="font-size:11px;color:var(--teal);font-weight:600;margin-bottom:3px;">↩ '+escapeHtml(rep.user)+' / '+branchName(rep.branch)+'　<span style="color:var(--text-3);font-weight:400;">'+_fmtDate(rep.date)+'</span></div>'
+            + '<div style="font-size:13px;color:var(--text-1);white-space:pre-wrap;word-break:break-word;">'+escapeHtml(rep.text)+'</div>'
+            + '</div>').join('')
+          + '</div>'
+        : '';
+      return '<div style="background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:12px 14px;" data-req-card="'+r.id+'">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
         + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
         + '<span style="font-size:11px;font-weight:600;color:'+statusColor+';">'+statusLabel+'</span>'
         + (r.category ? '<span style="font-size:11px;font-weight:600;background:var(--bg-2);padding:2px 8px;border-radius:10px;color:var(--text-1);">'+escapeHtml(r.category)+'</span>' : '')
         + '<span style="font-size:11px;color:var(--text-3);">'+escapeHtml(r.user)+' / '+branchName(r.branch)+'</span>'
         + '</div>'
-        + '<div style="display:flex;align-items:center;gap:8px;">'
-        + '<span style="font-size:11px;color:var(--text-3);">'+ds+'</span>'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        + '<span style="font-size:11px;color:var(--text-3);">'+_fmtDate(r.date)+'</span>'
         + (isSuperAdminUser() ? (r.status !== 'done'
             ? '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-done="'+r.id+'">対応済にする</button>'
             : '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" data-req-reopen="'+r.id+'">再開する</button>') : '')
@@ -21077,8 +21088,20 @@ window.addEventListener('storageReady', function(){
         + '</div>'
         + '</div>'
         + '<div style="font-size:13px;color:var(--text-1);white-space:pre-wrap;word-break:break-word;">'+escapeHtml(r.text)+'</div>'
+        + repliesHtml
+        + '<div style="margin-top:8px;">'
+        + '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 10px;color:var(--teal);border-color:var(--teal);" data-req-reply-toggle="'+r.id+'">💬 返信する</button>'
+        + '</div>'
+        + '<div data-req-reply-form="'+r.id+'" style="display:none;margin-top:8px;">'
+        + '<textarea data-req-reply-text="'+r.id+'" rows="2" placeholder="返信を入力…" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);resize:vertical;"></textarea>'
+        + '<div style="display:flex;gap:6px;margin-top:4px;justify-content:flex-end;">'
+        + '<button class="btn btn-ghost btn-sm" style="font-size:11px;" data-req-reply-cancel="'+r.id+'">キャンセル</button>'
+        + '<button class="btn btn-amber btn-sm" style="font-size:11px;" data-req-reply-send="'+r.id+'">送信</button>'
+        + '</div>'
+        + '</div>'
         + '</div>';
     }).join('');
+    // イベント登録
     el.querySelectorAll('[data-req-done]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const req = featureRequests.find(r=>r.id===btn.dataset.reqDone);
@@ -21095,6 +21118,39 @@ window.addEventListener('storageReady', function(){
       btn.addEventListener('click', async ()=>{
         featureRequests = featureRequests.filter(r=>r.id!==btn.dataset.reqDel);
         await saveFeatureRequests(); renderRequestList();
+      });
+    });
+    // 返信トグル
+    el.querySelectorAll('[data-req-reply-toggle]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const form = el.querySelector('[data-req-reply-form="'+btn.dataset.reqReplyToggle+'"]');
+        if(form){ form.style.display = form.style.display === 'none' ? 'block' : 'none'; }
+      });
+    });
+    el.querySelectorAll('[data-req-reply-cancel]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const form = el.querySelector('[data-req-reply-form="'+btn.dataset.reqReplyCancel+'"]');
+        if(form){ form.style.display = 'none'; }
+      });
+    });
+    el.querySelectorAll('[data-req-reply-send]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.dataset.reqReplySend;
+        const ta = el.querySelector('[data-req-reply-text="'+id+'"]');
+        const text = ta ? ta.value.trim() : '';
+        if(!text) return;
+        const req = featureRequests.find(r=>r.id===id);
+        if(!req) return;
+        if(!req.replies) req.replies = [];
+        req.replies.push({
+          id: uid('rep'),
+          date: new Date().toISOString(),
+          user: currentUser ? currentUser.displayName : '不明',
+          branch: currentUser ? (currentUser.branchId || 'taniyabe') : '',
+          text
+        });
+        await saveFeatureRequests();
+        renderRequestList();
       });
     });
   }
