@@ -4160,7 +4160,10 @@ window.addEventListener('storageReady', function(){
     if(rule.basis === 'cost'){
       const cost = computeCostPrice(brand, model, wholesale, retail);
       if(!cost) return null;
-      return applyPriceRound(cost * (1 + pct/100));
+      // 仕入れ ÷ (1 - 粗利率) で計算（内掛け）
+      const divisor = 1 - pct/100;
+      if(divisor <= 0) return null;
+      return applyPriceRound(cost / divisor);
     }
     const base = (rule.basis === 'wholesale' || rule.basis === 'wholesale_on') ? wholesale : retail;
     if(!base) return null;
@@ -4874,7 +4877,10 @@ window.addEventListener('storageReady', function(){
     if(rule.basis === 'cost'){
       const cost = computeCostPrice(brand, model, wholesale, retail);
       if(!cost) return null;
-      return applyPriceRound(cost * (1 + pct/100));
+      // 仕入れ ÷ (1 - 粗利率) で計算（内掛け）
+      const divisor = 1 - pct/100;
+      if(divisor <= 0) return null;
+      return applyPriceRound(cost / divisor);
     }
     const base = (rule.basis === 'wholesale' || rule.basis === 'wholesale_on') ? wholesale : retail;
     if(!base) return null;
