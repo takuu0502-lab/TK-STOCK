@@ -1463,6 +1463,9 @@
         <span class="chip" data-hdate="week">今週</span>
       </div>
       <input type="text" id="historySearch" placeholder="商品名・ブランド・サイズで検索" style="flex:1;min-width:180px;max-width:300px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
+      <select id="historySupplierFilter" style="min-width:120px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
+        <option value="">仕入先：すべて</option>
+      </select>
     </div>
     <div id="historyList" style="margin-top:14px;"></div>
 
@@ -20526,6 +20529,7 @@ window.addEventListener('storageReady', function(){
   let historyFilter = 'all';
   let historyDateFilter = 'all';
   let historySearchText = '';
+  let historySupplierFilterVal = '';
 
   document.querySelectorAll('.chip[data-htype]').forEach(chip=>{
     chip.addEventListener('click', ()=>{
@@ -20547,6 +20551,19 @@ window.addEventListener('storageReady', function(){
     historySearchText = e.target.value.trim();
     renderHistory();
   });
+  document.getElementById('historySupplierFilter').addEventListener('change', e=>{
+    historySupplierFilterVal = e.target.value;
+    renderHistory();
+  });
+  // 仕入先セレクトの選択肢を更新する関数
+  function refreshHistorySupplierSelect(){
+    const sel = document.getElementById('historySupplierFilter');
+    if(!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">仕入先：すべて</option>'
+      + suppliers.filter(s=>s.name).sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('');
+    sel.value = current; // 選択状態を復元
+  }
   document.getElementById('longTermReportBtn').addEventListener('click', ()=>{
     renderLongTermReport();
   });
@@ -20576,6 +20593,7 @@ window.addEventListener('storageReady', function(){
   };
 
   function renderHistory(){
+    refreshHistorySupplierSelect();
     const el = document.getElementById('historyList');
     let list = (historyFilter === 'provisional') ? [] : transactions.filter(t => historyFilter === 'all' || t.type === historyFilter);
     // 全ユーザー: 自支店の取引履歴のみ表示（管理者も含む）
@@ -20610,6 +20628,13 @@ window.addEventListener('storageReady', function(){
         const p = products.find(x=>x.id===t.productId);
         if(p && (p.brand||'').toLowerCase().includes(q)) return true;
         return false;
+      });
+    }
+    // 仕入先フィルター
+    if(historySupplierFilterVal){
+      list = list.filter(t=>{
+        const p = products.find(x=>x.id===t.productId);
+        return p && p.supplierId === historySupplierFilterVal;
       });
     }
 
