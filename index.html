@@ -9508,7 +9508,8 @@ window.addEventListener('storageReady', function(){
           }
         }
         quoteGroups = groups;
-        sharedLaborLines = [];
+        { const _qBr2 = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+          sharedLaborLines = [{ id:uid('lab'), name:'組替・バランス・脱着', qty:4, unitPrice: _qBr2==='taniyabe' ? 1250 : 1000 }]; }
         quoteWheelLines = [];
         quoteDiscountRate = 0;
         const _dsel2 = document.getElementById('quoteDiscountSel');
