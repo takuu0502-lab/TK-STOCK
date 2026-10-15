@@ -8888,7 +8888,8 @@ window.addEventListener('storageReady', function(){
           groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: _sellVal != null ? _sellVal : r.w, retailPrice: r.t||null });
         }
         quoteGroups = groups;
-        sharedLaborLines = [];
+        { const _qBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+          sharedLaborLines = [{ id:uid('lab'), name:'組替・バランス・脱着', qty:4, unitPrice: _qBr==='taniyabe' ? 1250 : 1000 }]; }
         quoteWheelLines = [];
         document.getElementById('quoteCustomer').value = '';
         document.getElementById('quoteCar').value = '';
@@ -10446,9 +10447,14 @@ window.addEventListener('storageReady', function(){
   function openQuoteModal(){
     currentEditingQuoteId = null; // 新規作成時はIDをリセット
     quoteGroups = [];
-    sharedLaborLines = [];
     quoteWheelLines = [];
     quoteDiscountRate = 0;
+    // デフォルト工賃（組替・バランス・脱着）を支店別価格で自動セット
+    const _qBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    const _defaultLaborPrice = _qBranch === 'taniyabe' ? 1250 : 1000;
+    sharedLaborLines = [
+      { id: uid('lab'), name: '組替・バランス・脱着', qty: 4, unitPrice: _defaultLaborPrice }
+    ];
     const _dsel = document.getElementById('quoteDiscountSel');
     if(_dsel) _dsel.value = '0';
     document.getElementById('quoteCustomer').value = '';
