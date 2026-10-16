@@ -10917,7 +10917,14 @@ window.addEventListener('storageReady', function(){
     }
     listEl.innerHTML = wheelProds.map(p=>{
       const st = stockOf(p);
-      const specStr = p.spec || (_getWheelInch(p) ? _getWheelInch(p)+'インチ' : '');
+      const _ws2 = p.wheelSpec || {};
+      const _wi = _ws2.inch || _getWheelInch(p);
+      const _wj = _ws2.j || '';
+      const _wSize = (_wi && _wj) ? _wi+'×'+_wj : (_wi ? _wi+'インチ' : '');
+      const _wHole = (_ws2.holes && _ws2.pcd) ? _ws2.holes+'/'+_ws2.pcd : (_ws2.holes ? _ws2.holes+'穴' : (_ws2.pcd ? 'PCD'+_ws2.pcd : ''));
+      const _wOff  = (_ws2.offset !== undefined && _ws2.offset !== '') ? '+'+_ws2.offset : '';
+      const _wParts = [_wSize, _wHole, _wOff].filter(Boolean);
+      const specStr = _wParts.length ? _wParts.join(' ') : (p.spec || '');
       const bfSell = getBranchFixedSell(p, myBranch);
       const sell = bfSell !== null ? bfSell : (getEffectiveSellPrice(p.brand||'', p.name||'', 0, 0) || p.sellPrice || 0);
       const priceHtml = sell ? '<div style="font-size:13px;font-weight:600;color:var(--teal);">¥'+Number(sell).toLocaleString('ja-JP')+'</div>' : '<div style="font-size:12px;color:var(--text-3);">価格未設定</div>';
