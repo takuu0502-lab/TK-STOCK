@@ -10863,6 +10863,9 @@ window.addEventListener('storageReady', function(){
   }
   function openStockWheelPicker(){
     document.getElementById('stockWheelSearch').value = '';
+    // タイヤ見積で選択中のインチを自動セット
+    const _swInch = estDualMode ? (estFrontInch || estRearInch || '') : (estInch || '');
+    if(_swInch) document.getElementById('stockWheelInchFilter').value = _swInch;
     renderStockWheelList();
     document.getElementById('stockWheelPickerModal').classList.add('show');
   }
