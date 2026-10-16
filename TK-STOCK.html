@@ -16543,8 +16543,8 @@ window.addEventListener('storageReady', function(){
     document.getElementById('f_wheel_pcd').value    = ws.pcd    || '';
     document.getElementById('f_wheel_offset').value = ws.offset || '';
     document.getElementById('f_wheel_color').value  = ws.color  || '';
-    // 規格・仕様が未入力でホイールスペックがある場合、コンパクト形式で自動補完
-    if(!document.getElementById('f_spec').value.trim()) updateSpecFromWheelSpec();
+    // ホイールスペックがある場合、規格・仕様へ常に自動反映（古い値と同期ずれを防ぐ）
+    if(ws.inch || ws.j || ws.holes || ws.pcd) updateSpecFromWheelSpec();
     // 在庫数は常に自店舗の値をセット（全支店表示中でも合計値を誤書込みしないよう）
     const _fStockBr = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     const _fStockVal = p.branchStock ? (p.branchStock[_fStockBr] || 0) : (p.stock || 0);
