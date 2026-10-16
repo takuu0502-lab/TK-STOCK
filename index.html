@@ -10893,11 +10893,19 @@ window.addEventListener('storageReady', function(){
     if(inchFilter) wheelProds = wheelProds.filter(p => _getWheelInch(p) === inchFilter);
     if(searchVal) wheelProds = wheelProds.filter(p => (p.name||'').toLowerCase().includes(searchVal));
 
-    // インチ順ソート
+    // 在庫一覧と同じサイズ順（インチ→J幅→穴数→PCD→オフセット→名前）
+    const _swKey = p => {
+      const ws = p.wheelSpec || {};
+      let inch=parseFloat(ws.inch)||0, j=parseFloat(ws.j)||0;
+      let holes=parseFloat(ws.holes)||0, pcd=parseFloat(ws.pcd)||0;
+      let off=parseFloat(ws.offset!==undefined&&ws.offset!==''?ws.offset:0)||0;
+      if(!inch && p.spec){ const _m=(p.spec||'').match(/^(\d+(?:\.\d+)?)[xX×](\d+(?:\.\d+)?)/i); if(_m){inch=parseFloat(_m[1])||0;j=parseFloat(_m[2])||0;} }
+      return [inch, j, holes, pcd, off, p.name||''];
+    };
     wheelProds.sort((a,b)=>{
-      const ia=parseFloat(_getWheelInch(a))||0, ib=parseFloat(_getWheelInch(b))||0;
-      if(ia!==ib) return ia-ib;
-      return (a.name||'').localeCompare(b.name||'','ja');
+      const ka=_swKey(a), kb=_swKey(b);
+      for(let i=0;i<5;i++){ if(ka[i]!==kb[i]) return ka[i]-kb[i]; }
+      return (ka[5]||'').localeCompare(kb[5]||'','ja');
     });
 
     if(wheelProds.length === 0){
