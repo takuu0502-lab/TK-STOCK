@@ -10913,7 +10913,7 @@ window.addEventListener('storageReady', function(){
       return '<div class="stock-wheel-item" data-pid="'+p.id+'" data-name="'+escapeHtml(p.name)+'" data-spec="'+escapeHtml(specStr)+'" data-price="'+(sell||'')+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--bg-1);transition:background .15s;">'
         +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(p.name)+'</div>'
-        +(specStr ? '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(specStr)+'</div>' : '')
+        +(specStr ? '<div style="font-size:11px;color:var(--text-1);margin-top:2px;">'+escapeHtml(specStr)+'</div>' : '')
         +'</div>'
         +'<div style="text-align:right;flex-shrink:0;">'
         +'<div style="font-size:12px;color:var(--text-3);">在庫：'+st+'本</div>'
