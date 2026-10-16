@@ -2800,6 +2800,7 @@
       <div class="quote-shared-labor-title">
         <span>アルミホイール</span>
         <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-ghost btn-sm" id="addWheelFromStock" style="font-size:11px;padding:3px 10px;line-height:1.5;">📦 在庫から選ぶ</button>
           <button class="btn btn-ghost btn-sm" id="estWheelCatalogBtn" style="font-size:11px;padding:3px 10px;line-height:1.5;">📸 ホイールカタログ</button>
           <button class="quote-add-labor-btn" id="addWheelLine" type="button" title="ホイールを追加">＋</button>
         </div>
@@ -2879,6 +2880,24 @@
     </div>
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn btn-ghost" id="wheelPickerClose">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 在庫ホイール選択モーダル -->
+<div class="modal-overlay" id="stockWheelPickerModal">
+  <div class="modal" style="max-width:560px;">
+    <h3 style="margin-top:0;">🔩 在庫からホイールを選択</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:13px;color:var(--text-2);">インチ：</span>
+        <select id="stockWheelInchFilter" style="padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;"></select>
+      </div>
+      <input type="text" id="stockWheelSearch" placeholder="商品名で絞り込み" style="flex:1;min-width:140px;padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-size:13px;">
+    </div>
+    <div id="stockWheelList" style="max-height:380px;overflow-y:auto;padding-right:2px;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost" id="stockWheelPickerClose">閉じる</button>
     </div>
   </div>
 </div>
@@ -10829,6 +10848,90 @@ window.addEventListener('storageReady', function(){
     document.getElementById('wheelPickerModal').classList.remove('show');
   });
   document.getElementById('estWheelCatalogBtn').addEventListener('click', openWheelCatalogWindow);
+
+  // ---- 在庫ホイール選択 ----
+  function _getWheelInch(p){
+    if(p.wheelSpec && p.wheelSpec.inch !== undefined && p.wheelSpec.inch !== '') return String(p.wheelSpec.inch);
+    const m = (p.spec||'').match(/^(\d+(?:\.\d+)?)\s*[xX×]/);
+    return m ? m[1] : '';
+  }
+  function openStockWheelPicker(){
+    document.getElementById('stockWheelSearch').value = '';
+    renderStockWheelList();
+    document.getElementById('stockWheelPickerModal').classList.add('show');
+  }
+  function renderStockWheelList(){
+    const wheelCat = categories.find(c => c.name === 'ホイール');
+    const listEl = document.getElementById('stockWheelList');
+    if(!wheelCat){ listEl.innerHTML = '<p style="text-align:center;padding:24px;color:var(--text-3);">ホイールカテゴリが見つかりません</p>'; return; }
+    const alumSubId = ((wheelCat.subs||[]).find(s=>s.name==='アルミホイール')||{}).id;
+    const myBranch = (currentUser && currentUser.branchId) || 'taniyabe';
+    const inchFilter = document.getElementById('stockWheelInchFilter').value;
+    const searchVal = (document.getElementById('stockWheelSearch').value||'').trim().toLowerCase();
+
+    // 在庫があるアルミホイール商品
+    const stockOf = p => p.branchStock ? (p.branchStock[myBranch]||0) : (p.stock||0);
+    let wheelProds = products.filter(p => {
+      if(p.majorId !== wheelCat.id) return false;
+      if(alumSubId && p.subId !== alumSubId) return false;
+      if(stockOf(p) <= 0) return false;
+      return true;
+    });
+
+    // インチフィルター selectを更新
+    const inchSel = document.getElementById('stockWheelInchFilter');
+    const allInches = [...new Set(products.filter(p=>p.majorId===wheelCat.id&&(alumSubId?p.subId===alumSubId:true)&&stockOf(p)>0).map(_getWheelInch).filter(Boolean))].sort((a,b)=>parseFloat(a)-parseFloat(b));
+    const prevInch = inchSel.value;
+    inchSel.innerHTML = '<option value="">すべて</option>'+allInches.map(i=>'<option value="'+i+'"'+(i===prevInch?' selected':'')+'>'+i+'インチ</option>').join('');
+
+    if(inchFilter) wheelProds = wheelProds.filter(p => _getWheelInch(p) === inchFilter);
+    if(searchVal) wheelProds = wheelProds.filter(p => (p.name||'').toLowerCase().includes(searchVal));
+
+    // インチ順ソート
+    wheelProds.sort((a,b)=>{
+      const ia=parseFloat(_getWheelInch(a))||0, ib=parseFloat(_getWheelInch(b))||0;
+      if(ia!==ib) return ia-ib;
+      return (a.name||'').localeCompare(b.name||'','ja');
+    });
+
+    if(wheelProds.length === 0){
+      listEl.innerHTML = '<p style="text-align:center;padding:24px;color:var(--text-3);">在庫がありません</p>';
+      return;
+    }
+    listEl.innerHTML = wheelProds.map(p=>{
+      const st = stockOf(p);
+      const specStr = p.spec || (_getWheelInch(p) ? _getWheelInch(p)+'インチ' : '');
+      const bfSell = getBranchFixedSell(p, myBranch);
+      const sell = bfSell !== null ? bfSell : (getEffectiveSellPrice(p.brand||'', p.name||'', 0, 0) || p.sellPrice || 0);
+      const priceHtml = sell ? '<div style="font-size:13px;font-weight:600;color:var(--teal);">¥'+Number(sell).toLocaleString('ja-JP')+'</div>' : '<div style="font-size:12px;color:var(--text-3);">価格未設定</div>';
+      return '<div class="stock-wheel-item" data-pid="'+p.id+'" data-name="'+escapeHtml(p.name)+'" data-spec="'+escapeHtml(specStr)+'" data-price="'+(sell||'')+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--bg-1);transition:background .15s;">'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(p.name)+'</div>'
+        +(specStr ? '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(specStr)+'</div>' : '')
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0;">'
+        +'<div style="font-size:12px;color:var(--text-3);">在庫：'+st+'本</div>'
+        +priceHtml
+        +'</div>'
+        +'</div>';
+    }).join('');
+
+    listEl.querySelectorAll('.stock-wheel-item').forEach(el=>{
+      el.addEventListener('mouseenter', ()=>{ el.style.background='var(--bg-2)'; });
+      el.addEventListener('mouseleave', ()=>{ el.style.background='var(--bg-1)'; });
+      el.addEventListener('click', ()=>{
+        quoteWheelLines.push({ id:uid('qw'), name:el.dataset.name, spec:el.dataset.spec, productId:el.dataset.pid, qty:4, unitPrice:el.dataset.price!==''?Number(el.dataset.price):'' });
+        document.getElementById('stockWheelPickerModal').classList.remove('show');
+        renderWheelLines(); renderTotals(); renderQuoteLines();
+      });
+    });
+  }
+  document.getElementById('addWheelFromStock').addEventListener('click', openStockWheelPicker);
+  document.getElementById('stockWheelPickerClose').addEventListener('click', ()=>{
+    document.getElementById('stockWheelPickerModal').classList.remove('show');
+  });
+  document.getElementById('stockWheelInchFilter').addEventListener('change', renderStockWheelList);
+  document.getElementById('stockWheelSearch').addEventListener('input', renderStockWheelList);
 
   // -------- タイヤ見積もりタブ --------
   let estWidth = null, estAspect = null, estInch = null;
