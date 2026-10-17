@@ -19604,6 +19604,7 @@ window.addEventListener('storageReady', function(){
           +'</div>'
           +'</div>'
           +(entry.carName?'<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">車種：'+escapeHtml(entry.carName)+'</div>':'<div style="margin-bottom:8px;"></div>')
+          +((()=>{ const _coMemo = entry.memo || (entry.customerOrderId ? (customerOrders.find(o=>o.id===entry.customerOrderId)||{}).memo||'' : ''); return _coMemo ? '<div style="margin-bottom:8px;padding:6px 10px;background:var(--amber-dim);border:1px solid rgba(184,101,12,0.2);border-radius:6px;font-size:12px;color:var(--text-1);white-space:pre-wrap;line-height:1.5;">📝 '+escapeHtml(_coMemo)+'</div>' : ''; })())
           /* 取付予定日 */
           +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
           +'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">取付予定日</span>'
