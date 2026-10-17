@@ -2446,6 +2446,10 @@
           <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="co_install_date_tbd" style="width:16px;height:16px;">未定</label>
         </div>
       </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">備考メモ</label>
+        <textarea id="co_memo" placeholder="例) 15インチ統一希望、純正戻し不要など" rows="2" style="width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg-2);color:var(--text-1);font-family:inherit;"></textarea>
+      </div>
       <!-- お客様連絡要否 -->
       <div style="padding:10px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;">
         <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;">📞 入荷時のお客様への連絡</div>
@@ -19163,6 +19167,7 @@ window.addEventListener('storageReady', function(){
           + '<span style="font-size:14px;font-weight:700;color:var(--amber);">'+escapeHtml(installStr)+'</span>'
           + '</div>'
         + '</div>'
+        + (order.memo ? '<div style="margin-top:8px;padding:6px 10px;background:var(--amber-dim);border:1px solid rgba(184,101,12,0.2);border-radius:6px;font-size:12px;color:var(--text-1);white-space:pre-wrap;line-height:1.5;">📝 '+escapeHtml(order.memo)+'</div>' : '')
         + (order.createdBy||order.createdAt ? '<div style="margin-top:8px;font-size:11px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;">'
             +(order.createdBy ? '<span>担当：'+escapeHtml(order.createdBy)+'</span>' : '')
             +(order.createdAt ? (()=>{ const _d=new Date(order.createdAt); return '<span>登録：'+_d.getFullYear()+'/'+String(_d.getMonth()+1).padStart(2,'0')+'/'+String(_d.getDate()).padStart(2,'0')+' '+String(_d.getHours()).padStart(2,'0')+':'+String(_d.getMinutes()).padStart(2,'0')+'</span>'; })() : '')
@@ -19481,6 +19486,7 @@ window.addEventListener('storageReady', function(){
       const _needsNtf = editOrder.needsNotification !== false;
       document.getElementById('co_notify_yes').checked = _needsNtf;
       document.getElementById('co_notify_no').checked  = !_needsNtf;
+      document.getElementById('co_memo').value = editOrder.memo||'';
     } else {
       document.getElementById('co_customer').value = '';
       document.getElementById('co_car').value = '';
@@ -19492,6 +19498,7 @@ window.addEventListener('storageReady', function(){
       document.getElementById('co_install_date').disabled = false;
       document.getElementById('co_notify_yes').checked = true;
       document.getElementById('co_notify_no').checked  = false;
+      document.getElementById('co_memo').value = '';
     }
     _renderCoItemsList();
     const _coInboundNowField = document.getElementById('co_inbound_now_field');
@@ -19828,6 +19835,7 @@ window.addEventListener('storageReady', function(){
       const isInstallTbd = document.getElementById('co_install_date_tbd').checked;
       const installDate = isInstallTbd ? '' : (document.getElementById('co_install_date').value||'');
       const carName = (document.getElementById('co_car').value||'').trim();
+      const memo = (document.getElementById('co_memo').value||'').trim();
       const _coBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       const _coNeedsNotify = document.getElementById('co_notify_yes').checked;
       // items配列を構築
@@ -19847,6 +19855,7 @@ window.addEventListener('storageReady', function(){
           existing.expectedDate = expectedDate;
           existing.installDate = installDate;
           existing.needsNotification = _coNeedsNotify;
+          existing.memo = memo;
           existing.updatedAt = Date.now();
           existing.updatedBy = currentUser?currentUser.displayName:'';
           // 紐づくincomingSchedulesの日付・お客様名・数量を同期更新 / 削除分キャンセル
@@ -19895,6 +19904,7 @@ window.addEventListener('storageReady', function(){
           expectedDate,
           installDate,
           needsNotification: _coNeedsNotify,
+          memo,
           notified: false,
           status: _coStatus,
           createdAt: new Date().toISOString(),
