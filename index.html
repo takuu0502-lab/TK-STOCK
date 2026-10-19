@@ -19897,6 +19897,31 @@ window.addEventListener('storageReady', function(){
             }
           }
           if(_ischChanged) await saveIncomingSchedules();
+          // 紐づく pending 仮出庫がある場合、新規追加商品を仮出庫にも反映
+          const _existingPob = provisionalOutbounds.find(p => p.customerOrderId === _coEditOrderId && p.status === 'pending');
+          if(_existingPob){
+            // 削除された商品を仮出庫からも除去
+            _existingPob.items = _existingPob.items.filter(item =>
+              _coItems.some(ci => ci.product.id === item.productId)
+            );
+            // 新規追加分を仮出庫に追加
+            for(const ci of _newCoItems){
+              const _alreadyIn = _existingPob.items.some(x => x.productId === ci.product.id);
+              if(!_alreadyIn){
+                _existingPob.items.push({ productId:ci.product.id, name:ci.product.name, brand:ci.product.brand||'', spec:ci.product.spec||'', partno:ci.product.partno||'', qty:ci.qty });
+              }
+            }
+            // 既存商品の数量も更新
+            _existingPob.items.forEach(item => {
+              const _ci = _coItems.find(ci => ci.product.id === item.productId);
+              if(_ci) item.qty = _ci.qty;
+            });
+            _existingPob.customerName = customerName;
+            _existingPob.carName = carName || '';
+            _existingPob.scheduledDate = installDate || _existingPob.scheduledDate || '';
+            _existingPob.updatedAt = Date.now();
+            await saveProvisionalOutbounds();
+          }
         }
       } else {
         // 新規登録
