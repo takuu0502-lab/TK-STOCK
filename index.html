@@ -19513,18 +19513,30 @@ window.addEventListener('storageReady', function(){
   function renderCoProductSearch(){
     const q = (document.getElementById('co_product_search').value||'').trim().toLowerCase();
     if(!q){ document.getElementById('co_product_result').style.display='none'; return; }
+    // スペース区切りで複数キーワードAND検索
+    const _terms = q.split(/\s+/).filter(Boolean);
     const matches = products.filter(p=>{
-      const name = (p.name||'').toLowerCase();
-      const spec = (p.spec||'').toLowerCase();
-      const bc = (p.barcode||'').toLowerCase();
-      return name.includes(q) || spec.includes(q) || bc.includes(q);
-    }).slice(0,10);
+      const name   = (p.name||'').toLowerCase();
+      const brand  = (p.brand||'').toLowerCase();
+      const spec   = (p.spec||'').toLowerCase();
+      const bc     = (p.barcode||'').toLowerCase();
+      const partno = (p.partno||'').toLowerCase();
+      // wheelSpecから検索文字列を生成（例: "15x6 5/114.3 +43"）
+      const ws = p.wheelSpec||{};
+      const wsStr = [(ws.inch?ws.inch+'インチ':''), (ws.inch&&ws.j?ws.inch+'x'+ws.j:''), (ws.holes&&ws.pcd?ws.holes+'/'+ws.pcd:''), (ws.pcd?String(ws.pcd):''), (ws.offset!==undefined&&ws.offset!==''?'+'+ws.offset:''), (ws.color||'')].join(' ').toLowerCase();
+      const haystack = name+' '+brand+' '+spec+' '+bc+' '+partno+' '+wsStr;
+      return _terms.every(t => haystack.includes(t));
+    }).slice(0,15);
     const el = document.getElementById('co_product_result');
     if(matches.length===0){ el.innerHTML='<div style="padding:8px 12px;font-size:13px;color:var(--text-3);">該当なし</div>'; el.style.display='block'; return; }
-    el.innerHTML = matches.map(p=>'<div class="co-p-item" data-id="'+p.id+'" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-soft);">'
-      +'<div style="font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
-      +'<div style="font-size:11px;color:var(--text-3);">'+escapeHtml(p.spec||'')+'</div>'
-      +'</div>').join('');
+    el.innerHTML = matches.map(p=>{
+      const _specDisp = p.spec || (()=>{ const ws=p.wheelSpec||{}; const sz=(ws.inch&&ws.j)?ws.inch+'x'+ws.j:(ws.inch?ws.inch+'インチ':''); const hl=(ws.holes&&ws.pcd)?ws.holes+'/'+ws.pcd:''; const of=(ws.offset!==undefined&&ws.offset!=='')?'+'+ws.offset:''; return [sz,hl,of].filter(Boolean).join(' '); })();
+      return '<div class="co-p-item" data-id="'+p.id+'" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-soft);">'
+        +(p.brand?'<div style="font-size:10px;color:var(--text-3);">'+escapeHtml(p.brand)+'</div>':'')
+        +'<div style="font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+        +(_specDisp?'<div style="font-size:11px;color:var(--text-3);">'+escapeHtml(_specDisp)+'</div>':'')
+        +'</div>';
+    }).join('');
     el.style.display = 'block';
     el.querySelectorAll('.co-p-item').forEach(item=>{
       item.addEventListener('click', ()=>{
