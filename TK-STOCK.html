@@ -11953,51 +11953,64 @@ window.addEventListener('storageReady', function(){
     </div>
   </div>
   <!-- お客様情報 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:4pt;font-size:8pt;">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:4pt;font-size:8pt;table-layout:fixed;">
+    <colgroup>
+      <col style="width:26%;">
+      <col style="width:10%;">
+      <col style="width:13%;">
+      <col style="width:27%;">
+      <col style="width:24%;">
+    </colgroup>
     <tr>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:20%;vertical-align:middle;">
-        <div style="font-size:7pt;color:#888;">ふりがな</div>
-        <input class="fi" value="${v('osKana')}" style="width:100%;margin-bottom:2pt;">
-        <div style="font-size:7.5pt;font-weight:700;">ご氏名</div>
-        <input class="fi" value="${v('osCustomer')}" style="width:85%;font-weight:700;font-size:9pt;"> 様
+      <td rowspan="2" style="border:0.5pt solid #888;padding:3pt 5pt;vertical-align:top;">
+        <div style="font-size:7pt;color:#888;margin-bottom:1pt;">ふりがな</div>
+        <input class="fi" value="${v('osKana')}" style="width:100%;margin-bottom:4pt;">
+        <div style="font-size:7.5pt;font-weight:700;margin-bottom:1pt;">ご氏名</div>
+        <div style="display:flex;align-items:baseline;gap:3pt;">
+          <input class="fi" value="${v('osCustomer')}" style="flex:1;font-weight:700;font-size:9.5pt;">
+          <span style="font-size:9pt;font-weight:700;white-space:nowrap;">様</span>
+        </div>
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:12%;vertical-align:middle;text-align:center;font-size:8pt;">
-        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_gender" style="margin-right:2pt;"> 男</label>
-        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_gender" style="margin-right:2pt;"> 女</label>
-        <div style="font-size:7pt;color:#888;margin-top:2pt;">S・H</div>
-        <input class="fi" value="${v('osBirthday')}" style="width:85%;">
+      <td style="border:0.5pt solid #888;padding:3pt 4pt;text-align:center;vertical-align:middle;font-size:8pt;">
+        <label style="display:block;cursor:pointer;margin-bottom:2pt;"><input type="radio" name="pr_gender" style="margin-right:2pt;">男</label>
+        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_gender" style="margin-right:2pt;">女</label>
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:14%;vertical-align:middle;">
+      <td style="border:0.5pt solid #888;padding:3pt 4pt;vertical-align:middle;">
         <div style="font-size:7pt;color:#888;margin-bottom:2pt;">初来店・再来店</div>
-        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:2pt;"> 初来店</label>
-        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:2pt;"> 再来店</label>
+        <label style="display:block;cursor:pointer;margin-bottom:2pt;"><input type="radio" name="pr_visit" style="margin-right:2pt;">初来店</label>
+        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:2pt;">再来店</label>
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;vertical-align:middle;font-size:7.5pt;">
-        <div style="font-size:7pt;color:#888;margin-bottom:3pt;">携帯</div>
-        <input class="fi" value="${v('osTel')}" style="width:95%;font-size:8.5pt;">
+      <td style="border:0.5pt solid #888;padding:3pt 5pt;vertical-align:middle;">
+        <div style="font-size:7pt;color:#888;margin-bottom:3pt;">携帯番号</div>
+        <input class="fi" value="${v('osTel')}" style="width:100%;font-size:9pt;">
+      </td>
+      <td style="border:0.5pt solid #888;padding:3pt 5pt;vertical-align:middle;">
+        <div style="font-size:7pt;color:#888;margin-bottom:3pt;">S・H　生年月日</div>
+        <input class="fi" value="${v('osBirthday')}" style="width:100%;">
       </td>
     </tr>
     <tr>
-      <td colspan="2" style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;">
-        <span style="color:#888;">ご住所</span>　<input class="fi" value="${v('osAddress')}" style="width:85%;">
+      <td colspan="4" style="border:0.5pt solid #888;padding:3pt 5pt;vertical-align:middle;">
+        <span style="font-size:7pt;color:#888;">ご住所　〒</span>
+        <input class="fi" value="${v('osAddress')}" style="width:88%;margin-left:4pt;">
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;">
-        <span style="color:#888;">登録番号</span><br>
-        <input class="fi" style="width:95%;">
-      </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;"></td>
     </tr>
     <tr>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:8pt;">
-        <span style="font-size:7pt;color:#888;">車検日</span>　<input class="fi" value="${v('osInspDate')}" style="width:80%;">
+      <td style="border:0.5pt solid #888;padding:3pt 5pt;font-size:8pt;">
+        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">車検日</div>
+        <input class="fi" value="${v('osInspDate')}" style="width:100%;">
       </td>
-      <td colspan="2" style="border:0.5pt solid #888;padding:2pt 4pt;font-size:8pt;">
-        <span style="font-size:7pt;color:#888;">車種・型式</span>　<input class="fi" value="${v('osCar')}" style="width:75%;font-weight:700;">
+      <td colspan="2" style="border:0.5pt solid #888;padding:3pt 5pt;font-size:8pt;">
+        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">車種・型式</div>
+        <input class="fi" value="${v('osCar')}" style="width:100%;font-weight:700;">
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:8pt;">
-        <span style="font-size:7pt;color:#888;">年式</span> <input class="fi" value="${v('osCarYear')}" style="width:44pt;">
-        　<span style="font-size:7pt;color:#888;">ナンバー</span> <input class="fi" value="${v('osPlate')}" style="width:50pt;">
-        <br><span style="font-size:7pt;color:#888;">走行</span> <input class="fi" value="${v('osOdometer')}" style="width:40pt;"> km
+      <td style="border:0.5pt solid #888;padding:3pt 5pt;font-size:8pt;">
+        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">年式 / ナンバー</div>
+        <input class="fi" value="${v('osCarYear')}" style="width:38%;"> / <input class="fi" value="${v('osPlate')}" style="width:48%;">
+      </td>
+      <td style="border:0.5pt solid #888;padding:3pt 5pt;font-size:8pt;">
+        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">登録番号 / 走行</div>
+        <input class="fi" style="width:40%;"> / <input class="fi" value="${v('osOdometer')}" style="width:38%;"> km
       </td>
     </tr>
   </table>
