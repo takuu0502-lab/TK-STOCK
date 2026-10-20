@@ -11955,62 +11955,49 @@ window.addEventListener('storageReady', function(){
   <!-- お客様情報 -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:4pt;font-size:8pt;">
     <tr>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:16%;vertical-align:middle;">
+      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:20%;vertical-align:middle;">
         <div style="font-size:7pt;color:#888;">ふりがな</div>
         <input class="fi" value="${v('osKana')}" style="width:100%;margin-bottom:2pt;">
         <div style="font-size:7.5pt;font-weight:700;">ご氏名</div>
         <input class="fi" value="${v('osCustomer')}" style="width:85%;font-weight:700;font-size:9pt;"> 様
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:10%;vertical-align:middle;text-align:center;font-size:8pt;">
+      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:12%;vertical-align:middle;text-align:center;font-size:8pt;">
         <label style="display:block;cursor:pointer;"><input type="radio" name="pr_gender" style="margin-right:2pt;"> 男</label>
         <label style="display:block;cursor:pointer;"><input type="radio" name="pr_gender" style="margin-right:2pt;"> 女</label>
         <div style="font-size:7pt;color:#888;margin-top:2pt;">S・H</div>
-        <input class="fi" value="${v('osBirthday')}" style="width:80%;">
+        <input class="fi" value="${v('osBirthday')}" style="width:85%;">
       </td>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:12%;vertical-align:middle;">
+      <td style="border:0.5pt solid #888;padding:2pt 4pt;width:14%;vertical-align:middle;">
         <div style="font-size:7pt;color:#888;margin-bottom:2pt;">初来店・再来店</div>
         <label style="display:block;cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:2pt;"> 初来店</label>
         <label style="display:block;cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:2pt;"> 再来店</label>
       </td>
       <td style="border:0.5pt solid #888;padding:2pt 4pt;vertical-align:middle;font-size:7.5pt;">
-        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">ご来店のきっかけ</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1pt;">
-          <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> チラシ</label>
-          <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> DM</label>
-          <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> HP</label>
-          <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> TVCM</label>
-          <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> 通行中</label>
-          <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> その他</label>
-        </div>
+        <div style="font-size:7pt;color:#888;margin-bottom:3pt;">携帯</div>
+        <input class="fi" value="${v('osTel')}" style="width:95%;font-size:8.5pt;">
       </td>
     </tr>
     <tr>
-      <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;">
-        <span style="color:#888;">ご住所</span><br>
-        <input class="fi" value="${v('osAddress')}" style="width:95%;">
-      </td>
       <td colspan="2" style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;">
-        <span style="color:#888;">携帯</span><br>
-        <input class="fi" value="${v('osTel')}" style="width:95%;">
+        <span style="color:#888;">ご住所</span>　<input class="fi" value="${v('osAddress')}" style="width:85%;">
       </td>
       <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;">
         <span style="color:#888;">登録番号</span><br>
         <input class="fi" style="width:95%;">
       </td>
+      <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:7.5pt;"></td>
     </tr>
     <tr>
       <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:8pt;">
-        <span style="font-size:7pt;color:#888;">車検日</span><br>
-        <input class="fi" value="${v('osInspDate')}" style="width:95%;">
+        <span style="font-size:7pt;color:#888;">車検日</span>　<input class="fi" value="${v('osInspDate')}" style="width:80%;">
       </td>
       <td colspan="2" style="border:0.5pt solid #888;padding:2pt 4pt;font-size:8pt;">
-        <span style="font-size:7pt;color:#888;">車種・型式</span><br>
-        <input class="fi" value="${v('osCar')}" style="width:95%;font-weight:700;">
+        <span style="font-size:7pt;color:#888;">車種・型式</span>　<input class="fi" value="${v('osCar')}" style="width:75%;font-weight:700;">
       </td>
       <td style="border:0.5pt solid #888;padding:2pt 4pt;font-size:8pt;">
-        <span style="font-size:7pt;color:#888;">年式</span> <input class="fi" value="${v('osCarYear')}" style="width:50pt;">
-        　<span style="font-size:7pt;color:#888;">ナンバー</span> <input class="fi" value="${v('osPlate')}" style="width:55pt;">
-        <br><span style="font-size:7pt;color:#888;">走行</span> <input class="fi" value="${v('osOdometer')}" style="width:45pt;"> km
+        <span style="font-size:7pt;color:#888;">年式</span> <input class="fi" value="${v('osCarYear')}" style="width:44pt;">
+        　<span style="font-size:7pt;color:#888;">ナンバー</span> <input class="fi" value="${v('osPlate')}" style="width:50pt;">
+        <br><span style="font-size:7pt;color:#888;">走行</span> <input class="fi" value="${v('osOdometer')}" style="width:40pt;"> km
       </td>
     </tr>
   </table>
@@ -12028,13 +12015,13 @@ window.addEventListener('storageReady', function(){
       </thead>
       <tbody>${rowsHtml}${emptyRowsHtml}</tbody>
     </table>
-    <div style="width:76pt;border:0.5pt solid #888;padding:4pt;font-size:7.5pt;display:flex;flex-direction:column;gap:2pt;">
+    <div style="width:80pt;border:0.5pt solid #888;padding:4pt;font-size:7.5pt;display:flex;flex-direction:column;">
       <div style="font-weight:700;margin-bottom:3pt;font-size:8pt;">お客様連絡方法</div>
-      <label style="cursor:pointer;"><input type="radio" name="pr_contact" style="margin-right:2pt;"> 店内</label>
-      <label style="cursor:pointer;"><input type="radio" name="pr_contact" style="margin-right:2pt;"> 外出・再来店</label>
-      <label style="cursor:pointer;margin-bottom:4pt;"><input type="radio" name="pr_contact" style="margin-right:2pt;"> 終了後TEL</label>
-      <div style="font-weight:700;margin-bottom:2pt;font-size:8pt;">備考</div>
-      <textarea style="flex:1;border:0.5pt solid #ccc;border-radius:2pt;font-family:inherit;font-size:8pt;resize:none;padding:2pt;">${v('osNote')}</textarea>
+      <label style="cursor:pointer;margin-bottom:2pt;"><input type="radio" name="pr_contact" style="margin-right:2pt;"> 店内</label>
+      <label style="cursor:pointer;margin-bottom:2pt;"><input type="radio" name="pr_contact" style="margin-right:2pt;"> 外出・再来店</label>
+      <label style="cursor:pointer;margin-bottom:6pt;"><input type="radio" name="pr_contact" style="margin-right:2pt;"> 終了後TEL</label>
+      <div style="font-weight:700;margin-bottom:3pt;font-size:8pt;">備考</div>
+      <textarea style="flex:1;border:0.5pt solid #ccc;border-radius:2pt;font-family:inherit;font-size:8pt;resize:none;padding:3pt;min-height:60pt;">${v('osNote')}</textarea>
     </div>
   </div>
   <!-- 支払・合計 -->
@@ -12060,23 +12047,23 @@ window.addEventListener('storageReady', function(){
       </tr>
       <tr>
         <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:600;text-align:center;">内　金</td>
-        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;"><input class="fi" value="${depositNum>0?depositNum.toLocaleString('ja-JP'):''}" style="width:70%;text-align:right;font-family:monospace;"> 円</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;">${depositNum>0?depositNum.toLocaleString('ja-JP')+' 円':''}</td>
       </tr>
       <tr>
         <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:600;text-align:center;">残　金</td>
-        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;"><input class="fi" value="${depositNum>0?remaining.toLocaleString('ja-JP'):''}" style="width:70%;text-align:right;font-family:monospace;"> 円</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;">${depositNum>0?remaining.toLocaleString('ja-JP')+' 円':''}</td>
       </tr>
     </table>
   </div>
-  <!-- タイヤ点検 -->
+  <!-- タイヤ点検・溝・空気圧 まとめて1行 -->
   <table style="width:100%;border-collapse:collapse;font-size:8pt;">
     <tr>
-      <td style="border:0.5pt solid #888;padding:3pt 6pt;width:34%;">
+      <td style="border:0.5pt solid #888;padding:3pt 6pt;width:22%;white-space:nowrap;">
         <strong>タイヤ点検</strong>（
         <label style="cursor:pointer;"><input type="radio" name="pr_insp" style="margin-right:2pt;"> 実施</label>
         <label style="cursor:pointer;"><input type="radio" name="pr_insp" style="margin-right:2pt;"> 不要</label>）
       </td>
-      <td style="border:0.5pt solid #888;padding:3pt 6pt;">
+      <td colspan="3" style="border:0.5pt solid #888;padding:3pt 6pt;">
         <strong>メンテナンスパスポート</strong>（
         <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> 新規</label>
         <label style="cursor:pointer;"><input type="checkbox" style="margin-right:2pt;"> 既存</label>
@@ -12085,16 +12072,24 @@ window.addEventListener('storageReady', function(){
       </td>
     </tr>
     <tr>
-      <td style="border:0.5pt solid #888;padding:4pt 6pt;line-height:2;">
-        装着タイヤ溝　左F <input class="fi" style="width:28pt;"> mm　右F <input class="fi" style="width:28pt;"> mm<br>
-        　　　　　　　左R <input class="fi" style="width:28pt;"> mm　右R <input class="fi" style="width:28pt;"> mm
+      <td style="border:0.5pt solid #888;padding:4pt 6pt;line-height:2.2;">
+        装着タイヤ溝<br>
+        左F <input class="fi" style="width:26pt;"> mm　右F <input class="fi" style="width:26pt;"> mm<br>
+        左R <input class="fi" style="width:26pt;"> mm　右R <input class="fi" style="width:26pt;"> mm
       </td>
-      <td style="border:0.5pt solid #888;padding:4pt 6pt;line-height:2;">
-        チッソガス空気圧　F <input class="fi" style="width:32pt;"> kPa　R <input class="fi" style="width:32pt;"> kPa<br>
-        パターン：（
-        <label style="cursor:pointer;"><input type="radio" name="pr_pattern"> 良好</label>
-        <label style="cursor:pointer;"><input type="radio" name="pr_pattern"> 注意</label>
-        <label style="cursor:pointer;"><input type="radio" name="pr_pattern"> 要交換</label>）
+      <td style="border:0.5pt solid #888;padding:4pt 6pt;line-height:2.2;width:20%;">
+        チッソガス空気圧<br>
+        F <input class="fi" style="width:32pt;"> kPa<br>
+        R <input class="fi" style="width:32pt;"> kPa
+      </td>
+      <td colspan="2" style="border:0.5pt solid #888;padding:4pt 6pt;line-height:2.2;">
+        タイヤ種類・パターン<br>
+        <label style="cursor:pointer;margin-right:8pt;"><input type="radio" name="pr_pattern"> サマータイヤ</label>
+        <label style="cursor:pointer;"><input type="radio" name="pr_pattern"> スタッドレス</label><br>
+        状態：（
+        <label style="cursor:pointer;"><input type="radio" name="pr_cond"> 良好</label>
+        <label style="cursor:pointer;"><input type="radio" name="pr_cond"> 注意</label>
+        <label style="cursor:pointer;"><input type="radio" name="pr_cond"> 要交換</label>）
       </td>
     </tr>
   </table>
