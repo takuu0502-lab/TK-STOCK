@@ -1346,10 +1346,7 @@
 
 
   <div class="panel" id="tab-estimate" style="display:none;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-      <h2 class="section-title" style="margin:0;">タイヤ見積もり</h2>
-      <button class="btn btn-sm" id="openFreeQuoteBtn" style="background:var(--teal,#0d9488);color:#fff;font-size:12px;padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600;">📝 自由入力で作成</button>
-    </div>
+    <h2 class="section-title">タイヤ見積もり</h2>
     <div id="estimateSearchPanel"></div>
     <div id="estSelectionBar" style="margin-top:10px;"></div>
     <div id="estimateCatalogWrap" style="margin-top:10px;"></div>
@@ -11175,6 +11172,7 @@ window.addEventListener('storageReady', function(){
       + '<div style="display:flex;gap:8px;">'
       + '<button class="btn btn-ghost btn-sm" id="estSizeCatalogBtn">📸 ホイールカタログ</button>'
       + '<button class="btn btn-ghost btn-sm" id="estOpenSavedQuotes">📋 保存済み見積</button>'
+      + '<button class="btn btn-ghost btn-sm" id="estFreeQuoteBtn" style="background:var(--teal,#0d9488);color:#fff;border-color:var(--teal,#0d9488);">📝 自由入力で作成</button>'
       + '<button class="btn btn-amber" id="estSearchGo">検索</button>'
       + '</div>'
       + '</div>';
@@ -11255,6 +11253,10 @@ window.addEventListener('storageReady', function(){
       await loadSavedQuotes();
       renderSavedQuotesList();
       document.getElementById('savedQuotesModal').classList.add('show');
+    });
+
+    document.getElementById('estFreeQuoteBtn').addEventListener('click', ()=>{
+      openFreeQuoteModal(null);
     });
   }
 
@@ -11664,10 +11666,6 @@ window.addEventListener('storageReady', function(){
     renderFreeQuoteRows();
     document.getElementById('freeQuoteModal').classList.add('show');
   }
-
-  document.getElementById('openFreeQuoteBtn').addEventListener('click', ()=>{
-    openFreeQuoteModal(null);
-  });
 
   document.getElementById('fqClose').addEventListener('click', ()=>{
     document.getElementById('freeQuoteModal').classList.remove('show');
