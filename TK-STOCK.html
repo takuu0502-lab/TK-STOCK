@@ -11329,7 +11329,15 @@ window.addEventListener('storageReady', function(){
       return;
     }
     const sorted = [...visibleQuotes].sort((a,b)=>b.savedAt.localeCompare(a.savedAt));
-    wrap.innerHTML = sorted.map(q=>{
+    // 月ごとにグループ化
+    const monthGroups = {};
+    sorted.forEach(q=>{
+      const d = new Date(q.savedAt);
+      const key = d.getFullYear()+'年'+(d.getMonth()+1)+'月';
+      if(!monthGroups[key]) monthGroups[key] = [];
+      monthGroups[key].push(q);
+    });
+    const _sqItemHtml = q=>{
       const d = new Date(q.savedAt);
       const dateStr = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const total = q.grandTotal ? '¥'+q.grandTotal.toLocaleString() : '';
@@ -11339,11 +11347,24 @@ window.addEventListener('storageReady', function(){
         +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+creatorTag+typeTag+'</div>'
         +(q.car?'<div style="font-size:14px;font-weight:600;color:var(--text-2);margin-top:2px;">'+escapeHtml(q.car)+'</div>':'')
+        +(total?'<div style="font-size:11px;color:var(--text-2);margin-top:1px;font-family:monospace;">'+escapeHtml(total)+'</div>':'')
         +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+'</div>'
         +'</div>'
         +'<button class="btn btn-amber btn-sm" data-load-quote="'+escapeHtml(q.id)+'">呼び出し</button>'
         +'<button class="btn btn-ghost btn-sm" data-del-quote="'+escapeHtml(q.id)+'" style="color:var(--red,#e53935);">削除</button>'
         +'</div>';
+    };
+    wrap.innerHTML = Object.keys(monthGroups).map(month=>{
+      const count = monthGroups[month].length;
+      return '<details open style="margin-bottom:4px;">'
+        +'<summary style="cursor:pointer;padding:7px 8px;background:var(--bg-2);border-radius:6px;font-size:13px;font-weight:700;color:var(--text-1);list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none;">'
+        +'<span>📅 '+escapeHtml(month)+'</span>'
+        +'<span style="font-size:11px;font-weight:400;color:var(--text-3);">'+count+'件</span>'
+        +'</summary>'
+        +'<div style="padding:0 4px;">'
+        +monthGroups[month].map(_sqItemHtml).join('')
+        +'</div>'
+        +'</details>';
     }).join('');
 
     wrap.querySelectorAll('[data-load-quote]').forEach(btn=>{
