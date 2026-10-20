@@ -1346,7 +1346,10 @@
 
 
   <div class="panel" id="tab-estimate" style="display:none;">
-    <h2 class="section-title">タイヤ見積もり</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <h2 class="section-title" style="margin:0;">タイヤ見積もり</h2>
+      <button class="btn btn-sm" id="openFreeQuoteBtn" style="background:var(--teal,#0d9488);color:#fff;font-size:12px;padding:6px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600;">📝 自由入力で作成</button>
+    </div>
     <div id="estimateSearchPanel"></div>
     <div id="estSelectionBar" style="margin-top:10px;"></div>
     <div id="estimateCatalogWrap" style="margin-top:10px;"></div>
@@ -2862,6 +2865,69 @@
     <div id="savedQuotesList" style="max-height:420px;overflow-y:auto;margin-bottom:16px;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="savedQuotesClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自由入力見積モーダル -->
+<div class="modal-overlay" id="freeQuoteModal">
+  <div class="modal" style="max-width:640px;width:96%;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin-top:0;">📝 自由入力見積書</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">お客様名</label>
+        <input id="fqCustomer" type="text" placeholder="山田 太郎" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);" />
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">車種</label>
+        <input id="fqCar" type="text" placeholder="プリウス" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);" />
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">担当者</label>
+        <input id="fqStaff" type="text" placeholder="担当者名" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);" />
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">発行日</label>
+        <input id="fqDate" type="text" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;background:var(--bg-1);color:var(--text-1);" />
+      </div>
+    </div>
+    <!-- 品目ヘッダー -->
+    <div style="display:grid;grid-template-columns:1fr 70px 110px 90px 34px;gap:6px;padding:0 2px 4px;border-bottom:1px solid var(--line);margin-bottom:6px;">
+      <div style="font-size:11px;color:var(--text-3);font-weight:600;">品目・内容</div>
+      <div style="font-size:11px;color:var(--text-3);font-weight:600;text-align:center;">数量</div>
+      <div style="font-size:11px;color:var(--text-3);font-weight:600;text-align:right;">単価（税抜）</div>
+      <div style="font-size:11px;color:var(--text-3);font-weight:600;text-align:right;">金額</div>
+      <div></div>
+    </div>
+    <div id="fqRowsWrap" style="margin-bottom:10px;"></div>
+    <button id="fqAddRow" class="btn btn-ghost btn-sm" style="font-size:12px;">＋ 行を追加</button>
+    <!-- 割引 -->
+    <div style="margin-top:14px;display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+      <label style="font-size:12px;color:var(--text-2);">割引率</label>
+      <select id="fqDiscount" style="padding:5px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+        <option value="0">なし</option>
+        <option value="5">5%</option>
+        <option value="10">10%</option>
+        <option value="15">15%</option>
+        <option value="20">20%</option>
+      </select>
+    </div>
+    <!-- 合計 -->
+    <div id="fqTotals" style="margin-top:10px;padding:10px 12px;background:var(--bg-2);border-radius:8px;text-align:right;font-size:13px;line-height:1.9;"></div>
+    <!-- 備考 -->
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">備考</label>
+      <textarea id="fqNote" rows="2" placeholder="備考を入力" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);resize:vertical;"></textarea>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;justify-content:space-between;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="fqClose">閉じる</button>
+        <button class="btn btn-ghost btn-sm" id="fqOpenSavedQuotes" style="font-size:12px;">📋 保存済み見積</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="fqSave">保存</button>
+        <button class="btn btn-primary" id="fqPrint">🖨 印刷プレビュー</button>
+      </div>
     </div>
   </div>
 </div>
@@ -11266,9 +11332,10 @@ window.addEventListener('storageReady', function(){
       const dateStr = d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       const total = q.grandTotal ? '¥'+q.grandTotal.toLocaleString() : '';
       const creatorTag = (!isExternalUser() && q.createdByName) ? ' <span style="font-size:10px;color:var(--text-3);background:var(--bg-1);border:1px solid var(--line);border-radius:4px;padding:1px 5px;">'+escapeHtml(q.createdByName)+'</span>' : '';
+      const typeTag = q.type==='free' ? ' <span style="font-size:10px;color:#fff;background:var(--teal,#0d9488);border-radius:4px;padding:1px 5px;">自由入力</span>' : '';
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);">'
         +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+creatorTag+'</div>'
+        +'<div style="font-size:13.5px;font-weight:600;color:var(--text-1);">'+escapeHtml(q.customer||'（お客様名なし）')+' 様'+creatorTag+typeTag+'</div>'
         +(q.car?'<div style="font-size:14px;font-weight:600;color:var(--text-2);margin-top:2px;">'+escapeHtml(q.car)+'</div>':'')
         +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+'</div>'
         +'</div>'
@@ -11281,9 +11348,13 @@ window.addEventListener('storageReady', function(){
       btn.addEventListener('click', ()=>{
         const q = savedQuotes.find(x=>x.id===btn.dataset.loadQuote);
         if(!q) return;
-        loadQuoteSnapshot(q);
         document.getElementById('savedQuotesModal').classList.remove('show');
-        document.getElementById('quoteModal').classList.add('show');
+        if(q.type==='free'){
+          openFreeQuoteModal(q);
+        } else {
+          loadQuoteSnapshot(q);
+          document.getElementById('quoteModal').classList.add('show');
+        }
       });
     });
     wrap.querySelectorAll('[data-del-quote]').forEach(btn=>{
@@ -11496,6 +11567,216 @@ window.addEventListener('storageReady', function(){
     // ロード完了後に印刷ダイアログを表示
     w.addEventListener('load', ()=>{ w.focus(); w.print(); });
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
+  });
+
+  // ── 自由入力見積 ─────────────────────────────
+  let freeQuoteItems = []; // [{id, name, qty, unitPrice}]
+  let currentEditingFreeQuoteId = null;
+
+  function _fqUid(){ return 'fq_'+Math.random().toString(36).slice(2,10); }
+
+  function _fqAddDefaultRow(){
+    freeQuoteItems.push({ id:_fqUid(), name:'', qty:1, unitPrice:0 });
+  }
+
+  function renderFreeQuoteRows(){
+    const wrap = document.getElementById('fqRowsWrap');
+    if(!freeQuoteItems.length){
+      wrap.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:8px 0;">行がありません。「＋ 行を追加」で追加してください。</div>';
+      calcFreeQuoteTotals();
+      return;
+    }
+    wrap.innerHTML = freeQuoteItems.map((item,i)=>{
+      const lineAmt = Math.round((item.qty||0)*(item.unitPrice||0));
+      return '<div style="display:grid;grid-template-columns:1fr 70px 110px 90px 34px;gap:6px;margin-bottom:6px;align-items:center;" data-fq-row="'+item.id+'">'
+        +'<input type="text" data-fqf="name" value="'+escapeHtml(item.name||'')+'" placeholder="品目・内容" style="padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);width:100%;box-sizing:border-box;">'
+        +'<input type="number" data-fqf="qty" value="'+(item.qty||1)+'" min="1" style="padding:6px 6px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);width:100%;box-sizing:border-box;text-align:center;">'
+        +'<input type="number" data-fqf="unitPrice" value="'+(item.unitPrice||0)+'" min="0" style="padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);width:100%;box-sizing:border-box;text-align:right;">'
+        +'<div style="font-size:13px;color:var(--text-1);text-align:right;font-family:monospace;white-space:nowrap;">¥'+lineAmt.toLocaleString('ja-JP')+'</div>'
+        +'<button type="button" data-fq-del="'+item.id+'" style="width:30px;height:30px;border:none;background:none;cursor:pointer;color:var(--text-3);font-size:16px;display:flex;align-items:center;justify-content:center;border-radius:50%;padding:0;">✕</button>'
+        +'</div>';
+    }).join('');
+    // Events
+    wrap.querySelectorAll('[data-fqf]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const row = inp.closest('[data-fq-row]');
+        const id = row.dataset.fqRow;
+        const item = freeQuoteItems.find(x=>x.id===id);
+        if(!item) return;
+        const field = inp.dataset.fqf;
+        if(field==='name') item.name = inp.value;
+        else if(field==='qty') item.qty = parseInt(inp.value)||0;
+        else if(field==='unitPrice') item.unitPrice = parseInt(inp.value)||0;
+        // Update line amount display without re-rendering
+        const lineAmt = Math.round((item.qty||0)*(item.unitPrice||0));
+        const amtDiv = row.querySelector('[style*="monospace"]');
+        if(amtDiv) amtDiv.textContent = '¥'+lineAmt.toLocaleString('ja-JP');
+        calcFreeQuoteTotals();
+      });
+    });
+    wrap.querySelectorAll('[data-fq-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        freeQuoteItems = freeQuoteItems.filter(x=>x.id!==btn.dataset.fqDel);
+        renderFreeQuoteRows();
+      });
+    });
+    calcFreeQuoteTotals();
+  }
+
+  function calcFreeQuoteTotals(){
+    const sub = freeQuoteItems.reduce((s,it)=>s+Math.round((it.qty||0)*(it.unitPrice||0)),0);
+    const discRate = parseInt(document.getElementById('fqDiscount').value)||0;
+    const discAmt = discRate > 0 ? Math.floor(sub * discRate / 100) : 0;
+    const base = sub - discAmt;
+    const tax = Math.floor(base * 0.1);
+    const total = base + tax;
+    const div = document.getElementById('fqTotals');
+    div.innerHTML = (discAmt > 0 ? '<div>小計：¥'+sub.toLocaleString('ja-JP')+'　割引（'+discRate+'%）：<span style="color:var(--red,#e53935);">－¥'+discAmt.toLocaleString('ja-JP')+'</span></div>' : '')
+      +'<div>税抜合計：¥'+base.toLocaleString('ja-JP')+'　消費税（10%）：¥'+tax.toLocaleString('ja-JP')+'</div>'
+      +'<div style="font-size:16px;font-weight:700;color:var(--text-1);margin-top:2px;">合計（税込）：¥'+total.toLocaleString('ja-JP')+'</div>';
+  }
+
+  function openFreeQuoteModal(q){
+    if(q){
+      // 呼び出し
+      currentEditingFreeQuoteId = q.id;
+      document.getElementById('fqCustomer').value = q.customer||'';
+      document.getElementById('fqCar').value = q.car||'';
+      document.getElementById('fqStaff').value = q.staff||'';
+      document.getElementById('fqDate').value = q.dateText||new Date().toLocaleDateString('ja-JP');
+      document.getElementById('fqDiscount').value = String(q.discountRate||0);
+      document.getElementById('fqNote').value = q.note||'';
+      freeQuoteItems = JSON.parse(JSON.stringify(q.freeItems||[]));
+    } else {
+      // 新規
+      currentEditingFreeQuoteId = null;
+      document.getElementById('fqCustomer').value = '';
+      document.getElementById('fqCar').value = '';
+      const _fqBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      const _fqStaff = currentUser ? (currentUser.displayName||'') : '';
+      document.getElementById('fqStaff').value = _fqStaff;
+      document.getElementById('fqDate').value = new Date().toLocaleDateString('ja-JP');
+      document.getElementById('fqDiscount').value = '0';
+      document.getElementById('fqNote').value = '';
+      freeQuoteItems = [];
+      _fqAddDefaultRow();
+    }
+    renderFreeQuoteRows();
+    document.getElementById('freeQuoteModal').classList.add('show');
+  }
+
+  document.getElementById('openFreeQuoteBtn').addEventListener('click', ()=>{
+    openFreeQuoteModal(null);
+  });
+
+  document.getElementById('fqClose').addEventListener('click', ()=>{
+    document.getElementById('freeQuoteModal').classList.remove('show');
+  });
+
+  document.getElementById('fqAddRow').addEventListener('click', ()=>{
+    _fqAddDefaultRow();
+    renderFreeQuoteRows();
+  });
+
+  document.getElementById('fqDiscount').addEventListener('change', ()=>{
+    calcFreeQuoteTotals();
+  });
+
+  document.getElementById('fqOpenSavedQuotes').addEventListener('click', async ()=>{
+    await loadSavedQuotes();
+    renderSavedQuotesList();
+    document.getElementById('freeQuoteModal').classList.remove('show');
+    document.getElementById('savedQuotesModal').classList.add('show');
+  });
+
+  document.getElementById('fqSave').addEventListener('click', async ()=>{
+    const customer = document.getElementById('fqCustomer').value.trim();
+    const car = document.getElementById('fqCar').value.trim();
+    const staff = document.getElementById('fqStaff').value.trim();
+    const dateText = document.getElementById('fqDate').value.trim();
+    const discountRate = parseInt(document.getElementById('fqDiscount').value)||0;
+    const note = document.getElementById('fqNote').value.trim();
+    const sub = freeQuoteItems.reduce((s,it)=>s+Math.round((it.qty||0)*(it.unitPrice||0)),0);
+    const discAmt = discountRate > 0 ? Math.floor(sub*discountRate/100) : 0;
+    const grandTotal = Math.floor((sub - discAmt)*1.1);
+    await loadSavedQuotes();
+    const snap = {
+      id: currentEditingFreeQuoteId || uid('fq'),
+      type: 'free',
+      savedAt: new Date().toISOString(),
+      createdById: currentUser ? currentUser.id : null,
+      createdByName: currentUser ? currentUser.displayName : '',
+      branchId: currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe',
+      customer, car, staff, dateText, note,
+      discountRate, grandTotal,
+      freeItems: JSON.parse(JSON.stringify(freeQuoteItems))
+    };
+    if(currentEditingFreeQuoteId){
+      const idx = savedQuotes.findIndex(x=>x.id===currentEditingFreeQuoteId);
+      if(idx!==-1) savedQuotes[idx]=snap; else savedQuotes.push(snap);
+    } else {
+      savedQuotes.push(snap);
+      currentEditingFreeQuoteId = snap.id;
+    }
+    await persistSavedQuotes();
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 20px;border-radius:8px;background:#4caf50;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+    msg.textContent = '見積を保存しました';
+    document.body.appendChild(msg);
+    setTimeout(()=>msg.remove(), 2500);
+  });
+
+  document.getElementById('fqPrint').addEventListener('click', ()=>{
+    const customer = document.getElementById('fqCustomer').value.trim();
+    const car = document.getElementById('fqCar').value.trim();
+    const staff = document.getElementById('fqStaff').value.trim();
+    const dateText = document.getElementById('fqDate').value.trim() || new Date().toLocaleDateString('ja-JP');
+    const note = document.getElementById('fqNote').value.trim();
+    const discRate = parseInt(document.getElementById('fqDiscount').value)||0;
+    // Build items HTML
+    const rowsHtml = freeQuoteItems.map(item=>{
+      const amt = Math.round((item.qty||0)*(item.unitPrice||0));
+      return '<tr><td class="label">'+escapeHtml(item.name||'（未入力）')+'</td>'
+        +'<td class="num">'+(item.qty||0)+' 個</td>'
+        +'<td class="num">&yen;'+Number(item.unitPrice||0).toLocaleString('ja-JP')+'</td>'
+        +'<td class="num">&yen;'+amt.toLocaleString('ja-JP')+'</td></tr>';
+    }).join('');
+    const sub = freeQuoteItems.reduce((s,it)=>s+Math.round((it.qty||0)*(it.unitPrice||0)),0);
+    const discAmt = discRate > 0 ? Math.floor(sub*discRate/100) : 0;
+    const base = sub - discAmt;
+    const tax = Math.floor(base*0.1);
+    const total = base + tax;
+    const blocksHtml = '<div class="qpb">'
+      +'<div class="qpb-header"><span class="qpb-name">見積明細</span></div>'
+      +'<table class="qpb-table">'
+      +rowsHtml
+      +(discAmt>0?'<tr style="color:#c62828;"><td class="label"><strong>割引（'+discRate+'%）</strong></td><td class="num" colspan="2"></td><td class="num" style="color:#c62828;">－&yen;'+discAmt.toLocaleString('ja-JP')+'</td></tr>':'')
+      +'</table>'
+      +'<div class="qpb-sep"></div>'
+      +'<div class="qpb-total-row">'
+      +'<span class="qpb-sub">小計 <span>&yen;'+base.toLocaleString('ja-JP')+'</span></span>'
+      +'<span class="qpb-tax">消費税（10%） <span>&yen;'+tax.toLocaleString('ja-JP')+'</span></span>'
+      +'<span class="qpb-grand">合計 <span>&yen;'+total.toLocaleString('ja-JP')+'</span></span>'
+      +'</div>'
+      +'</div>';
+    const div = document.getElementById('quotePrintDiv');
+    div.innerHTML =
+      '<div class="qp-top">'
+      +'<div class="qp-title-block"><div class="qp-title">御見積書</div><div class="qp-subtitle">お見積り内容についてご不明な点やご要望がございましたら、お気軽にご相談ください。<br>お客様に最適なプランをご提案いたします。ご検討のほど、よろしくお願いいたします。</div></div>'
+      +'<div class="qp-shop-block"><div style="text-align:right;margin-bottom:4px;">発行日：'+escapeHtml(dateText)+'</div><div class="qp-shop-name">'+escapeHtml(getShopInfo().name)+'</div><div>TEL：'+escapeHtml(getShopInfo().tel)+'</div><div>担当者：'+escapeHtml(staff)+'</div></div>'
+      +'</div>'
+      +'<div class="qp-customer-section">'
+      +'<div class="qp-customer-left" style="display:flex;gap:24px;align-items:flex-end;">'
+      +'<div><div class="qp-label">お客様名</div>'
+      +'<div class="qp-cname" style="margin-bottom:0;">'+(customer ? escapeHtml(customer)+' 様' : '　　　　　　　　　　 様')+'</div></div>'
+      +'<div><div class="qp-label">車種</div>'
+      +'<div style="font-size:18px;font-weight:700;border-bottom:2px solid #333;padding-bottom:3px;min-width:140px;color:#111;display:inline-block;">'+(car ? escapeHtml(car) : '　　　　　　　')+'</div></div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="qp-blocks">'+blocksHtml+'</div>'
+      +'<div class="qp-note-section"><div class="qp-note-title">備考</div><div class="qp-note-body">'+escapeHtml(note)+'</div></div>';
+    document.getElementById('freeQuoteModal').classList.remove('show');
+    document.getElementById('printPreviewOverlay').style.display = 'flex';
   });
 
   // ── 棚卸し機能 ──────────────────────────────
