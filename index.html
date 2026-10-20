@@ -2929,6 +2929,208 @@
   </div>
 </div>
 
+<!-- 受注伝票モーダル -->
+<div class="modal-overlay" id="orderSlipModal">
+  <div class="modal" style="max-width:860px;width:96%;max-height:92vh;overflow-y:auto;">
+    <h3 style="margin-top:0;">📋 受注伝票作成</h3>
+    <!-- 行1：伝票種別・受付日・担当・お取付予定日 -->
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:10px;margin-bottom:12px;align-items:end;">
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">種別</label>
+        <div style="display:flex;gap:10px;align-items:center;padding:7px 0;">
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osType" id="osTypeBuy" value="buy" style="accent-color:var(--amber);">お買上げ</label>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osType" id="osTypeEst" value="est" style="accent-color:var(--amber);" checked>お見積り</label>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">受付日</label>
+        <input id="osReceptionDate" type="text" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">担当</label>
+        <input id="osStaff" type="text" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">お取付予定日</label>
+        <input id="osInstallDate" type="text" placeholder="月 日 時 分〜" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      </div>
+    </div>
+    <!-- お客様情報 -->
+    <div style="background:var(--bg-2);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">お客様情報</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">ふりがな</label>
+          <input id="osKana" type="text" placeholder="たなか たろう" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">氏名</label>
+          <input id="osCustomer" type="text" placeholder="田中 太郎" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">携帯</label>
+          <input id="osTel" type="text" placeholder="090-xxxx-xxxx" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:auto auto 1fr auto auto;gap:10px;align-items:end;margin-bottom:8px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">性別</label>
+          <div style="display:flex;gap:8px;padding:7px 0;">
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="radio" name="osGender" id="osGenderM" value="男" style="accent-color:var(--amber);">男</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="radio" name="osGender" id="osGenderF" value="女" style="accent-color:var(--amber);">女</label>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">生年月日</label>
+          <input id="osBirthday" type="text" placeholder="S/H　年　月　日" style="width:120px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">来店種別</label>
+          <div style="display:flex;gap:8px;padding:7px 0;">
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="radio" name="osVisit" id="osVisitFirst" value="初来店" style="accent-color:var(--amber);">初来店</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="radio" name="osVisit" id="osVisitReturn" value="再来店" style="accent-color:var(--amber);" checked>再来店</label>
+          </div>
+        </div>
+        <div style="grid-column:span 2;">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">来店きっかけ</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0;">
+            <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osTrigger1" style="accent-color:var(--amber);">チラシ</label>
+            <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osTrigger2" style="accent-color:var(--amber);">DM</label>
+            <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osTrigger3" style="accent-color:var(--amber);">ホームページ</label>
+            <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osTrigger4" style="accent-color:var(--amber);">TVCM</label>
+            <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osTrigger5" style="accent-color:var(--amber);">通行中</label>
+            <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osTrigger6" style="accent-color:var(--amber);">その他</label>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">住所</label>
+        <input id="osAddress" type="text" placeholder="〒　" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+      </div>
+    </div>
+    <!-- 車両情報 -->
+    <div style="background:var(--bg-2);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">車両情報</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">車種・型式</label>
+          <input id="osCar" type="text" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">年式</label>
+          <input id="osCarYear" type="text" placeholder="令和" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">ナンバー</label>
+          <input id="osPlate" type="text" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">車検日</label>
+          <input id="osInspDate" type="text" placeholder="年　月　日" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:3px;">走行メーター</label>
+          <input id="osOdometer" type="text" placeholder="km" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+      </div>
+    </div>
+    <!-- 商品一覧（引継ぎ・編集不可） -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:6px;">商品・作業内容 <span style="font-size:10px;font-weight:400;">（見積から引継ぎ）</span></div>
+      <div id="osItemsPreview" style="background:var(--bg-2);border-radius:8px;padding:10px;font-size:12.5px;"></div>
+    </div>
+    <!-- お客様連絡方法 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div style="background:var(--bg-2);border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">お客様連絡方法</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osContact" id="osContactIn" value="店内" style="accent-color:var(--amber);">店内</label>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osContact" id="osContactOut" value="外出・再来店" style="accent-color:var(--amber);">外出・再来店</label>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osContact" id="osContactTel" value="終了後TEL" style="accent-color:var(--amber);">終了後TEL</label>
+        </div>
+      </div>
+      <div style="background:var(--bg-2);border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">備考</div>
+        <textarea id="osNote" rows="3" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);resize:vertical;"></textarea>
+      </div>
+    </div>
+    <!-- 支払方法 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div style="background:var(--bg-2);border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">支払方法</div>
+        <div style="display:flex;gap:14px;margin-bottom:8px;">
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osPayment" id="osPayCash" value="現金" style="accent-color:var(--amber);" checked>現金</label>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osPayment" id="osPayCard" value="カード" style="accent-color:var(--amber);">カード</label>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osPayment" id="osPayOther" value="その他" style="accent-color:var(--amber);">その他</label>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:12px;color:var(--text-2);white-space:nowrap;">内金</label>
+          <input id="osDeposit" type="text" placeholder="¥" style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+          <label style="font-size:12px;color:var(--text-2);white-space:nowrap;">月</label>
+          <input id="osDepositDate" type="text" placeholder="日" style="width:50px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+      </div>
+      <div style="background:var(--bg-2);border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">タイヤ点検</div>
+        <div style="display:flex;gap:14px;margin-bottom:8px;">
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osInsp" id="osInspDo" value="実施" style="accent-color:var(--amber);" checked>実施</label>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="osInsp" id="osInspNo" value="不要" style="accent-color:var(--amber);">不要</label>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">メンテナンスパスポート</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osMpNew" style="accent-color:var(--amber);">新規</label>
+          <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osMpExist" style="accent-color:var(--amber);">既存</label>
+          <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osMpReissue" style="accent-color:var(--amber);">再発行</label>
+          <label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" id="osMpForgot" style="accent-color:var(--amber);">お忘れ</label>
+        </div>
+      </div>
+    </div>
+    <!-- タイヤ溝・空気圧 -->
+    <div style="background:var(--bg-2);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:1px;margin-bottom:8px;">タイヤ溝・空気圧</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr) repeat(2,1fr) 1fr;gap:8px;align-items:end;">
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">溝 左F (mm)</label>
+          <input id="osTreadLF" type="text" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">溝 右F (mm)</label>
+          <input id="osTreadRF" type="text" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">溝 左R (mm)</label>
+          <input id="osTreadLR" type="text" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">溝 右R (mm)</label>
+          <input id="osTreadRR" type="text" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">空気圧 F (kPa)</label>
+          <input id="osPressF" type="text" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">空気圧 R (kPa)</label>
+          <input id="osPressR" type="text" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--bg-1);color:var(--text-1);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:2px;">パターン</label>
+          <select id="osPattern" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--bg-1);color:var(--text-1);">
+            <option value="">-</option>
+            <option value="良好">良好</option>
+            <option value="注意">注意</option>
+            <option value="要交換">要交換</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-ghost" id="osClose">閉じる</button>
+      <button class="btn btn-primary" id="osPrint">🖨 受注伝票を印刷</button>
+    </div>
+  </div>
+</div>
+
 <!-- ホイールピッカーモーダル（インチ別 松竹梅） -->
 <div class="modal-overlay" id="wheelPickerModal">
   <div class="modal" style="max-width:460px;">
@@ -11351,6 +11553,7 @@ window.addEventListener('storageReady', function(){
         +'<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'+escapeHtml(dateStr)+'</div>'
         +'</div>'
         +'<button class="btn btn-amber btn-sm" data-load-quote="'+escapeHtml(q.id)+'">呼び出し</button>'
+        +'<button class="btn btn-ghost btn-sm" data-order-slip="'+escapeHtml(q.id)+'" style="font-size:11px;" title="受注伝票を作成">📋 伝票</button>'
         +'<button class="btn btn-ghost btn-sm" data-del-quote="'+escapeHtml(q.id)+'" style="color:var(--red,#e53935);">削除</button>'
         +'</div>';
     };
@@ -11378,6 +11581,14 @@ window.addEventListener('storageReady', function(){
           loadQuoteSnapshot(q);
           document.getElementById('quoteModal').classList.add('show');
         }
+      });
+    });
+    wrap.querySelectorAll('[data-order-slip]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const q = savedQuotes.find(x=>x.id===btn.dataset.orderSlip);
+        if(!q) return;
+        document.getElementById('savedQuotesModal').classList.remove('show');
+        openOrderSlipModal(q);
       });
     });
     wrap.querySelectorAll('[data-del-quote]').forEach(btn=>{
@@ -11588,6 +11799,272 @@ window.addEventListener('storageReady', function(){
     w.document.write(html);
     w.document.close();
     // ロード完了後に印刷ダイアログを表示
+    w.addEventListener('load', ()=>{ w.focus(); w.print(); });
+    setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
+  });
+
+  // ── 受注伝票 ─────────────────────────────────
+  function _osGetItems(q){
+    // quoteGroups型（タイヤ見積）またはfreeItems型（自由入力）からアイテムリストを生成
+    const rows = [];
+    if(q.type==='free'){
+      (q.freeItems||[]).forEach(it=>rows.push({name:it.name||'', qty:it.qty||0, unitPrice:it.unitPrice||0}));
+    } else {
+      (q.groups||[]).forEach(g=>{
+        const _n = g.name||(g.brand||'')+(g.spec?' '+g.spec:'');
+        (g.items||[{qty:g.qty, unitPrice:g.unitPrice}]).forEach(it=>{
+          rows.push({name:_n, qty:it.qty||g.qty||0, unitPrice:it.unitPrice||g.unitPrice||0});
+        });
+        if(g.qty && g.unitPrice && !(g.items&&g.items.length)){
+          rows[rows.length-1] = {name:_n, qty:g.qty, unitPrice:g.unitPrice};
+        }
+      });
+      (q.laborLines||[]).forEach(l=>rows.push({name:l.name||'作業', qty:l.qty||1, unitPrice:l.unitPrice||0}));
+      (q.wheelLines||[]).forEach(w=>rows.push({name:w.name||'ホイール', qty:w.qty||1, unitPrice:w.unitPrice||0}));
+    }
+    return rows;
+  }
+
+  function openOrderSlipModal(q){
+    // 見積から引き継ぎ
+    document.getElementById('osCustomer').value = q.customer||'';
+    document.getElementById('osCar').value = q.car||'';
+    document.getElementById('osStaff').value = q.staff||'';
+    document.getElementById('osReceptionDate').value = new Date().toLocaleDateString('ja-JP');
+    document.getElementById('osInstallDate').value = '';
+    document.getElementById('osKana').value = '';
+    document.getElementById('osTel').value = '';
+    document.getElementById('osAddress').value = '';
+    document.getElementById('osBirthday').value = '';
+    document.getElementById('osCarYear').value = '';
+    document.getElementById('osPlate').value = '';
+    document.getElementById('osInspDate').value = '';
+    document.getElementById('osOdometer').value = '';
+    document.getElementById('osNote').value = q.note||'';
+    document.getElementById('osDeposit').value = '';
+    document.getElementById('osDepositDate').value = '';
+    document.getElementById('osTreadLF').value = '';
+    document.getElementById('osTreadRF').value = '';
+    document.getElementById('osTreadLR').value = '';
+    document.getElementById('osTreadRR').value = '';
+    document.getElementById('osPressF').value = '';
+    document.getElementById('osPressR').value = '';
+    document.getElementById('osPattern').value = '';
+    // ラジオ初期化
+    document.getElementById('osTypeEst').checked = true;
+    document.getElementById('osVisitReturn').checked = true;
+    document.getElementById('osContactIn').checked = true;
+    document.getElementById('osPayCash').checked = true;
+    document.getElementById('osInspDo').checked = true;
+    ['osTrigger1','osTrigger2','osTrigger3','osTrigger4','osTrigger5','osTrigger6',
+     'osMpNew','osMpExist','osMpReissue','osMpForgot'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.checked=false;
+    });
+    // 商品プレビュー
+    const items = _osGetItems(q);
+    const sub = items.reduce((s,it)=>s+Math.round((it.qty||0)*(it.unitPrice||0)),0);
+    const discRate = q.discountRate||0;
+    const discAmt = discRate>0?Math.floor(sub*discRate/100):0;
+    const base = sub-discAmt;
+    const tax = Math.floor(base*0.1);
+    const total = base+tax;
+    document.getElementById('osItemsPreview').innerHTML =
+      '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">'
+      +'<thead><tr style="border-bottom:1px solid var(--line);"><th style="text-align:left;padding:3px 6px;color:var(--text-3);font-weight:600;">商品名</th><th style="text-align:right;padding:3px 6px;color:var(--text-3);font-weight:600;white-space:nowrap;">数量</th><th style="text-align:right;padding:3px 6px;color:var(--text-3);font-weight:600;white-space:nowrap;">単価</th><th style="text-align:right;padding:3px 6px;color:var(--text-3);font-weight:600;white-space:nowrap;">金額</th></tr></thead>'
+      +'<tbody>'+items.map(it=>'<tr style="border-bottom:1px solid var(--bg-1);"><td style="padding:3px 6px;">'+escapeHtml(it.name||'（未入力）')+'</td><td style="text-align:right;padding:3px 6px;font-family:monospace;">'+it.qty+'</td><td style="text-align:right;padding:3px 6px;font-family:monospace;">¥'+(it.unitPrice||0).toLocaleString('ja-JP')+'</td><td style="text-align:right;padding:3px 6px;font-family:monospace;">¥'+Math.round((it.qty||0)*(it.unitPrice||0)).toLocaleString('ja-JP')+'</td></tr>').join('')+'</tbody>'
+      +'</table>'
+      +'<div style="text-align:right;margin-top:6px;font-size:13px;">'
+      +(discAmt>0?'<span style="color:var(--red,#e53935);margin-right:12px;">割引（'+discRate+'%）－¥'+discAmt.toLocaleString('ja-JP')+'</span>':'')
+      +'小計：¥'+base.toLocaleString('ja-JP')+'　消費税：¥'+tax.toLocaleString('ja-JP')+'　<strong>合計：¥'+total.toLocaleString('ja-JP')+'</strong></div>';
+    // 合計を保持（印刷用）
+    document.getElementById('orderSlipModal').dataset.sub = base;
+    document.getElementById('orderSlipModal').dataset.tax = tax;
+    document.getElementById('orderSlipModal').dataset.total = total;
+    document.getElementById('orderSlipModal').dataset.itemsJson = JSON.stringify(items);
+    document.getElementById('orderSlipModal').classList.add('show');
+  }
+
+  document.getElementById('osClose').addEventListener('click', ()=>{
+    document.getElementById('orderSlipModal').classList.remove('show');
+  });
+
+  document.getElementById('osPrint').addEventListener('click', ()=>{
+    const modal = document.getElementById('orderSlipModal');
+    const items = JSON.parse(modal.dataset.itemsJson||'[]');
+    const base = parseInt(modal.dataset.sub||'0');
+    const tax = parseInt(modal.dataset.tax||'0');
+    const total = parseInt(modal.dataset.total||'0');
+    const deposit = (document.getElementById('osDeposit').value||'').trim();
+    const depositNum = deposit ? (parseInt(deposit.replace(/[¥,]/g,''))||0) : 0;
+    const remaining = total - depositNum;
+
+    const v = id => escapeHtml(document.getElementById(id).value||'');
+    const checked = id => document.getElementById(id).checked;
+    const radioVal = name => { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : ''; };
+
+    const typeStr = radioVal('osType')==='buy' ? '✓お買上げ　□お見積り' : '□お買上げ　✓お見積り';
+    const triggers = [
+      checked('osTrigger1')?'✓チラシ':'□チラシ',
+      checked('osTrigger2')?'✓DM':'□DM',
+      checked('osTrigger3')?'✓ホームページ':'□ホームページ',
+      checked('osTrigger4')?'✓TVCM':'□TVCM',
+      checked('osTrigger5')?'✓通行中':'□通行中',
+      checked('osTrigger6')?'✓その他':'□その他'
+    ];
+    const mpStr = [
+      checked('osMpNew')?'✓新規':'□新規',
+      checked('osMpExist')?'✓既存':'□既存',
+      checked('osMpReissue')?'✓再発行':'□再発行',
+      checked('osMpForgot')?'✓お忘れ':'□お忘れ'
+    ].join('　');
+    const contactStr = radioVal('osContact')||'店内';
+    const payStr = radioVal('osPayment')||'現金';
+    const inspStr = radioVal('osInsp')||'実施';
+    const patternStr = document.getElementById('osPattern').value;
+
+    const rowsHtml = items.map(it=>'<tr>'
+      +'<td style="padding:3pt 4pt;border:0.3pt solid #ccc;font-size:8pt;"></td>'
+      +'<td style="padding:3pt 4pt;border:0.3pt solid #ccc;font-size:8.5pt;">'+escapeHtml(it.name||'')+'</td>'
+      +'<td style="padding:3pt 4pt;border:0.3pt solid #ccc;font-size:8.5pt;text-align:right;font-family:monospace;">'+it.qty+'</td>'
+      +'<td style="padding:3pt 4pt;border:0.3pt solid #ccc;font-size:8.5pt;text-align:right;font-family:monospace;">'+Number(it.unitPrice||0).toLocaleString('ja-JP')+'</td>'
+      +'<td style="padding:3pt 4pt;border:0.3pt solid #ccc;font-size:8.5pt;text-align:right;font-family:monospace;">'+Math.round((it.qty||0)*(it.unitPrice||0)).toLocaleString('ja-JP')+'</td>'
+      +'</tr>'
+    ).join('');
+    // 空行補完（最低8行）
+    const emptyRows = Math.max(0, 10-items.length);
+    const emptyRowsHtml = Array(emptyRows).fill('<tr><td style="padding:5pt 4pt;border:0.3pt solid #ccc;"></td><td style="border:0.3pt solid #ccc;"></td><td style="border:0.3pt solid #ccc;"></td><td style="border:0.3pt solid #ccc;"></td><td style="border:0.3pt solid #ccc;"></td></tr>').join('');
+
+    const content = `
+<div style="font-family:'Hiragino Sans','BIZ UDGothic',sans-serif;font-size:9pt;color:#111;padding:6mm;box-sizing:border-box;">
+  <!-- ヘッダー -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6pt;border-bottom:1.5pt solid #111;padding-bottom:5pt;">
+    <div>
+      <div style="font-size:16pt;font-weight:700;letter-spacing:1pt;">${typeStr}</div>
+      <div style="font-size:7.5pt;color:#555;margin-top:2pt;">※御来店の際にはこちらの伝票をご持参下さい。</div>
+      <div style="margin-top:6pt;display:flex;gap:20pt;font-size:8pt;">
+        <span>受付日　　　　年　　月　　日</span>
+        <span style="border:0.8pt solid #333;padding:2pt 12pt 2pt 6pt;border-radius:2pt;">担当　<strong>${v('osStaff')}</strong></span>
+      </div>
+      <div style="margin-top:4pt;font-size:8pt;">お取付予定日　<strong>${v('osInstallDate')}</strong></div>
+    </div>
+  </div>
+  <!-- お客様情報 -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:5pt;font-size:8.5pt;">
+    <tr>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;width:14%;vertical-align:top;">
+        <div style="font-size:7pt;color:#888;">ふりがな</div>
+        <div style="font-size:7.5pt;color:#555;">${v('osKana')}</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:1pt;">ご氏名</div>
+      </td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;width:22%;font-size:9.5pt;font-weight:700;">${v('osCustomer')} 様</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;width:10%;font-size:8pt;">${radioVal('osGender')||''}<br><span style="font-size:7pt;color:#888;">S・H</span> ${v('osBirthday')}</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:8pt;">
+        <span style="font-size:7pt;color:#888;">初来店・再来店</span><br><strong>${radioVal('osVisit')||''}</strong>
+      </td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:7.5pt;">
+        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">ご来店のきっかけ</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1pt;">${triggers.map(t=>'<span>'+t+'</span>').join('')}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:7.5pt;">ご住所</td>
+      <td colspan="2" style="border:0.5pt solid #888;padding:2pt 5pt;">${v('osAddress')}</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:7.5pt;">携帯</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:8pt;font-weight:700;">${v('osTel')}</td>
+    </tr>
+    <tr>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:7.5pt;">車検日</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:8pt;">${v('osInspDate')}</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:8pt;">車種・型式　<strong>${v('osCar')}</strong></td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:8pt;">年式　${v('osCarYear')}</td>
+      <td style="border:0.5pt solid #888;padding:2pt 5pt;font-size:8pt;">ナンバー　${v('osPlate')}　走行　${v('osOdometer')} km</td>
+    </tr>
+  </table>
+  <!-- 品目テーブル -->
+  <div style="display:flex;gap:5pt;margin-bottom:5pt;">
+    <table style="flex:1;border-collapse:collapse;font-size:8.5pt;">
+      <thead>
+        <tr style="background:#f5f5f5;">
+          <th style="border:0.5pt solid #888;padding:3pt 4pt;width:12%;font-weight:600;">商品コード</th>
+          <th style="border:0.5pt solid #888;padding:3pt 4pt;font-weight:600;">商　　品　　名</th>
+          <th style="border:0.5pt solid #888;padding:3pt 4pt;width:8%;font-weight:600;text-align:right;">数量</th>
+          <th style="border:0.5pt solid #888;padding:3pt 4pt;width:12%;font-weight:600;text-align:right;">単価</th>
+          <th style="border:0.5pt solid #888;padding:3pt 4pt;width:14%;font-weight:600;text-align:right;">金　額</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}${emptyRowsHtml}
+      </tbody>
+    </table>
+    <div style="width:80pt;border:0.5pt solid #888;border-radius:2pt;padding:5pt;font-size:7.5pt;">
+      <div style="font-weight:700;margin-bottom:4pt;font-size:8pt;">お客様連絡方法</div>
+      <div style="margin-bottom:2pt;">${contactStr==='店内'?'■':'□'} 店内</div>
+      <div style="margin-bottom:2pt;">${contactStr==='外出・再来店'?'■':'□'} 外出・再来店</div>
+      <div style="margin-bottom:6pt;">${contactStr==='終了後TEL'?'■':'□'} 終了後TEL（　　　　）</div>
+      <div style="font-weight:700;margin-bottom:4pt;font-size:8pt;">備考</div>
+      <div style="font-size:8pt;white-space:pre-wrap;">${v('osNote')}</div>
+    </div>
+  </div>
+  <!-- 支払・合計 -->
+  <div style="display:flex;gap:5pt;margin-bottom:5pt;">
+    <div style="width:90pt;border:0.5pt solid #888;border-radius:2pt;padding:5pt;font-size:7.5pt;">
+      <div style="font-weight:700;margin-bottom:5pt;font-size:8pt;">支払方法</div>
+      <div style="margin-bottom:2pt;">${payStr==='現金'?'■':'□'} 現金</div>
+      <div style="margin-bottom:2pt;">${payStr==='カード'?'■':'□'} カード</div>
+      <div>${payStr==='その他'?'■':'□'} その他</div>
+    </div>
+    <table style="flex:1;border-collapse:collapse;font-size:8.5pt;">
+      <tr>
+        <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:600;text-align:center;">小　　計</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;">${base.toLocaleString('ja-JP')} 円</td>
+      </tr>
+      <tr>
+        <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:600;text-align:center;">消費税　10%</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;">${tax.toLocaleString('ja-JP')} 円</td>
+      </tr>
+      <tr>
+        <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:700;text-align:center;background:#f9f9f9;">合　　計</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;font-weight:700;font-size:10pt;">${total.toLocaleString('ja-JP')} 円</td>
+      </tr>
+      <tr>
+        <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:600;text-align:center;">内　金</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;">${depositNum>0?depositNum.toLocaleString('ja-JP')+' 円':''}</td>
+      </tr>
+      <tr>
+        <td style="border:0.5pt solid #888;padding:3pt 6pt;font-weight:600;text-align:center;">残　金</td>
+        <td style="border:0.5pt solid #888;padding:3pt 8pt;text-align:right;font-family:monospace;">${depositNum>0?remaining.toLocaleString('ja-JP')+' 円':''}</td>
+      </tr>
+    </table>
+  </div>
+  <!-- タイヤ点検 -->
+  <table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:5pt;">
+    <tr>
+      <td style="border:0.5pt solid #888;padding:3pt 6pt;width:30%;">
+        <strong>タイヤ点検</strong>（${inspStr==='実施'?'✓実施':'実施'}・${inspStr==='不要'?'✓不要':'不要'}）
+      </td>
+      <td style="border:0.5pt solid #888;padding:3pt 6pt;">
+        <strong>メンテナンスパスポート</strong>（新規・既存・再発行・お忘れ）　${mpStr}
+      </td>
+    </tr>
+    <tr>
+      <td style="border:0.5pt solid #888;padding:3pt 6pt;">
+        装着タイヤ溝　左F <strong>${v('osTreadLF')}</strong>mm　右F <strong>${v('osTreadRF')}</strong>mm<br>
+        　　　　　　　左R <strong>${v('osTreadLR')}</strong>mm　右R <strong>${v('osTreadRR')}</strong>mm
+      </td>
+      <td style="border:0.5pt solid #888;padding:3pt 6pt;">
+        チッソガス空気圧　F <strong>${v('osPressF')}</strong> kPa　R <strong>${v('osPressR')}</strong> kPa
+        　　パターン：<strong>${escapeHtml(patternStr||'')}</strong>（良好・注意・要交換）
+      </td>
+    </tr>
+  </table>
+</div>`;
+
+    const css = `@page{size:A4 portrait;margin:8mm 8mm 8mm 8mm;}body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Neue',sans-serif;}`;
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>受注伝票</title><style>${css}</style></head><body>${content}</body></html>`;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if(!w){ alert('ポップアップがブロックされています。'); return; }
+    w.document.write(html);
+    w.document.close();
     w.addEventListener('load', ()=>{ w.focus(); w.print(); });
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
   });
