@@ -11356,7 +11356,7 @@ window.addEventListener('storageReady', function(){
     };
     wrap.innerHTML = Object.keys(monthGroups).map(month=>{
       const count = monthGroups[month].length;
-      return '<details open style="margin-bottom:4px;">'
+      return '<details style="margin-bottom:4px;">'
         +'<summary style="cursor:pointer;padding:7px 8px;background:var(--bg-2);border-radius:6px;font-size:13px;font-weight:700;color:var(--text-1);list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none;">'
         +'<span>📅 '+escapeHtml(month)+'</span>'
         +'<span style="font-size:11px;font-weight:400;color:var(--text-3);">'+count+'件</span>'
