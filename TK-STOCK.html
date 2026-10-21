@@ -12008,32 +12008,32 @@ window.addEventListener('storageReady', function(){
     <tr>
       <td colspan="3" style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
         <span style="font-size:7pt;color:#888;margin-right:4pt;">ご住所　〒</span>
-        <input class="fi" value="${v('osAddress')}" style="width:78%;">
+        <span style="font-size:9pt;">${v('osAddress') ? escapeHtml(v('osAddress')) : ''}</span>
       </td>
     </tr>
     <!-- 電話行 -->
     <tr>
       <td colspan="3" style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
         <span style="font-size:7pt;color:#888;margin-right:4pt;">電話</span>
-        <input class="fi" value="${v('osTel')}" style="width:82%;font-size:9pt;">
+        <span style="font-size:9pt;">${v('osTel') ? escapeHtml(v('osTel')) : ''}</span>
       </td>
     </tr>
     <!-- 車両情報行 -->
     <tr style="background:#f8f8f8;">
-      <td colspan="2" style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">車種</td>
-      <td style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">ナンバー</td>
-      <td style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">走行距離</td>
+      <td colspan="2" style="border-left:0.5pt solid #aaa;border-top:0.5pt solid #aaa;border-right:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">車種</td>
+      <td style="border-left:0.5pt solid #aaa;border-top:0.5pt solid #aaa;border-right:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">ナンバー</td>
+      <td style="border-left:0.5pt solid #aaa;border-top:0.5pt solid #aaa;border-right:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">走行距離</td>
     </tr>
     <tr>
-      <td colspan="2" style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
+      <td colspan="2" style="border-left:0.5pt solid #aaa;border-right:0.5pt solid #aaa;border-bottom:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
         <input class="fi" value="${v('osCar')}" style="width:80%;font-weight:700;font-size:9.5pt;">
         <span style="font-size:7pt;color:#888;margin-left:6pt;">年式</span>
         <input class="fi" value="${v('osCarYear')}" style="width:36pt;">
       </td>
-      <td style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
+      <td style="border-left:0.5pt solid #aaa;border-right:0.5pt solid #aaa;border-bottom:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
         <input class="fi" value="${v('osPlate')}" style="width:90%;font-size:9pt;">
       </td>
-      <td style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
+      <td style="border-left:0.5pt solid #aaa;border-right:0.5pt solid #aaa;border-bottom:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
         <input class="fi" value="${v('osOdometer')}" style="width:70%;"> km
       </td>
     </tr>
