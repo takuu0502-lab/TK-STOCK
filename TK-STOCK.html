@@ -11966,7 +11966,7 @@ window.addEventListener('storageReady', function(){
       </div>
       <div style="flex:1;padding:4pt 8pt;border-right:0.5pt solid #ddd;">
         <div style="font-size:6.5pt;color:#999;margin-bottom:2pt;">生年月日（S・H）</div>
-        <div style="font-size:9pt;">${v('osBirthday') ? escapeHtml(v('osBirthday')) : ''}</div>
+        <div style="font-size:8.5pt;">${(()=>{ const b=v('osBirthday'); if(b){ return escapeHtml(b); } return '<span style="letter-spacing:2pt;">&nbsp;&nbsp;&nbsp;&nbsp;</span>年<span style="letter-spacing:2pt;">&nbsp;&nbsp;&nbsp;&nbsp;</span>月<span style="letter-spacing:2pt;">&nbsp;&nbsp;&nbsp;&nbsp;</span>日'; })()}</div>
       </div>
       <div style="flex:1;padding:4pt 8pt;">
         <div style="font-size:6.5pt;color:#999;margin-bottom:2pt;">来店</div>
