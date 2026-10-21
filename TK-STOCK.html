@@ -11945,11 +11945,12 @@ window.addEventListener('storageReady', function(){
       </div>
       <div style="font-size:7pt;color:#777;">※御来店の際にはこちらの伝票をご持参下さい。</div>
     </div>
-    <div style="text-align:right;font-size:8pt;">
-      <div style="font-size:10pt;font-weight:700;margin-bottom:2pt;">${escapeHtml(getShopInfo().name)}</div>
-      <div style="color:#555;margin-bottom:1pt;">担当：<strong><input class="fi" value="${v('osStaff')}" style="width:60pt;font-size:9pt;"></strong></div>
-      <div style="color:#555;">受付日：${v('osReceptionDate') ? escapeHtml(v('osReceptionDate')) : '　　　　　　'}</div>
-      <div style="color:#555;">取付日：<input class="fi" value="${v('osInstallDate')}" style="width:80pt;"></div>
+    <div style="text-align:right;font-size:7.5pt;color:#333;line-height:1.6;">
+      <div style="font-size:10.5pt;font-weight:700;color:#111;margin-bottom:2pt;">${escapeHtml(getShopInfo().name)}</div>
+      <div>TEL：${escapeHtml(getShopInfo().tel)}</div>
+      <div>受付日：${v('osReceptionDate') ? escapeHtml(v('osReceptionDate')) : ''}</div>
+      <div>取付日：<input class="fi" value="${v('osInstallDate')}" style="width:80pt;font-size:7.5pt;"></div>
+      <div>担当者：<input class="fi" value="${v('osStaff')}" style="width:60pt;font-size:7.5pt;"></div>
     </div>
   </div>
   <!-- お客様情報 -->
