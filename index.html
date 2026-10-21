@@ -11976,15 +11976,16 @@ window.addEventListener('storageReady', function(){
         </div>
       </div>
     </div>
-    <!-- 住所 -->
-    <div style="padding:4pt 8pt;border-bottom:0.5pt solid #ddd;">
-      <span style="font-size:6.5pt;color:#999;margin-right:6pt;">ご住所　〒</span>
-      <span style="font-size:9pt;">${v('osAddress') ? escapeHtml(v('osAddress')) : ''}</span>
-    </div>
-    <!-- 電話 -->
-    <div style="padding:4pt 8pt;border-bottom:0.5pt solid #ddd;">
-      <span style="font-size:6.5pt;color:#999;margin-right:6pt;">電話</span>
-      <span style="font-size:9.5pt;">${v('osTel') ? escapeHtml(v('osTel')) : ''}</span>
+    <!-- 住所・電話 -->
+    <div style="padding:4pt 8pt 4pt 8pt;border-bottom:0.5pt solid #ddd;display:flex;flex-direction:column;min-height:36pt;">
+      <div>
+        <span style="font-size:6.5pt;color:#999;margin-right:6pt;">ご住所　〒</span>
+        <span style="font-size:9pt;">${v('osAddress') ? escapeHtml(v('osAddress')) : ''}</span>
+      </div>
+      <div style="margin-top:auto;padding-top:6pt;">
+        <span style="font-size:6.5pt;color:#999;margin-right:6pt;">電話</span>
+        <span style="font-size:9.5pt;">${v('osTel') ? escapeHtml(v('osTel')) : ''}</span>
+      </div>
     </div>
     <!-- 車両 -->
     <div style="display:flex;align-items:stretch;">
