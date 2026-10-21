@@ -11981,54 +11981,42 @@ window.addEventListener('storageReady', function(){
       <col style="width:20%;">
       <col style="width:22%;">
     </colgroup>
-    <!-- ラベル行 -->
-    <tr style="background:#f8f8f8;">
-      <td style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">ご氏名</td>
-      <td style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">生年月日</td>
-      <td style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">来店</td>
-      <td style="border:0.5pt solid #aaa;padding:2pt 5pt;font-size:7pt;color:#555;font-weight:600;">個人情報</td>
-    </tr>
-    <!-- 氏名入力行 -->
+    <!-- 氏名行 -->
     <tr>
-      <td rowspan="2" style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
-        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">ふりがな</div>
-        <input class="fi" value="${v('osKana')}" style="width:100%;margin-bottom:5pt;">
+      <td style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
+        <div style="font-size:7pt;color:#888;margin-bottom:1pt;">ご氏名　<span style="font-size:6.5pt;">（ふりがな: ${v('osKana') ? escapeHtml(v('osKana')) : '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}）</span></div>
         <div style="display:flex;align-items:baseline;gap:4pt;">
           <input class="fi" value="${v('osCustomer')}" style="flex:1;font-weight:700;font-size:10pt;">
           <span style="font-size:10pt;font-weight:700;">様</span>
         </div>
       </td>
-      <td rowspan="2" style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:middle;">
-        <div style="font-size:7pt;color:#888;margin-bottom:3pt;">S・H</div>
-        <input class="fi" value="${v('osBirthday')}" style="width:100%;">
+      <td style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
+        <div style="font-size:7pt;color:#888;margin-bottom:3pt;">生年月日（S・H）</div>
+        <span style="font-size:9pt;">${v('osBirthday') ? escapeHtml(v('osBirthday')) : ''}</span>
       </td>
       <td style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
-        <label style="display:block;cursor:pointer;margin-bottom:3pt;"><input type="radio" name="pr_visit" style="margin-right:3pt;">初来店</label>
-        <label style="display:block;cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:3pt;">再来店</label>
-      </td>
-      <td rowspan="4" style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:top;font-size:7pt;color:#888;">
-        個人情報保護法に基づき、お客様の情報を適切に管理いたします。
-      </td>
-    </tr>
-    <tr>
-      <td style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
-        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">性別</div>
-        <label style="cursor:pointer;margin-right:8pt;"><input type="radio" name="pr_gender" style="margin-right:2pt;">男</label>
+        <div style="font-size:7pt;color:#888;margin-bottom:2pt;">来店 / 性別</div>
+        <label style="cursor:pointer;margin-right:6pt;"><input type="radio" name="pr_visit" style="margin-right:2pt;">初来店</label>
+        <label style="cursor:pointer;"><input type="radio" name="pr_visit" style="margin-right:2pt;">再来店</label>
+        <br><label style="cursor:pointer;margin-right:8pt;margin-top:2pt;display:inline-block;"><input type="radio" name="pr_gender" style="margin-right:2pt;">男</label>
         <label style="cursor:pointer;"><input type="radio" name="pr_gender" style="margin-right:2pt;">女</label>
+      </td>
+      <td rowspan="3" style="border:0.5pt solid #aaa;padding:4pt 5pt;vertical-align:top;font-size:7pt;color:#888;">
+        個人情報保護法に基づき、お客様の情報を適切に管理いたします。
       </td>
     </tr>
     <!-- 住所行 -->
     <tr>
       <td colspan="3" style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
         <span style="font-size:7pt;color:#888;margin-right:4pt;">ご住所　〒</span>
-        <input class="fi" value="${v('osAddress')}" style="width:82%;">
+        <input class="fi" value="${v('osAddress')}" style="width:78%;">
       </td>
     </tr>
     <!-- 電話行 -->
     <tr>
       <td colspan="3" style="border:0.5pt solid #aaa;padding:3pt 5pt;vertical-align:middle;">
         <span style="font-size:7pt;color:#888;margin-right:4pt;">電話</span>
-        <input class="fi" value="${v('osTel')}" style="width:85%;font-size:9pt;">
+        <input class="fi" value="${v('osTel')}" style="width:82%;font-size:9pt;">
       </td>
     </tr>
     <!-- 車両情報行 -->
