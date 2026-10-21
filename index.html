@@ -11799,7 +11799,6 @@ window.addEventListener('storageReady', function(){
     w.document.write(html);
     w.document.close();
     // ロード完了後に印刷ダイアログを表示
-    w.addEventListener('load', ()=>{ w.focus(); w.print(); });
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
   });
 
@@ -12144,7 +12143,6 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(!w){ alert('ポップアップがブロックされています。'); return; }
     w.document.write(html);
     w.document.close();
-    w.addEventListener('load', ()=>{ w.focus(); w.print(); });
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} }, 800);
   });
 
