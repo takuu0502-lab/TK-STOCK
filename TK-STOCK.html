@@ -2395,23 +2395,21 @@
           <option value="">— 取引先を選択 —</option>
         </select>
       </div>
-      <!-- 銘柄・サイズ（在庫ピッカー付き） -->
+      <!-- 銘柄・サイズ（在庫検索付き） -->
       <div class="field">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <label style="font-size:13px;font-weight:600;">タイヤ銘柄 / サイズ</label>
-          <button type="button" id="tbs_pickProductBtn" style="font-size:11px;padding:2px 8px;border:1px solid var(--amber);color:var(--amber);background:transparent;border-radius:4px;cursor:pointer;">📦 在庫から選択</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input type="text" id="tbs_brand" placeholder="銘柄（例: TOYO M144）" style="box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
-          <input type="text" id="tbs_size" placeholder="サイズ（例: 11R22.5）" style="box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
-        </div>
-        <!-- 在庫ピッカーパネル -->
-        <div id="tbs_productPicker" style="display:none;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);overflow:hidden;">
-          <div style="padding:8px;">
-            <input type="text" id="tbs_productSearch" placeholder="商品名・サイズで絞り込み..." style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-1);font-size:13px;">
-          </div>
-          <div id="tbs_productList" style="max-height:180px;overflow-y:auto;"></div>
-        </div>
+        <label style="font-size:13px;font-weight:600;">TK-STOCK商品検索（任意）</label>
+        <input type="text" id="tbs_productSearch" class="input" placeholder="品番・商品名・サイズで検索" style="width:100%;margin-top:4px;" oninput="tbsSearchProducts()">
+        <div id="tbs_productList" style="margin-top:6px;max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;display:none;"></div>
+        <div id="tbs_productSelected" style="margin-top:6px;display:none;padding:8px 10px;background:var(--bg-3);border-radius:8px;font-size:13px;"></div>
+        <input type="hidden" id="tbs_productId" value="">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
+        <input type="text" id="tbs_brand" class="input" placeholder="例: TOYO M144" style="width:100%;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">サイズ</label>
+        <input type="text" id="tbs_size" class="input" placeholder="例: 11R22.5" style="width:100%;margin-top:4px;">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="field">
@@ -12436,36 +12434,67 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       + clients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===selectedVal?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
   }
 
-  function _renderTbProductList(query){
-    const listEl = document.getElementById('tbs_productList');
-    if(!listEl) return;
-    const q = (query||'').toLowerCase();
-    const items = products.filter(p=>{
-      const n = ((p.name||'')+(p.brand||'')+(p.spec||'')).toLowerCase();
-      return !q || n.includes(q);
-    }).slice(0,50);
-    if(items.length===0){
-      listEl.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text-3);">該当商品なし</div>';
-      return;
+  function tbsSearchProducts(){
+    const kw = ((document.getElementById('tbs_productSearch')||{}).value||'').trim();
+    const list = document.getElementById('tbs_productList');
+    if(!list) return;
+    if(!kw){ list.style.display='none'; list.innerHTML=''; return; }
+    const lower = kw.toLowerCase();
+    const matches = products.filter(p=>
+      (p.name||'').toLowerCase().includes(lower)||
+      (p.partno||'').toLowerCase().includes(lower)||
+      (p.spec||'').toLowerCase().includes(lower)||
+      (p.brand||'').toLowerCase().includes(lower)||
+      (p.barcode||'').toLowerCase().includes(lower)
+    ).slice(0,10);
+    if(!matches.length){
+      list.innerHTML='<div style="padding:8px 12px;color:var(--text-3);font-size:13px;">見つかりません</div>';
+      list.style.display='block'; return;
     }
-    listEl.innerHTML = items.map(p=>{
-      const name = escapeHtml(cleanName(p.name||''));
-      const brand = escapeHtml(p.brand||'');
-      const spec = escapeHtml(p.spec||'');
-      return '<div class="tbs-prod-item" data-brand="'+escapeHtml(p.brand||p.name||'')+'" data-spec="'+escapeHtml(p.spec||'')+'" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line-soft);font-size:13px;transition:background 0.1s;" onmouseover="this.style.background=\'var(--bg-2)\'" onmouseout="this.style.background=\'\'">'
-        +(brand?'<span style="font-size:11px;color:var(--text-3);display:block;">'+brand+'</span>':'')
-        +'<span style="font-weight:600;">'+name+'</span>'
-        +(spec?'<span style="font-size:12px;color:var(--amber);margin-left:8px;">'+spec+'</span>':'')
-        +'</div>';
+    list.innerHTML = matches.map((p,i)=>{
+      const stk = getStock(p);
+      return '<button type="button" data-tbsidx="'+i+'" style="width:100%;text-align:left;padding:8px 12px;border:none;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;font-size:13px;">'
+        +'<div style="font-weight:600;color:var(--text-1);">'+escapeHtml(cleanName(p.name))+'</div>'
+        +(p.spec?'<div style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.spec)+'</div>':'')
+        +'<div style="color:'+(stk>0?'var(--teal)':'var(--text-3)')+';font-size:12px;">在庫: '+stk+'本</div>'
+        +'</button>';
     }).join('');
-    listEl.querySelectorAll('.tbs-prod-item').forEach(el=>{
-      el.addEventListener('click', ()=>{
-        document.getElementById('tbs_brand').value = el.dataset.brand;
-        document.getElementById('tbs_size').value  = el.dataset.spec;
-        document.getElementById('tbs_productPicker').style.display = 'none';
-      });
+    list.style.display='block';
+    list._tbsMatches = matches;
+    list.querySelectorAll('[data-tbsidx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ tbsSelectProduct(matches[parseInt(btn.dataset.tbsidx)]); });
     });
   }
+  window.tbsSearchProducts = tbsSearchProducts;
+
+  function tbsSelectProduct(p){
+    const pidInput = document.getElementById('tbs_productId');
+    if(pidInput) pidInput.value = p.id;
+    const brandEl = document.getElementById('tbs_brand');
+    const sizeEl  = document.getElementById('tbs_size');
+    if(brandEl && !brandEl.value) brandEl.value = cleanName(p.name||'');
+    if(sizeEl  && !sizeEl.value)  sizeEl.value  = p.spec||'';
+    const sel = document.getElementById('tbs_productSelected');
+    if(sel){
+      sel.style.display = 'block';
+      sel.innerHTML = '✅ <strong>'+escapeHtml(cleanName(p.name))+'</strong>'
+        +(p.spec?' <span style="color:var(--text-2);font-size:12px;">'+escapeHtml(p.spec)+'</span>':'')
+        +' <button type="button" onclick="tbsClearProduct()" style="margin-left:8px;font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;">✕ 解除</button>';
+    }
+    const list = document.getElementById('tbs_productList');
+    if(list){ list.style.display='none'; }
+    const search = document.getElementById('tbs_productSearch');
+    if(search){ search.value=''; }
+  }
+  window.tbsSelectProduct = tbsSelectProduct;
+
+  function tbsClearProduct(){
+    const pidInput = document.getElementById('tbs_productId');
+    if(pidInput) pidInput.value='';
+    const sel = document.getElementById('tbs_productSelected');
+    if(sel){ sel.style.display='none'; sel.innerHTML=''; }
+  }
+  window.tbsClearProduct = tbsClearProduct;
 
   function renderTbSalesTab(){
     // 勝田ブランチのみ表示
@@ -12606,7 +12635,15 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('tbs_qty').value   = record ? (record.qty||1) : 1;
     document.getElementById('tbs_note').value  = record ? (record.note||'') : '';
     document.getElementById('tbsalesModalError').style.display = 'none';
-    document.getElementById('tbs_productPicker').style.display = 'none';
+    // 商品検索リセット
+    const _pSearch = document.getElementById('tbs_productSearch');
+    if(_pSearch) _pSearch.value = '';
+    const _pList = document.getElementById('tbs_productList');
+    if(_pList){ _pList.style.display='none'; _pList.innerHTML=''; }
+    const _pSel = document.getElementById('tbs_productSelected');
+    if(_pSel){ _pSel.style.display='none'; _pSel.innerHTML=''; }
+    const _pid = document.getElementById('tbs_productId');
+    if(_pid) _pid.value = record ? (record.productId||'') : '';
     document.getElementById('tbsalesModal').classList.add('show');
   }
 
@@ -12629,20 +12666,6 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     showToast('取引先「'+n+'」を追加しました');
   });
 
-  // 在庫ピッカー
-  document.getElementById('tbs_pickProductBtn').addEventListener('click', ()=>{
-    const picker = document.getElementById('tbs_productPicker');
-    const isVisible = picker.style.display !== 'none';
-    picker.style.display = isVisible ? 'none' : 'block';
-    if(!isVisible){
-      document.getElementById('tbs_productSearch').value = '';
-      _renderTbProductList('');
-      setTimeout(()=>{ document.getElementById('tbs_productSearch').focus(); }, 50);
-    }
-  });
-  document.getElementById('tbs_productSearch').addEventListener('input', function(){
-    _renderTbProductList(this.value);
-  });
 
   document.getElementById('tbsalesModalSave').addEventListener('click', async ()=>{
     const errEl = document.getElementById('tbsalesModalError');
