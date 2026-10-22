@@ -2378,25 +2378,40 @@
 
 <!-- TB売上 入力モーダル -->
 <div class="modal-overlay" id="tbsalesModal">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:500px;max-height:92vh;overflow-y:auto;">
     <h3 id="tbsalesModalTitle" style="margin-top:0;">＋ TB売上 新規登録</h3>
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
       <div class="field">
         <label style="font-size:13px;font-weight:600;">日付 <span style="color:var(--red);">*</span></label>
         <input type="date" id="tbs_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
       </div>
+      <!-- 取引先プルダウン -->
       <div class="field">
-        <label style="font-size:13px;font-weight:600;">取引先名 <span style="color:var(--red);">*</span></label>
-        <input type="text" id="tbs_client" placeholder="例) ○○運輸" list="tbs_clientList" style="width:100%;box-sizing:border-box;margin-top:4px;">
-        <datalist id="tbs_clientList"></datalist>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <label style="font-size:13px;font-weight:600;">取引先名 <span style="color:var(--red);">*</span></label>
+          <button type="button" id="tbs_addClientBtn" style="font-size:11px;padding:2px 8px;border:1px solid var(--teal);color:var(--teal);background:transparent;border-radius:4px;cursor:pointer;">＋ 取引先追加</button>
+        </div>
+        <select id="tbs_client" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+          <option value="">— 取引先を選択 —</option>
+        </select>
       </div>
+      <!-- 銘柄・サイズ（在庫ピッカー付き） -->
       <div class="field">
-        <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
-        <input type="text" id="tbs_brand" placeholder="例) TOYO M144" style="width:100%;box-sizing:border-box;margin-top:4px;">
-      </div>
-      <div class="field">
-        <label style="font-size:13px;font-weight:600;">サイズ</label>
-        <input type="text" id="tbs_size" placeholder="例) 11R22.5" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <label style="font-size:13px;font-weight:600;">タイヤ銘柄 / サイズ</label>
+          <button type="button" id="tbs_pickProductBtn" style="font-size:11px;padding:2px 8px;border:1px solid var(--amber);color:var(--amber);background:transparent;border-radius:4px;cursor:pointer;">📦 在庫から選択</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input type="text" id="tbs_brand" placeholder="銘柄（例: TOYO M144）" style="box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+          <input type="text" id="tbs_size" placeholder="サイズ（例: 11R22.5）" style="box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+        </div>
+        <!-- 在庫ピッカーパネル -->
+        <div id="tbs_productPicker" style="display:none;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);overflow:hidden;">
+          <div style="padding:8px;">
+            <input type="text" id="tbs_productSearch" placeholder="商品名・サイズで絞り込み..." style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--text-1);font-size:13px;">
+          </div>
+          <div id="tbs_productList" style="max-height:180px;overflow-y:auto;"></div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="field">
@@ -12393,14 +12408,58 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
   // ── TBタイヤ売上記録 ─────────────────────────
   let tbSalesRecords = [];
+  let tbSalesClients = [];   // ['○○運輸', '△△物流', ...]
   let tbSalesEditId = null;
 
   async function loadTbSales(){
     const data = await window.storage.get('tbSalesRecords', { SHARED: true });
     tbSalesRecords = Array.isArray(data) ? data : [];
+    const cl = await window.storage.get('tbSalesClients', { SHARED: true });
+    tbSalesClients = Array.isArray(cl) ? cl : [];
   }
   async function saveTbSales(){
     await window.storage.set('tbSalesRecords', tbSalesRecords, { SHARED: true });
+  }
+  async function saveTbClients(){
+    await window.storage.set('tbSalesClients', tbSalesClients, { SHARED: true });
+  }
+
+  function _refreshTbClientSelect(selectedVal){
+    const sel = document.getElementById('tbs_client');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">— 取引先を選択 —</option>'
+      + tbSalesClients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===selectedVal?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
+  }
+
+  function _renderTbProductList(query){
+    const listEl = document.getElementById('tbs_productList');
+    if(!listEl) return;
+    const q = (query||'').toLowerCase();
+    const items = products.filter(p=>{
+      const n = ((p.name||'')+(p.brand||'')+(p.spec||'')).toLowerCase();
+      return !q || n.includes(q);
+    }).slice(0,50);
+    if(items.length===0){
+      listEl.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text-3);">該当商品なし</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(p=>{
+      const name = escapeHtml(cleanName(p.name||''));
+      const brand = escapeHtml(p.brand||'');
+      const spec = escapeHtml(p.spec||'');
+      return '<div class="tbs-prod-item" data-brand="'+escapeHtml(p.brand||p.name||'')+'" data-spec="'+escapeHtml(p.spec||'')+'" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line-soft);font-size:13px;transition:background 0.1s;" onmouseover="this.style.background=\'var(--bg-2)\'" onmouseout="this.style.background=\'\'">'
+        +(brand?'<span style="font-size:11px;color:var(--text-3);display:block;">'+brand+'</span>':'')
+        +'<span style="font-weight:600;">'+name+'</span>'
+        +(spec?'<span style="font-size:12px;color:var(--amber);margin-left:8px;">'+spec+'</span>':'')
+        +'</div>';
+    }).join('');
+    listEl.querySelectorAll('.tbs-prod-item').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        document.getElementById('tbs_brand').value = el.dataset.brand;
+        document.getElementById('tbs_size').value  = el.dataset.spec;
+        document.getElementById('tbs_productPicker').style.display = 'none';
+      });
+    });
   }
 
   function renderTbSalesTab(){
@@ -12412,14 +12471,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const filterClient = document.getElementById('tbsalesFilterClient');
     const filterMonth  = document.getElementById('tbsalesFilterMonth');
 
-    // 取引先datalistと絞り込み選択肢を更新
-    const clients = [...new Set(tbSalesRecords.map(r=>r.client).filter(Boolean))].sort();
-    const datalist = document.getElementById('tbs_clientList');
-    if(datalist) datalist.innerHTML = clients.map(c=>'<option value="'+escapeHtml(c)+'">').join('');
+    // 絞り込み選択肢を更新（登録済み取引先 + 記録にある取引先を合算）
+    const allClients = [...new Set([...tbSalesClients, ...tbSalesRecords.map(r=>r.client).filter(Boolean)])].sort();
     const curClient = filterClient ? filterClient.value : '';
     if(filterClient){
       filterClient.innerHTML = '<option value="">取引先：すべて</option>'
-        + clients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===curClient?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
+        + allClients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===curClient?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
     }
 
     // フィルタ適用
@@ -12535,23 +12592,51 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   function openTbSalesModal(record){
     tbSalesEditId = record ? record.id : null;
     document.getElementById('tbsalesModalTitle').textContent = record ? '✏️ TB売上 編集' : '＋ TB売上 新規登録';
-    document.getElementById('tbs_date').value   = record ? (record.date||'') : new Date().toISOString().slice(0,10);
-    document.getElementById('tbs_client').value = record ? (record.client||'') : '';
-    document.getElementById('tbs_brand').value  = record ? (record.brand||'') : '';
-    document.getElementById('tbs_size').value   = record ? (record.size||'') : '';
-    document.getElementById('tbs_sales').value  = record ? (record.sales||'') : '';
-    document.getElementById('tbs_cost').value   = record ? (record.cost||'') : '';
-    document.getElementById('tbs_qty').value    = record ? (record.qty||1) : 1;
-    document.getElementById('tbs_note').value   = record ? (record.note||'') : '';
+    document.getElementById('tbs_date').value  = record ? (record.date||'') : new Date().toISOString().slice(0,10);
+    _refreshTbClientSelect(record ? (record.client||'') : '');
+    document.getElementById('tbs_brand').value = record ? (record.brand||'') : '';
+    document.getElementById('tbs_size').value  = record ? (record.size||'') : '';
+    document.getElementById('tbs_sales').value = record ? (record.sales||'') : '';
+    document.getElementById('tbs_cost').value  = record ? (record.cost||'') : '';
+    document.getElementById('tbs_qty').value   = record ? (record.qty||1) : 1;
+    document.getElementById('tbs_note').value  = record ? (record.note||'') : '';
     document.getElementById('tbsalesModalError').style.display = 'none';
+    document.getElementById('tbs_productPicker').style.display = 'none';
     document.getElementById('tbsalesModal').classList.add('show');
-    setTimeout(()=>{ document.getElementById('tbs_date').focus(); }, 100);
   }
 
   document.getElementById('tbsalesAddBtn').addEventListener('click', ()=>{ openTbSalesModal(null); });
   document.getElementById('tbsalesModalCancel').addEventListener('click', ()=>{ document.getElementById('tbsalesModal').classList.remove('show'); });
   document.getElementById('tbsalesFilterClient').addEventListener('change', renderTbSalesTab);
   document.getElementById('tbsalesFilterMonth').addEventListener('change', renderTbSalesTab);
+
+  // 取引先追加ボタン
+  document.getElementById('tbs_addClientBtn').addEventListener('click', async ()=>{
+    const name = prompt('新しい取引先名を入力してください：');
+    if(!name || !name.trim()) return;
+    const n = name.trim();
+    if(tbSalesClients.includes(n)){ showToast('すでに登録されています'); return; }
+    tbSalesClients.push(n);
+    tbSalesClients.sort();
+    await saveTbClients();
+    _refreshTbClientSelect(n);
+    showToast('取引先「'+n+'」を追加しました');
+  });
+
+  // 在庫ピッカー
+  document.getElementById('tbs_pickProductBtn').addEventListener('click', ()=>{
+    const picker = document.getElementById('tbs_productPicker');
+    const isVisible = picker.style.display !== 'none';
+    picker.style.display = isVisible ? 'none' : 'block';
+    if(!isVisible){
+      document.getElementById('tbs_productSearch').value = '';
+      _renderTbProductList('');
+      setTimeout(()=>{ document.getElementById('tbs_productSearch').focus(); }, 50);
+    }
+  });
+  document.getElementById('tbs_productSearch').addEventListener('input', function(){
+    _renderTbProductList(this.value);
+  });
 
   document.getElementById('tbsalesModalSave').addEventListener('click', async ()=>{
     const errEl = document.getElementById('tbsalesModalError');
