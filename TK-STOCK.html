@@ -2673,6 +2673,10 @@
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">商品・本数</div>
         <div id="provEdit_items"></div>
       </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">備考</label>
+        <textarea id="provEdit_note" placeholder="メモ・連絡事項など" rows="3" style="width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-family:inherit;"></textarea>
+      </div>
     </div>
     <div id="provEditError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
     <div class="modal-actions">
@@ -8303,6 +8307,7 @@ window.addEventListener('storageReady', function(){
       }
       _editDateTbd.onchange = function(){ _editDateInput.disabled = _editDateTbd.checked; if(_editDateTbd.checked) _editDateInput.value=''; };
       document.getElementById('provEdit_car').value = entry.carName || '';
+      document.getElementById('provEdit_note').value = entry.note || '';
       const itemsEl = document.getElementById('provEdit_items');
       itemsEl.innerHTML = (entry.items||[]).map((item, i)=>{
         const sub = [item.brand||'', item.spec||''].filter(Boolean).join(' ');
@@ -8348,7 +8353,8 @@ window.addEventListener('storageReady', function(){
         if(!name){ errorEl.textContent='お客様名を入力してください。'; errorEl.style.display='block'; document.getElementById('provEdit_customer').focus(); return; }
         if(!date){ errorEl.textContent='取付予定日を入力してください。'; errorEl.style.display='block'; _editDateInput.focus(); return; }
         const qtys = (entry.items||[]).map((_,i)=> Math.max(1, parseInt(document.getElementById('provEdit_qty_'+i).value||'1',10)));
-        cleanup({ customerName:name, scheduledDate:date, carName:car, qtys });
+        const note = document.getElementById('provEdit_note').value.trim();
+        cleanup({ customerName:name, scheduledDate:date, carName:car, qtys, note });
       }
       function onCancel(){ cleanup(null); }
       okBtn.addEventListener('click', onOk);
@@ -18377,7 +18383,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           if(!po) return;
           const result = await showProvisionalEditForm(po);
           if(!result) return;
-          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||'';
+          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||''; po.note = result.note||'';
           (po.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
           await saveProvisionalOutbounds();
           renderProductTable(); renderProvisionalList(); renderDetailProvList();
@@ -18401,7 +18407,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           if(!po) return;
           const result = await showProvisionalEditForm(po);
           if(!result) return;
-          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||'';
+          po.customerName = result.customerName; po.scheduledDate = result.scheduledDate; po.carName = result.carName||''; po.note = result.note||'';
           (po.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
           await saveProvisionalOutbounds();
           renderProductTable(); renderProvisionalList(); renderDetailProvList();
@@ -20439,7 +20445,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           +'</div>'
           +'</div>'
           +(entry.carName?'<div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">車種：'+escapeHtml(entry.carName)+'</div>':'<div style="margin-bottom:8px;"></div>')
-          +((()=>{ const _coMemo = entry.memo || (entry.customerOrderId ? (customerOrders.find(o=>o.id===entry.customerOrderId)||{}).memo||'' : ''); return _coMemo ? '<div style="margin-bottom:8px;padding:6px 10px;background:var(--amber-dim);border:1px solid rgba(184,101,12,0.2);border-radius:6px;font-size:12px;color:var(--text-1);white-space:pre-wrap;line-height:1.5;">📝 '+escapeHtml(_coMemo)+'</div>' : ''; })())
+          +((()=>{ const _coMemo = entry.note || entry.memo || (entry.customerOrderId ? (customerOrders.find(o=>o.id===entry.customerOrderId)||{}).memo||'' : ''); return _coMemo ? '<div style="margin-bottom:8px;padding:6px 10px;background:var(--amber-dim);border:1px solid rgba(184,101,12,0.2);border-radius:6px;font-size:12px;color:var(--text-1);white-space:pre-wrap;line-height:1.5;">📝 '+escapeHtml(_coMemo)+'</div>' : ''; })())
           /* 取付予定日 */
           +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);">'
           +'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber);border-radius:4px;padding:1px 6px;white-space:nowrap;">取付予定日</span>'
@@ -20578,6 +20584,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         entry.customerName  = result.customerName;
         entry.scheduledDate = result.scheduledDate;
         entry.carName       = result.carName;
+        entry.note          = result.note||'';
         (entry.items||[]).forEach((item, i)=>{ if(result.qtys[i] != null) item.qty = result.qtys[i]; });
         entry.updatedAt = Date.now();
         await saveProvisionalOutbounds();
