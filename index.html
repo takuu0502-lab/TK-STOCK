@@ -1296,6 +1296,7 @@
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
       <button class="tab-btn" data-tab="custody" id="custodyTabBtn" style="display:none;">預かり在庫</button>
       <button class="tab-btn" data-tab="popfolder">POPフォルダ</button>
+      <button class="tab-btn" data-tab="tbsales" id="tbSalesTabBtn" style="display:none;">🚛 TB売上</button>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-ghost btn-sm" id="openSpecSearch" style="display:none;">商品検索</button>
@@ -2359,6 +2360,73 @@
 
 <div class="panel" id="tab-popfolder" style="display:none;">
   <div id="popfolderContent"></div>
+</div>
+
+<!-- TB売上タブ -->
+<div class="panel" id="tab-tbsales" style="display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <h2 style="margin:0;font-size:18px;">🚛 TBタイヤ売上記録</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <select id="tbsalesFilterClient" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+        <option value="">取引先：すべて</option>
+      </select>
+      <input type="month" id="tbsalesFilterMonth" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+      <button class="btn btn-amber btn-sm" id="tbsalesAddBtn">＋ 新規登録</button>
+    </div>
+  </div>
+  <!-- 集計サマリー -->
+  <div id="tbsalesSummary" style="margin-bottom:14px;"></div>
+  <!-- 取引先別リスト -->
+  <div id="tbsalesList"></div>
+</div>
+
+<!-- TB売上 入力モーダル -->
+<div class="modal-overlay" id="tbsalesModal">
+  <div class="modal" style="max-width:480px;">
+    <h3 id="tbsalesModalTitle" style="margin-top:0;">＋ TB売上 新規登録</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">日付 <span style="color:var(--red);">*</span></label>
+        <input type="date" id="tbs_date" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">取引先名 <span style="color:var(--red);">*</span></label>
+        <input type="text" id="tbs_client" placeholder="例) ○○運輸" list="tbs_clientList" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        <datalist id="tbs_clientList"></datalist>
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
+        <input type="text" id="tbs_brand" placeholder="例) TOYO M144" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">サイズ</label>
+        <input type="text" id="tbs_size" placeholder="例) 11R22.5" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field">
+          <label style="font-size:13px;font-weight:600;">売上金額（円）<span style="color:var(--red);">*</span></label>
+          <input type="number" id="tbs_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        </div>
+        <div class="field">
+          <label style="font-size:13px;font-weight:600;">仕入れ原価（円）</label>
+          <input type="number" id="tbs_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        </div>
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">本数</label>
+        <input type="number" id="tbs_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">備考</label>
+        <textarea id="tbs_note" rows="2" placeholder="メモ・補足など" style="width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-family:inherit;"></textarea>
+      </div>
+    </div>
+    <div id="tbsalesModalError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="tbsalesModalCancel">キャンセル</button>
+      <button class="btn btn-amber" id="tbsalesModalSave">保存する</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="outCustomerModal">
@@ -7706,7 +7774,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
-    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','popfolder'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','popfolder','tbsales'].forEach(t=>{
       try{
         const el = document.getElementById('tab-'+t);
         if(el) el.style.display = (t === tabName) ? 'block' : 'none';
@@ -7715,6 +7783,7 @@ window.addEventListener('storageReady', function(){
     if(tabName === 'out'){ renderProvisionalList(); }
     if(tabName === 'pricing'){ initPricingAccordion(); initAnnouncementEditor(); renderAnnouncementList(); }
     if(tabName === 'popfolder'){ renderPopFolder(); }
+    if(tabName === 'tbsales'){ renderTbSalesTab(); }
   }
 
   let _announcementAddBtnBound = false;
@@ -12325,6 +12394,194 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       +'<div class="qp-note-section"><div class="qp-note-title">備考</div><div class="qp-note-body">'+escapeHtml(note)+'</div></div>';
     document.getElementById('freeQuoteModal').classList.remove('show');
     document.getElementById('printPreviewOverlay').style.display = 'flex';
+  });
+
+  // ── TBタイヤ売上記録 ─────────────────────────
+  let tbSalesRecords = [];
+  let tbSalesEditId = null;
+
+  async function loadTbSales(){
+    const data = await window.storage.get('tbSalesRecords', { SHARED: true });
+    tbSalesRecords = Array.isArray(data) ? data : [];
+  }
+  async function saveTbSales(){
+    await window.storage.set('tbSalesRecords', tbSalesRecords, { SHARED: true });
+  }
+
+  function renderTbSalesTab(){
+    // 勝田ブランチのみ表示
+    const branch = currentUser ? (currentUser.branchId||'') : '';
+    const btn = document.getElementById('tbSalesTabBtn');
+    if(btn) btn.style.display = (branch === 'katsuta' || branch === 'iwama') ? '' : 'none';
+
+    const filterClient = document.getElementById('tbsalesFilterClient');
+    const filterMonth  = document.getElementById('tbsalesFilterMonth');
+
+    // 取引先datalistと絞り込み選択肢を更新
+    const clients = [...new Set(tbSalesRecords.map(r=>r.client).filter(Boolean))].sort();
+    const datalist = document.getElementById('tbs_clientList');
+    if(datalist) datalist.innerHTML = clients.map(c=>'<option value="'+escapeHtml(c)+'">').join('');
+    const curClient = filterClient ? filterClient.value : '';
+    if(filterClient){
+      filterClient.innerHTML = '<option value="">取引先：すべて</option>'
+        + clients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===curClient?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
+    }
+
+    // フィルタ適用
+    const selClient = filterClient ? filterClient.value : '';
+    const selMonth  = filterMonth  ? filterMonth.value  : '';
+    let filtered = tbSalesRecords.slice();
+    if(selClient) filtered = filtered.filter(r=>r.client===selClient);
+    if(selMonth)  filtered = filtered.filter(r=>(r.date||'').startsWith(selMonth));
+
+    // サマリー
+    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0),0);
+    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0),0);
+    const totalProfit = totalSales - totalCost;
+    const summaryEl = document.getElementById('tbsalesSummary');
+    if(summaryEl){
+      summaryEl.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+        +'<div style="flex:1;min-width:120px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;">'
+        +'<div style="font-size:11px;color:var(--text-3);">売上合計</div>'
+        +'<div style="font-size:18px;font-weight:700;color:var(--amber);">¥'+totalSales.toLocaleString('ja-JP')+'</div></div>'
+        +'<div style="flex:1;min-width:120px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;">'
+        +'<div style="font-size:11px;color:var(--text-3);">仕入原価合計</div>'
+        +'<div style="font-size:18px;font-weight:700;color:var(--text-2);">¥'+totalCost.toLocaleString('ja-JP')+'</div></div>'
+        +'<div style="flex:1;min-width:120px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;">'
+        +'<div style="font-size:11px;color:var(--text-3);">粗利</div>'
+        +'<div style="font-size:18px;font-weight:700;color:'+(totalProfit>=0?'var(--teal)':'var(--red)')+';">¥'+totalProfit.toLocaleString('ja-JP')+'</div></div>'
+        +'<div style="flex:1;min-width:120px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;">'
+        +'<div style="font-size:11px;color:var(--text-3);">件数</div>'
+        +'<div style="font-size:18px;font-weight:700;color:var(--text-1);">'+filtered.length+'<span style="font-size:12px;">件</span></div></div>'
+        +'</div>';
+    }
+
+    // 取引先ごとにグループ化
+    const grouped = {};
+    const sorted = filtered.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    sorted.forEach(r=>{
+      const key = r.client||'（取引先不明）';
+      if(!grouped[key]) grouped[key]=[];
+      grouped[key].push(r);
+    });
+
+    const listEl = document.getElementById('tbsalesList');
+    if(!listEl) return;
+    if(Object.keys(grouped).length===0){
+      listEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-3);">記録がありません</div>';
+      return;
+    }
+
+    listEl.innerHTML = Object.keys(grouped).sort().map(clientName=>{
+      const rows = grouped[clientName];
+      const cSales  = rows.reduce((s,r)=>s+(r.sales||0),0);
+      const cCost   = rows.reduce((s,r)=>s+(r.cost||0),0);
+      const cProfit = cSales - cCost;
+      const rowsHtml = rows.map(r=>{
+        const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
+        return '<tr style="border-bottom:1px solid var(--line-soft);">'
+          +'<td style="padding:8px 10px;font-size:13px;color:var(--text-2);">'+(r.date||'—')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty||1)+'本</td>'
+          +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+(r.sales||0).toLocaleString('ja-JP')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+(r.cost||0).toLocaleString('ja-JP')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(cProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
+          +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
+          +'<td style="padding:8px 10px;white-space:nowrap;">'
+          +'<button class="btn btn-ghost btn-sm" data-tbs-edit="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;margin-right:4px;">編集</button>'
+          +'<button class="btn btn-ghost btn-sm" data-tbs-del="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red);">削除</button>'
+          +'</td>'
+          +'</tr>';
+      }).join('');
+
+      return '<details open style="margin-bottom:12px;">'
+        +'<summary style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;list-style:none;font-weight:700;font-size:15px;">'
+        +'<span>🏢 '+escapeHtml(clientName)+'　<span style="font-size:12px;font-weight:400;color:var(--text-3);">'+rows.length+'件</span></span>'
+        +'<span style="font-size:13px;display:flex;gap:16px;">'
+        +'<span>売上 <strong style="color:var(--amber);">¥'+cSales.toLocaleString('ja-JP')+'</strong></span>'
+        +'<span>原価 <strong style="color:var(--text-2);">¥'+cCost.toLocaleString('ja-JP')+'</strong></span>'
+        +'<span>粗利 <strong style="color:'+(cProfit>=0?'var(--teal)':'var(--red)')+';">¥'+cProfit.toLocaleString('ja-JP')+'</strong></span>'
+        +'</span>'
+        +'</summary>'
+        +'<div style="overflow-x:auto;margin-top:2px;">'
+        +'<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px;">'
+        +'<thead><tr style="background:var(--bg-2);font-size:11px;color:var(--text-3);">'
+        +'<th style="padding:6px 10px;text-align:left;font-weight:600;">日付</th>'
+        +'<th style="padding:6px 10px;text-align:left;font-weight:600;">銘柄</th>'
+        +'<th style="padding:6px 10px;text-align:left;font-weight:600;">サイズ</th>'
+        +'<th style="padding:6px 10px;text-align:center;font-weight:600;">本数</th>'
+        +'<th style="padding:6px 10px;text-align:right;font-weight:600;">売上金額</th>'
+        +'<th style="padding:6px 10px;text-align:right;font-weight:600;">仕入原価</th>'
+        +'<th style="padding:6px 10px;text-align:right;font-weight:600;">粗利率</th>'
+        +'<th style="padding:6px 10px;text-align:left;font-weight:600;">備考</th>'
+        +'<th style="padding:6px 10px;"></th>'
+        +'</tr></thead>'
+        +'<tbody>'+rowsHtml+'</tbody>'
+        +'</table></div>'
+        +'</details>';
+    }).join('');
+
+    // 編集・削除イベント
+    listEl.querySelectorAll('[data-tbs-edit]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ openTbSalesModal(tbSalesRecords.find(r=>r.id===btn.dataset.tbsEdit)); });
+    });
+    listEl.querySelectorAll('[data-tbs-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const ok = await showConfirm('この記録を削除しますか？');
+        if(!ok) return;
+        tbSalesRecords = tbSalesRecords.filter(r=>r.id!==btn.dataset.tbsDel);
+        await saveTbSales();
+        renderTbSalesTab();
+      });
+    });
+  }
+
+  function openTbSalesModal(record){
+    tbSalesEditId = record ? record.id : null;
+    document.getElementById('tbsalesModalTitle').textContent = record ? '✏️ TB売上 編集' : '＋ TB売上 新規登録';
+    document.getElementById('tbs_date').value   = record ? (record.date||'') : new Date().toISOString().slice(0,10);
+    document.getElementById('tbs_client').value = record ? (record.client||'') : '';
+    document.getElementById('tbs_brand').value  = record ? (record.brand||'') : '';
+    document.getElementById('tbs_size').value   = record ? (record.size||'') : '';
+    document.getElementById('tbs_sales').value  = record ? (record.sales||'') : '';
+    document.getElementById('tbs_cost').value   = record ? (record.cost||'') : '';
+    document.getElementById('tbs_qty').value    = record ? (record.qty||1) : 1;
+    document.getElementById('tbs_note').value   = record ? (record.note||'') : '';
+    document.getElementById('tbsalesModalError').style.display = 'none';
+    document.getElementById('tbsalesModal').classList.add('show');
+    setTimeout(()=>{ document.getElementById('tbs_date').focus(); }, 100);
+  }
+
+  document.getElementById('tbsalesAddBtn').addEventListener('click', ()=>{ openTbSalesModal(null); });
+  document.getElementById('tbsalesModalCancel').addEventListener('click', ()=>{ document.getElementById('tbsalesModal').classList.remove('show'); });
+  document.getElementById('tbsalesFilterClient').addEventListener('change', renderTbSalesTab);
+  document.getElementById('tbsalesFilterMonth').addEventListener('change', renderTbSalesTab);
+
+  document.getElementById('tbsalesModalSave').addEventListener('click', async ()=>{
+    const errEl = document.getElementById('tbsalesModalError');
+    const date   = document.getElementById('tbs_date').value.trim();
+    const client = document.getElementById('tbs_client').value.trim();
+    const brand  = document.getElementById('tbs_brand').value.trim();
+    const size   = document.getElementById('tbs_size').value.trim();
+    const sales  = parseInt(document.getElementById('tbs_sales').value)||0;
+    const cost   = parseInt(document.getElementById('tbs_cost').value)||0;
+    const qty    = Math.max(1, parseInt(document.getElementById('tbs_qty').value)||1);
+    const note   = document.getElementById('tbs_note').value.trim();
+    errEl.style.display = 'none';
+    if(!date)  { errEl.textContent='日付を入力してください。'; errEl.style.display='block'; return; }
+    if(!client){ errEl.textContent='取引先名を入力してください。'; errEl.style.display='block'; return; }
+    if(!sales) { errEl.textContent='売上金額を入力してください。'; errEl.style.display='block'; return; }
+    if(tbSalesEditId){
+      const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
+      if(rec){ rec.date=date; rec.client=client; rec.brand=brand; rec.size=size; rec.sales=sales; rec.cost=cost; rec.qty=qty; rec.note=note; rec.updatedAt=Date.now(); }
+    } else {
+      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, note, createdAt:Date.now() });
+    }
+    await saveTbSales();
+    document.getElementById('tbsalesModal').classList.remove('show');
+    renderTbSalesTab();
+    showToast(tbSalesEditId ? '更新しました' : '登録しました');
   });
 
   // ── 棚卸し機能 ──────────────────────────────
@@ -21988,6 +22245,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     renderUserBadge();
     _resetInactivity();
     await loadData(); // データ読み込み完了まで待機（完了前の操作を防止）
+    await loadTbSales();
   }
 
   function roleLabel(role){
@@ -22029,6 +22287,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.querySelector('.tab-btn[data-tab="stockcount"]').style.display = writable ? 'inline-block' : 'none';
     const _custodyBtn = document.getElementById('custodyTabBtn');
     if(_custodyBtn) _custodyBtn.style.display = (isSuperAdminUser() || (currentUser && currentUser.branchId === 'katsuta')) ? 'inline-block' : 'none';
+    const _tbSalesBtn = document.getElementById('tbSalesTabBtn');
+    if(_tbSalesBtn){
+      const _tbBranch = currentUser ? (currentUser.branchId||'') : '';
+      _tbSalesBtn.style.display = (_tbBranch === 'katsuta' || _tbBranch === 'iwama') ? 'inline-block' : 'none';
+    }
     document.getElementById('quickScanBtn').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('openAddProduct').style.display = writable ? 'inline-block' : 'none';
     document.getElementById('inventoryPrintBtn').style.display = admin ? 'inline-block' : 'none';
