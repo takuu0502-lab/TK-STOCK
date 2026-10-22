@@ -2367,6 +2367,7 @@
         <option value="">取引先：すべて</option>
       </select>
       <input type="month" id="tbsalesFilterMonth" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;">
+      <input type="text" id="tbsalesFilterKeyword" placeholder="銘柄・サイズで検索" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;width:160px;" oninput="renderTbSalesTab()">
       <button class="btn btn-amber btn-sm" id="tbsalesAddBtn">＋ 新規登録</button>
     </div>
   </div>
@@ -12514,11 +12515,17 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     }
 
     // フィルタ適用
-    const selClient = filterClient ? filterClient.value : '';
-    const selMonth  = filterMonth  ? filterMonth.value  : '';
+    const selClient  = filterClient ? filterClient.value : '';
+    const selMonth   = filterMonth  ? filterMonth.value  : '';
+    const kwEl       = document.getElementById('tbsalesFilterKeyword');
+    const selKeyword = kwEl ? kwEl.value.trim().toLowerCase() : '';
     let filtered = tbSalesRecords.slice();
-    if(selClient) filtered = filtered.filter(r=>r.client===selClient);
-    if(selMonth)  filtered = filtered.filter(r=>(r.date||'').startsWith(selMonth));
+    if(selClient)  filtered = filtered.filter(r=>r.client===selClient);
+    if(selMonth)   filtered = filtered.filter(r=>(r.date||'').startsWith(selMonth));
+    if(selKeyword) filtered = filtered.filter(r=>
+      (r.brand||'').toLowerCase().includes(selKeyword) ||
+      (r.size||'').toLowerCase().includes(selKeyword)
+    );
 
     // サマリー
     const totalSales = filtered.reduce((s,r)=>s+(r.sales||0),0);
