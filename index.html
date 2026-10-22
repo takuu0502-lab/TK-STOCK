@@ -12408,27 +12408,32 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
   // ── TBタイヤ売上記録 ─────────────────────────
   let tbSalesRecords = [];
-  let tbSalesClients = [];   // ['○○運輸', '△△物流', ...]
   let tbSalesEditId = null;
+
+  // 取引先リストは custodyCustomers + custodyContracts(katsuta) から取得
+  function _getTbClients(){
+    const fromMaster = (custodyCustomers||[]);
+    const fromContracts = (custodyContracts||[])
+      .filter(c=>c.branchId==='katsuta')
+      .map(c=>c.customerName||'')
+      .filter(Boolean);
+    return [...new Set([...fromMaster, ...fromContracts])].sort();
+  }
 
   async function loadTbSales(){
     const data = await window.storage.get('tbSalesRecords', { SHARED: true });
     tbSalesRecords = Array.isArray(data) ? data : [];
-    const cl = await window.storage.get('tbSalesClients', { SHARED: true });
-    tbSalesClients = Array.isArray(cl) ? cl : [];
   }
   async function saveTbSales(){
     await window.storage.set('tbSalesRecords', tbSalesRecords, { SHARED: true });
-  }
-  async function saveTbClients(){
-    await window.storage.set('tbSalesClients', tbSalesClients, { SHARED: true });
   }
 
   function _refreshTbClientSelect(selectedVal){
     const sel = document.getElementById('tbs_client');
     if(!sel) return;
+    const clients = _getTbClients();
     sel.innerHTML = '<option value="">— 取引先を選択 —</option>'
-      + tbSalesClients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===selectedVal?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
+      + clients.map(c=>'<option value="'+escapeHtml(c)+'"'+(c===selectedVal?' selected':'')+'>'+escapeHtml(c)+'</option>').join('');
   }
 
   function _renderTbProductList(query){
@@ -12471,8 +12476,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const filterClient = document.getElementById('tbsalesFilterClient');
     const filterMonth  = document.getElementById('tbsalesFilterMonth');
 
-    // 絞り込み選択肢を更新（登録済み取引先 + 記録にある取引先を合算）
-    const allClients = [...new Set([...tbSalesClients, ...tbSalesRecords.map(r=>r.client).filter(Boolean)])].sort();
+    // 絞り込み選択肢を更新（預かり在庫取引先 + 記録にある取引先を合算）
+    const allClients = [...new Set([..._getTbClients(), ...tbSalesRecords.map(r=>r.client).filter(Boolean)])].sort();
     const curClient = filterClient ? filterClient.value : '';
     if(filterClient){
       filterClient.innerHTML = '<option value="">取引先：すべて</option>'
@@ -12610,15 +12615,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   document.getElementById('tbsalesFilterClient').addEventListener('change', renderTbSalesTab);
   document.getElementById('tbsalesFilterMonth').addEventListener('change', renderTbSalesTab);
 
-  // 取引先追加ボタン
+  // 取引先追加ボタン（custodyCustomersに追加して預かり在庫と共有）
   document.getElementById('tbs_addClientBtn').addEventListener('click', async ()=>{
     const name = prompt('新しい取引先名を入力してください：');
     if(!name || !name.trim()) return;
     const n = name.trim();
-    if(tbSalesClients.includes(n)){ showToast('すでに登録されています'); return; }
-    tbSalesClients.push(n);
-    tbSalesClients.sort();
-    await saveTbClients();
+    if(!custodyCustomers) custodyCustomers = [];
+    if(custodyCustomers.includes(n)){ showToast('すでに登録されています'); _refreshTbClientSelect(n); return; }
+    custodyCustomers.push(n);
+    custodyCustomers.sort();
+    try{ await window.storage.set('custodyCustomers', JSON.stringify(custodyCustomers), {SHARED:true}); }catch(e){}
     _refreshTbClientSelect(n);
     showToast('取引先「'+n+'」を追加しました');
   });
