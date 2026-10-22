@@ -1295,7 +1295,6 @@
       <button class="tab-btn" data-tab="pricing">管理</button>
       <button class="tab-btn" data-tab="stockcount" id="stockcountTabBtn">棚卸し</button>
       <button class="tab-btn" data-tab="custody" id="custodyTabBtn" style="display:none;">預かり在庫</button>
-      <button class="tab-btn" data-tab="popfolder">POPフォルダ</button>
       <button class="tab-btn" data-tab="tbsales" id="tbSalesTabBtn" style="display:none;">🚛 TB売上</button>
     </div>
     <div style="display:flex;gap:8px;">
@@ -2358,9 +2357,6 @@
   <div id="custodyContent"></div>
 </div>
 
-<div class="panel" id="tab-popfolder" style="display:none;">
-  <div id="popfolderContent"></div>
-</div>
 
 <!-- TB売上タブ -->
 <div class="panel" id="tab-tbsales" style="display:none;">
@@ -7774,7 +7770,7 @@ window.addEventListener('storageReady', function(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     const btn = document.querySelector('.tab-btn[data-tab="'+tabName+'"]');
     if(btn) btn.classList.add('active');
-    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','popfolder','tbsales'].forEach(t=>{
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','tbsales'].forEach(t=>{
       try{
         const el = document.getElementById('tab-'+t);
         if(el) el.style.display = (t === tabName) ? 'block' : 'none';
@@ -7782,7 +7778,6 @@ window.addEventListener('storageReady', function(){
     });
     if(tabName === 'out'){ renderProvisionalList(); }
     if(tabName === 'pricing'){ initPricingAccordion(); initAnnouncementEditor(); renderAnnouncementList(); }
-    if(tabName === 'popfolder'){ renderPopFolder(); }
     if(tabName === 'tbsales'){ renderTbSalesTab(); }
   }
 
@@ -7949,8 +7944,8 @@ window.addEventListener('storageReady', function(){
 
   function showHomeState(){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','popfolder'].forEach(t=>{
-      document.getElementById('tab-'+t).style.display = 'none';
+    ['list','estimate','in','out','history','pricing','stockcount','reservation','custody','tbsales'].forEach(t=>{
+      const el = document.getElementById('tab-'+t); if(el) el.style.display = 'none';
     });
   }
 
