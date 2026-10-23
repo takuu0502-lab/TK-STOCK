@@ -20277,8 +20277,27 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const wrap = document.getElementById('customerOrderWrap');
     if(!wrap) return;
     const _coBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    const pending = customerOrders.filter(o=>o.status==='pending'&&(o.branchId||'taniyabe')===_coBranch)
-      .sort((a,b)=>new Date(b.createdAt||b.date||0)-new Date(a.createdAt||a.date||0));
+    const pending = customerOrders.filter(o=>{
+      if(o.status !== 'pending') return false;
+      if((o.branchId||'taniyabe') !== _coBranch) return false;
+      // 全商品が入荷済みの場合は非表示（order.statusも自動完了）
+      const _oItems = _getOrderItems(o);
+      const _oIschs = incomingSchedules.filter(s=>s.customerOrderId===o.id);
+      if(_oIschs.length > 0 && _oItems.length > 0){
+        const _allDone = _oItems.every(si=>{
+          const _hasPending = _oIschs.some(s=>s.productId===si.productId && s.status==='pending');
+          if(_hasPending) return false;
+          return _oIschs.some(s=>s.productId===si.productId && (s.status==='done'||s.status==='arrived'||s.status==='completed'));
+        });
+        if(_allDone){
+          // 非同期で自動完了（描画をブロックしない）
+          o.status = 'completed'; o.completedAt = o.completedAt || new Date().toISOString();
+          saveCustomerOrders().catch(()=>{});
+          return false;
+        }
+      }
+      return true;
+    }).sort((a,b)=>new Date(b.createdAt||b.date||0)-new Date(a.createdAt||a.date||0));
     const totalCount = pending.length;
 
     let header = '<div style="margin-bottom:12px;">'
