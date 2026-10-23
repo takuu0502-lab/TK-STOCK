@@ -5778,22 +5778,25 @@ window.addEventListener('storageReady', function(){
     }
 
     try{
-      const t = await window.storage.get('transactions', SHARED);
+      // 並列読み込みで起動を高速化
+      const [t, pob, ccr, ccu, ann, co, rc, isch] = await Promise.all([
+        window.storage.get('transactions', SHARED),
+        window.storage.get('provisionalOutbounds', SHARED),
+        window.storage.get('custodyContracts', SHARED),
+        window.storage.get('custodyCustomers', SHARED),
+        window.storage.get('siteAnnouncements', SHARED),
+        window.storage.get('customerOrders', SHARED),
+        window.storage.get('reservationCategories', SHARED),
+        window.storage.get('incomingSchedules', SHARED),
+      ]);
       transactions = t ? JSON.parse(t.value) : [];
-      const pob = await window.storage.get('provisionalOutbounds', SHARED);
       provisionalOutbounds = pob ? JSON.parse(pob.value) : [];
-      const ccr = await window.storage.get('custodyContracts', SHARED);
       custodyContracts = (ccr && ccr.value) ? (JSON.parse(ccr.value) || []) : [];
-      const ccu = await window.storage.get('custodyCustomers', SHARED);
       custodyCustomers = (ccu && ccu.value) ? (JSON.parse(ccu.value) || []) : [];
-      const ann = await window.storage.get('siteAnnouncements', SHARED);
       siteAnnouncements = (ann && ann.value) ? (JSON.parse(ann.value) || []) : [];
       renderSiteAnnouncement();
-      const co = await window.storage.get('customerOrders', SHARED);
       customerOrders = (co && co.value) ? (JSON.parse(co.value) || []) : [];
-      const rc = await window.storage.get('reservationCategories', SHARED);
       if(rc && rc.value){ try{ reservationCategories = JSON.parse(rc.value) || reservationCategories; }catch(e){} }
-      const isch = await window.storage.get('incomingSchedules', SHARED);
       incomingSchedules = (isch && isch.value) ? (JSON.parse(isch.value) || []) : [];
       // branchId未設定の仮出庫レコードにstaff名からbranchIdを補完するマイグレーション
       let pobMigrated = false;
@@ -5965,13 +5968,16 @@ window.addEventListener('storageReady', function(){
           if(_fbPv){ _lsSet('_tk_pv', _fbPv); _lsSet('_tk_pd', _rp.value); }
         }
       }
-      const _rpob = await window.storage.get('provisionalOutbounds', SHARED);
+      // 並列読み込みでデータ更新を高速化
+      const [_rpob, _rco, _risch, _rtx] = await Promise.all([
+        window.storage.get('provisionalOutbounds', SHARED),
+        window.storage.get('customerOrders', SHARED),
+        window.storage.get('incomingSchedules', SHARED),
+        window.storage.get('transactions', SHARED),
+      ]);
       if(_rpob){ const _fresh = JSON.parse(_rpob.value); if(Array.isArray(_fresh)) provisionalOutbounds = _fresh; }
-      const _rco = await window.storage.get('customerOrders', SHARED);
       if(_rco && _rco.value){ const _fresh = JSON.parse(_rco.value); if(Array.isArray(_fresh)) customerOrders = _fresh; }
-      const _risch = await window.storage.get('incomingSchedules', SHARED);
       if(_risch && _risch.value){ const _fresh = JSON.parse(_risch.value); if(Array.isArray(_fresh)) incomingSchedules = _fresh; }
-      const _rtx = await window.storage.get('transactions', SHARED);
       if(_rtx){ const _fresh = JSON.parse(_rtx.value); if(Array.isArray(_fresh)) transactions = _fresh; }
       // 専用パスの在庫スナップショットを適用（メインブロブより新しい在庫数で上書き）
       await _applyStockSnapshots();
