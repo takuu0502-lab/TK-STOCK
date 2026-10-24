@@ -11030,6 +11030,14 @@ window.addEventListener('storageReady', function(){
           + '</div>';
       }).join('');
     }
+    // 支店別デフォルト工賃テーブル
+    const _qLaborBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+    const _LABOR_DEFAULTS = {
+      katsuta: { 'タイヤ処分料': 500, 'ゴムバルブ': 300 },
+      iwama:   { 'タイヤ処分料': 500, 'ゴムバルブ': 300 },
+    };
+    const _branchDefaults = _LABOR_DEFAULTS[_qLaborBranch] || {};
+
     wrap.querySelectorAll('[data-sl-sel]').forEach(sel=>{
       const li = +sel.dataset.slSel;
       sel.addEventListener('change', ()=>{
@@ -11037,6 +11045,12 @@ window.addEventListener('storageReady', function(){
         sharedLaborLines[li].name = name;
         if(name && LABOR_QTY[name] && !LABOR_QTY[name].includes(sharedLaborLines[li].qty)){
           sharedLaborLines[li].qty = LABOR_QTY[name][1] || LABOR_QTY[name][0];
+        }
+        // 価格が未設定の場合のみ支店別デフォルト価格をセット
+        if(name && (sharedLaborLines[li].unitPrice==='' || sharedLaborLines[li].unitPrice===0 || sharedLaborLines[li].unitPrice===undefined)){
+          if(_branchDefaults[name] !== undefined){
+            sharedLaborLines[li].unitPrice = _branchDefaults[name];
+          }
         }
         renderSharedLabor(); renderQuoteLines(); renderTotals();
       });
