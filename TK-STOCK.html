@@ -21476,49 +21476,74 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         if(!sched) return;
         const p2 = products.find(x=>x.id===sched.productId);
         if(!p2){ alert('商品が見つかりません。'); return; }
-        const ok = await showConfirm('以下を入庫確定しますか？\n\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n数量: '+sched.qty+'本\n入荷予定日: '+sched.expectedDate);
+
+        // ── 入庫数入力ダイアログ ──
+        const _inQtyStr = prompt(
+          '【入庫数を入力してください】\n\n'
+          + '商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n'
+          + '発注数: '+sched.qty+'本\n\n'
+          + '一部入荷の場合は入荷した数を入力してください。\n残数は引き続き入庫予定リストに残ります。',
+          String(sched.qty)
+        );
+        if(_inQtyStr === null) return; // キャンセル
+        const _inQty = parseInt(_inQtyStr, 10);
+        if(isNaN(_inQty) || _inQty <= 0){ showToast('正しい数量を入力してください'); return; }
+        if(_inQty > sched.qty){ showToast('発注数（'+sched.qty+'本）を超えた数量は入力できません'); return; }
+
+        const _isPartial = _inQty < sched.qty;
+        const _remaining = sched.qty - _inQty;
+        const ok = await showConfirm(
+          '以下を入庫確定しますか？\n\n'
+          + '商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n'
+          + '入庫数: '+_inQty+'本'
+          + (_isPartial ? '\n残り '+_remaining+'本 → 入庫予定リストに残します' : '')
+        );
         if(!ok) return;
+
         const opBranch = getOperationBranch();
         const _ischStockBefore = (p2.branchStock && p2.branchStock[opBranch]) || 0;
-        const _ischExpected = _ischStockBefore + sched.qty;
-        addBranchStock(p2, opBranch, sched.qty); // updatedAt も更新される
+        const _ischExpected = _ischStockBefore + _inQty;
+        addBranchStock(p2, opBranch, _inQty);
         transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
-          type:'in', qty:sched.qty, date:new Date().toISOString(),
+          type:'in', qty:_inQty, date:new Date().toISOString(),
           user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
         const batchDate = new Date().toISOString();
-        inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:[{ name:p2.name, spec:p2.spec||'', qty:sched.qty, itemType:'stock' }] });
-        sched.status='done'; sched.completedAt=new Date().toISOString();
-        // 同じ商品の他のpending入庫予定も自動完了
-        const _otherPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===opBranch&&s.productId===p2.id&&s.id!==sched.id);
-        _otherPendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
-        // 客注品の場合は仮出庫自動登録
-        if(sched.inboundType==='customerOrder' && sched.customerName){
-          const provEntry = {
-            id: uid('prov'),
-            date: new Date().toISOString(),
-            type: 'provisional',
-            customerName: sched.customerName,
-            carName: sched.carName||'',
-            scheduledDate: sched.expectedDate||'',
-            branchId: opBranch,
-            staff: currentUser?currentUser.displayName:'',
-            items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty:sched.qty }],
-            status: 'pending'
-          };
-          provisionalOutbounds.push(provEntry);
-          await saveProvisionalOutbounds();
-          // 客注品リストも完了にする
-          if(sched.customerOrderId){
-            const co = customerOrders.find(x=>x.id===sched.customerOrderId);
-            if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); await saveCustomerOrders(); }
-          }
-          renderProvisionalList();
-          renderCustomerOrderList();
-          showToast('入庫確定・仮出庫登録しました（'+sched.qty+'）');
+        inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:[{ name:p2.name, spec:p2.spec||'', qty:_inQty, itemType:'stock' }] });
+
+        if(_isPartial){
+          // 一部入庫：残数を更新してpendingのまま継続
+          sched.qty = _remaining;
+          showToast(_inQty+'本を入庫確定しました。残り'+_remaining+'本は引き続き入庫予定リストに表示されます。', 5000);
         } else {
-          showToast('入庫確定しました（'+sched.qty+'）');
+          // 全数入庫：完了処理
+          sched.status='done'; sched.completedAt=new Date().toISOString();
+          // 同じ商品の他のpending入庫予定も自動完了
+          const _otherPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===opBranch&&s.productId===p2.id&&s.id!==sched.id);
+          _otherPendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
+          // 客注品の場合は仮出庫自動登録
+          if(sched.inboundType==='customerOrder' && sched.customerName){
+            const provEntry = {
+              id: uid('prov'), date: new Date().toISOString(), type: 'provisional',
+              customerName: sched.customerName, carName: sched.carName||'',
+              scheduledDate: sched.expectedDate||'', branchId: opBranch,
+              staff: currentUser?currentUser.displayName:'',
+              items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty:_inQty }],
+              status: 'pending'
+            };
+            provisionalOutbounds.push(provEntry);
+            await saveProvisionalOutbounds();
+            if(sched.customerOrderId){
+              const co = customerOrders.find(x=>x.id===sched.customerOrderId);
+              if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); await saveCustomerOrders(); }
+            }
+            renderProvisionalList();
+            renderCustomerOrderList();
+            showToast('入庫確定・仮出庫登録しました（'+_inQty+'）');
+          } else {
+            showToast('入庫確定しました（'+_inQty+'）');
+          }
         }
-        // 在庫スナップショット先行保存（保存失敗時の復元用）
+        // 在庫スナップショット先行保存
         await _saveStockSnapshot(p2.id, p2.branchStock, p2.updatedAt);
         const _ischSaveResult = await saveProducts();
         await saveTransactions(); await saveIncomingSchedules();
@@ -21535,8 +21560,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         }
         const _printOpts = (sched.inboundType==='customerOrder' && sched.customerName)
           ? { customerName: sched.customerName, installDate: sched.scheduledDate||'' } : {};
-        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+sched.qty+'枚');
-        if(doPrint) _printReceiveLabel(p2, sched.qty, _printOpts);
+        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+_inQty+'枚');
+        if(doPrint) _printReceiveLabel(p2, _inQty, _printOpts);
         renderProductTable(); renderHistory(); renderIncomingScheduleList(); renderInboundSession();
       });
     });
