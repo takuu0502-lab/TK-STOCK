@@ -2377,6 +2377,39 @@
   <div id="tbsalesList"></div>
 </div>
 
+<!-- 入庫数選択モーダル（在庫分一部入庫対応） -->
+<div class="modal-overlay" id="inschQtyModal">
+  <div class="modal" style="max-width:420px;width:95%;">
+    <h3 style="margin-top:0;font-size:16px;margin-bottom:4px;">📦 入庫確定</h3>
+    <div id="inschQtyProductInfo" style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;"></div>
+    <!-- ボタン選択 -->
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <button id="inschQtyFullBtn" class="btn btn-teal" style="flex:1;font-size:14px;padding:12px 0;">✅ 全数入庫</button>
+      <button id="inschQtyPartBtn" class="btn btn-ghost" style="flex:1;font-size:14px;padding:12px 0;border-color:var(--amber);color:var(--amber);">📦 一部入庫</button>
+    </div>
+    <!-- 一部入庫：数量入力エリア（初期非表示） -->
+    <div id="inschQtyPartArea" style="display:none;margin-bottom:16px;">
+      <div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;">
+        <label style="font-size:12px;font-weight:600;color:var(--amber);display:block;margin-bottom:8px;">今回入庫する本数</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="number" id="inschQtyInput" min="1" style="width:100px;font-size:22px;font-weight:700;text-align:center;padding:8px;border:2px solid var(--amber);border-radius:8px;background:var(--bg-1);color:var(--text-1);">
+          <span id="inschQtyUnit" style="font-size:15px;color:var(--text-2);">本</span>
+          <span style="font-size:13px;color:var(--text-3);">／</span>
+          <span id="inschQtyMax" style="font-size:15px;color:var(--text-2);"></span>
+        </div>
+        <div id="inschQtyRemain" style="margin-top:8px;font-size:12px;color:var(--text-3);"></div>
+      </div>
+    </div>
+    <!-- エラー -->
+    <div id="inschQtyError" style="display:none;color:var(--red);font-size:12px;margin-bottom:10px;padding:6px 10px;background:rgba(220,50,50,0.06);border-radius:6px;"></div>
+    <!-- 確定ボタン -->
+    <div style="display:flex;gap:8px;">
+      <button id="inschQtyCancel" class="btn btn-ghost" style="flex:1;">キャンセル</button>
+      <button id="inschQtyOk" class="btn btn-teal" style="flex:2;font-size:14px;" disabled>入庫確定する</button>
+    </div>
+  </div>
+</div>
+
 <!-- TB売上 入力モーダル -->
 <div class="modal-overlay" id="tbsalesModal">
   <div class="modal" style="max-width:500px;max-height:92vh;overflow-y:auto;">
@@ -21477,18 +21510,87 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         const p2 = products.find(x=>x.id===sched.productId);
         if(!p2){ alert('商品が見つかりません。'); return; }
 
-        // ── 入庫数入力ダイアログ ──
-        const _inQtyStr = prompt(
-          '【入庫数を入力してください】\n\n'
-          + '商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n'
-          + '発注数: '+sched.qty+'本\n\n'
-          + '一部入荷の場合は入荷した数を入力してください。\n残数は引き続き入庫予定リストに残ります。',
-          String(sched.qty)
-        );
-        if(_inQtyStr === null) return; // キャンセル
-        const _inQty = parseInt(_inQtyStr, 10);
-        if(isNaN(_inQty) || _inQty <= 0){ showToast('正しい数量を入力してください'); return; }
-        if(_inQty > sched.qty){ showToast('発注数（'+sched.qty+'本）を超えた数量は入力できません'); return; }
+        // ── 入庫数選択モーダル ──
+        const _inQty = await new Promise(resolve => {
+          const modal = document.getElementById('inschQtyModal');
+          const infoEl = document.getElementById('inschQtyProductInfo');
+          const partArea = document.getElementById('inschQtyPartArea');
+          const qtyInput = document.getElementById('inschQtyInput');
+          const qtyMax = document.getElementById('inschQtyMax');
+          const qtyUnit = document.getElementById('inschQtyUnit');
+          const qtyRemain = document.getElementById('inschQtyRemain');
+          const errEl = document.getElementById('inschQtyError');
+          const okBtn = document.getElementById('inschQtyOk');
+          const cancelBtn = document.getElementById('inschQtyCancel');
+          const fullBtn = document.getElementById('inschQtyFullBtn');
+          const partBtn = document.getElementById('inschQtyPartBtn');
+
+          // 初期化
+          const _unit = (p2.majorId && categories.find(c=>c.id===p2.majorId&&c.name==='タイヤ')) || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sched.spec||'') ? '本' : '個';
+          infoEl.innerHTML = '<div style="font-weight:700;font-size:14px;color:var(--text-1);">'+escapeHtml(cleanName(sched.productName))+'</div>'
+            +(sched.spec?'<div style="color:var(--text-2);font-size:12px;">'+escapeHtml(sched.spec)+'</div>':'')
+            +'<div style="margin-top:6px;color:var(--teal);font-size:13px;">発注数: <strong>'+sched.qty+_unit+'</strong></div>';
+          partArea.style.display = 'none';
+          qtyInput.value = '';
+          qtyMax.textContent = sched.qty + _unit;
+          qtyUnit.textContent = _unit;
+          qtyRemain.textContent = '';
+          errEl.style.display = 'none';
+          okBtn.disabled = false;
+          okBtn.textContent = '入庫確定する';
+          fullBtn.style.background = 'var(--teal)';
+          fullBtn.style.color = '#fff';
+          partBtn.style.background = '';
+          partBtn.style.opacity = '1';
+
+          let _mode = 'full'; // 'full' or 'part'
+
+          function _setMode(mode){
+            _mode = mode;
+            if(mode === 'full'){
+              fullBtn.style.background='var(--teal)'; fullBtn.style.color='#fff'; fullBtn.style.borderColor='var(--teal)';
+              partBtn.style.background=''; partBtn.style.color='var(--amber)'; partBtn.style.borderColor='var(--amber)';
+              partArea.style.display='none';
+              errEl.style.display='none';
+              okBtn.disabled=false;
+              okBtn.textContent='✅ '+sched.qty+_unit+' 全数入庫確定';
+            } else {
+              partBtn.style.background='var(--amber)'; partBtn.style.color='#fff'; partBtn.style.borderColor='var(--amber)';
+              fullBtn.style.background=''; fullBtn.style.color='var(--teal)'; fullBtn.style.borderColor='var(--teal)';
+              partArea.style.display='block';
+              okBtn.disabled=true;
+              okBtn.textContent='入庫確定する';
+              setTimeout(()=>qtyInput.focus(),50);
+            }
+          }
+          _setMode('full');
+
+          function _onInput(){
+            const v = parseInt(qtyInput.value,10);
+            errEl.style.display='none';
+            if(isNaN(v)||v<=0){ okBtn.disabled=true; qtyRemain.textContent=''; return; }
+            if(v>=sched.qty){ qtyRemain.textContent='※ 発注数と同じ場合は「全数入庫」をご利用ください'; okBtn.disabled=false; }
+            else { qtyRemain.textContent='残り '+(sched.qty-v)+_unit+' → 入庫予定リストに残ります'; okBtn.disabled=false; }
+          }
+          qtyInput.oninput = _onInput;
+
+          function _cleanup(){
+            fullBtn.onclick=null; partBtn.onclick=null; okBtn.onclick=null; cancelBtn.onclick=null; qtyInput.oninput=null;
+            modal.classList.remove('show');
+          }
+          fullBtn.onclick = ()=>_setMode('full');
+          partBtn.onclick = ()=>_setMode('part');
+          cancelBtn.onclick = ()=>{ _cleanup(); resolve(null); };
+          okBtn.onclick = ()=>{
+            if(_mode==='full'){ _cleanup(); resolve(sched.qty); return; }
+            const v = parseInt(qtyInput.value,10);
+            if(isNaN(v)||v<=0){ errEl.textContent='正しい数量を入力してください'; errEl.style.display='block'; return; }
+            if(v>sched.qty){ errEl.textContent='発注数（'+sched.qty+_unit+'）を超えています'; errEl.style.display='block'; return; }
+            _cleanup(); resolve(v);
+          };
+          modal.classList.add('show');
+        });
+        if(_inQty === null) return;
 
         const _isPartial = _inQty < sched.qty;
         const _remaining = sched.qty - _inQty;
