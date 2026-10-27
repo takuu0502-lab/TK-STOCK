@@ -21489,10 +21489,23 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         +'</div>'
         +'</div>'
         /* カード下部ボタン */
-        +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;">'
-        +'<button class="btn btn-teal btn-sm insch-tab-confirm-btn" data-insch-tab-confirm="'+s.id+'" style="flex:1;font-size:12px;">入庫確定</button>'
-        +'<button class="btn btn-ghost btn-sm insch-tab-edit-btn" data-insch-tab-edit="'+s.id+'" style="font-size:12px;padding:0 12px;">編集</button>'
-        +'<button class="btn btn-ghost btn-sm insch-tab-delete-btn" data-insch-tab-delete="'+s.id+'" style="font-size:12px;color:var(--red);border-color:var(--red);padding:0 12px;">削除</button>'
+        +'<div style="padding:10px 16px;background:var(--bg-2);border-top:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap;">'
+        +'<button class="btn btn-teal btn-sm insch-tab-full-btn" data-insch-id="'+s.id+'" style="flex:1;font-size:12px;white-space:nowrap;">✅ 全数入庫</button>'
+        +'<button class="btn btn-ghost btn-sm insch-tab-part-btn" data-insch-id="'+s.id+'" style="flex:1;font-size:12px;white-space:nowrap;border-color:var(--amber);color:var(--amber);">📦 一部入庫</button>'
+        +'<button class="btn btn-ghost btn-sm insch-tab-edit-btn" data-insch-tab-edit="'+s.id+'" style="font-size:12px;padding:0 10px;">編集</button>'
+        +'<button class="btn btn-ghost btn-sm insch-tab-delete-btn" data-insch-tab-delete="'+s.id+'" style="font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);">削除</button>'
+        +'</div>'
+        /* 一部入庫入力エリア（初期非表示） */
+        +'<div class="insch-part-area" id="insch-part-'+s.id+'" style="display:none;padding:12px 16px;background:rgba(184,101,12,0.06);border-top:2px solid var(--amber);">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--amber);margin-bottom:8px;">今回入庫する本数を入力してください</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+        +'<input type="number" class="insch-part-input" id="insch-input-'+s.id+'" min="1" max="'+s.qty+'" placeholder="本数" '
+        +'style="width:90px;font-size:22px;font-weight:700;text-align:center;padding:8px;border:2px solid var(--amber);border-radius:8px;background:var(--bg-1);color:var(--text-1);">'
+        +'<span style="font-size:14px;color:var(--text-2);">本　／　'+s.qty+'本</span>'
+        +'<button class="btn btn-amber btn-sm insch-part-ok-btn" data-insch-id="'+s.id+'" data-max-qty="'+s.qty+'" style="font-size:13px;padding:8px 18px;">確定</button>'
+        +'<button class="btn btn-ghost btn-sm insch-part-cancel-btn" data-insch-id="'+s.id+'" style="font-size:12px;padding:8px 12px;">取消</button>'
+        +'</div>'
+        +'<div class="insch-part-remain" id="insch-remain-'+s.id+'" style="margin-top:6px;font-size:12px;color:var(--text-3);"></div>'
         +'</div>'
         +'</div>';
     }).join('');
@@ -21502,169 +21515,124 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       +'</div>';
     wrap.innerHTML = html;
 
-    wrap.querySelectorAll('[data-insch-tab-confirm]').forEach(btn=>{
+    // ── 入庫処理の共通関数 ──
+    async function _doInbound(schedId, inQty){
+      if(!canWriteData()) return;
+      const sched = incomingSchedules.find(x=>x.id===schedId);
+      if(!sched) return;
+      const p2 = products.find(x=>x.id===sched.productId);
+      if(!p2){ showToast('商品が見つかりません'); return; }
+      const _isPartial = inQty < sched.qty;
+      const _remaining = sched.qty - inQty;
+      const ok = await showConfirm(
+        (_isPartial ? '【一部入庫】' : '【全数入庫】')
+        +'\n商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n'
+        +'入庫数: '+inQty+'本'
+        +(_isPartial?'\n残り'+_remaining+'本 → 入庫予定リストに残します':'')
+      );
+      if(!ok) return;
+      const opBranch = getOperationBranch();
+      const _ischStockBefore = (p2.branchStock&&p2.branchStock[opBranch])||0;
+      const _ischExpected = _ischStockBefore + inQty;
+      addBranchStock(p2, opBranch, inQty);
+      transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
+        type:'in', qty:inQty, date:new Date().toISOString(),
+        user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
+      inboundSession.push({ batchDate:new Date().toISOString(), user:currentUser?currentUser.displayName:'', items:[{ name:p2.name, spec:p2.spec||'', qty:inQty, itemType:'stock' }] });
+      if(_isPartial){
+        sched.qty = _remaining;
+        showToast(inQty+'本を入庫確定しました。残り'+_remaining+'本は入庫予定リストに残ります。', 5000);
+      } else {
+        sched.status='done'; sched.completedAt=new Date().toISOString();
+        const _others = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===opBranch&&s.productId===p2.id&&s.id!==sched.id);
+        _others.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
+        if(sched.inboundType==='customerOrder'&&sched.customerName){
+          const provEntry={ id:uid('prov'), date:new Date().toISOString(), type:'provisional',
+            customerName:sched.customerName, carName:sched.carName||'', scheduledDate:sched.expectedDate||'',
+            branchId:opBranch, staff:currentUser?currentUser.displayName:'',
+            items:[{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty:inQty }], status:'pending' };
+          provisionalOutbounds.push(provEntry);
+          await saveProvisionalOutbounds();
+          if(sched.customerOrderId){ const co=customerOrders.find(x=>x.id===sched.customerOrderId); if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); await saveCustomerOrders(); } }
+          renderProvisionalList(); renderCustomerOrderList();
+          showToast('入庫確定・仮出庫登録しました（'+inQty+'）');
+        } else { showToast('入庫確定しました（'+inQty+'）'); }
+      }
+      await _saveStockSnapshot(p2.id, p2.branchStock, p2.updatedAt);
+      const _saveResult = await saveProducts();
+      await saveTransactions(); await saveIncomingSchedules();
+      if(_saveResult){
+        await refreshProductFromFirebase(p2.id);
+        const _v=products.find(x=>x.id===p2.id);
+        const _act=_v?((_v.branchStock&&_v.branchStock[opBranch])||0):null;
+        if(_act!==null&&_act!==_ischExpected) showToast('⚠️ 在庫の誤差を検出：期待値'+_ischExpected+'本→実際'+_act+'本。ページを更新して確認してください。',8000);
+      } else { showToast('⚠️ 在庫の保存に失敗しました。通信状況を確認して再度お試しください。',5000); }
+      const _printOpts=(sched.inboundType==='customerOrder'&&sched.customerName)?{customerName:sched.customerName,installDate:sched.scheduledDate||''}:{};
+      const doPrint=await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+inQty+'枚');
+      if(doPrint) _printReceiveLabel(p2, inQty, _printOpts);
+      renderProductTable(); renderHistory(); renderIncomingScheduleList(); renderInboundSession();
+    }
+
+    // 全数入庫ボタン
+    wrap.querySelectorAll('.insch-tab-full-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        if(!canWriteData()) return;
-        const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschTabConfirm);
+        const sched = incomingSchedules.find(x=>x.id===btn.dataset.inschId);
+        if(sched) await _doInbound(sched.id, sched.qty);
+      });
+    });
+
+    // 一部入庫ボタン：カード内エリアをトグル
+    wrap.querySelectorAll('.insch-tab-part-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const area = document.getElementById('insch-part-'+btn.dataset.inschId);
+        if(!area) return;
+        const isOpen = area.style.display !== 'none';
+        // 他のエリアを閉じる
+        wrap.querySelectorAll('.insch-part-area').forEach(a=>{ a.style.display='none'; });
+        if(!isOpen){
+          area.style.display='block';
+          const inp = document.getElementById('insch-input-'+btn.dataset.inschId);
+          if(inp){ inp.value=''; inp.focus(); }
+          const rem = document.getElementById('insch-remain-'+btn.dataset.inschId);
+          if(rem) rem.textContent='';
+        }
+      });
+    });
+
+    // 一部入庫：数量入力でリアルタイム残数表示
+    wrap.querySelectorAll('.insch-part-input').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const sid = inp.id.replace('insch-input-','');
+        const sched = incomingSchedules.find(x=>x.id===sid);
         if(!sched) return;
-        const p2 = products.find(x=>x.id===sched.productId);
-        if(!p2){ alert('商品が見つかりません。'); return; }
+        const v = parseInt(inp.value,10);
+        const rem = document.getElementById('insch-remain-'+sid);
+        if(!rem) return;
+        if(isNaN(v)||v<=0){ rem.textContent=''; return; }
+        if(v>=sched.qty){ rem.textContent='全数と同じ場合は「全数入庫」ボタンをご利用ください'; rem.style.color='var(--amber)'; }
+        else { rem.textContent='残り '+(sched.qty-v)+'本 → 入庫予定リストに残ります'; rem.style.color='var(--text-3)'; }
+      });
+    });
 
-        // ── 入庫数選択モーダル ──
-        const _inQty = await new Promise(resolve => {
-          const modal = document.getElementById('inschQtyModal');
-          const infoEl = document.getElementById('inschQtyProductInfo');
-          const partArea = document.getElementById('inschQtyPartArea');
-          const qtyInput = document.getElementById('inschQtyInput');
-          const qtyMax = document.getElementById('inschQtyMax');
-          const qtyUnit = document.getElementById('inschQtyUnit');
-          const qtyRemain = document.getElementById('inschQtyRemain');
-          const errEl = document.getElementById('inschQtyError');
-          const okBtn = document.getElementById('inschQtyOk');
-          const cancelBtn = document.getElementById('inschQtyCancel');
-          const fullBtn = document.getElementById('inschQtyFullBtn');
-          const partBtn = document.getElementById('inschQtyPartBtn');
+    // 一部入庫：確定ボタン
+    wrap.querySelectorAll('.insch-part-ok-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const sid = btn.dataset.inschId;
+        const sched = incomingSchedules.find(x=>x.id===sid);
+        if(!sched) return;
+        const inp = document.getElementById('insch-input-'+sid);
+        const v = parseInt(inp?inp.value:'',10);
+        if(isNaN(v)||v<=0){ showToast('正しい本数を入力してください'); return; }
+        if(v>sched.qty){ showToast('発注数（'+sched.qty+'本）を超えています'); return; }
+        await _doInbound(sid, v);
+      });
+    });
 
-          // 初期化
-          const _unit = (p2.majorId && categories.find(c=>c.id===p2.majorId&&c.name==='タイヤ')) || /^\d{3}\/\d{2}[A-Z]\d{2}/.test(sched.spec||'') ? '本' : '個';
-          infoEl.innerHTML = '<div style="font-weight:700;font-size:14px;color:var(--text-1);">'+escapeHtml(cleanName(sched.productName))+'</div>'
-            +(sched.spec?'<div style="color:var(--text-2);font-size:12px;">'+escapeHtml(sched.spec)+'</div>':'')
-            +'<div style="margin-top:6px;color:var(--teal);font-size:13px;">発注数: <strong>'+sched.qty+_unit+'</strong></div>';
-          partArea.style.display = 'none';
-          qtyInput.value = '';
-          qtyMax.textContent = sched.qty + _unit;
-          qtyUnit.textContent = _unit;
-          qtyRemain.textContent = '';
-          errEl.style.display = 'none';
-          okBtn.disabled = false;
-          okBtn.textContent = '入庫確定する';
-          fullBtn.style.background = 'var(--teal)';
-          fullBtn.style.color = '#fff';
-          partBtn.style.background = '';
-          partBtn.style.opacity = '1';
-
-          let _mode = 'full'; // 'full' or 'part'
-
-          function _setMode(mode){
-            _mode = mode;
-            if(mode === 'full'){
-              fullBtn.style.background='var(--teal)'; fullBtn.style.color='#fff'; fullBtn.style.borderColor='var(--teal)';
-              partBtn.style.background=''; partBtn.style.color='var(--amber)'; partBtn.style.borderColor='var(--amber)';
-              partArea.style.display='none';
-              errEl.style.display='none';
-              okBtn.disabled=false;
-              okBtn.textContent='✅ '+sched.qty+_unit+' 全数入庫確定';
-            } else {
-              partBtn.style.background='var(--amber)'; partBtn.style.color='#fff'; partBtn.style.borderColor='var(--amber)';
-              fullBtn.style.background=''; fullBtn.style.color='var(--teal)'; fullBtn.style.borderColor='var(--teal)';
-              partArea.style.display='block';
-              okBtn.disabled=true;
-              okBtn.textContent='入庫確定する';
-              setTimeout(()=>qtyInput.focus(),50);
-            }
-          }
-          _setMode('full');
-
-          function _onInput(){
-            const v = parseInt(qtyInput.value,10);
-            errEl.style.display='none';
-            if(isNaN(v)||v<=0){ okBtn.disabled=true; qtyRemain.textContent=''; return; }
-            if(v>=sched.qty){ qtyRemain.textContent='※ 発注数と同じ場合は「全数入庫」をご利用ください'; okBtn.disabled=false; }
-            else { qtyRemain.textContent='残り '+(sched.qty-v)+_unit+' → 入庫予定リストに残ります'; okBtn.disabled=false; }
-          }
-          qtyInput.oninput = _onInput;
-
-          function _cleanup(){
-            fullBtn.onclick=null; partBtn.onclick=null; okBtn.onclick=null; cancelBtn.onclick=null; qtyInput.oninput=null;
-            modal.classList.remove('show');
-          }
-          fullBtn.onclick = ()=>_setMode('full');
-          partBtn.onclick = ()=>_setMode('part');
-          cancelBtn.onclick = ()=>{ _cleanup(); resolve(null); };
-          okBtn.onclick = ()=>{
-            if(_mode==='full'){ _cleanup(); resolve(sched.qty); return; }
-            const v = parseInt(qtyInput.value,10);
-            if(isNaN(v)||v<=0){ errEl.textContent='正しい数量を入力してください'; errEl.style.display='block'; return; }
-            if(v>sched.qty){ errEl.textContent='発注数（'+sched.qty+_unit+'）を超えています'; errEl.style.display='block'; return; }
-            _cleanup(); resolve(v);
-          };
-          modal.classList.add('show');
-        });
-        if(_inQty === null) return;
-
-        const _isPartial = _inQty < sched.qty;
-        const _remaining = sched.qty - _inQty;
-        const ok = await showConfirm(
-          '以下を入庫確定しますか？\n\n'
-          + '商品: '+cleanName(sched.productName)+(sched.spec?' '+sched.spec:'')+'\n'
-          + '入庫数: '+_inQty+'本'
-          + (_isPartial ? '\n残り '+_remaining+'本 → 入庫予定リストに残します' : '')
-        );
-        if(!ok) return;
-
-        const opBranch = getOperationBranch();
-        const _ischStockBefore = (p2.branchStock && p2.branchStock[opBranch]) || 0;
-        const _ischExpected = _ischStockBefore + _inQty;
-        addBranchStock(p2, opBranch, _inQty);
-        transactions.unshift({ id:uid('t'), productId:p2.id, barcode:p2.barcode, name:p2.name,
-          type:'in', qty:_inQty, date:new Date().toISOString(),
-          user:currentUser?currentUser.displayName:'', itemType:'stock', reservation:null, branchId:opBranch });
-        const batchDate = new Date().toISOString();
-        inboundSession.push({ batchDate, user:currentUser?currentUser.displayName:'', items:[{ name:p2.name, spec:p2.spec||'', qty:_inQty, itemType:'stock' }] });
-
-        if(_isPartial){
-          // 一部入庫：残数を更新してpendingのまま継続
-          sched.qty = _remaining;
-          showToast(_inQty+'本を入庫確定しました。残り'+_remaining+'本は引き続き入庫予定リストに表示されます。', 5000);
-        } else {
-          // 全数入庫：完了処理
-          sched.status='done'; sched.completedAt=new Date().toISOString();
-          // 同じ商品の他のpending入庫予定も自動完了
-          const _otherPendInsch = incomingSchedules.filter(s=>s.status==='pending'&&s.branchId===opBranch&&s.productId===p2.id&&s.id!==sched.id);
-          _otherPendInsch.forEach(s=>{ s.status='done'; s.completedAt=new Date().toISOString(); });
-          // 客注品の場合は仮出庫自動登録
-          if(sched.inboundType==='customerOrder' && sched.customerName){
-            const provEntry = {
-              id: uid('prov'), date: new Date().toISOString(), type: 'provisional',
-              customerName: sched.customerName, carName: sched.carName||'',
-              scheduledDate: sched.expectedDate||'', branchId: opBranch,
-              staff: currentUser?currentUser.displayName:'',
-              items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty:_inQty }],
-              status: 'pending'
-            };
-            provisionalOutbounds.push(provEntry);
-            await saveProvisionalOutbounds();
-            if(sched.customerOrderId){
-              const co = customerOrders.find(x=>x.id===sched.customerOrderId);
-              if(co){ co.status='completed'; co.completedAt=new Date().toISOString(); await saveCustomerOrders(); }
-            }
-            renderProvisionalList();
-            renderCustomerOrderList();
-            showToast('入庫確定・仮出庫登録しました（'+_inQty+'）');
-          } else {
-            showToast('入庫確定しました（'+_inQty+'）');
-          }
-        }
-        // 在庫スナップショット先行保存
-        await _saveStockSnapshot(p2.id, p2.branchStock, p2.updatedAt);
-        const _ischSaveResult = await saveProducts();
-        await saveTransactions(); await saveIncomingSchedules();
-        // 在庫整合性チェック
-        if(_ischSaveResult){
-          await refreshProductFromFirebase(p2.id);
-          const _ischVerify = products.find(x=>x.id===p2.id);
-          const _ischActual = _ischVerify ? ((_ischVerify.branchStock&&_ischVerify.branchStock[opBranch])||0) : null;
-          if(_ischActual !== null && _ischActual !== _ischExpected){
-            showToast('⚠️ 在庫の誤差を検出：期待値 '+_ischExpected+'本 → 実際 '+_ischActual+'本。ページを更新して確認してください。', 8000);
-          }
-        } else {
-          showToast('⚠️ 在庫の保存に失敗しました。通信状況を確認して再度お試しください。', 5000);
-        }
-        const _printOpts = (sched.inboundType==='customerOrder' && sched.customerName)
-          ? { customerName: sched.customerName, installDate: sched.scheduledDate||'' } : {};
-        const doPrint = await showConfirm('🖨️ 入庫済みラベルを印刷しますか？\n\n'+escapeHtml(p2.brand||'')+' '+escapeHtml(p2.name||'')+' × '+_inQty+'枚');
-        if(doPrint) _printReceiveLabel(p2, _inQty, _printOpts);
-        renderProductTable(); renderHistory(); renderIncomingScheduleList(); renderInboundSession();
+    // 一部入庫：取消ボタン
+    wrap.querySelectorAll('.insch-part-cancel-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const area = document.getElementById('insch-part-'+btn.dataset.inschId);
+        if(area) area.style.display='none';
       });
     });
     wrap.querySelectorAll('[data-insch-tab-edit]').forEach(btn=>{
