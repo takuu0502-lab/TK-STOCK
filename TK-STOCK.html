@@ -2236,6 +2236,16 @@
 <div class="modal-overlay" id="inventoryPrintSettingsModal">
   <div class="modal" style="max-width:400px;">
     <h3>印刷する項目を選択</h3>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-2);display:block;margin-bottom:6px;">並び順</label>
+      <select id="pr_sortorder" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:14px;">
+        <option value="category">分類順（デフォルト）</option>
+        <option value="brand">銘柄順（ブランド→商品名）</option>
+        <option value="size">サイズ順（スペック昇順）</option>
+        <option value="stock_desc">在庫本数順（多い順）</option>
+        <option value="stock_asc">在庫本数順（少ない順）</option>
+      </select>
+    </div>
     <div style="display:flex;flex-direction:column;gap:10px;margin:16px 0;">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_brand" checked style="width:16px;height:16px;accent-color:var(--teal);"> ブランド
@@ -16653,26 +16663,51 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       }
       return (ka[5]||'').localeCompare(kb[5]||'','ja');
     }
-    const _sortedList = [];
-    categories.forEach(cat=>{
-      const catProds = list.filter(p=>p.majorId===cat.id);
-      if(catProds.length===0) return;
-      const _sortFn = _isWheelCat(cat.id)
-        ? _wheelSort
-        : (a,b)=>(a.name||'').localeCompare(b.name||'','ja');
-      (cat.subs||[]).forEach(sub=>{
-        const subProds = catProds.filter(p=>p.subId===sub.id).sort(_sortFn);
-        subProds.forEach(p=>_sortedList.push(p));
+    const _prSortOrder = (document.getElementById('pr_sortorder')||{}).value || 'category';
+
+    let _sortedList = [];
+    if(_prSortOrder === 'category'){
+      // デフォルト：分類→中分類→商品名順
+      categories.forEach(cat=>{
+        const catProds = list.filter(p=>p.majorId===cat.id);
+        if(catProds.length===0) return;
+        const _sortFn = _isWheelCat(cat.id)
+          ? _wheelSort
+          : (a,b)=>(a.name||'').localeCompare(b.name||'','ja');
+        (cat.subs||[]).forEach(sub=>{
+          catProds.filter(p=>p.subId===sub.id).sort(_sortFn).forEach(p=>_sortedList.push(p));
+        });
+        const subIds = new Set((cat.subs||[]).map(s=>s.id));
+        catProds.filter(p=>!subIds.has(p.subId)).sort(_sortFn).forEach(p=>_sortedList.push(p));
       });
-      // 中分類なし（subIdが subs に存在しない）商品
-      const subIds = new Set((cat.subs||[]).map(s=>s.id));
-      const noSubProds = catProds.filter(p=>!subIds.has(p.subId)).sort(_sortFn);
-      noSubProds.forEach(p=>_sortedList.push(p));
-    });
-    // カテゴリ未設定商品を最後に追加
-    const _catIds = new Set(categories.map(c=>c.id));
-    const _noCatProds = list.filter(p=>!_catIds.has(p.majorId)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja'));
-    _noCatProds.forEach(p=>_sortedList.push(p));
+      const _catIds2 = new Set(categories.map(c=>c.id));
+      list.filter(p=>!_catIds2.has(p.majorId)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ja')).forEach(p=>_sortedList.push(p));
+    } else if(_prSortOrder === 'brand'){
+      // 銘柄順：ブランド→商品名
+      _sortedList = list.slice().sort((a,b)=>{
+        const bCmp = (a.brand||'').localeCompare(b.brand||'','ja');
+        if(bCmp !== 0) return bCmp;
+        return (a.name||'').localeCompare(b.name||'','ja');
+      });
+    } else if(_prSortOrder === 'size'){
+      // サイズ順：スペック文字列昇順→商品名
+      _sortedList = list.slice().sort((a,b)=>{
+        const sCmp = (a.spec||'').localeCompare(b.spec||'','ja',{numeric:true});
+        if(sCmp !== 0) return sCmp;
+        return (a.name||'').localeCompare(b.name||'','ja');
+      });
+    } else if(_prSortOrder === 'stock_desc' || _prSortOrder === 'stock_asc'){
+      // 在庫本数順
+      const _dir = _prSortOrder === 'stock_desc' ? -1 : 1;
+      _sortedList = list.slice().sort((a,b)=>{
+        const stkA = a.branchStock ? (a.branchStock[ownBranch]||0) : (a.stock||0);
+        const stkB = b.branchStock ? (b.branchStock[ownBranch]||0) : (b.stock||0);
+        if(stkA !== stkB) return (stkA - stkB) * _dir;
+        return (a.name||'').localeCompare(b.name||'','ja');
+      });
+    } else {
+      _sortedList = list.slice();
+    }
     list = _sortedList;
 
     // 印刷は自店舗のみ
@@ -16707,7 +16742,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
     // 分類区切り行（全件印刷 or 大分類未絞り込み時に表示）
-    const _showCatDivider = selectedMajor === null && !_printOnlySelected;
+    const _showCatDivider = selectedMajor === null && !_printOnlySelected && _prSortOrder === 'category';
     // 分類小計（在庫合計金額列が有効かつ全件印刷時のみ）
     const _showSubtotal = _showCatDivider && colTotalVal;
     // 総列数計算（小計行のcolspan用）
