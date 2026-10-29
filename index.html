@@ -16690,11 +16690,32 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         return (a.name||'').localeCompare(b.name||'','ja');
       });
     } else if(_prSortOrder === 'size'){
-      // サイズ順：スペック文字列昇順→商品名
+      // サイズ順：インチ昇順 → タイヤ幅昇順 → 扁平率昇順 → 商品名
+      function _tireSizeKey(p){
+        const spec = p.spec || '';
+        // 例: 155/65R14, 185/60R15 91H, 11R22.5
+        const m = spec.match(/^(\d{2,3})\/(\d{2,3})[A-Z](\d{2,3})/i);
+        if(m){
+          const width  = parseInt(m[1],10); // 155
+          const aspect = parseInt(m[2],10); // 65
+          const inch   = parseInt(m[3],10); // 14
+          return [inch, width, aspect, p.name||''];
+        }
+        // トラック用（例: 11R22.5）
+        const m2 = spec.match(/^(\d{2,3})[A-Z](\d{2,3}(?:\.\d+)?)/i);
+        if(m2){
+          return [parseFloat(m2[2])||999, parseFloat(m2[1])||999, 0, p.name||''];
+        }
+        // パース不能はスペック文字列で末尾に
+        return [9999, 9999, 9999, spec+' '+(p.name||'')];
+      }
       _sortedList = list.slice().sort((a,b)=>{
-        const sCmp = (a.spec||'').localeCompare(b.spec||'','ja',{numeric:true});
-        if(sCmp !== 0) return sCmp;
-        return (a.name||'').localeCompare(b.name||'','ja');
+        const ka = _tireSizeKey(a), kb = _tireSizeKey(b);
+        // inch昇順, width降順, aspect昇順
+        if(ka[0]!==kb[0]) return ka[0]-kb[0]; // inch 小→大
+        if(ka[1]!==kb[1]) return kb[1]-ka[1]; // width 大→小
+        if(ka[2]!==kb[2]) return ka[2]-kb[2]; // aspect 小→大
+        return (ka[3]||'').localeCompare(kb[3]||'','ja');
       });
     } else if(_prSortOrder === 'stock_desc' || _prSortOrder === 'stock_asc'){
       // 在庫本数順
