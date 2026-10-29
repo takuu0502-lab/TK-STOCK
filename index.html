@@ -9433,6 +9433,7 @@ window.addEventListener('storageReady', function(){
     // 支店別在庫列フラグ（商品一覧と同じロジック）
     const _catColOrder = ['katsuta', 'taniyabe', 'iwama'];
     const _catOwnBranchId = selectedBranchFilter || (currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe');
+    const _catLoginBranchId = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe'; // バッジ用：常にログイン支店
     const _catVisibleBranches = getVisibleBranches().slice().sort((a, b) => {
       if(a === _catOwnBranchId) return -1;
       if(b === _catOwnBranchId) return 1;
@@ -9609,11 +9610,11 @@ window.addEventListener('storageReady', function(){
             }).join('')
           : (()=>{
               const _bStk = cp.branchStock ? (cp.branchStock[_catOwnBranchId]||0) : 0;
-              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&(po.items||[]).some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catLoginBranchId&&(po.items||[]).some(ii=>ii.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(ii=>ii.productId===cp.id).reduce((ss,ii)=>ss+ii.qty,0),0);
               const _ownYearBadge = _yearBadgeForBranch(_catOwnBranchId);
               let _extra = (_bStk > 0 && _ownYearBadge) ? _ownYearBadge : '';
               _extra += _makeInschBadges(cp.id, _catOwnBranchId, 10, true);
-              if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+              if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catLoginBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               const _ppTipOwn = _prodPriceTip(_catOwnBranchId);
               return '<td class="price-num" style="vertical-align:top;"><span'+(_ppTipOwn?' title="'+_ppTipOwn+'" style="cursor:default;color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';"':' style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';"')+'>'+_bStk+'</span>'+_extra+'</td>';
             })();
@@ -9716,9 +9717,9 @@ window.addEventListener('storageReady', function(){
               const _tipBadge = _tip ? '<span style="font-size:9px;display:inline-block;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--teal-dim,#e0f5f0);color:var(--teal);font-weight:600;white-space:nowrap;">'+_tip+'</span>' : '';
               let _extra = _tipBadge;
               _catProds.forEach(cp=>{
-                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&(po.items||[]).some(i=>i.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
+                const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catLoginBranchId&&(po.items||[]).some(i=>i.productId===cp.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===cp.id).reduce((ss,i)=>ss+i.qty,0),0);
                 _extra += _makeInschBadges(cp.id, _catOwnBranchId, 10, true);
-                if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+                if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+cp.id+'" data-prov-branch="'+_catLoginBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               });
               return '<td class="price-num" style="vertical-align:top;"><span'+_tipAttr+' style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+_bStk+'</span>'+_extra+'</td>';
             })();
@@ -9752,11 +9753,11 @@ window.addEventListener('storageReady', function(){
             }).join('')
           : (()=>{
               const _bStk = getStock(p);
-              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catOwnBranchId&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const _provQ = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_catLoginBranchId&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
               const _manOwnYearBadge = _manYearBadgeForBranch(_catOwnBranchId);
               let _extra = (_bStk>0 && _manOwnYearBadge) ? _manOwnYearBadge : '';
               _extra += _makeInschBadges(p.id, _catOwnBranchId, 10, true);
-              if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+_catOwnBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
+              if(_provQ>0){ const _over=_provQ>_bStk; _extra+='<div data-prov-badge="'+p.id+'" data-prov-branch="'+_catLoginBranchId+'" style="cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:'+(_over?'var(--red)':'#e8a020')+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;">'+(_over?'⚠️':'🔖')+' 仮出庫 '+_provQ+'本'+(_over?' 超過':'')+' </div>'; }
               const _memoDiv2 = p.listMemo ? '<div style="font-size:10px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal;text-align:left;font-weight:500;">📌 '+escapeHtml(p.listMemo)+'</div>' : '';
               return '<td class="price-num" style="vertical-align:top;"><span style="color:'+(_bStk>0?'var(--teal)':'var(--text-3)')+';">'+ _bStk+'</span>'+_extra+_memoDiv2+'</td>';
             })();
@@ -16737,9 +16738,15 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     // カテゴリ名取得
     let catLabel, subLabel;
     if(_printOnlySelected){
-      const _selMajorNames = [...new Set(list.map(p=>(majorById(p.majorId)||{}).name).filter(Boolean))];
-      catLabel = _selMajorNames.length > 0 ? _selMajorNames.join('・') : 'すべて';
-      subLabel = '';
+      // 選択商品モード：左パネルで絞り込み中の大分類・中分類があればそれを使う
+      if(selectedMajor){
+        catLabel = (majorById(selectedMajor)||{}).name||'';
+        subLabel = selectedSub ? (subById(selectedMajor, selectedSub)||{}).name||'' : '';
+      } else {
+        const _selMajorNames = [...new Set(list.map(p=>(majorById(p.majorId)||{}).name).filter(Boolean))];
+        catLabel = _selMajorNames.length > 0 ? _selMajorNames.join('・') : 'すべて';
+        subLabel = '';
+      }
     } else {
       catLabel = selectedMajor ? (majorById(selectedMajor)||{}).name||'' : 'すべて';
       subLabel = selectedSub ? (subById(selectedMajor, selectedSub)||{}).name||'' : '';
