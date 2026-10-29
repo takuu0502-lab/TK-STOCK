@@ -2268,6 +2268,9 @@
         <input type="checkbox" id="prcol_totalval" style="width:16px;height:16px;accent-color:var(--teal);"> 在庫合計金額（仕入れ価格 × 在庫数）
       </label>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_provout" style="width:16px;height:16px;accent-color:var(--teal);"> 仮出庫数
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_yearmfg" style="width:16px;height:16px;accent-color:var(--teal);"> 製造年別在庫
       </label>
     </div>
@@ -16595,6 +16598,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const colPType    = document.getElementById('prcol_producttype').checked;
     const colCost      = isAdminUser() && document.getElementById('prcol_cost').checked;
     const colTotalVal  = isAdminUser() && document.getElementById('prcol_totalval').checked;
+    const colProvOut   = document.getElementById('prcol_provout').checked;
     const colYearMfg   = document.getElementById('prcol_yearmfg').checked;
     // ホイールスペック列はホイールカテゴリ選択時のみ有効（チェックあり＋ホイール選択時）
     const _printWcId = (categories.find(c=>c.name==='ホイール')||{}).id;
@@ -16699,6 +16703,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(colPType)    thCols += '<th>商品区分</th>';
     if(colCost)     thCols += '<th style="text-align:right;">仕入れ価格</th>';
     if(colTotalVal) thCols += '<th style="text-align:right;">在庫合計金額</th>';
+    if(colProvOut)  thCols += '<th style="text-align:center;">仮出庫</th>';
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
     // 分類区切り行（全件印刷 or 大分類未絞り込み時に表示）
@@ -16706,9 +16711,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     // 分類小計（在庫合計金額列が有効かつ全件印刷時のみ）
     const _showSubtotal = _showCatDivider && colTotalVal;
     // 総列数計算（小計行のcolspan用）
-    const _totalColCount = 1 + [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colTotalVal?1:0) + (colYearMfg?1:0);
+    const _totalColCount = 1 + [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colTotalVal?1:0) + (colProvOut?1:0) + (colYearMfg?1:0);
     // 在庫合計金額列は右から何番目か（小計を右端に揃えるためのcolspan計算）
-    const _colsAfterTotalVal = colYearMfg ? 1 : 0; // 在庫合計金額の右側にある列数
+    const _colsAfterTotalVal = (colProvOut?1:0) + (colYearMfg?1:0); // 在庫合計金額の右側にある列数
 
     let _prevMajorId = null;
     let _prevCatName = '';
@@ -16780,6 +16785,17 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty);
         if(_showSubtotal) _catSubtotal += _tv;
         tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>';
+      }
+      if(colProvOut){
+        // 仮出庫中（pending）の合計数を集計（預かり在庫除く）
+        const _provQty = provisionalOutbounds.filter(po=>
+          po.status==='pending' &&
+          (po.type||'provisional') !== 'custody' &&
+          (po.branchId||'taniyabe') === ownBranch &&
+          (po.items||[]).some(i=>i.productId===p.id)
+        ).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+(i.qty||0),0),0);
+        const _provColor = _provQty > 0 ? '#c0392b' : '#aaa';
+        tdCols += '<td style="text-align:center;font-weight:700;color:'+_provColor+';">'+(_provQty > 0 ? _provQty+'本' : '—')+'</td>';
       }
       if(colYearMfg){ const _ys = getBranchYearStock(p, ownBranch); const _ysEntries = Object.entries(_ys).filter(([,q])=>(q||0)>0).sort((a,b)=>b[0]-a[0]); tdCols += '<td style="font-size:11px;color:#555;">'+(_ysEntries.length ? _ysEntries.map(([yr,q])=>yr+'年製 '+q+'本').join(' / ') : '—')+'</td>'; }
 
