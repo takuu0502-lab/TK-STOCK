@@ -12468,7 +12468,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       +'</div>'
       +'<div class="qp-blocks">'+blocksHtml+'</div>'
       +'<div class="qp-note-section"><div class="qp-note-title">備考</div><div class="qp-note-body">'+escapeHtml(note)+'</div></div>';
-    document.getElementById('freeQuoteModal').classList.remove('show');
+    // freeQuoteModal は閉じずに printPreviewOverlay を重ねて表示（閉じると元の入力画面に戻る）
     document.getElementById('printPreviewOverlay').style.display = 'flex';
   });
 
