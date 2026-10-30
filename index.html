@@ -8180,6 +8180,8 @@ window.addEventListener('storageReady', function(){
     // 直前スキャンのキャッシュ（同じバーコードを連続スキャン時のみ再利用）
     let _lastBc = null;
     let _lastPid = null;
+    // 固定表示順キャッシュ（入力中は順序を変えない）
+    let _orderedIds = null; // null = 次の_renderで再計算
 
     // 自支店ID取得（在庫一覧で選択中の支店を優先。全支店合計=nullの場合はログイン支店にフォールバック）
     const _ownBr = () => selectedBranchFilter || (currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe');
@@ -8234,6 +8236,7 @@ window.addEventListener('storageReady', function(){
         btn.addEventListener('click', ()=>{
           _catFilter = btn.dataset.icCat || null;
           _subFilter = null;
+          _orderedIds = null; // フィルター変更 → 順序リセット
           _renderCatFilter();
           _render();
         });
@@ -8241,6 +8244,7 @@ window.addEventListener('storageReady', function(){
       _catFilterEl.querySelectorAll('[data-ic-sub]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           _subFilter = btn.dataset.icSub || null;
+          _orderedIds = null; // フィルター変更 → 順序リセット
           _renderCatFilter();
           _render();
         });
@@ -8268,9 +8272,9 @@ window.addEventListener('storageReady', function(){
 
       let totalDiff = 0, diffOver = 0, diffUnder = 0, scannedCount = 0;
 
-      // 並び順セレクトに従ってソート
+      // 並び順：キャッシュがあればそれを使い、なければ計算してキャッシュ
       const _sortSel = (document.getElementById('invCheckSortOrder')||{}).value || 'scanned_first';
-      list.sort((a,b)=>{
+      const _sortFn = (a,b)=>{
         const brId2 = brId;
         const aScanned = _counts.has(a.id) ? 1 : 0;
         const bScanned = _counts.has(b.id) ? 1 : 0;
@@ -8282,7 +8286,6 @@ window.addEventListener('storageReady', function(){
           return (a.name||'').localeCompare(b.name||'','ja');
         }
         if(_sortSel === 'size'){
-          // タイヤサイズ順：インチ小→大 → タイヤ幅大→小 → 扁平昇順 → 商品名
           const _tsk = p => {
             const spec = p.spec||'';
             const m1 = spec.match(/^(\d{2,3})\/(\d{2,3})[A-Z](\d{2,3})/i);
@@ -8305,7 +8308,6 @@ window.addEventListener('storageReady', function(){
           return (a.name||'').localeCompare(b.name||'','ja');
         }
         if(_sortSel === 'diff'){
-          // 差異あり（スキャン済みで差異≠0）→ スキャン済み差異なし → 未スキャン
           const aStk = a.branchStock ? (a.branchStock[brId2]||0) : (a.stock||0);
           const bStk = b.branchStock ? (b.branchStock[brId2]||0) : (b.stock||0);
           const aDiff = _counts.has(a.id) ? Math.abs(_counts.get(a.id)-aStk) : -1;
@@ -8314,7 +8316,19 @@ window.addEventListener('storageReady', function(){
           return (a.name||'').localeCompare(b.name||'','ja');
         }
         return (a.name||'').localeCompare(b.name||'','ja');
-      });
+      };
+      if(!_orderedIds){
+        // 初回または並び順変更後：ソートしてIDリストをキャッシュ
+        list.sort(_sortFn);
+        _orderedIds = list.map(p=>p.id);
+      } else {
+        // キャッシュあり：固定順を維持。新規追加分（スキャンで増えた商品）は末尾に
+        const _knownSet = new Set(_orderedIds);
+        const _newIds = list.filter(p=>!_knownSet.has(p.id)).map(p=>p.id);
+        if(_newIds.length) _orderedIds = [..._orderedIds, ..._newIds];
+        const _idxMap = new Map(_orderedIds.map((id,i)=>[id,i]));
+        list.sort((a,b)=>(_idxMap.get(a.id)??999)-(_idxMap.get(b.id)??999));
+      }
 
       _tbody.innerHTML = list.map(p=>{
         const stk    = p.branchStock ? (p.branchStock[brId]||0) : (p.stock||0);
@@ -8525,9 +8539,9 @@ window.addEventListener('storageReady', function(){
     });
 
     // カメラスキャン
-    // 並び順変更時に再描画
+    // 並び順変更時：キャッシュクリアして再描画
     const _sortOrderEl = document.getElementById('invCheckSortOrder');
-    if(_sortOrderEl) _sortOrderEl.addEventListener('change', ()=>{ _render(); });
+    if(_sortOrderEl) _sortOrderEl.addEventListener('change', ()=>{ _orderedIds = null; _render(); });
 
     document.getElementById('invCheckCameraBtn').addEventListener('click', ()=>{
       const wrap = document.getElementById('invCheckReaderWrap');
@@ -8546,6 +8560,7 @@ window.addEventListener('storageReady', function(){
       _lastBc = null; _lastPid = null;
       _catFilter = null;
       _subFilter = null;
+      _orderedIds = null; // リセット → 順序もクリア
       _msgEl.textContent = '';
       _renderCatFilter();
       _render();
