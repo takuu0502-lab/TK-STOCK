@@ -7011,7 +7011,8 @@ window.addEventListener('storageReady', function(){
       +'</tr></thead>';
     html += '<tbody>';
 
-    rows.forEach(row=>{
+    const _sortedRows = rows.slice().sort((a,b)=>(a.customerName||'').localeCompare(b.customerName||'','ja'));
+    _sortedRows.forEach(row=>{
       const rem = _custodyRemaining(row);
       const logs = (row.logs||[]).slice().sort((a,b)=>a.date>b.date?1:-1);
       const _canEdit = isAdminUser();
