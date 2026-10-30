@@ -17464,7 +17464,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const _branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const isTruck = ['katsuta','iwama'].includes(_branch);
     // タイヤ幅: 特殊サイズ（全店共通）＋標準サイズ
-    const extraWidths = ['6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00','10','11','12'];
+    const extraWidths = ['6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00','9','10','11','12'];
     const wSel = document.getElementById('f_spec_width');
     let wOpts = '<option value=""></option>';
     extraWidths.forEach(v=>{ wOpts += '<option value="'+v+'">'+v+'</option>'; });
