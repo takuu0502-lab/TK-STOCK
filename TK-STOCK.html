@@ -3416,11 +3416,22 @@
     </div>
     <!-- 分類フィルター -->
     <div id="invCheckCatFilter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0;"></div>
-    <!-- スキャン入力 -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
+    <!-- スキャン入力 + 並び順 -->
+    <div style="display:flex;gap:8px;margin-bottom:6px;flex-shrink:0;align-items:center;">
       <input type="text" id="invCheckInput" placeholder="バーコードをスキャン または 入力…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="none"
         style="flex:1;font-size:18px;padding:12px 14px;border:2px solid var(--teal);border-radius:10px;background:var(--bg-1);color:var(--text-1);outline:none;">
       <button class="btn btn-ghost btn-sm" id="invCheckCameraBtn" style="font-size:13px;padding:0 14px;">📷</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0;">
+      <label style="font-size:12px;color:var(--text-2);white-space:nowrap;">並び順：</label>
+      <select id="invCheckSortOrder" style="font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);">
+        <option value="scanned_first">スキャン済み優先</option>
+        <option value="name">商品名順</option>
+        <option value="size">サイズ順（インチ小→大）</option>
+        <option value="stock_desc">登録数順（多い順）</option>
+        <option value="stock_asc">登録数順（少ない順）</option>
+        <option value="diff">差異あり優先</option>
+      </select>
     </div>
     <div id="invCheckMsg" style="font-size:13px;min-height:20px;margin-bottom:8px;flex-shrink:0;"></div>
     <!-- 差異サマリー -->
@@ -8257,11 +8268,52 @@ window.addEventListener('storageReady', function(){
 
       let totalDiff = 0, diffOver = 0, diffUnder = 0, scannedCount = 0;
 
-      // スキャン済み → 未スキャン の順でソート
+      // 並び順セレクトに従ってソート
+      const _sortSel = (document.getElementById('invCheckSortOrder')||{}).value || 'scanned_first';
       list.sort((a,b)=>{
+        const brId2 = brId;
         const aScanned = _counts.has(a.id) ? 1 : 0;
         const bScanned = _counts.has(b.id) ? 1 : 0;
-        return bScanned - aScanned || (a.name||'').localeCompare(b.name||'','ja');
+        if(_sortSel === 'scanned_first'){
+          if(aScanned !== bScanned) return bScanned - aScanned;
+          return (a.name||'').localeCompare(b.name||'','ja');
+        }
+        if(_sortSel === 'name'){
+          return (a.name||'').localeCompare(b.name||'','ja');
+        }
+        if(_sortSel === 'size'){
+          // タイヤサイズ順：インチ小→大 → タイヤ幅大→小 → 扁平昇順 → 商品名
+          const _tsk = p => {
+            const spec = p.spec||'';
+            const m1 = spec.match(/^(\d{2,3})\/(\d{2,3})[A-Z](\d{2,3})/i);
+            if(m1) return [parseInt(m1[3]),parseInt(m1[1]),parseInt(m1[2]),p.name||''];
+            const m2 = spec.match(/^(\d{2,3})[A-Z](\d{2,3}(?:\.\d+)?)/i);
+            if(m2) return [parseFloat(m2[2])||999,parseFloat(m2[1])||999,0,p.name||''];
+            return [9999,9999,9999,(spec+' '+(p.name||'')).trim()];
+          };
+          const ka=_tsk(a), kb=_tsk(b);
+          if(ka[0]!==kb[0]) return ka[0]-kb[0];
+          if(ka[1]!==kb[1]) return kb[1]-ka[1];
+          if(ka[2]!==kb[2]) return ka[2]-kb[2];
+          return (ka[3]||'').localeCompare(kb[3]||'','ja');
+        }
+        if(_sortSel === 'stock_desc' || _sortSel === 'stock_asc'){
+          const dir = _sortSel === 'stock_desc' ? -1 : 1;
+          const sA = a.branchStock ? (a.branchStock[brId2]||0) : (a.stock||0);
+          const sB = b.branchStock ? (b.branchStock[brId2]||0) : (b.stock||0);
+          if(sA !== sB) return (sA - sB) * dir;
+          return (a.name||'').localeCompare(b.name||'','ja');
+        }
+        if(_sortSel === 'diff'){
+          // 差異あり（スキャン済みで差異≠0）→ スキャン済み差異なし → 未スキャン
+          const aStk = a.branchStock ? (a.branchStock[brId2]||0) : (a.stock||0);
+          const bStk = b.branchStock ? (b.branchStock[brId2]||0) : (b.stock||0);
+          const aDiff = _counts.has(a.id) ? Math.abs(_counts.get(a.id)-aStk) : -1;
+          const bDiff = _counts.has(b.id) ? Math.abs(_counts.get(b.id)-bStk) : -1;
+          if(aDiff !== bDiff) return bDiff - aDiff;
+          return (a.name||'').localeCompare(b.name||'','ja');
+        }
+        return (a.name||'').localeCompare(b.name||'','ja');
       });
 
       _tbody.innerHTML = list.map(p=>{
@@ -8473,6 +8525,10 @@ window.addEventListener('storageReady', function(){
     });
 
     // カメラスキャン
+    // 並び順変更時に再描画
+    const _sortOrderEl = document.getElementById('invCheckSortOrder');
+    if(_sortOrderEl) _sortOrderEl.addEventListener('change', ()=>{ _render(); });
+
     document.getElementById('invCheckCameraBtn').addEventListener('click', ()=>{
       const wrap = document.getElementById('invCheckReaderWrap');
       if(wrap.children.length > 0){ wrap.innerHTML = ''; return; }
