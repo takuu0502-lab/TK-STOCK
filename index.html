@@ -2283,6 +2283,9 @@
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_yearmfg" style="width:16px;height:16px;accent-color:var(--teal);"> 製造年別在庫
       </label>
+      <label id="prcol_subtractcustody_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;border-top:1px solid var(--line);margin-top:6px;padding-top:8px;">
+        <input type="checkbox" id="prcol_subtractcustody" checked style="width:16px;height:16px;accent-color:#6d28d9;"> <span>預かり在庫を差し引く（勝田）</span>
+      </label>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="inventoryPrintSettingsCancel">キャンセル</button>
@@ -16594,6 +16597,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const _wcId = (categories.find(c=>c.name==='ホイール')||{}).id;
     const _wsRow = document.getElementById('prcol_wheelspec_row');
     if(_wsRow) _wsRow.style.display = (selectedMajor === _wcId) ? 'flex' : 'none';
+    // 預かり在庫差し引きは勝田 or スーパー管理者のみ表示
+    const _scRow = document.getElementById('prcol_subtractcustody_row');
+    if(_scRow){
+      const _ownBrPrint = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
+      _scRow.style.display = (isSuperAdminUser() || _ownBrPrint === 'katsuta') ? 'flex' : 'none';
+    }
     _printSettingsModal.classList.add('show');
   });
 
@@ -16619,6 +16628,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const _printOnlySelected = selectedProducts.size > 0;
     // 現在の表示フィルターで商品リストを取得
     const ownBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    // 預かり在庫差し引き設定（勝田のみ有効）
+    const _subtractCustody = (document.getElementById('prcol_subtractcustody')||{}).checked && ownBranch === 'katsuta';
+    const _getCustodyQty = _subtractCustody
+      ? (pid) => custodyContracts.filter(c=>c.productId===pid&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0)
+      : () => 0;
     const tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
     const wheelCatId = (categories.find(c=>c.name==='ホイール')||{}).id;
     const sharedWheelCat = categories.find(c=>c.name==='ホイール');
@@ -16835,17 +16849,21 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       if(colLocation) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(locName)+'</td>';
       if(colStock)    tdCols += sortedBranches.map(b=>{
         if(b!==ownBranch && !isTW) return '<td style="color:#aaa;text-align:center;">—</td>';
-        const stk = p.branchStock ? (p.branchStock[b]||0) : (b==='taniyabe'?(p.stock||0):0);
+        const _rawStk = p.branchStock ? (p.branchStock[b]||0) : (b==='taniyabe'?(p.stock||0):0);
+        const _custQtyStk = b===ownBranch ? _getCustodyQty(p.id) : 0;
+        const stk = Math.max(0, _rawStk - _custQtyStk);
         const col = stk > 0 ? '#1a7a5e' : '#c0392b';
-        return '<td style="text-align:center;font-weight:700;color:'+col+';">'+stk+'</td>';
+        const _stkLabel = _subtractCustody && _custQtyStk>0 ? stk+'（預かり▲'+_custQtyStk+'）' : String(stk);
+        return '<td style="text-align:center;font-weight:700;color:'+col+';">'+_stkLabel+'</td>';
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     { const _ec = getEffectiveCostForBranch(p, ownBranch); tdCols += '<td style="text-align:right;font-family:monospace;">'+(_ec ? '&yen;'+Number(_ec).toLocaleString('ja-JP') : '—')+'</td>'; }
       if(colTotalVal){
         const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0);
         const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+        const _custQtyTv = _getCustodyQty(p.id);
         const _effCost = getEffectiveCostForBranch(p, ownBranch);
-        const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty);
+        const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty-_custQtyTv);
         if(_showSubtotal) _catSubtotal += _tv;
         tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>';
       }
@@ -16879,7 +16897,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
-    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((ss,po)=>ss+(po.items||[]).filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); return s+(getEffectiveCostForBranch(p,ownBranch)||0)*Math.max(0,stk-_fpq); },0) : 0;
+    const totalValSum = colTotalVal ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((ss,po)=>ss+(po.items||[]).filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); const _cq=_getCustodyQty(p.id); return s+(getEffectiveCostForBranch(p,ownBranch)||0)*Math.max(0,stk-_fpq-_cq); },0) : 0;
     const totalValFooter = colTotalVal
       ? `<div class="total-footer">合計金額：&yen;${totalValSum.toLocaleString('ja-JP')}</div>`
       : '';
