@@ -6981,7 +6981,10 @@ window.addEventListener('storageReady', function(){
     let html =
       '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'
       +'<h2 class="section-title" style="margin:0;">預かり在庫</h2>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      +'<button class="btn btn-ghost btn-sm" onclick="custodyPrintList()" style="border-color:var(--text-2);color:var(--text-2);">🖨 一覧印刷</button>'
       +'<button class="btn btn-amber" onclick="custodyAddRow()">＋ 新規登録</button>'
+      +'</div>'
       +'</div>'
       +'<div style="background:var(--teal-dim);border:1px solid var(--teal);border-radius:10px;padding:12px 16px;margin-bottom:18px;">'
       +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
@@ -7084,6 +7087,82 @@ window.addEventListener('storageReady', function(){
     html += '</tbody></table></div>';
     el.innerHTML = html;
   }
+
+  // ── 預かり在庫一覧 印刷 ──
+  function custodyPrintList(){
+    const rows = _custodyRows().slice().sort((a,b)=>(a.customerName||'').localeCompare(b.customerName||'','ja'));
+    if(!rows.length){ alert('印刷する預かり在庫がありません'); return; }
+    const shopInfo = getShopInfo ? getShopInfo() : {};
+    const shopName = shopInfo.name || '';
+    const printDate = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+    const totalRem = rows.reduce((s,r)=>s+_custodyRemaining(r),0);
+
+    const rowsHtml = rows.map(row=>{
+      const rem = _custodyRemaining(row);
+      const logs = (row.logs||[]).slice().sort((a,b)=>a.date>b.date?1:-1);
+      const logHtml = logs.length===0 ? '<span style="color:#999;font-size:10pt;">記録なし</span>' : logs.map(l=>{
+        const isAdd=l.type==='add', isSale=l.type==='sale';
+        const labelText=isAdd?'預かり':isSale?'売上':'使用';
+        const labelColor=isAdd?'#6d28d9':isSale?'#b45309':'#166534';
+        const d=l.date?l.date.split('-'):['','',''];
+        const dateStr=d[0]&&d[1]&&d[2]?d[0]+'年'+parseInt(d[1])+'月'+parseInt(d[2])+'日':'';
+        return '<div style="margin-bottom:3pt;font-size:9pt;">'
+          +'<span style="background:'+labelColor+';color:#fff;border-radius:3pt;padding:1pt 5pt;font-size:8pt;font-weight:700;margin-right:4pt;">'+labelText+'</span>'
+          +'<b style="color:'+labelColor+';">'+(isAdd?'+':'')+l.qty+'本</b>'
+          +(dateStr?' <span style="color:#666;">'+dateStr+'</span>':'')
+          +(l.vehicleNo?' <span style="color:#555;">🚗'+escapeHtml(l.vehicleNo)+'</span>':'')
+          +(l.note?' <span style="color:#888;">'+escapeHtml(l.note)+'</span>':'')
+          +'</div>';
+      }).join('');
+      return '<tr>'
+        +'<td style="padding:6pt 8pt;border:0.5pt solid #ccc;font-weight:700;white-space:nowrap;vertical-align:top;">'+escapeHtml(row.customerName)+(row.note?'<div style="font-size:8pt;color:#888;font-weight:400;">'+escapeHtml(row.note)+'</div>':'')+'</td>'
+        +'<td style="padding:6pt 8pt;border:0.5pt solid #ccc;white-space:nowrap;vertical-align:top;">'+escapeHtml(row.pattern||'—')+'</td>'
+        +'<td style="padding:6pt 8pt;border:0.5pt solid #ccc;white-space:nowrap;vertical-align:top;font-family:monospace;">'+escapeHtml(row.size||'—')+'</td>'
+        +'<td style="padding:6pt 8pt;border:0.5pt solid #ccc;text-align:center;vertical-align:top;font-weight:700;">'+row.initialQty+'</td>'
+        +'<td style="padding:6pt 8pt;border:0.5pt solid #ccc;text-align:center;vertical-align:middle;font-size:13pt;font-weight:700;color:'+(rem===0?'#aaa':'#1a7a5e')+';">'+rem+'</td>'
+        +'<td style="padding:6pt 8pt;border:0.5pt solid #ccc;vertical-align:top;">'+logHtml+'</td>'
+        +'</tr>';
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>預かり在庫一覧</title>
+<style>
+  @page{size:A4 landscape;margin:10mm 12mm;}
+  body{font-family:'Hiragino Sans','BIZ UDGothic',sans-serif;font-size:10pt;color:#111;margin:0;padding:0;}
+  h1{font-size:14pt;font-weight:700;margin:0 0 4pt;letter-spacing:1pt;}
+  .meta{font-size:9pt;color:#555;margin-bottom:8pt;display:flex;justify-content:space-between;}
+  table{width:100%;border-collapse:collapse;font-size:9pt;}
+  thead th{background:#e8e8e8;padding:5pt 8pt;border:0.5pt solid #aaa;font-weight:700;text-align:left;white-space:nowrap;}
+  tbody tr:nth-child(even) td{background:#f9f9f9;}
+  .footer{margin-top:8pt;text-align:right;font-size:8pt;color:#888;border-top:0.5pt solid #ccc;padding-top:4pt;}
+</style></head><body>
+<h1>預かり在庫一覧</h1>
+<div class="meta">
+  <span>${escapeHtml(shopName)}</span>
+  <span>発行日：${printDate}　預かり残数合計：<b>${totalRem}本</b></span>
+</div>
+<table>
+<thead><tr>
+  <th>取引先</th>
+  <th>パターン</th>
+  <th>タイヤサイズ</th>
+  <th style="text-align:center;">預かり本数</th>
+  <th style="text-align:center;">残本数</th>
+  <th>使用・売上記録</th>
+</tr></thead>
+<tbody>${rowsHtml}</tbody>
+</table>
+<div class="footer">TK-STOCK 預かり在庫一覧</div>
+</body></html>`;
+
+    const w = window.open('','_blank','width=1100,height=800');
+    if(!w){ alert('ポップアップがブロックされました。許可してから再試行してください。'); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>{ w.print(); },400);
+  }
+  window.custodyPrintList = custodyPrintList;
 
   // ── 汎用フォームオーバーレイ ──
   function _custodyOverlay(title, bodyHTML, onOk, okLabel){
