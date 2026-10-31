@@ -2068,7 +2068,8 @@
             🚛 フォークリフト用サイズ
           </label>
         </div>
-        <div class="tire-size-col">
+        <!-- 通常タイヤ用ドロップダウン群 -->
+        <div class="tire-size-col" id="f_spec_width_col">
           <label>タイヤ幅</label>
           <select id="f_spec_width"><option value="">-</option></select>
         </div>
@@ -2078,7 +2079,7 @@
           <select id="f_spec_aspect"><option value="">-</option></select>
         </div>
         <span class="tire-size-sep" id="f_spec_sep_inch">R</span>
-        <div class="tire-size-col">
+        <div class="tire-size-col" id="f_spec_inch_col">
           <label>インチ</label>
           <select id="f_spec_inch"><option value="">-</option></select>
         </div>
@@ -2089,6 +2090,64 @@
             <select id="f_spec_li1"><option value="">-</option></select>
             <span class="tire-size-li-sep">/</span>
             <select id="f_spec_li2"><option value="">-</option></select>
+          </div>
+        </div>
+        <!-- フォークリフト用サイズプリセット（フォークリフトモード時のみ表示） -->
+        <div id="f_forklift_size_row" style="display:none;width:100%;margin-top:4px;">
+          <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+            <div class="tire-size-col" style="width:auto;flex:1;min-width:180px;">
+              <label>サイズ選択（プリセット）</label>
+              <select id="f_forklift_size_preset" style="width:100%;height:34px;font-size:13px;font-weight:600;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);box-sizing:border-box;">
+                <option value="">-- 選択 --</option>
+                <optgroup label="空気入りタイヤ（バイアス）">
+                  <option>5.00-8</option>
+                  <option>6.00-9</option>
+                  <option>6.50-10</option>
+                  <option>7.00-12</option>
+                  <option>8.25-12</option>
+                  <option>5.50-15</option>
+                  <option>6.00-15</option>
+                  <option>7.00-15</option>
+                  <option>7.50-15</option>
+                  <option>8.25-15</option>
+                  <option>7.50-16</option>
+                  <option>9.00-16</option>
+                  <option>7.50-20</option>
+                  <option>8.25-20</option>
+                  <option>9.00-20</option>
+                  <option>10.00-20</option>
+                </optgroup>
+                <optgroup label="ノーパンク（総ゴム）">
+                  <option>3.50-5/3.00</option>
+                  <option>4.00-8/3.00</option>
+                  <option>5.00-8/3.00</option>
+                  <option>15x4.5-8/3.00</option>
+                  <option>18x7-8/4.33</option>
+                  <option>6.00-9/4.00</option>
+                  <option>21x8-9/6.00</option>
+                  <option>6.50-10/5.00</option>
+                  <option>23x9-10/6.50</option>
+                  <option>4.50-12/3.00</option>
+                  <option>7.00-12/5.00</option>
+                  <option>8.25-12/5.00</option>
+                  <option>250-15/7.00</option>
+                  <option>300-15/8.00</option>
+                  <option>5.50-15/4.50</option>
+                  <option>6.00-15/4.50</option>
+                  <option>7.00-15/6.00</option>
+                  <option>7.50-15/6.00</option>
+                  <option>8.25-15/6.50</option>
+                  <option>28x9-15/7.00</option>
+                  <option>7.50-16/6.00</option>
+                  <option>9.00-16/7.00</option>
+                  <option>7.50-20/6.00</option>
+                  <option>8.25-20/7.00</option>
+                  <option>9.00-20/7.00</option>
+                  <option>10.00-20/7.00</option>
+                </optgroup>
+              </select>
+            </div>
+            <div style="font-size:11px;color:var(--text-3);padding-bottom:8px;">または上の「規格・仕様」欄に直接入力</div>
           </div>
         </div>
       </div>
@@ -17648,41 +17707,31 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
     if(isForklift){
       // ===== フォークリフト用モード =====
-      // 扁平率列・LI列を非表示
-      const _aspectCol = document.getElementById('f_spec_aspect_col');
-      const _sepAspect = document.getElementById('f_spec_sep_aspect');
-      const _sepInch   = document.getElementById('f_spec_sep_inch');
-      const _liCol     = document.getElementById('f_spec_li_col');
-      const _liSpc     = document.getElementById('f_spec_li_spacer');
-      if(_aspectCol) _aspectCol.style.display = 'none';
-      if(_sepAspect) _sepAspect.style.display = 'none';
-      if(_sepInch)   _sepInch.textContent = '-';
-      if(_liCol)     _liCol.style.display = 'none';
-      if(_liSpc)     _liSpc.style.display = 'none';
-      // フォークリフト用タイヤ幅
-      const wSel = document.getElementById('f_spec_width');
-      let wOpts = '<option value=""></option>';
-      ['5.00','6.00','6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00'].forEach(v=>{
-        wOpts += '<option value="'+v+'">'+v+'</option>';
+      // 通常ドロップダウン群をすべて非表示、プリセット選択を表示
+      ['f_spec_width_col','f_spec_sep_aspect','f_spec_aspect_col',
+       'f_spec_sep_inch','f_spec_inch_col','f_spec_li_spacer','f_spec_li_col'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.style.display = 'none';
       });
-      wSel.innerHTML = wOpts;
-      // フォークリフト用インチ（リム径: 8,9,10,12,15,20）
-      const iSel = document.getElementById('f_spec_inch');
-      let iOpts = '<option value="">-</option>';
-      [8,9,10,12,15,20].forEach(v=>{
-        iOpts += '<option value="'+v+'">'+v+'</option>';
-      });
-      iSel.innerHTML = iOpts;
+      const _flSizeRow = document.getElementById('f_forklift_size_row');
+      if(_flSizeRow) _flSizeRow.style.display = 'block';
     } else {
       // ===== 通常タイヤモード =====
+      // フォークリフト用プリセットを非表示、通常ドロップダウン群を表示
+      const _flSizeRow = document.getElementById('f_forklift_size_row');
+      if(_flSizeRow) _flSizeRow.style.display = 'none';
       const _aspectCol = document.getElementById('f_spec_aspect_col');
       const _sepAspect = document.getElementById('f_spec_sep_aspect');
       const _sepInch   = document.getElementById('f_spec_sep_inch');
       const _liCol     = document.getElementById('f_spec_li_col');
       const _liSpc     = document.getElementById('f_spec_li_spacer');
+      const _widthCol  = document.getElementById('f_spec_width_col');
+      const _inchCol   = document.getElementById('f_spec_inch_col');
+      if(_widthCol)  _widthCol.style.display = '';
+      if(_inchCol)   _inchCol.style.display = '';
       if(_aspectCol) _aspectCol.style.display = '';
       if(_sepAspect) _sepAspect.style.display = '';
-      if(_sepInch)   _sepInch.textContent = 'R';
+      if(_sepInch)   { _sepInch.style.display = ''; _sepInch.textContent = 'R'; }
       if(_liCol)     _liCol.style.display = '';
       if(_liSpc)     _liSpc.style.display = '';
       // タイヤ幅: 特殊サイズ（全店共通）＋標準サイズ
@@ -17742,19 +17791,13 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   populateWheelSelects();
   populateSpecTireSelects();
   function updateSpecFromTireSelects(){
-    const isForklift = !!(document.getElementById('f_forklift_mode')||{}).checked;
     const w = document.getElementById('f_spec_width').value;
+    const a = document.getElementById('f_spec_aspect').value;
     const i = document.getElementById('f_spec_inch').value;
-    if(isForklift){
-      // フォークリフト用: 6.00-9 形式
-      document.getElementById('f_spec').value = (w && i) ? (w + '-' + i) : (w || i || '');
-    } else {
-      const a = document.getElementById('f_spec_aspect').value;
-      const li1 = document.getElementById('f_spec_li1').value;
-      const li2 = document.getElementById('f_spec_li2').value;
-      const liStr = li1 ? (' '+li1+(li2?'/'+li2:'')) : '';
-      document.getElementById('f_spec').value = w + a + i + liStr;
-    }
+    const li1 = document.getElementById('f_spec_li1').value;
+    const li2 = document.getElementById('f_spec_li2').value;
+    const liStr = li1 ? (' '+li1+(li2?'/'+li2:'')) : '';
+    document.getElementById('f_spec').value = w + a + i + liStr;
   }
   ['f_spec_width','f_spec_aspect','f_spec_inch','f_spec_li1','f_spec_li2'].forEach(id=>{
     document.getElementById(id).addEventListener('change', updateSpecFromTireSelects);
@@ -17769,7 +17812,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         document.getElementById('f_spec_aspect').value = '';
         document.getElementById('f_spec_inch').value = '';
         document.getElementById('f_spec').value = '';
+        const _preset = document.getElementById('f_forklift_size_preset');
+        if(_preset) _preset.value = '';
         populateSpecTireSelects();
+      });
+    }
+    // フォークリフト用サイズプリセット選択
+    const _flPreset = document.getElementById('f_forklift_size_preset');
+    if(_flPreset){
+      _flPreset.addEventListener('change', function(){
+        if(this.value) document.getElementById('f_spec').value = this.value;
       });
     }
   })();
@@ -17794,8 +17846,13 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById(id).addEventListener('change', updateSpecFromWheelSpec);
   });
   function prefillSpecTireSelects(spec){
-    // フォークリフト用サイズ判定: 幅-リム径 形式 (例: 6.00-9, 7.00-12, 8.25-15)
-    const flMatch = (spec||'').match(/^(\d+(?:\.\d+)?)-(\d+)$/);
+    // フォークリフト用サイズ判定:
+    //   幅-リム 形式: 6.00-9, 7.00-12
+    //   幅-リム/フランジ 形式: 6.00-9/4.00
+    //   外径x幅-リム 形式: 18x7-8, 28x9-15
+    //   外径x幅-リム/フランジ 形式: 18x7-8/4.33
+    //   mm幅 形式: 250-15/7.00, 300-15/8.00
+    const flMatch = (spec||'').match(/^(?:\d+x[\d.½]+-\d+|\d+[\d.]*-\d+)(?:\/[\d.]+)?$/i);
     if(flMatch){
       // フォークリフト用モードをオンにして再構築
       const _flChk = document.getElementById('f_forklift_mode');
@@ -17803,8 +17860,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         _flChk.checked = true;
         populateSpecTireSelects();
       }
-      document.getElementById('f_spec_width').value = flMatch[1];
-      document.getElementById('f_spec_inch').value = flMatch[2];
+      // プリセットにも反映（一致するものがあれば選択）
+      const _preset = document.getElementById('f_forklift_size_preset');
+      if(_preset){
+        const _opts = Array.from(_preset.options).map(o=>o.value);
+        _preset.value = _opts.includes(spec) ? spec : '';
+      }
       return;
     }
     // Match both standard "195/65R15" and truck "6.50R16" formats
@@ -18097,6 +18158,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     populateTireModelSelect();
     const _flChkReset = document.getElementById('f_forklift_mode');
     if(_flChkReset) _flChkReset.checked = false;
+    const _flPresetReset = document.getElementById('f_forklift_size_preset');
+    if(_flPresetReset) _flPresetReset.value = '';
     populateSpecTireSelects();
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
@@ -18152,6 +18215,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     populateTireModelSelect();
     const _flChkEdit = document.getElementById('f_forklift_mode');
     if(_flChkEdit) _flChkEdit.checked = false;
+    const _flPresetEdit = document.getElementById('f_forklift_size_preset');
+    if(_flPresetEdit) _flPresetEdit.value = '';
     populateSpecTireSelects();
     document.getElementById('f_spec').value = p.spec || '';
     prefillSpecTireSelects(p.spec || '');
@@ -19562,6 +19627,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         populateTireModelSelect();
         const _flChkDup = document.getElementById('f_forklift_mode');
         if(_flChkDup) _flChkDup.checked = false;
+        const _flPresetDup = document.getElementById('f_forklift_size_preset');
+        if(_flPresetDup) _flPresetDup.value = '';
         populateSpecTireSelects();
         prefillSpecTireSelects(p.spec || '');
         populateSupplierSelect(p.supplierId || '');
