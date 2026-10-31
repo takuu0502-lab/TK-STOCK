@@ -2060,23 +2060,30 @@
     <div class="field">
       <label>規格・仕様（サイズ等）</label>
       <input type="text" id="f_spec" placeholder="例) 195/65R15 / 単位:本">
-      <div class="tire-size-row" id="f_spec_tire_row" style="display:none;margin-top:8px;">
+      <div class="tire-size-row" id="f_spec_tire_row" style="display:none;margin-top:8px;flex-wrap:wrap;gap:4px 0;">
+        <!-- フォークリフト用トグル（勝田のみ表示） -->
+        <div id="f_forklift_toggle_row" style="display:none;width:100%;margin-bottom:4px;">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-2);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 10px;">
+            <input type="checkbox" id="f_forklift_mode" style="accent-color:#6d28d9;width:14px;height:14px;">
+            🚛 フォークリフト用サイズ
+          </label>
+        </div>
         <div class="tire-size-col">
           <label>タイヤ幅</label>
           <select id="f_spec_width"><option value="">-</option></select>
         </div>
-        <span class="tire-size-sep">/</span>
-        <div class="tire-size-col">
+        <span class="tire-size-sep" id="f_spec_sep_aspect">/</span>
+        <div class="tire-size-col" id="f_spec_aspect_col">
           <label>扁平率</label>
           <select id="f_spec_aspect"><option value="">-</option></select>
         </div>
-        <span class="tire-size-sep">R</span>
+        <span class="tire-size-sep" id="f_spec_sep_inch">R</span>
         <div class="tire-size-col">
           <label>インチ</label>
           <select id="f_spec_inch"><option value="">-</option></select>
         </div>
-        <div style="width:8px;flex:none;"></div>
-        <div class="tire-size-col" style="width:130px;">
+        <div style="width:8px;flex:none;" id="f_spec_li_spacer"></div>
+        <div class="tire-size-col" style="width:130px;" id="f_spec_li_col">
           <label>ロードインデックス</label>
           <div class="tire-size-li-wrap">
             <select id="f_spec_li1"><option value="">-</option></select>
@@ -17631,40 +17638,87 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   }
   function populateSpecTireSelects(){
     const _branch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-    const isTruck = ['katsuta','iwama'].includes(_branch);
-    // タイヤ幅: 特殊サイズ（全店共通）＋標準サイズ
-    const extraWidths = ['6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00','9','10','11','12'];
-    const wSel = document.getElementById('f_spec_width');
-    let wOpts = '<option value=""></option>';
-    extraWidths.forEach(v=>{ wOpts += '<option value="'+v+'">'+v+'</option>'; });
-    for(let w=135; w<=385; w+=10){ wOpts += '<option value="'+w+'">'+w+'</option>'; }
-    wSel.innerHTML = wOpts;
-    const aSel = document.getElementById('f_spec_aspect');
-    let aOpts = '<option value=""></option>';
-    for(let a=25; a<=90; a+=5){ aOpts += '<option value="/'+a+'">'+a+'</option>'; }
-    aSel.innerHTML = aOpts;
-    const iSel = document.getElementById('f_spec_inch');
-    let iOpts = '<option value="">-</option>';
-    if(isTruck){
-      [12,13,14,15,15.5,16,17,17.5,18,19,19.5,20,21,22,22.5].forEach(v=>{
-        iOpts += '<option value="R'+v+'">'+v+'</option>';
+    const isKatsuta = ['katsuta','iwama'].includes(_branch);
+    const isTruck = isKatsuta;
+    const isForklift = isKatsuta && !!(document.getElementById('f_forklift_mode')||{}).checked;
+
+    // フォークリフト用トグルボタン表示制御
+    const _flToggleRow = document.getElementById('f_forklift_toggle_row');
+    if(_flToggleRow) _flToggleRow.style.display = isKatsuta ? 'block' : 'none';
+
+    if(isForklift){
+      // ===== フォークリフト用モード =====
+      // 扁平率列・LI列を非表示
+      const _aspectCol = document.getElementById('f_spec_aspect_col');
+      const _sepAspect = document.getElementById('f_spec_sep_aspect');
+      const _sepInch   = document.getElementById('f_spec_sep_inch');
+      const _liCol     = document.getElementById('f_spec_li_col');
+      const _liSpc     = document.getElementById('f_spec_li_spacer');
+      if(_aspectCol) _aspectCol.style.display = 'none';
+      if(_sepAspect) _sepAspect.style.display = 'none';
+      if(_sepInch)   _sepInch.textContent = '-';
+      if(_liCol)     _liCol.style.display = 'none';
+      if(_liSpc)     _liSpc.style.display = 'none';
+      // フォークリフト用タイヤ幅
+      const wSel = document.getElementById('f_spec_width');
+      let wOpts = '<option value=""></option>';
+      ['5.00','6.00','6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00'].forEach(v=>{
+        wOpts += '<option value="'+v+'">'+v+'</option>';
       });
+      wSel.innerHTML = wOpts;
+      // フォークリフト用インチ（リム径: 8,9,10,12,15,20）
+      const iSel = document.getElementById('f_spec_inch');
+      let iOpts = '<option value="">-</option>';
+      [8,9,10,12,15,20].forEach(v=>{
+        iOpts += '<option value="'+v+'">'+v+'</option>';
+      });
+      iSel.innerHTML = iOpts;
     } else {
-      // 標準サイズ12〜24 + 15.5, 22.5（全店共通）
-      const stdInches = [];
-      for(let inch=12; inch<=24; inch++) stdInches.push(inch);
-      if(!stdInches.includes(15.5)) stdInches.push(15.5);
-      if(!stdInches.includes(22.5)) stdInches.push(22.5);
-      stdInches.sort((a,b)=>a-b);
-      stdInches.forEach(v=>{ iOpts += '<option value="R'+v+'">'+v+'</option>'; });
+      // ===== 通常タイヤモード =====
+      const _aspectCol = document.getElementById('f_spec_aspect_col');
+      const _sepAspect = document.getElementById('f_spec_sep_aspect');
+      const _sepInch   = document.getElementById('f_spec_sep_inch');
+      const _liCol     = document.getElementById('f_spec_li_col');
+      const _liSpc     = document.getElementById('f_spec_li_spacer');
+      if(_aspectCol) _aspectCol.style.display = '';
+      if(_sepAspect) _sepAspect.style.display = '';
+      if(_sepInch)   _sepInch.textContent = 'R';
+      if(_liCol)     _liCol.style.display = '';
+      if(_liSpc)     _liSpc.style.display = '';
+      // タイヤ幅: 特殊サイズ（全店共通）＋標準サイズ
+      const extraWidths = ['6.50','7.00','7.50','8.25','9.00','10.00','11.00','12.00','9','10','11','12'];
+      const wSel = document.getElementById('f_spec_width');
+      let wOpts = '<option value=""></option>';
+      extraWidths.forEach(v=>{ wOpts += '<option value="'+v+'">'+v+'</option>'; });
+      for(let w=135; w<=385; w+=10){ wOpts += '<option value="'+w+'">'+w+'</option>'; }
+      wSel.innerHTML = wOpts;
+      const aSel = document.getElementById('f_spec_aspect');
+      let aOpts = '<option value=""></option>';
+      for(let a=25; a<=90; a+=5){ aOpts += '<option value="/'+a+'">'+a+'</option>'; }
+      aSel.innerHTML = aOpts;
+      const iSel = document.getElementById('f_spec_inch');
+      let iOpts = '<option value="">-</option>';
+      if(isTruck){
+        [12,13,14,15,15.5,16,17,17.5,18,19,19.5,20,21,22,22.5].forEach(v=>{
+          iOpts += '<option value="R'+v+'">'+v+'</option>';
+        });
+      } else {
+        // 標準サイズ12〜24 + 15.5, 22.5（全店共通）
+        const stdInches = [];
+        for(let inch=12; inch<=24; inch++) stdInches.push(inch);
+        if(!stdInches.includes(15.5)) stdInches.push(15.5);
+        if(!stdInches.includes(22.5)) stdInches.push(22.5);
+        stdInches.sort((a,b)=>a-b);
+        stdInches.forEach(v=>{ iOpts += '<option value="R'+v+'">'+v+'</option>'; });
+      }
+      iSel.innerHTML = iOpts;
+      // ロードインデックス (6,8,14,16 + 73-168)
+      let liOpts = '<option value="">-</option>';
+      [6,8,14,16].forEach(v=>{ liOpts += '<option value="'+v+'">'+v+'</option>'; });
+      for(let li=73; li<=168; li++){ liOpts += '<option value="'+li+'">'+li+'</option>'; }
+      document.getElementById('f_spec_li1').innerHTML = liOpts;
+      document.getElementById('f_spec_li2').innerHTML = liOpts;
     }
-    iSel.innerHTML = iOpts;
-    // ロードインデックス (6,8,14,16 + 73-168)
-    let liOpts = '<option value="">-</option>';
-    [6,8,14,16].forEach(v=>{ liOpts += '<option value="'+v+'">'+v+'</option>'; });
-    for(let li=73; li<=168; li++){ liOpts += '<option value="'+li+'">'+li+'</option>'; }
-    document.getElementById('f_spec_li1').innerHTML = liOpts;
-    document.getElementById('f_spec_li2').innerHTML = liOpts;
   }
   function populateWheelSelects(){
     // インチ 12〜22
@@ -17688,17 +17742,37 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   populateWheelSelects();
   populateSpecTireSelects();
   function updateSpecFromTireSelects(){
+    const isForklift = !!(document.getElementById('f_forklift_mode')||{}).checked;
     const w = document.getElementById('f_spec_width').value;
-    const a = document.getElementById('f_spec_aspect').value;
     const i = document.getElementById('f_spec_inch').value;
-    const li1 = document.getElementById('f_spec_li1').value;
-    const li2 = document.getElementById('f_spec_li2').value;
-    const liStr = li1 ? (' '+li1+(li2?'/'+li2:'')) : '';
-    document.getElementById('f_spec').value = w + a + i + liStr;
+    if(isForklift){
+      // フォークリフト用: 6.00-9 形式
+      document.getElementById('f_spec').value = (w && i) ? (w + '-' + i) : (w || i || '');
+    } else {
+      const a = document.getElementById('f_spec_aspect').value;
+      const li1 = document.getElementById('f_spec_li1').value;
+      const li2 = document.getElementById('f_spec_li2').value;
+      const liStr = li1 ? (' '+li1+(li2?'/'+li2:'')) : '';
+      document.getElementById('f_spec').value = w + a + i + liStr;
+    }
   }
   ['f_spec_width','f_spec_aspect','f_spec_inch','f_spec_li1','f_spec_li2'].forEach(id=>{
     document.getElementById(id).addEventListener('change', updateSpecFromTireSelects);
   });
+  // フォークリフト用トグル
+  (function(){
+    const _flChk = document.getElementById('f_forklift_mode');
+    if(_flChk){
+      _flChk.addEventListener('change', function(){
+        // ドロップダウンをリセットしてから再構築
+        document.getElementById('f_spec_width').value = '';
+        document.getElementById('f_spec_aspect').value = '';
+        document.getElementById('f_spec_inch').value = '';
+        document.getElementById('f_spec').value = '';
+        populateSpecTireSelects();
+      });
+    }
+  })();
   // ホイールスペック変更時に規格・仕様へ自動反映（常に上書き）
   function updateSpecFromWheelSpec(){
     const specEl = document.getElementById('f_spec');
@@ -17720,6 +17794,19 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById(id).addEventListener('change', updateSpecFromWheelSpec);
   });
   function prefillSpecTireSelects(spec){
+    // フォークリフト用サイズ判定: 幅-リム径 形式 (例: 6.00-9, 7.00-12, 8.25-15)
+    const flMatch = (spec||'').match(/^(\d+(?:\.\d+)?)-(\d+)$/);
+    if(flMatch){
+      // フォークリフト用モードをオンにして再構築
+      const _flChk = document.getElementById('f_forklift_mode');
+      if(_flChk && !_flChk.checked){
+        _flChk.checked = true;
+        populateSpecTireSelects();
+      }
+      document.getElementById('f_spec_width').value = flMatch[1];
+      document.getElementById('f_spec_inch').value = flMatch[2];
+      return;
+    }
     // Match both standard "195/65R15" and truck "6.50R16" formats
     const match = (spec||'').match(/^(\d+(?:\.\d+)?)(\/\d{2,3})?(R\d{2,4}(?:\.\d)?)/);
     const liMatch = (spec||'').match(/R[\d.]+\s+(\d{2,3})(?:\/(\d{2,3}))?/);
@@ -18008,6 +18095,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('f_car_model').value = '';
     document.getElementById('f_wheel_name').value = '';
     populateTireModelSelect();
+    const _flChkReset = document.getElementById('f_forklift_mode');
+    if(_flChkReset) _flChkReset.checked = false;
     populateSpecTireSelects();
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
@@ -18061,6 +18150,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     populateSubSubSelect(p.majorId, p.subId, p.subSubId || null);
     toggleTireNameField();
     populateTireModelSelect();
+    const _flChkEdit = document.getElementById('f_forklift_mode');
+    if(_flChkEdit) _flChkEdit.checked = false;
     populateSpecTireSelects();
     document.getElementById('f_spec').value = p.spec || '';
     prefillSpecTireSelects(p.spec || '');
@@ -19469,6 +19560,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         populateSubSubSelect(p.majorId, p.subId, p.subSubId || null);
         toggleTireNameField();
         populateTireModelSelect();
+        const _flChkDup = document.getElementById('f_forklift_mode');
+        if(_flChkDup) _flChkDup.checked = false;
         populateSpecTireSelects();
         prefillSpecTireSelects(p.spec || '');
         populateSupplierSelect(p.supplierId || '');
