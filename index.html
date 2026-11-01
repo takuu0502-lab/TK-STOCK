@@ -13986,11 +13986,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('bulkProvBtn').addEventListener('click', async ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
       if(ps.length===0) return;
-      // 在庫超過チェック（フォーム表示前）
+      // 在庫超過チェック（フォーム表示前）── 自支店の仮出庫・在庫のみで判定
+      const _bulkProvBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
       const overItems = ps.filter(p=>{
-        const provQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id))
+        // 自支店の pending 仮出庫のみカウント
+        const provQty = provisionalOutbounds
+          .filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_bulkProvBranch&&(po.items||[]).some(i=>i.productId===p.id))
           .reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-        return (provQty + 1) > getStock(p);
+        // 自支店の在庫数のみで判定
+        const ownStk = p.branchStock ? (p.branchStock[_bulkProvBranch]||0) : (p.stock||0);
+        return (provQty + 1) > ownStk;
       });
       if(overItems.length > 0){
         const names = overItems.map(p=>cleanName(p.name)).join('、');
