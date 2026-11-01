@@ -14105,17 +14105,19 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         ? formResult.itemQtys
         : ps.map(p=>({ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty:1 }));
 
-      // 在庫あり商品のみ仮出庫登録
+      // 在庫なし商品は客注品入庫予定として登録（仮出庫IDを先に確保してから参照する）
+      const _provId = uid('pob');
+
+      // 全商品（在庫あり・なし）を1件の仮出庫エントリとして登録
       const _resolvedItems = _allQtys
-        .filter(item=>!_bpOverIds.has(item.productId))
         .map(item=>({ productId:item.productId, name:item.name, brand:item.brand||'', spec:item.spec||'', partno:item.partno||'', qty:Math.max(1,item.qty||1) }));
 
       let entry = null;
       if(_resolvedItems.length > 0){
         entry = {
-          id: uid('pob'),
+          id: _provId,
           date: new Date().toISOString(),
-          type: formResult.type||'custody',
+          type: formResult.type||'provisional',
           customerName,
           scheduledDate,
           carName: carName||'',
@@ -14131,7 +14133,6 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         await saveProvisionalOutbounds();
       }
 
-      // 在庫なし商品は客注品入庫予定として登録
       if(_hasOver){
         const _inboundDate = formResult.inboundDate || '';
         const _bpUser = currentUser ? currentUser.displayName : '';
@@ -14158,8 +14159,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           notified: false,
           status: 'pending',
           createdAt: new Date().toISOString(),
-          createdBy: _bpUser
+          createdBy: _bpUser,
+          _provId: _provId  // 仮出庫エントリとの紐づけ
         });
+        // 仮出庫エントリにも customerOrderId を設定（在庫なし商品の客注品として紐づけ）
+        if(entry){ entry.customerOrderId = _bpCoId; await saveProvisionalOutbounds(); }
         // 商品ごとに入庫予定エントリを作成
         for(const item of _overQtyItems){
           const _bpP = products.find(x=>x.id===item.productId);
