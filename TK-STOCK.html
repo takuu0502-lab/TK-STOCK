@@ -2817,6 +2817,11 @@
           </label>
         </div>
       </div>
+      <!-- 本数設定セクション（一括仮出庫時のみ表示） -->
+      <div id="prov_items_section" style="display:none;border-top:1px solid var(--line-soft);padding-top:10px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">本数の設定</div>
+        <div id="prov_items_list" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;padding-right:2px;"></div>
+      </div>
       <div style="border-top:1px solid var(--line-soft);padding-top:10px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
           <input type="checkbox" id="prov_inbound_check" style="width:16px;height:16px;cursor:pointer;">
@@ -8772,6 +8777,41 @@ window.addEventListener('storageReady', function(){
       // Lock type selector if specified (hide toggle)
       const _typeRow = typeProvLabel.parentElement.parentElement;
       _typeRow.style.display = (opts&&opts.lockType) ? 'none' : '';
+      // 本数設定セクション（opts.items が渡された場合に表示）
+      const _provItemsSection = document.getElementById('prov_items_section');
+      const _provItemsList = document.getElementById('prov_items_list');
+      const _provItems = (opts && opts.items && opts.items.length > 0) ? opts.items : null;
+      if(_provItems && _provItemsSection && _provItemsList){
+        _provItemsSection.style.display = '';
+        _provItemsList.innerHTML = _provItems.map((item, idx)=>{
+          const maxQ = item.maxQty || 99;
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;">'
+            + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-size:12px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(cleanName(item.name))+'</div>'
+            + (item.spec ? '<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(item.spec)+'</div>' : '')
+            + '<div style="font-size:11px;color:var(--text-3);">在庫: '+maxQ+'本</div>'
+            + '</div>'
+            + '<div class="qty-stepper" style="flex-shrink:0;">'
+            + '<button type="button" class="prov-qty-btn" data-prov-idx="'+idx+'" data-step="-1">−</button>'
+            + '<input type="number" class="prov-qty-input" data-prov-idx="'+idx+'" value="1" min="1" max="'+maxQ+'" style="width:52px;">'
+            + '<button type="button" class="prov-qty-btn" data-prov-idx="'+idx+'" data-step="1">＋</button>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+        // qty stepper イベント
+        _provItemsList.querySelectorAll('.prov-qty-btn').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const inp = _provItemsList.querySelector('.prov-qty-input[data-prov-idx="'+btn.dataset.provIdx+'"]');
+            if(!inp) return;
+            const maxQ = parseInt(inp.max||99,10);
+            const nv = Math.max(1, Math.min(maxQ, parseInt(inp.value||1,10) + parseInt(btn.dataset.step,10)));
+            inp.value = nv;
+          });
+        });
+      } else if(_provItemsSection){
+        _provItemsSection.style.display = 'none';
+      }
+
       // 在庫ある場合は入庫予定オプションを非表示
       const _inboundRow = inboundCheck.closest('label') || inboundCheck.parentElement;
       const _inboundSection = _inboundRow.parentElement;
@@ -8828,7 +8868,15 @@ window.addEventListener('storageReady', function(){
         // 入庫予定セクションが表示されている場合のみ入庫予定日を必須チェック
         if(useInbound && !inboundDate){ errorEl.textContent='入庫予定日を入力してください。'+ (_isCustody?'（預かり出庫には必須です）':''); errorEl.style.display='block'; inboundDateInput.focus(); return; }
         const needsNotification = document.getElementById('prov_notify_yes').checked;
-        cleanup({ customerName: name, scheduledDate: date, carName: car, inboundDate: useInbound ? inboundDate : '', type, needsNotification });
+        // 本数設定を収集
+        let _itemQtys = null;
+        if(_provItems && _provItemsList){
+          _itemQtys = _provItems.map((item, idx)=>{
+            const inp = _provItemsList.querySelector('.prov-qty-input[data-prov-idx="'+idx+'"]');
+            return { ...item, qty: inp ? Math.max(1, parseInt(inp.value||1,10)) : 1 };
+          });
+        }
+        cleanup({ customerName: name, scheduledDate: date, carName: car, inboundDate: useInbound ? inboundDate : '', type, needsNotification, itemQtys: _itemQtys });
       }
       function onCancel(){ cleanup(null); }
       okBtn.addEventListener('click', onOk);
@@ -14002,9 +14050,22 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         const ok = await showConfirm('以下の商品は在庫数を超えた仮出庫になります：' + names + '\nそれでも登録しますか？');
         if(!ok) return;
       }
-      const formResult = await showProvisionalForm({ hideInbound: overItems.length === 0 });
+      // 商品リストと在庫数を渡してフォームを表示（本数設定UI付き）
+      const _bpItemsForForm = ps.map(p=>({
+        productId: p.id,
+        name: p.name,
+        spec: p.spec||'',
+        brand: p.brand||'',
+        partno: p.partno||'',
+        maxQty: p.branchStock ? (p.branchStock[_bulkProvBranch]||0) : (p.stock||0)
+      }));
+      const formResult = await showProvisionalForm({ hideInbound: overItems.length === 0, items: _bpItemsForForm });
       if(!formResult) return;
       const { customerName, scheduledDate, carName } = formResult;
+      // フォームで設定された本数を使用（未設定時は1）
+      const _resolvedItems = formResult.itemQtys
+        ? formResult.itemQtys.map(item=>({ productId: item.productId, name: item.name, brand: item.brand||'', spec: item.spec||'', partno: item.partno||'', qty: Math.max(1, item.qty||1) }))
+        : ps.map(p=>({ productId: p.id, name: p.name, brand: p.brand||'', spec: p.spec||'', partno: p.partno||'', qty: 1 }));
       const entry = {
         id: uid('pob'),
         date: new Date().toISOString(),
@@ -14014,7 +14075,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         carName: carName||'',
         branchId: currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe',
         staff: currentUser?.displayName || '',
-        items: ps.map(p=>({ productId: p.id, name: p.name, brand: p.brand||'', spec: p.spec||'', partno: p.partno||'', qty: 1 })),
+        items: _resolvedItems,
         needsNotification: formResult.needsNotification !== false,
         notified: false,
         notifiedAt: null,
