@@ -21434,7 +21434,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           if(!p.branchStock) p.branchStock={}; const curStk2=p.branchStock[entryBranch]||0;
           if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(entryBranch)+'在庫: '+curStk2+'）'); return; }
           p.updatedAt = _confirmNow;
-          p.branchStock[entryBranch] = curStk2 - item.qty; p.stock = p.branchStock[entryBranch];
+          if(hasYearStock(p, entryBranch)){
+            // 年別在庫がある場合：古い製造年から順に減算（FIFO）
+            const _ys = getBranchYearStock(p, entryBranch);
+            const _yrs = Object.keys(_ys).filter(yr=>((_ys[yr]||0)>0)).sort((a,b)=>Number(a)-Number(b));
+            let _rem = item.qty;
+            for(const _yr of _yrs){ if(_rem<=0) break; _rem -= removeFromYearStock(p, entryBranch, Number(_yr), _rem); }
+          } else {
+            p.branchStock[entryBranch] = curStk2 - item.qty;
+          }
+          p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
           await _saveStockSnapshot(p.id, p.branchStock, _confirmNow);
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
@@ -21473,8 +21482,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           const curStk2 = p.branchStock[entryBranch]||0;
           if(item.qty > curStk2){ alert(cleanName(p.name)+' の在庫が不足しています（'+branchName(entryBranch)+'在庫: '+curStk2+'）'); return; }
           p.updatedAt = _itemNow;
-          p.branchStock[entryBranch] = curStk2 - item.qty;
-          p.stock = p.branchStock[entryBranch];
+          if(hasYearStock(p, entryBranch)){
+            // 年別在庫がある場合：古い製造年から順に減算（FIFO）
+            const _ys2 = getBranchYearStock(p, entryBranch);
+            const _yrs2 = Object.keys(_ys2).filter(yr=>((_ys2[yr]||0)>0)).sort((a,b)=>Number(a)-Number(b));
+            let _rem2 = item.qty;
+            for(const _yr2 of _yrs2){ if(_rem2<=0) break; _rem2 -= removeFromYearStock(p, entryBranch, Number(_yr2), _rem2); }
+          } else {
+            p.branchStock[entryBranch] = curStk2 - item.qty;
+          }
+          p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
           await _saveStockSnapshot(p.id, p.branchStock, _itemNow);
           const batchDate = new Date().toISOString();
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
