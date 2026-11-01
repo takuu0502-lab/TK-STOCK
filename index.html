@@ -2770,6 +2770,8 @@
 <div class="modal-overlay" id="provisionalFormModal">
   <div class="modal" style="max-width:380px;">
     <h3 style="margin-top:0;" id="provFormTitle">🔖 仮出庫の登録</h3>
+    <!-- 在庫振り分けバナー（一括仮出庫で在庫あり/なし混在時） -->
+    <div id="prov_split_banner" style="display:none;margin-bottom:12px;"></div>
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;">
       <div class="field">
         <label style="font-size:13px;font-weight:600;">種別 <span style="color:var(--red);">*</span></label>
@@ -2825,7 +2827,7 @@
       <div style="border-top:1px solid var(--line-soft);padding-top:10px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
           <input type="checkbox" id="prov_inbound_check" style="width:16px;height:16px;cursor:pointer;">
-          📦 入庫予定も同時に登録する
+          <span id="prov_inbound_label">📦 入庫予定も同時に登録する</span>
         </label>
         <div id="prov_inbound_wrap" style="display:none;margin-top:10px;">
           <label style="font-size:13px;font-weight:600;">入庫予定日 <span style="color:var(--red);">*</span></label>
@@ -8778,6 +8780,12 @@ window.addEventListener('storageReady', function(){
       const _typeRow = typeProvLabel.parentElement.parentElement;
       _typeRow.style.display = (opts&&opts.lockType) ? 'none' : '';
       // 本数設定セクション（opts.items が渡された場合に表示）
+      // 振り分けバナー表示
+      const _splitBannerEl = document.getElementById('prov_split_banner');
+      if(_splitBannerEl){
+        if(opts && opts.splitBanner){ _splitBannerEl.innerHTML = opts.splitBanner; _splitBannerEl.style.display = ''; }
+        else { _splitBannerEl.innerHTML = ''; _splitBannerEl.style.display = 'none'; }
+      }
       const _provItemsSection = document.getElementById('prov_items_section');
       const _provItemsList = document.getElementById('prov_items_list');
       const _provItems = (opts && opts.items && opts.items.length > 0) ? opts.items : null;
@@ -8785,15 +8793,19 @@ window.addEventListener('storageReady', function(){
         _provItemsSection.style.display = '';
         _provItemsList.innerHTML = _provItems.map((item, idx)=>{
           const maxQ = item.maxQty || 99;
-          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;">'
+          const isOver = !!item.isOver;
+          const borderCol = isOver ? '#f5a623' : 'var(--line)';
+          const bgCol = isOver ? '#fffaf0' : 'var(--bg-2)';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:'+bgCol+';border:1px solid '+borderCol+';border-radius:8px;">'
             + '<div style="flex:1;min-width:0;">'
+            + (isOver ? '<div style="font-size:10px;color:#b8650c;font-weight:700;margin-bottom:2px;">📅 入庫予定</div>' : '')
             + '<div style="font-size:12px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(cleanName(item.name))+'</div>'
             + (item.spec ? '<div style="font-size:11px;color:var(--text-2);">'+escapeHtml(item.spec)+'</div>' : '')
-            + '<div style="font-size:11px;color:var(--text-3);">在庫: '+maxQ+'本</div>'
+            + '<div style="font-size:11px;color:var(--text-3);">'+(isOver ? '⚠️ 在庫なし' : '在庫: '+maxQ+'本')+'</div>'
             + '</div>'
             + '<div class="qty-stepper" style="flex-shrink:0;">'
             + '<button type="button" class="prov-qty-btn" data-prov-idx="'+idx+'" data-step="-1">−</button>'
-            + '<input type="number" class="prov-qty-input" data-prov-idx="'+idx+'" value="1" min="1" max="'+maxQ+'" style="width:52px;">'
+            + '<input type="number" class="prov-qty-input" data-prov-idx="'+idx+'" value="1" min="1" max="'+(isOver?99:maxQ)+'" style="width:52px;">'
             + '<button type="button" class="prov-qty-btn" data-prov-idx="'+idx+'" data-step="1">＋</button>'
             + '</div>'
             + '</div>';
@@ -8822,10 +8834,15 @@ window.addEventListener('storageReady', function(){
       } else {
         _inboundSection.style.display = '';
       }
-      // Auto-expand 入庫予定 for custody type
-      if(_defType==='custody' && !(opts && opts.hideInbound)){
+      // Auto-expand 入庫予定 for custody type or autoInbound option
+      if((_defType==='custody' || (opts && opts.autoInbound)) && !(opts && opts.hideInbound)){
         inboundCheck.checked = true;
         inboundWrap.style.display = 'block';
+      }
+      // 入庫予定ラベル変更（在庫なし商品がある場合）
+      const _inboundLabelEl = document.getElementById('prov_inbound_label');
+      if(_inboundLabelEl){
+        _inboundLabelEl.textContent = (opts && opts.autoInbound) ? '📅 入庫予定日を設定する（必須）' : '📦 入庫予定も同時に登録する';
       }
       function onTypeChange(){ applyType(document.querySelector('input[name="prov_type"]:checked').value); }
       document.getElementById('prov_type_provisional').addEventListener('change', onTypeChange);
@@ -14034,75 +14051,121 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('bulkProvBtn').addEventListener('click', async ()=>{
       const ps = [...selectedProducts].map(id=>products.find(p=>p.id===id)).filter(Boolean);
       if(ps.length===0) return;
-      // 在庫超過チェック（フォーム表示前）── 自支店の仮出庫・在庫のみで判定
+      // 在庫チェック：自支店の仮出庫・在庫のみで判定し、在庫あり/なしに分類
       const _bulkProvBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-      const overItems = ps.filter(p=>{
-        // 自支店の pending 仮出庫のみカウント
+      const _bpOverIds = new Set();
+      for(const p of ps){
         const provQty = provisionalOutbounds
           .filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_bulkProvBranch&&(po.items||[]).some(i=>i.productId===p.id))
           .reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-        // 自支店の在庫数のみで判定
         const ownStk = p.branchStock ? (p.branchStock[_bulkProvBranch]||0) : (p.stock||0);
-        return (provQty + 1) > ownStk;
-      });
-      if(overItems.length > 0){
-        const names = overItems.map(p=>cleanName(p.name)).join('、');
-        const ok = await showConfirm('以下の商品は在庫数を超えた仮出庫になります：' + names + '\nそれでも登録しますか？');
-        if(!ok) return;
+        if((provQty + 1) > ownStk) _bpOverIds.add(p.id);
       }
-      // 商品リストと在庫数を渡してフォームを表示（本数設定UI付き）
+      const _bpOkItems = ps.filter(p=>!_bpOverIds.has(p.id));   // 在庫あり → 仮出庫
+      const _bpOverItems = ps.filter(p=>_bpOverIds.has(p.id));  // 在庫なし → 入庫予定
+      const _hasOver = _bpOverItems.length > 0;
+      const _hasOk = _bpOkItems.length > 0;
+
+      // フォーム用振り分けバナーHTML
+      let _splitBannerHtml = '';
+      if(_hasOver && _hasOk){
+        _splitBannerHtml = '<div style="background:#fff7e6;border:1px solid #f5a623;border-radius:8px;padding:10px 12px;font-size:12px;">'
+          + '<div style="font-weight:700;color:#b8650c;margin-bottom:6px;">📋 在庫状況により自動で振り分けます</div>'
+          + '<div style="margin-bottom:3px;">🔖 <strong>仮出庫</strong>：'+_bpOkItems.map(p=>cleanName(p.name)).join('、')+'</div>'
+          + '<div>📅 <strong>入庫予定</strong>：'+_bpOverItems.map(p=>cleanName(p.name)).join('、')+'（在庫なし）</div>'
+          + '</div>';
+      } else if(_hasOver && !_hasOk){
+        _splitBannerHtml = '<div style="background:#fff7e6;border:1px solid #f5a623;border-radius:8px;padding:10px 12px;font-size:12px;">'
+          + '<div style="font-weight:700;color:#b8650c;">📅 全商品が在庫なしのため、入庫予定として登録します</div>'
+          + '</div>';
+      }
+
+      // 全商品をフォームに渡す（在庫なしはisOver=trueで区別）
       const _bpItemsForForm = ps.map(p=>({
         productId: p.id,
         name: p.name,
         spec: p.spec||'',
         brand: p.brand||'',
         partno: p.partno||'',
-        maxQty: p.branchStock ? (p.branchStock[_bulkProvBranch]||0) : (p.stock||0)
+        maxQty: p.branchStock ? (p.branchStock[_bulkProvBranch]||0) : (p.stock||0),
+        isOver: _bpOverIds.has(p.id)
       }));
-      const formResult = await showProvisionalForm({ hideInbound: overItems.length === 0, items: _bpItemsForForm });
+
+      const formResult = await showProvisionalForm({
+        hideInbound: !_hasOver,
+        autoInbound: _hasOver,
+        splitBanner: _splitBannerHtml,
+        items: _bpItemsForForm
+      });
       if(!formResult) return;
+
       const { customerName, scheduledDate, carName } = formResult;
-      // フォームで設定された本数を使用（未設定時は1）
-      const _resolvedItems = formResult.itemQtys
-        ? formResult.itemQtys.map(item=>({ productId: item.productId, name: item.name, brand: item.brand||'', spec: item.spec||'', partno: item.partno||'', qty: Math.max(1, item.qty||1) }))
-        : ps.map(p=>({ productId: p.id, name: p.name, brand: p.brand||'', spec: p.spec||'', partno: p.partno||'', qty: 1 }));
-      const entry = {
-        id: uid('pob'),
-        date: new Date().toISOString(),
-        type: formResult.type||'custody',
-        customerName,
-        scheduledDate,
-        carName: carName||'',
-        branchId: currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe',
-        staff: currentUser?.displayName || '',
-        items: _resolvedItems,
-        needsNotification: formResult.needsNotification !== false,
-        notified: false,
-        notifiedAt: null,
-        status: 'pending'
-      };
-      provisionalOutbounds.push(entry);
-      await saveProvisionalOutbounds();
-      // 在庫が不足している商品のみ入庫予定を登録
-      if(formResult.inboundDate && overItems.length > 0){
-        const _bpBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
-        for(const item of entry.items){
-          const _bp = products.find(x=>x.id===item.productId);
-          if(!_bp) continue;
-          if(getStock(_bp) >= item.qty) continue; // 在庫あるものはスキップ
-          incomingSchedules.push({ id:uid('isch'), productId:_bp.id, productName:_bp.name, brand:_bp.brand||'', spec:_bp.spec||'', branchId:_bpBr, qty:item.qty, expectedDate:formResult.inboundDate, customerName:formResult.customerName||'', carName:formResult.carName||'', provScheduledDate:formResult.scheduledDate||'', createdAt:new Date().toISOString(), createdBy:currentUser?currentUser.displayName:'', status:'pending' });
+      // フォームで設定された全商品の本数を取得
+      const _allQtys = formResult.itemQtys
+        ? formResult.itemQtys
+        : ps.map(p=>({ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty:1 }));
+
+      // 在庫あり商品のみ仮出庫登録
+      const _resolvedItems = _allQtys
+        .filter(item=>!_bpOverIds.has(item.productId))
+        .map(item=>({ productId:item.productId, name:item.name, brand:item.brand||'', spec:item.spec||'', partno:item.partno||'', qty:Math.max(1,item.qty||1) }));
+
+      let entry = null;
+      if(_resolvedItems.length > 0){
+        entry = {
+          id: uid('pob'),
+          date: new Date().toISOString(),
+          type: formResult.type||'custody',
+          customerName,
+          scheduledDate,
+          carName: carName||'',
+          branchId: _bulkProvBranch,
+          staff: currentUser?.displayName || '',
+          items: _resolvedItems,
+          needsNotification: formResult.needsNotification !== false,
+          notified: false,
+          notifiedAt: null,
+          status: 'pending'
+        };
+        provisionalOutbounds.push(entry);
+        await saveProvisionalOutbounds();
+      }
+
+      // 在庫なし商品は入庫予定として登録
+      if(_hasOver){
+        const _inboundDate = formResult.inboundDate || '';
+        for(const item of _allQtys.filter(i=>_bpOverIds.has(i.productId))){
+          const _bpP = products.find(x=>x.id===item.productId);
+          if(!_bpP) continue;
+          incomingSchedules.push({
+            id: uid('isch'),
+            productId: _bpP.id,
+            productName: _bpP.name,
+            brand: _bpP.brand||'',
+            spec: _bpP.spec||'',
+            branchId: _bulkProvBranch,
+            qty: Math.max(1, item.qty||1),
+            expectedDate: _inboundDate,
+            customerName: customerName||'',
+            carName: carName||'',
+            provScheduledDate: scheduledDate||'',
+            createdAt: new Date().toISOString(),
+            createdBy: currentUser ? currentUser.displayName : '',
+            status: 'pending'
+          });
         }
         await saveIncomingSchedules();
-        renderProductTable();
       }
+
       selectedProducts.clear(); updateBulkBar();
       renderProductTable();
       switchTab('out');
-      // ラベル印刷の確認（在庫がある商品が含まれる場合のみ）
-      const _hasStock = ps.some(p => getStock(p) > 0);
-      if(_hasStock){
+      // ラベル印刷の確認（仮出庫登録があった場合のみ）
+      if(entry){
         const _doPrint = await showConfirm('仮出庫ラベルを印刷しますか？');
         if(_doPrint) printProvLabel(entry);
+      } else if(_hasOver){
+        showToast('入庫予定として登録しました');
       }
     });
     // 客注品登録（一括）→ 入庫予定登録モーダルを客注品モードで開く
