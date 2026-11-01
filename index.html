@@ -14131,10 +14131,37 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         await saveProvisionalOutbounds();
       }
 
-      // 在庫なし商品は入庫予定として登録
+      // 在庫なし商品は客注品入庫予定として登録
       if(_hasOver){
         const _inboundDate = formResult.inboundDate || '';
-        for(const item of _allQtys.filter(i=>_bpOverIds.has(i.productId))){
+        const _bpUser = currentUser ? currentUser.displayName : '';
+        const _overQtyItems = _allQtys.filter(i=>_bpOverIds.has(i.productId));
+        // 客注品オーダーを1件作成（複数商品をまとめる）
+        const _bpCoId = uid('co');
+        const _coOrderItems = _overQtyItems.map(item=>{
+          const _bpP2 = products.find(x=>x.id===item.productId);
+          return { productId:item.productId, productName:(_bpP2&&_bpP2.name)||item.name, spec:(_bpP2&&_bpP2.spec)||'', brand:(_bpP2&&_bpP2.brand)||'', partno:(_bpP2&&_bpP2.partno)||'', qty:Math.max(1,item.qty||1) };
+        });
+        customerOrders.push({
+          id: _bpCoId,
+          branchId: _bulkProvBranch,
+          items: _coOrderItems,
+          productId: _coOrderItems[0].productId,
+          productName: _coOrderItems[0].productName,
+          spec: _coOrderItems[0].spec||'',
+          qty: _coOrderItems.reduce((s,x)=>s+x.qty,0),
+          customerName: customerName||'',
+          carName: carName||'',
+          expectedDate: _inboundDate,
+          installDate: scheduledDate||'',
+          needsNotification: formResult.needsNotification !== false,
+          notified: false,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          createdBy: _bpUser
+        });
+        // 商品ごとに入庫予定エントリを作成
+        for(const item of _overQtyItems){
           const _bpP = products.find(x=>x.id===item.productId);
           if(!_bpP) continue;
           incomingSchedules.push({
@@ -14148,13 +14175,18 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             expectedDate: _inboundDate,
             customerName: customerName||'',
             carName: carName||'',
-            provScheduledDate: scheduledDate||'',
+            installDate: scheduledDate||'',
+            inboundType: 'customerOrder',
+            customerOrderId: _bpCoId,
+            needsNotification: formResult.needsNotification !== false,
             createdAt: new Date().toISOString(),
-            createdBy: currentUser ? currentUser.displayName : '',
+            createdBy: _bpUser,
             status: 'pending'
           });
         }
+        await saveCustomerOrders();
         await saveIncomingSchedules();
+        renderCustomerOrderList();
       }
 
       selectedProducts.clear(); updateBulkBar();
