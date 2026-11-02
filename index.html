@@ -2340,6 +2340,9 @@
       <label id="prcol_cost_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_cost" checked style="width:16px;height:16px;accent-color:var(--teal);"> 仕入れ価格
       </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="prcol_sellprice" style="width:16px;height:16px;accent-color:var(--teal);"> 販売価格（税込）
+      </label>
       <label id="prcol_totalval_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_totalval" style="width:16px;height:16px;accent-color:var(--teal);"> 在庫合計金額（仕入れ価格 × 在庫数）
       </label>
@@ -17000,6 +17003,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const colPType    = document.getElementById('prcol_producttype').checked;
     const colCost      = isAdminUser() && document.getElementById('prcol_cost').checked;
     const colTotalVal  = isAdminUser() && document.getElementById('prcol_totalval').checked;
+    const colSellPrice = document.getElementById('prcol_sellprice').checked;
     const colProvOut   = document.getElementById('prcol_provout').checked;
     const colYearMfg   = document.getElementById('prcol_yearmfg').checked;
     // ホイールスペック列はホイールカテゴリ選択時のみ有効（チェックあり＋ホイール選択時）
@@ -17160,8 +17164,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(colLocation) thCols += '<th>保管場所</th>';
     if(colStock)    thCols += sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
     if(colPType)    thCols += '<th>商品区分</th>';
-    if(colCost)     thCols += '<th style="text-align:right;">仕入れ価格</th>';
-    if(colTotalVal) thCols += '<th style="text-align:right;">在庫合計金額</th>';
+    if(colCost)      thCols += '<th style="text-align:right;">仕入れ価格</th>';
+    if(colSellPrice) thCols += '<th style="text-align:right;">販売価格（税込）</th>';
+    if(colTotalVal)  thCols += '<th style="text-align:right;">在庫合計金額</th>';
     if(colProvOut)  thCols += '<th style="text-align:center;">仮出庫</th>';
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
@@ -17170,7 +17175,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     // 分類小計（在庫合計金額列が有効かつ全件印刷時のみ）
     const _showSubtotal = _showCatDivider && colTotalVal;
     // 総列数計算（小計行のcolspan用）
-    const _totalColCount = 1 + [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colTotalVal?1:0) + (colProvOut?1:0) + (colYearMfg?1:0);
+    const _totalColCount = 1 + [colBrand,colPartno,colSpec,colWheelSpec,colCategory,colLocation].filter(Boolean).length + (colStock?1:0) + (colPType?1:0) + (colCost?1:0) + (colSellPrice?1:0) + (colTotalVal?1:0) + (colProvOut?1:0) + (colYearMfg?1:0);
     // 在庫合計金額列は右から何番目か（小計を右端に揃えるためのcolspan計算）
     const _colsAfterTotalVal = (colProvOut?1:0) + (colYearMfg?1:0); // 在庫合計金額の右側にある列数
 
@@ -17240,6 +17245,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
       if(colCost)     { const _ec = getEffectiveCostForBranch(p, ownBranch); tdCols += '<td style="text-align:right;font-family:monospace;">'+(_ec ? '&yen;'+Number(_ec).toLocaleString('ja-JP') : '—')+'</td>'; }
+      if(colSellPrice){ const _esf = getBranchFixedSell(p, ownBranch); let _es = _esf !== null ? _esf : null; if(_es === null){ const _sce = findCatalogEntryForProduct(p); if(_sce) _es = computeSellPrice(_sce.b, _sce.m, _sce.w, _sce.t); } if(_es === null) _es = p.sellPrice || null; const _esTax = _es ? Math.round(_es * 1.1) : null; tdCols += '<td style="text-align:right;font-family:monospace;color:#1a7a5e;">'+(_esTax ? '&yen;'+Number(_esTax).toLocaleString('ja-JP') : '—')+'</td>'; }
       if(colTotalVal){
         const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0);
         const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
