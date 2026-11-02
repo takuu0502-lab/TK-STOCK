@@ -7355,7 +7355,7 @@ window.addEventListener('storageReady', function(){
       (p.spec||'').toLowerCase().includes(lower)||
       (p.brand||'').toLowerCase().includes(lower)||
       (p.barcode||'').toLowerCase().includes(lower)
-    ).slice(0,10);
+    ).slice(0,20);
     if(!matches.length){
       list.innerHTML='<div style="padding:8px 12px;color:var(--text-3);font-size:13px;">見つかりません</div>';
       list.style.display='block'; return;
