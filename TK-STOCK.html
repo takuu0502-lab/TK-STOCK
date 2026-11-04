@@ -5308,10 +5308,11 @@ window.addEventListener('storageReady', function(){
         }
       });
       const byModel = Object.assign({}, allCostRules[pricingActiveBranch].byModel || {});
+      const _allPercentEls = Array.from(document.querySelectorAll('[data-cost-model-rule-percent]'));
       document.querySelectorAll('[data-cost-model-rule-basis]').forEach(basisEl=>{
         const key = basisEl.dataset.costModelRuleBasis;
         if(!key) return;
-        const percentEl = document.querySelector('[data-cost-model-rule-percent="'+key+'"]');
+        const percentEl = _allPercentEls.find(el => el.dataset.costModelRulePercent === key);
         if(!percentEl) return;
         const basis = basisEl.value;
         const pct = Number(percentEl.value) || 0;
@@ -5359,8 +5360,8 @@ window.addEventListener('storageReady', function(){
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
-        const basisEl = document.querySelector('[data-cost-model-rule-basis="'+key+'"]');
-        const percentEl = document.querySelector('[data-cost-model-rule-percent="'+key+'"]');
+        const basisEl = Array.from(document.querySelectorAll('[data-cost-model-rule-basis]')).find(el => el.dataset.costModelRuleBasis === key);
+        const percentEl = Array.from(document.querySelectorAll('[data-cost-model-rule-percent]')).find(el => el.dataset.costModelRulePercent === key);
         if(!basisEl) return;
         const basis = basisEl.value; const pct = Number(percentEl ? percentEl.value : 0) || 0;
         if(basis && (pct > 0 || basis === 'cost' || basis === 'retail_on' || basis === 'wholesale_on')) _abByModel[key] = {basis, percent: pct};
@@ -5553,11 +5554,11 @@ window.addEventListener('storageReady', function(){
       const models = Array.from(new Set(getCatalog().filter(r=>r.b===brand).map(r=>r.m)));
       models.forEach(model=>{
         const key = brand+'||'+model;
-        const basisEl = document.querySelector('[data-ext-model-rule-basis="'+key+'"]');
-        const percentEl = document.querySelector('[data-ext-model-rule-percent="'+key+'"]');
+        const basisEl = Array.from(document.querySelectorAll('[data-ext-model-rule-basis]')).find(el => el.dataset.extModelRuleBasis === key);
+        const percentEl = Array.from(document.querySelectorAll('[data-ext-model-rule-percent]')).find(el => el.dataset.extModelRulePercent === key);
         if(!basisEl) return;
         const basis = basisEl.value;
-        if(basis){ byModel[key] = {basis, percent: Number(percentEl.value) || 0}; }
+        if(basis){ byModel[key] = {basis, percent: Number(percentEl ? percentEl.value : 0) || 0}; }
         else { delete byModel[key]; }
       });
     });
