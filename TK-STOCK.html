@@ -4413,7 +4413,23 @@ window.addEventListener('storageReady', function(){
     {b:'BRIDGESTONE',m:'EP150(OE)',s:'155/65R14',w:13100,t:15100},
     {b:'BRIDGESTONE',m:'EP150(OE)',s:'175/70R14',w:14600,t:16700},
     {b:'BRIDGESTONE',m:'EP150(OE)',s:'165/70R14',w:13400,t:15500},
-    {b:'BRIDGESTONE',m:'EP150(OE)',s:'155/70R13',w:11500,t:13300}
+    {b:'BRIDGESTONE',m:'EP150(OE)',s:'155/70R13',w:11500,t:13300},
+    // ブリヂストン アイスパートナー2（スタッドレスタイヤ）
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'225/50R17',w:28880,t:null,season:'studless',partno:'15431528'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'225/55R17',w:27810,t:null,season:'studless',partno:'15431516'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'195/60R16',w:18890,t:null,season:'studless',partno:'15431506'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'175/60R16',w:16620,t:null,season:'studless',partno:'15431505'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'195/65R16',w:16750,t:null,season:'studless',partno:'15432855'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'165/55R15',w:14670,t:null,season:'studless',partno:'15431499'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'205/65R15',w:15410,t:null,season:'studless',partno:'15431504'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'165/55R14',w:12660,t:null,season:'studless',partno:'15431493'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'175/65R14',w:10390,t:null,season:'studless',partno:'15431496'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'185/70R14',w:11320,t:null,season:'studless',partno:'15431498'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'165/65R13',w:9180, t:null,season:'studless',partno:'15431491'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'155/65R13',w:7560, t:null,season:'studless',partno:'15431489'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'155/80R13',w:7440, t:null,season:'studless',partno:'15431490'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'145/80R13',w:5700, t:null,season:'studless',partno:'15431488'},
+    {b:'ブリヂストン',m:'アイスパートナー2',s:'145/80R12',w:6030, t:null,season:'studless',partno:'15431487'}
   ];
 
   const DISTINCT_BRANDS = Array.from(new Set(PRICE_CATALOG.map(r=>r.b))).sort((a,b)=>a.localeCompare(b,'ja'));
@@ -16872,6 +16888,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           majorId,
           subId,
           spec: r.s,
+          partno: r.partno || '',
           stock: 0,
           minStock: 0,
           costPrice: r.c ? r.c : (cost!==null ? cost : r.w),
