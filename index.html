@@ -1163,11 +1163,12 @@
           <table style="width:100%;border-collapse:collapse;">
             <thead>
               <tr style="background:var(--bg-3);">
-                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;width:36px;"><input type="checkbox" id="orderCheckAll" checked title="全選択／解除" style="cursor:pointer;width:15px;height:15px;"></th>
-                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">商品名</th>
-                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">規格・品番</th>
-                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">現在在庫</th>
-                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">発注数量</th>
+                <th style="padding:7px 8px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;width:36px;"><input type="checkbox" id="orderCheckAll" checked title="全選択／解除" style="cursor:pointer;width:15px;height:15px;"></th>
+                <th style="padding:7px 6px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">商品名</th>
+                <th style="padding:7px 6px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">規格・サイズ</th>
+                <th style="padding:7px 6px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">品番</th>
+                <th style="padding:7px 6px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">在庫</th>
+                <th style="padding:7px 6px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">発注数</th>
               </tr>
             </thead>
             <tbody id="orderItemsTbody"></tbody>
@@ -15735,14 +15736,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     };
 
     // 商品行を生成
+    const inputStyle = 'width:100%;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line);border-radius:5px;color:var(--text-1);font-size:12px;padding:4px 6px;font-family:inherit;';
     tbody.innerHTML = ps.map((p,i)=>
       '<tr style="border-top:1px solid var(--line-soft);" data-order-row="'+i+'">'
-      +'<td style="padding:8px 10px;text-align:center;"><input type="checkbox" class="order-row-chk" data-order-idx="'+i+'" checked style="cursor:pointer;width:15px;height:15px;"></td>'
-      +'<td style="padding:8px 10px;font-size:13px;">'+escapeHtml(cleanName(p.name))+'</td>'
-      +'<td style="padding:8px 10px;font-size:12px;color:var(--text-2);">'+escapeHtml((p.spec||'')+(p.partno?' / '+p.partno:''))+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;font-size:13px;color:var(--text-2);">'+getStock(p)+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;">'
-      +'<input type="number" class="order-qty-input" data-order-idx="'+i+'" value="1" min="1" style="width:60px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:14px;font-weight:700;padding:4px 6px;">'
+      +'<td style="padding:6px 8px;text-align:center;vertical-align:middle;"><input type="checkbox" class="order-row-chk" data-order-idx="'+i+'" checked style="cursor:pointer;width:15px;height:15px;"></td>'
+      +'<td style="padding:6px 6px;min-width:100px;"><input type="text" class="order-name-input" data-order-idx="'+i+'" value="'+escapeHtml(cleanName(p.name))+'" style="'+inputStyle+'"></td>'
+      +'<td style="padding:6px 6px;min-width:90px;"><input type="text" class="order-spec-input" data-order-idx="'+i+'" value="'+escapeHtml(p.spec||'')+'" style="'+inputStyle+'"></td>'
+      +'<td style="padding:6px 6px;min-width:80px;"><input type="text" class="order-partno-input" data-order-idx="'+i+'" value="'+escapeHtml(p.partno||'')+'" style="'+inputStyle+'font-family:monospace;"></td>'
+      +'<td style="padding:6px 6px;text-align:center;vertical-align:middle;font-size:12px;color:var(--text-2);">'+getStock(p)+'</td>'
+      +'<td style="padding:6px 6px;text-align:center;vertical-align:middle;">'
+      +'<input type="number" class="order-qty-input" data-order-idx="'+i+'" value="1" min="1" style="width:52px;text-align:center;background:var(--bg-1);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;font-weight:700;padding:4px 4px;">'
       +'</td>'
       +'</tr>'
     ).join('');
@@ -15783,26 +15786,33 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
       const checkedIdxs = [...modal.querySelectorAll('.order-row-chk')].filter(c=>c.checked).map(c=>Number(c.dataset.orderIdx));
       if(checkedIdxs.length === 0){ errorEl.textContent='発注品目を1つ以上選択してください。'; errorEl.style.display='block'; return; }
-      const qtyInputs = [...modal.querySelectorAll('.order-qty-input')];
-      const selectedPs = checkedIdxs.map(i=>ps[i]);
-      const selectedQtys = checkedIdxs.map(i=>Number(qtyInputs.find(el=>Number(el.dataset.orderIdx)===i)?.value)||1);
+      // 編集後の値を取得
+      const getInputVal = (cls, idx) => { const el = modal.querySelector('.'+cls+'[data-order-idx="'+idx+'"]'); return el ? el.value.trim() : ''; };
+      const selectedItems = checkedIdxs.map(i=>({
+        name: getInputVal('order-name-input', i) || cleanName(ps[i].name),
+        spec: getInputVal('order-spec-input', i),
+        partno: getInputVal('order-partno-input', i),
+        qty: Number(modal.querySelector('.order-qty-input[data-order-idx="'+i+'"]')?.value)||1
+      }));
       modal.classList.remove('show');
-      printOrderDoc({ ps: selectedPs, qtys: selectedQtys, supplier, date, note });
+      printOrderDoc({ items: selectedItems, supplier, date, note });
     };
   }
 
-  function printOrderDoc({ ps, qtys, supplier, date, note }){
+  function printOrderDoc({ ps, qtys, items, supplier, date, note }){
     const dateStr = new Date(date).toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
     const printedStr = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
     const shopName = currentUser ? (currentUser.displayName || '') : '';
 
-    let rows = ps.map((p,i)=>
+    // items形式（新）またはps/qtys形式（旧互換）に対応
+    const rowData = items ? items : ps.map((p,i)=>({ name: cleanName(p.name), spec: p.spec||'', partno: p.partno||'', qty: qtys[i] }));
+    let rows = rowData.map((r,i)=>
       '<tr>'
       +'<td class="op-num">'+(i+1)+'</td>'
-      +'<td>'+escapeHtml(cleanName(p.name))+'</td>'
-      +'<td style="font-size:9pt;">'+escapeHtml(p.spec||'—')+'</td>'
-      +'<td style="font-size:9pt;font-family:monospace;">'+escapeHtml(p.partno||'—')+'</td>'
-      +'<td class="op-qty">'+qtys[i]+'</td>'
+      +'<td>'+escapeHtml(r.name||'')+'</td>'
+      +'<td style="font-size:9pt;">'+escapeHtml(r.spec||'—')+'</td>'
+      +'<td style="font-size:9pt;font-family:monospace;">'+escapeHtml(r.partno||'—')+'</td>'
+      +'<td class="op-qty">'+r.qty+'</td>'
       +'</tr>'
     ).join('');
 
