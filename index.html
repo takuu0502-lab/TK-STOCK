@@ -1163,6 +1163,7 @@
           <table style="width:100%;border-collapse:collapse;">
             <thead>
               <tr style="background:var(--bg-3);">
+                <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;width:36px;"><input type="checkbox" id="orderCheckAll" checked title="全選択／解除" style="cursor:pointer;width:15px;height:15px;"></th>
                 <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">商品名</th>
                 <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:left;font-weight:600;">規格・品番</th>
                 <th style="padding:7px 10px;font-size:11px;color:var(--text-3);text-align:center;font-weight:600;white-space:nowrap;">現在在庫</th>
@@ -15735,7 +15736,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
     // 商品行を生成
     tbody.innerHTML = ps.map((p,i)=>
-      '<tr style="border-top:1px solid var(--line-soft);">'
+      '<tr style="border-top:1px solid var(--line-soft);" data-order-row="'+i+'">'
+      +'<td style="padding:8px 10px;text-align:center;"><input type="checkbox" class="order-row-chk" data-order-idx="'+i+'" checked style="cursor:pointer;width:15px;height:15px;"></td>'
       +'<td style="padding:8px 10px;font-size:13px;">'+escapeHtml(cleanName(p.name))+'</td>'
       +'<td style="padding:8px 10px;font-size:12px;color:var(--text-2);">'+escapeHtml((p.spec||'')+(p.partno?' / '+p.partno:''))+'</td>'
       +'<td style="padding:8px 10px;text-align:center;font-size:13px;color:var(--text-2);">'+getStock(p)+'</td>'
@@ -15744,6 +15746,27 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       +'</td>'
       +'</tr>'
     ).join('');
+
+    // チェックボックス行の見た目連動
+    tbody.addEventListener('change', e=>{
+      if(e.target.classList.contains('order-row-chk')){
+        const row = e.target.closest('tr');
+        row.style.opacity = e.target.checked ? '1' : '0.35';
+        // 全選択チェックボックスの状態を更新
+        const allChks = [...tbody.querySelectorAll('.order-row-chk')];
+        const allCheckEl = document.getElementById('orderCheckAll');
+        if(allCheckEl) allCheckEl.checked = allChks.every(c=>c.checked);
+      }
+    });
+
+    // 全選択／解除
+    const checkAllEl = document.getElementById('orderCheckAll');
+    if(checkAllEl){
+      checkAllEl.onchange = ()=>{
+        const checked = checkAllEl.checked;
+        tbody.querySelectorAll('.order-row-chk').forEach(c=>{ c.checked = checked; c.closest('tr').style.opacity = checked ? '1' : '0.35'; });
+      };
+    }
 
     modal.classList.add('show');
     setTimeout(()=>selEl.focus(), 100);
@@ -15758,9 +15781,13 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       if(!supplier){ errorEl.textContent='仕入先を選択または追加してください。'; errorEl.style.display='block'; selEl.focus(); return; }
       if(!date){ errorEl.textContent='発注日を入力してください。'; errorEl.style.display='block'; dateEl.focus(); return; }
 
-      const qtys = [...modal.querySelectorAll('.order-qty-input')].map(el=>Number(el.value)||1);
+      const checkedIdxs = [...modal.querySelectorAll('.order-row-chk')].filter(c=>c.checked).map(c=>Number(c.dataset.orderIdx));
+      if(checkedIdxs.length === 0){ errorEl.textContent='発注品目を1つ以上選択してください。'; errorEl.style.display='block'; return; }
+      const qtyInputs = [...modal.querySelectorAll('.order-qty-input')];
+      const selectedPs = checkedIdxs.map(i=>ps[i]);
+      const selectedQtys = checkedIdxs.map(i=>Number(qtyInputs.find(el=>Number(el.dataset.orderIdx)===i)?.value)||1);
       modal.classList.remove('show');
-      printOrderDoc({ ps, qtys, supplier, date, note });
+      printOrderDoc({ ps: selectedPs, qtys: selectedQtys, supplier, date, note });
     };
   }
 
