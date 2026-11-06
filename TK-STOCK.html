@@ -2355,7 +2355,10 @@
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_yearmfg" style="width:16px;height:16px;accent-color:var(--teal);"> 製造年別在庫
       </label>
-      <label id="prcol_subtractcustody_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;border-top:1px solid var(--line);margin-top:6px;padding-top:8px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;border-top:1px solid var(--line);margin-top:6px;padding-top:8px;">
+        <input type="checkbox" id="prcol_subtractprov" style="width:16px;height:16px;accent-color:#6d28d9;"> <span>仮出庫分を在庫数・金額から差し引く</span>
+      </label>
+      <label id="prcol_subtractcustody_row" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_subtractcustody" checked style="width:16px;height:16px;accent-color:#6d28d9;"> <span>預かり在庫を差し引く（勝田）</span>
       </label>
     </div>
@@ -17078,6 +17081,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const _getCustodyQty = _subtractCustody
       ? (pid) => custodyContracts.filter(c=>c.productId===pid&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0)
       : () => 0;
+    // 仮出庫差し引き設定
+    const _subtractProv = !!(document.getElementById('prcol_subtractprov')||{}).checked;
+    const _getProvOutQty = _subtractProv
+      ? (pid) => provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')!=='custody'&&(po.branchId||'taniyabe')===ownBranch&&(po.items||[]).some(i=>i.productId===pid)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===pid).reduce((ss,i)=>ss+(i.qty||0),0),0)
+      : () => 0;
     const tireCatId = (categories.find(c=>c.name==='タイヤ')||{}).id;
     const wheelCatId = (categories.find(c=>c.name==='ホイール')||{}).id;
     const sharedWheelCat = categories.find(c=>c.name==='ホイール');
@@ -17219,7 +17227,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(colPartno)   thCols += '<th>品番</th>';
     if(colSpec)      thCols += '<th>規格・サイズ</th>';
     if(colWheelSpec) thCols += '<th>ホイールスペック</th>';
-    if(colCategory)  thCols += '<th>分類</th>';
+    if(colCategory)  thCols += '<th style="white-space:nowrap;">分類</th>';
     if(colLocation) thCols += '<th>保管場所</th>';
     if(colStock)    thCols += sortedBranches.map(b=>'<th>'+(b===ownBranch?'自店舗 ('+branchName(b)+')':branchName(b))+'</th>').join('');
     if(colPType)    thCols += '<th>商品区分</th>';
@@ -17291,15 +17299,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         tdCols += '<td style="color:#666;">'+escapeHtml(_specStr||'—')+'</td>';
       }
       if(colWheelSpec){ const _ws=p.wheelSpec||{}; const _wsInch=_ws.inch||''; const _wsJ=_ws.j||''; const _wsSz=(_wsInch&&_wsJ)?_wsInch+'x'+_wsJ:(_wsInch?_wsInch+'インチ':(_wsJ?_wsJ+'J':'')); const _wsH=(_ws.holes&&_ws.pcd)?_ws.holes+'/'+_ws.pcd:''; const _wsO=_ws.offset!==undefined&&_ws.offset!==''?'+'+_ws.offset:''; const _wsC=_ws.color||''; const _wsParts=[_wsSz,_wsH,_wsO,_wsC].filter(Boolean); tdCols += '<td style="color:#555;font-size:10px;white-space:nowrap;">'+(_wsParts.length?escapeHtml(_wsParts.join(' ')):(p.spec?escapeHtml(p.spec):'—'))+'</td>'; }
-      if(colCategory) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(catName)+'</td>';
+      if(colCategory) tdCols += '<td style="color:#888;font-size:11px;white-space:nowrap;">'+escapeHtml(catName)+'</td>';
       if(colLocation) tdCols += '<td style="color:#888;font-size:11px;">'+escapeHtml(locName)+'</td>';
       if(colStock)    tdCols += sortedBranches.map(b=>{
         if(b!==ownBranch && !isTW) return '<td style="color:#aaa;text-align:center;">—</td>';
         const _rawStk = p.branchStock ? (p.branchStock[b]||0) : (b==='taniyabe'?(p.stock||0):0);
         const _custQtyStk = b===ownBranch ? _getCustodyQty(p.id) : 0;
-        const stk = Math.max(0, _rawStk - _custQtyStk);
+        const _provQtyStk = b===ownBranch ? _getProvOutQty(p.id) : 0;
+        const stk = Math.max(0, _rawStk - _custQtyStk - _provQtyStk);
         const col = stk > 0 ? '#1a7a5e' : '#c0392b';
-        const _stkLabel = _subtractCustody && _custQtyStk>0 ? stk+'（預かり▲'+_custQtyStk+'）' : String(stk);
+        const _stkLabel = (_subtractCustody && _custQtyStk>0 ? '（預かり▲'+_custQtyStk+'）' : '') + (_subtractProv && _provQtyStk>0 ? '（仮出▲'+_provQtyStk+'）' : '') ? stk+(_subtractCustody && _custQtyStk>0 ? '（預かり▲'+_custQtyStk+'）' : '')+(_subtractProv && _provQtyStk>0 ? '（仮出▲'+_provQtyStk+'）' : '') : String(stk);
         return '<td style="text-align:center;font-weight:700;color:'+col+';">'+_stkLabel+'</td>';
       }).join('');
       if(colPType)    tdCols += '<td style="text-align:center;">'+(p.productType==='order'?'客注品':'在庫品')+'</td>';
@@ -17309,8 +17318,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         const _ownStk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0);
         const _ownProvQty = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
         const _custQtyTv = _getCustodyQty(p.id);
+        const _provOutQtyTv = _getProvOutQty(p.id);
         const _effCost = getEffectiveCostForBranch(p, ownBranch);
-        const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty-_custQtyTv);
+        const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty-_custQtyTv-_provOutQtyTv);
         if(_showSubtotal) _catSubtotal += _tv;
         if(colTotalVal) tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>';
       }
