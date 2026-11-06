@@ -17238,13 +17238,25 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     // 在庫合計金額 or 仕入れ価格列は右から何番目か
     const _colsAfterAmount = (colTotalVal ? (colProvOut?1:0)+(colYearMfg?1:0) : (colSellPrice?1:0)+(colProvOut?1:0)+(colYearMfg?1:0));
 
+    // カテゴリ別合計を事前計算（ヘッダー行に表示するため）
+    const _preCatTotals = {};
+    if(_showSubtotal){
+      for(const p of list){
+        const _stk = p.branchStock ? (p.branchStock[ownBranch]||0) : (p.stock||0);
+        const _fpq = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+        const _cq = _getCustodyQty(p.id);
+        const _ec = getEffectiveCostForBranch(p, ownBranch);
+        _preCatTotals[p.majorId] = (_preCatTotals[p.majorId]||0) + (_ec||0)*Math.max(0,_stk-_fpq-_cq);
+      }
+    }
+
     let _prevMajorId = null;
     let _prevCatName = '';
     let _catSubtotal = 0;
     let _grandTotal = 0;
     let rows = '';
 
-    // 小計行HTML生成
+    // 小計行HTML生成（カテゴリ末尾の小計行は不要になったので使わないが互換のため残す）
     function _makeSubtotalRow(catName, subtotal){
       const _leftSpan = _totalColCount - _colsAfterAmount - 1;
       let _subRow = '<tr style="background:#f0f0f0;font-weight:700;">';
@@ -17262,15 +17274,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       const _locId2 = (p.branchLocation&&ownBranch in p.branchLocation)?p.branchLocation[ownBranch]:(p.locationId||'');
       const locName = _locId2 && locations.find(l=>l.id===_locId2) ? locations.find(l=>l.id===_locId2).name : '—';
 
-      // カテゴリが変わったら区切り行（と小計行）を挿入
+      // カテゴリが変わったら区切り行を挿入（金額を事前計算値からヘッダーに表示）
       if(_showCatDivider && p.majorId !== _prevMajorId){
-        // 前カテゴリの小計行を出力
-        if(_showSubtotal && _prevMajorId !== null){
-          rows += _makeSubtotalRow(_prevCatName, _catSubtotal);
-          _catSubtotal = 0;
-        }
-        // 新カテゴリの見出し行
-        rows += '<tr><td colspan="'+_totalColCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1.5pt solid #999;">【'+escapeHtml(catName||'未分類')+'】</td></tr>';
+        if(_showSubtotal && _prevMajorId !== null) _catSubtotal = 0; // リセット（集計はpre-calcで済み）
+        const _catTotal = _showSubtotal ? (_preCatTotals[p.majorId]||0) : null;
+        const _catTotalStr = _catTotal !== null ? '　合計：&yen;'+_catTotal.toLocaleString('ja-JP') : '';
+        rows += '<tr><td colspan="'+_totalColCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1.5pt solid #999;">【'+escapeHtml(catName||'未分類')+'】<span style="font-size:8.5pt;color:#1a3a7a;margin-left:12pt;">'+_catTotalStr+'</span></td></tr>';
         _prevMajorId = p.majorId;
         _prevCatName = catName;
       }
@@ -17312,7 +17321,6 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         const _custQtyTv = _getCustodyQty(p.id);
         const _effCost = getEffectiveCostForBranch(p, ownBranch);
         const _tv = (_effCost||0)*Math.max(0,_ownStk-_ownProvQty-_custQtyTv);
-        if(_showSubtotal) { _catSubtotal += _tv; _grandTotal += _tv; }
         if(colTotalVal) tdCols += '<td style="text-align:right;font-family:monospace;font-weight:700;">'+(_tv>0?'&yen;'+_tv.toLocaleString('ja-JP'):'—')+'</td>';
       }
       if(colProvOut){
@@ -17330,9 +17338,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
       rows += '<tr>'+tdCols+'</tr>';
     }
-    // 最後のカテゴリの小計行
+    // 最後のカテゴリの小計行（ヘッダーに移したので不要だが互換のため空処理）
     if(_showSubtotal && _prevMajorId !== null){
-      rows += _makeSubtotalRow(_prevCatName, _catSubtotal);
+      // no-op: 金額はヘッダー行に表示済み
     }
 
     const css = `
@@ -17345,10 +17353,10 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       td{padding:3pt 5pt;font-size:8.5pt;border-bottom:0.5pt solid #e0e0e0;}
       tr:nth-child(even) td{background:#f8f8f8;}
     `;
-    // 総合計：在庫合計金額列がある場合は _grandTotal を流用、なければ（colCostのみ）ここで計算
-    const _showTotalFooter = colTotalVal || (_showSubtotal && colCost);
+    // 総合計：事前計算したカテゴリ別合計の合算
+    const _showTotalFooter = _showSubtotal || colTotalVal || (colCost && !_showSubtotal);
     const totalValSum = _showSubtotal
-      ? _grandTotal  // ループ内で積算済み
+      ? Object.values(_preCatTotals).reduce((s,v)=>s+v, 0)  // 事前計算値を合計
       : ((colTotalVal || colCost) ? list.reduce((s,p)=>{ const stk=p.branchStock?(p.branchStock[ownBranch]||0):(p.stock||0); const _fpq=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.type||'provisional')==='custody'&&(po.items||[]).some(i=>i.productId===p.id)).reduce((ss,po)=>ss+(po.items||[]).filter(i=>i.productId===p.id).reduce((sss,i)=>sss+i.qty,0),0); const _cq=_getCustodyQty(p.id); return s+(getEffectiveCostForBranch(p,ownBranch)||0)*Math.max(0,stk-_fpq-_cq); },0) : 0);
     const totalValFooter = _showTotalFooter
       ? `<div class="total-footer">総合計（仕入れ価格 × 在庫数）：&yen;${totalValSum.toLocaleString('ja-JP')}</div>`
