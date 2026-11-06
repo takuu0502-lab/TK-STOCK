@@ -17274,12 +17274,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       const _locId2 = (p.branchLocation&&ownBranch in p.branchLocation)?p.branchLocation[ownBranch]:(p.locationId||'');
       const locName = _locId2 && locations.find(l=>l.id===_locId2) ? locations.find(l=>l.id===_locId2).name : '—';
 
-      // カテゴリが変わったら区切り行を挿入（金額を事前計算値からヘッダーに表示）
+      // カテゴリが変わったら前カテゴリの小計行を挿入してから新カテゴリの見出しを表示
       if(_showCatDivider && p.majorId !== _prevMajorId){
-        if(_showSubtotal && _prevMajorId !== null) _catSubtotal = 0; // リセット（集計はpre-calcで済み）
-        const _catTotal = _showSubtotal ? (_preCatTotals[p.majorId]||0) : null;
-        const _catTotalStr = _catTotal !== null ? '　合計：&yen;'+_catTotal.toLocaleString('ja-JP') : '';
-        rows += '<tr><td colspan="'+_totalColCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1.5pt solid #999;">【'+escapeHtml(catName||'未分類')+'】<span style="font-size:8.5pt;color:#1a3a7a;margin-left:12pt;">'+_catTotalStr+'</span></td></tr>';
+        if(_showSubtotal && _prevMajorId !== null){
+          rows += _makeSubtotalRow(_prevCatName, _preCatTotals[_prevMajorId]||0);
+        }
+        rows += '<tr><td colspan="'+_totalColCount+'" style="background:#e8e8e8;font-weight:700;font-size:9pt;padding:4pt 5pt;border-top:1.5pt solid #999;">【'+escapeHtml(catName||'未分類')+'】</td></tr>';
         _prevMajorId = p.majorId;
         _prevCatName = catName;
       }
@@ -17338,9 +17338,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
       rows += '<tr>'+tdCols+'</tr>';
     }
-    // 最後のカテゴリの小計行（ヘッダーに移したので不要だが互換のため空処理）
+    // 最後のカテゴリの小計行
     if(_showSubtotal && _prevMajorId !== null){
-      // no-op: 金額はヘッダー行に表示済み
+      rows += _makeSubtotalRow(_prevCatName, _preCatTotals[_prevMajorId]||0);
     }
 
     const css = `
