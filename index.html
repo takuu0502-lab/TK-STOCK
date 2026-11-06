@@ -17033,8 +17033,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   const _printSettingsModal = document.getElementById('inventoryPrintSettingsModal');
   document.getElementById('inventoryPrintSettingsCancel').addEventListener('click', ()=>{ _printSettingsModal.classList.remove('show'); });
   document.getElementById('inventoryPrintBtn').addEventListener('click', ()=>{
-    // 仕入れ価格・在庫合計金額は管理者のみ表示
-    const _costVisible = isAdminUser() ? 'flex' : 'none';
+    // 仕入れ価格・在庫合計金額は社員以上（external以外）に表示
+    const _costVisible = canWriteData() ? 'flex' : 'none';
     document.getElementById('prcol_cost_row').style.display = _costVisible;
     document.getElementById('prcol_totalval_row').style.display = _costVisible;
     // ホイールスペック列はホイールカテゴリ選択時のみ表示
