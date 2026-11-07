@@ -2543,11 +2543,11 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="field">
-          <label style="font-size:13px;font-weight:600;">売上金額（円）<span style="color:var(--red);">*</span></label>
+          <label style="font-size:13px;font-weight:600;">売上金額（1本あたり）<span style="color:var(--red);">*</span></label>
           <input type="number" id="tbs_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
         </div>
         <div class="field">
-          <label style="font-size:13px;font-weight:600;">仕入れ原価（円）</label>
+          <label style="font-size:13px;font-weight:600;">仕入れ原価（1本あたり）</label>
           <input type="number" id="tbs_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
         </div>
       </div>
@@ -2584,11 +2584,11 @@
             <input type="number" id="tbs_tube_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
           </div>
           <div class="field">
-            <label style="font-size:12px;font-weight:600;">売上金額（円）</label>
+            <label style="font-size:12px;font-weight:600;">売上（1本あたり）</label>
             <input type="number" id="tbs_tube_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
           </div>
           <div class="field">
-            <label style="font-size:12px;font-weight:600;">仕入原価（円）</label>
+            <label style="font-size:12px;font-weight:600;">原価（1本あたり）</label>
             <input type="number" id="tbs_tube_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
           </div>
         </div>
@@ -2609,11 +2609,11 @@
             <input type="number" id="tbs_flap_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
           </div>
           <div class="field">
-            <label style="font-size:12px;font-weight:600;">売上金額（円）</label>
+            <label style="font-size:12px;font-weight:600;">売上（1本あたり）</label>
             <input type="number" id="tbs_flap_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
           </div>
           <div class="field">
-            <label style="font-size:12px;font-weight:600;">仕入原価（円）</label>
+            <label style="font-size:12px;font-weight:600;">原価（1本あたり）</label>
             <input type="number" id="tbs_flap_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
           </div>
         </div>
@@ -12986,9 +12986,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       (r.size||'').toLowerCase().includes(selKeyword)
     );
 
-    // サマリー（チューブ・フラップ含む）
-    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0)+(r.tube?(r.tube.sales||0):0)+(r.flap?(r.flap.sales||0):0),0);
-    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0)+(r.tube?(r.tube.cost||0):0)+(r.flap?(r.flap.cost||0):0),0);
+    // サマリー（チューブ・フラップ含む、本数×単価）
+    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
+    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
     const totalProfit = totalSales - totalCost;
     const summaryEl = document.getElementById('tbsalesSummary');
     if(summaryEl){
@@ -13031,8 +13031,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       }
       listEl2.innerHTML = Object.keys(dateGrouped).sort((a,b)=>b.localeCompare(a)).map(date=>{
         const rows = dateGrouped[date];
-        const dSales  = rows.reduce((s,r)=>s+(r.sales||0)+(r.tube?(r.tube.sales||0):0)+(r.flap?(r.flap.sales||0):0),0);
-        const dCost   = rows.reduce((s,r)=>s+(r.cost||0)+(r.tube?(r.tube.cost||0):0)+(r.flap?(r.flap.cost||0):0),0);
+        const dSales  = rows.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
+        const dCost   = rows.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
         const dProfit = dSales - dCost;
         const rowsHtml = rows.map(r=>{
           const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
@@ -13041,8 +13041,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
             +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
             +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty||1)+'本</td>'
-            +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+(r.sales||0).toLocaleString('ja-JP')+'</td>'
-            +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+(r.cost||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+((r.sales||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+((r.cost||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
             +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(dProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
             +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
             +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.tube?1:0)+(r.flap?1:0))+'">'
@@ -13055,8 +13055,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
               +'<td style="padding:4px 10px;font-size:12px;color:var(--teal);" colspan="2">🔵 チューブ '+(r.tube.brand?escapeHtml(r.tube.brand):'')+'</td>'
               +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.tube.size?escapeHtml(r.tube.size):'—')+'</td>'
               +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.tube.qty||1)+'本</td>'
-              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.tube.sales||0).toLocaleString('ja-JP')+'</td>'
-              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.tube.cost||0).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+((r.tube.sales||0)*(r.tube.qty||1)).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+((r.tube.cost||0)*(r.tube.qty||1)).toLocaleString('ja-JP')+'</td>'
               +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(tm!==null?tm+'%':'—')+'</td>'
               +'<td colspan="1"></td></tr>';
           }
@@ -13066,8 +13066,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
               +'<td style="padding:4px 10px;font-size:12px;color:var(--amber);" colspan="2">🟡 フラップ '+(r.flap.brand?escapeHtml(r.flap.brand):'')+'</td>'
               +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.flap.size?escapeHtml(r.flap.size):'—')+'</td>'
               +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.flap.qty||1)+'本</td>'
-              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.flap.sales||0).toLocaleString('ja-JP')+'</td>'
-              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.flap.cost||0).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+((r.flap.sales||0)*(r.flap.qty||1)).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+((r.flap.cost||0)*(r.flap.qty||1)).toLocaleString('ja-JP')+'</td>'
               +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(fm!==null?fm+'%':'—')+'</td>'
               +'<td colspan="1"></td></tr>';
           }
@@ -13131,8 +13131,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
     listEl.innerHTML = Object.keys(grouped).sort().map(clientName=>{
       const rows = grouped[clientName];
-      const cSales  = rows.reduce((s,r)=>s+(r.sales||0)+(r.tube?(r.tube.sales||0):0)+(r.flap?(r.flap.sales||0):0),0);
-      const cCost   = rows.reduce((s,r)=>s+(r.cost||0)+(r.tube?(r.tube.cost||0):0)+(r.flap?(r.flap.cost||0):0),0);
+      const cSales  = rows.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
+      const cCost   = rows.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
       const cProfit = cSales - cCost;
       const rowsHtml = rows.map(r=>{
         const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
@@ -13141,8 +13141,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty||1)+'本</td>'
-          +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+(r.sales||0).toLocaleString('ja-JP')+'</td>'
-          +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+(r.cost||0).toLocaleString('ja-JP')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+((r.sales||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+((r.cost||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(cProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
           +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.tube?1:0)+(r.flap?1:0))+'">'
@@ -13158,8 +13158,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             +'<td style="padding:4px 10px;font-size:12px;color:var(--teal);">🔵 チューブ '+(r.tube.brand?escapeHtml(r.tube.brand):'')+'</td>'
             +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.tube.size?escapeHtml(r.tube.size):'—')+'</td>'
             +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.tube.qty||1)+'本</td>'
-            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.tube.sales||0).toLocaleString('ja-JP')+'</td>'
-            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.tube.cost||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+((r.tube.sales||0)*(r.tube.qty||1)).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+((r.tube.cost||0)*(r.tube.qty||1)).toLocaleString('ja-JP')+'</td>'
             +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(tm!==null?tm+'%':'—')+'</td>'
             +'<td colspan="1"></td>'
             +'</tr>';
@@ -13171,8 +13171,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             +'<td style="padding:4px 10px;font-size:12px;color:var(--amber);">🟡 フラップ '+(r.flap.brand?escapeHtml(r.flap.brand):'')+'</td>'
             +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.flap.size?escapeHtml(r.flap.size):'—')+'</td>'
             +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.flap.qty||1)+'本</td>'
-            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.flap.sales||0).toLocaleString('ja-JP')+'</td>'
-            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.flap.cost||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+((r.flap.sales||0)*(r.flap.qty||1)).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+((r.flap.cost||0)*(r.flap.qty||1)).toLocaleString('ja-JP')+'</td>'
             +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(fm!==null?fm+'%':'—')+'</td>'
             +'<td colspan="1"></td>'
             +'</tr>';
