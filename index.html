@@ -17237,8 +17237,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(colProvOut)  thCols += '<th style="text-align:center;">仮出庫</th>';
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
-    // 分類区切り行（大分類未絞り込み＋分類順ソート時に表示）
-    const _showCatDivider = selectedMajor === null && _prSortOrder === 'category';
+    // 分類区切り行（分類順ソート＋リスト内に複数大分類が存在する場合に表示）
+    const _uniqueMajorIds = new Set(list.map(p=>p.majorId));
+    const _showCatDivider = _prSortOrder === 'category' && _uniqueMajorIds.size > 1;
     // 分類小計・総合計（仕入れ価格 or 在庫合計金額列が有効かつ全件印刷時）
     const _showSubtotal = _showCatDivider && (colTotalVal || colCost);
     // 総列数計算（小計行のcolspan用）
@@ -20747,11 +20748,21 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         }
       }
 
-      p.stock = kind === 'in' ? p.stock + qty : p.stock - qty;
+      // 支店別在庫を更新（branchStockが存在する場合は必ずbranchStockも更新）
+      const _opBr = getOperationBranch();
+      if(kind === 'in'){
+        addBranchStock(p, _opBr, qty);
+      } else {
+        subBranchStock(p, _opBr, qty);
+      }
+      // p.stock は全支店合計として再計算（addBranchStock/subBranchStockが既に更新）
+      if(!p.branchStock){
+        p.stock = kind === 'in' ? (p.stock||0) + qty : Math.max(0, (p.stock||0) - qty);
+      }
       transactions.unshift({
         id: uid('t'), productId: p.id, barcode: p.barcode, name: p.name, type: kind, qty: qty,
         date: new Date().toISOString(), user: currentUser ? currentUser.displayName : '',
-        itemType: itemType, reservation: reservation, branchId: getOperationBranch(),
+        itemType: itemType, reservation: reservation, branchId: _opBr,
         customerName: _inCustomerName || undefined
       });
       // 予約品（客注品）入庫時は客注リストにも自動追加
