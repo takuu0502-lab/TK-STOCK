@@ -2464,7 +2464,12 @@
   </div>
   <!-- 集計サマリー -->
   <div id="tbsalesSummary" style="margin-bottom:14px;"></div>
-  <!-- 取引先別リスト -->
+  <!-- 表示切替 -->
+  <div style="display:flex;gap:6px;margin-bottom:12px;">
+    <button id="tbsViewByClient" onclick="tbsSetView('client')" class="btn btn-sm" style="font-size:12px;padding:4px 12px;">🏢 取引先別</button>
+    <button id="tbsViewByDate"   onclick="tbsSetView('date')"   class="btn btn-sm" style="font-size:12px;padding:4px 12px;">📅 日付別</button>
+  </div>
+  <!-- リスト -->
   <div id="tbsalesList"></div>
 </div>
 
@@ -12845,6 +12850,13 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   // ── TBタイヤ売上記録 ─────────────────────────
   let tbSalesRecords = [];
   let tbSalesEditId = null;
+  let tbsViewMode = 'client'; // 'client' | 'date'
+
+  function tbsSetView(mode){
+    tbsViewMode = mode;
+    renderTbSalesTab();
+  }
+  window.tbsSetView = tbsSetView;
 
   // 取引先リストは custodyCustomers + custodyContracts(katsuta) から取得
   function _getTbClients(){
@@ -12994,6 +13006,111 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         +'<div style="font-size:11px;color:var(--text-3);">件数</div>'
         +'<div style="font-size:18px;font-weight:700;color:var(--text-1);">'+filtered.length+'<span style="font-size:12px;">件</span></div></div>'
         +'</div>';
+    }
+
+    // ボタンのスタイル更新
+    const _btnC = document.getElementById('tbsViewByClient');
+    const _btnD = document.getElementById('tbsViewByDate');
+    if(_btnC) { _btnC.style.background = tbsViewMode==='client' ? 'var(--amber)' : ''; _btnC.style.color = tbsViewMode==='client' ? '#fff' : ''; _btnC.style.border = '1px solid var(--amber)'; }
+    if(_btnD) { _btnD.style.background = tbsViewMode==='date'   ? 'var(--teal)' : ''; _btnD.style.color = tbsViewMode==='date'   ? '#fff' : ''; _btnD.style.border = '1px solid var(--teal)'; }
+
+    // ── 日付別ビュー ──
+    if(tbsViewMode === 'date'){
+      const dateGrouped = {};
+      const sortedByDate = filtered.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      sortedByDate.forEach(r=>{
+        const key = r.date||'日付不明';
+        if(!dateGrouped[key]) dateGrouped[key]=[];
+        dateGrouped[key].push(r);
+      });
+      const listEl2 = document.getElementById('tbsalesList');
+      if(!listEl2) return;
+      if(Object.keys(dateGrouped).length===0){
+        listEl2.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-3);">記録がありません</div>';
+        return;
+      }
+      listEl2.innerHTML = Object.keys(dateGrouped).sort((a,b)=>b.localeCompare(a)).map(date=>{
+        const rows = dateGrouped[date];
+        const dSales  = rows.reduce((s,r)=>s+(r.sales||0)+(r.tube?(r.tube.sales||0):0)+(r.flap?(r.flap.sales||0):0),0);
+        const dCost   = rows.reduce((s,r)=>s+(r.cost||0)+(r.tube?(r.tube.cost||0):0)+(r.flap?(r.flap.cost||0):0),0);
+        const dProfit = dSales - dCost;
+        const rowsHtml = rows.map(r=>{
+          const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
+          let html = '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';">'
+            +'<td style="padding:8px 10px;font-size:13px;">'+(r.client?escapeHtml(r.client):'—')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty||1)+'本</td>'
+            +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+(r.sales||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+(r.cost||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(dProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
+            +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
+            +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.tube?1:0)+(r.flap?1:0))+'">'
+            +'<button class="btn btn-ghost btn-sm" data-tbs-edit="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;margin-right:4px;">編集</button>'
+            +'<button class="btn btn-ghost btn-sm" data-tbs-del="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red);">削除</button>'
+            +'</td></tr>';
+          if(r.tube){
+            const tm = r.tube.sales && r.tube.cost ? Math.round((r.tube.sales-r.tube.cost)/r.tube.sales*100) : null;
+            html += '<tr style="border-bottom:'+(r.flap?'none':'1px solid var(--line-soft)')+';background:var(--bg-2);">'
+              +'<td style="padding:4px 10px;font-size:12px;color:var(--teal);" colspan="2">🔵 チューブ '+(r.tube.brand?escapeHtml(r.tube.brand):'')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.tube.size?escapeHtml(r.tube.size):'—')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.tube.qty||1)+'本</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.tube.sales||0).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.tube.cost||0).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(tm!==null?tm+'%':'—')+'</td>'
+              +'<td colspan="1"></td></tr>';
+          }
+          if(r.flap){
+            const fm = r.flap.sales && r.flap.cost ? Math.round((r.flap.sales-r.flap.cost)/r.flap.sales*100) : null;
+            html += '<tr style="border-bottom:1px solid var(--line-soft);background:var(--bg-2);">'
+              +'<td style="padding:4px 10px;font-size:12px;color:var(--amber);" colspan="2">🟡 フラップ '+(r.flap.brand?escapeHtml(r.flap.brand):'')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.flap.size?escapeHtml(r.flap.size):'—')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.flap.qty||1)+'本</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.flap.sales||0).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.flap.cost||0).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(fm!==null?fm+'%':'—')+'</td>'
+              +'<td colspan="1"></td></tr>';
+          }
+          return html;
+        }).join('');
+        return '<details open style="margin-bottom:12px;">'
+          +'<summary style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;list-style:none;font-weight:700;font-size:15px;">'
+          +'<span>📅 '+escapeHtml(date)+'　<span style="font-size:12px;font-weight:400;color:var(--text-3);">'+rows.length+'件</span></span>'
+          +'<span style="font-size:13px;display:flex;gap:16px;">'
+          +'<span>売上 <strong style="color:var(--amber);">¥'+dSales.toLocaleString('ja-JP')+'</strong></span>'
+          +'<span>原価 <strong style="color:var(--text-2);">¥'+dCost.toLocaleString('ja-JP')+'</strong></span>'
+          +'<span>粗利 <strong style="color:'+(dProfit>=0?'var(--teal)':'var(--red)')+';">¥'+dProfit.toLocaleString('ja-JP')+'</strong></span>'
+          +'</span></summary>'
+          +'<div style="overflow-x:auto;margin-top:2px;">'
+          +'<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px;">'
+          +'<thead><tr style="background:var(--bg-2);font-size:11px;color:var(--text-3);">'
+          +'<th style="padding:6px 10px;text-align:left;font-weight:600;">取引先</th>'
+          +'<th style="padding:6px 10px;text-align:left;font-weight:600;">銘柄</th>'
+          +'<th style="padding:6px 10px;text-align:left;font-weight:600;">サイズ</th>'
+          +'<th style="padding:6px 10px;text-align:center;font-weight:600;">本数</th>'
+          +'<th style="padding:6px 10px;text-align:right;font-weight:600;">売上金額</th>'
+          +'<th style="padding:6px 10px;text-align:right;font-weight:600;">仕入原価</th>'
+          +'<th style="padding:6px 10px;text-align:right;font-weight:600;">粗利率</th>'
+          +'<th style="padding:6px 10px;text-align:left;font-weight:600;">備考</th>'
+          +'<th style="padding:6px 10px;"></th>'
+          +'</tr></thead>'
+          +'<tbody>'+rowsHtml+'</tbody>'
+          +'</table></div></details>';
+      }).join('');
+      // 編集・削除イベント（日付ビュー用）
+      listEl2.querySelectorAll('[data-tbs-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ openTbSalesModal(tbSalesRecords.find(r=>r.id===btn.dataset.tbsEdit)); });
+      });
+      listEl2.querySelectorAll('[data-tbs-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const ok = await showConfirm('この記録を削除しますか？');
+          if(!ok) return;
+          tbSalesRecords = tbSalesRecords.filter(r=>r.id!==btn.dataset.tbsDel);
+          await saveTbSales();
+          renderTbSalesTab();
+        });
+      });
+      return;
     }
 
     // 取引先ごとにグループ化
