@@ -6227,11 +6227,15 @@ window.addEventListener('storageReady', function(){
   // ─────────────────────────────────────────────────────────────────────
 
   /** 在庫数を専用パスに書き込む（小さいJSON、高信頼性） */
-  async function _saveStockSnapshot(productId, branchStock, updatedAt){
+  async function _saveStockSnapshot(productId, branchStock, updatedAt, branchYearStock){
     if(!productId || !branchStock) return false;
     const _obj = {};
     for(const [bid, cnt] of Object.entries(branchStock)){
-      _obj[bid] = {c: cnt, t: updatedAt};
+      const _entry = {c: cnt, t: updatedAt};
+      if(branchYearStock && branchYearStock[bid] && Object.keys(branchYearStock[bid]).length > 0){
+        _entry.ys = branchYearStock[bid];
+      }
+      _obj[bid] = _entry;
     }
     return await window.storage.setPath('shared/branchStock/'+productId, _obj);
   }
@@ -6252,6 +6256,11 @@ window.addEventListener('storageReady', function(){
           // スナップショットが同じか新しい場合は上書き（同時刻でもスナップショットを信頼）
           if((entry.t||0) >= (prod.updatedAt||0)){
             prod.branchStock[bid] = entry.c;
+            // 年別在庫もスナップショットで復元（整合性を保つ）
+            if(entry.ys && typeof entry.ys === 'object'){
+              if(!prod._branchYearStock) prod._branchYearStock = {};
+              prod._branchYearStock[bid] = Object.assign({}, entry.ys);
+            }
             _applied = true;
           }
         }
@@ -8586,7 +8595,7 @@ window.addEventListener('storageReady', function(){
           p2.updatedAt = _invFixNow;
           p2.branchStock[brId2] = newStk;
           p2.stock = newStk;
-          await _saveStockSnapshot(p2.id, p2.branchStock, _invFixNow);
+          await _saveStockSnapshot(p2.id, p2.branchStock, _invFixNow, p2._branchYearStock);
           const adjQty = newStk - oldStk;
           transactions.unshift({
             id: uid('t'), productId: p2.id, barcode: p2.barcode, name: p2.name,
@@ -14146,7 +14155,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         item.p.updatedAt = _scNow;
       });
       // 在庫数を専用パスに先行保存（各商品ごと）
-      await Promise.all(items.map(item=>_saveStockSnapshot(item.p.id, item.p.branchStock, _scNow)));
+      await Promise.all(items.map(item=>_saveStockSnapshot(item.p.id, item.p.branchStock, _scNow, item.p._branchYearStock)));
       await saveProducts();
 
       // 履歴に保存
@@ -14932,7 +14941,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       pFreshScan.updatedAt = Date.now();
       btn.disabled = true;
       // 在庫数を専用パスに先行保存
-      await _saveStockSnapshot(pFreshScan.id, pFreshScan.branchStock, pFreshScan.updatedAt);
+      await _saveStockSnapshot(pFreshScan.id, pFreshScan.branchStock, pFreshScan.updatedAt, pFreshScan._branchYearStock);
       try{
         await saveProducts();
         // ── 在庫整合性チェック（保存後にFirebaseの実値を再取得して検証）──
@@ -20396,7 +20405,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     pFresh.stock = Object.values(pFresh.branchStock).reduce((s,v)=>s+(v||0),0);
     pFresh.updatedAt = Date.now();
     // ① 在庫数を専用の小さいパスに先行保存（高信頼性・失敗時はロールバック）
-    const _stockSnapOk = await _saveStockSnapshot(pFresh.id, pFresh.branchStock, pFresh.updatedAt);
+    const _stockSnapOk = await _saveStockSnapshot(pFresh.id, pFresh.branchStock, pFresh.updatedAt, pFresh._branchYearStock);
     if(!_stockSnapOk){
       await refreshProductFromFirebase(pFresh.id);
       msgEl.innerHTML = '<div class="msg msg-error">⚠️ 在庫の保存に失敗しました。ネットワークを確認してもう一度お試しください。</div>';
@@ -21881,7 +21890,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             p.branchStock[entryBranch] = curStk2 - item.qty;
           }
           p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
-          await _saveStockSnapshot(p.id, p.branchStock, _confirmNow);
+          await _saveStockSnapshot(p.id, p.branchStock, _confirmNow, p._branchYearStock);
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
             user:currentUser?currentUser.displayName:'', itemType:'provisional', reservation:null, branchId:entryBranch,
@@ -21929,7 +21938,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             p.branchStock[entryBranch] = curStk2 - item.qty;
           }
           p.stock = Object.values(p.branchStock).reduce((s,v)=>s+(v||0),0);
-          await _saveStockSnapshot(p.id, p.branchStock, _itemNow);
+          await _saveStockSnapshot(p.id, p.branchStock, _itemNow, p._branchYearStock);
           const batchDate = new Date().toISOString();
           transactions.unshift({ id:uid('t'), productId:p.id, barcode:p.barcode||'', name:p.name,
             type:'out', qty:item.qty, date:batchDate,
@@ -22502,7 +22511,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           showToast('入庫確定・仮出庫登録しました（'+inQty+'）');
         } else { showToast('入庫確定しました（'+inQty+'）'); }
       }
-      await _saveStockSnapshot(p2.id, p2.branchStock, p2.updatedAt);
+      await _saveStockSnapshot(p2.id, p2.branchStock, p2.updatedAt, p2._branchYearStock);
       const _saveResult = await saveProducts();
       await saveTransactions(); await saveIncomingSchedules();
       if(_saveResult){
@@ -22747,7 +22756,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       // 在庫スナップショットを専用パスに先行保存（saveProducts失敗時の復元用）
       for(const item of inboundCart){
         const _sp = products.find(x=>x.id===item.productId);
-        if(_sp && _sp.branchStock) await _saveStockSnapshot(_sp.id, _sp.branchStock, _sp.updatedAt);
+        if(_sp && _sp.branchStock) await _saveStockSnapshot(_sp.id, _sp.branchStock, _sp.updatedAt, _sp._branchYearStock);
       }
       const _saveResult = await saveProducts();
       if(!_saveResult){
