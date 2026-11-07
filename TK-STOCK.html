@@ -2554,6 +2554,65 @@
         <label style="font-size:13px;font-weight:600;">備考</label>
         <textarea id="tbs_note" rows="2" placeholder="メモ・補足など" style="width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-family:inherit;"></textarea>
       </div>
+      <!-- フォークリフト対応 -->
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
+          <input type="checkbox" id="tbs_isFork" onchange="tbsToggleFork()" style="width:16px;height:16px;cursor:pointer;">
+          🚜 フォークリフト（チューブ・フラップ同時交換）
+        </label>
+      </div>
+      <div id="tbs_forkSection" style="display:none;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg-2);flex-direction:column;gap:10px;">
+        <div style="font-size:13px;font-weight:700;color:var(--teal);border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:2px;">🔵 チューブ</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">銘柄</label>
+            <input type="text" id="tbs_tube_brand" class="input" placeholder="例: YOKOHAMA" style="width:100%;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">サイズ</label>
+            <input type="text" id="tbs_tube_size" class="input" placeholder="例: 600-9" style="width:100%;margin-top:4px;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">本数</label>
+            <input type="number" id="tbs_tube_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">売上金額（円）</label>
+            <input type="number" id="tbs_tube_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">仕入原価（円）</label>
+            <input type="number" id="tbs_tube_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--amber);border-bottom:1px solid var(--line);padding-bottom:8px;padding-top:4px;margin-bottom:2px;">🟡 フラップ</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">銘柄</label>
+            <input type="text" id="tbs_flap_brand" class="input" placeholder="例: YOKOHAMA" style="width:100%;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">サイズ</label>
+            <input type="text" id="tbs_flap_size" class="input" placeholder="例: 600-9" style="width:100%;margin-top:4px;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">本数</label>
+            <input type="number" id="tbs_flap_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">売上金額（円）</label>
+            <input type="number" id="tbs_flap_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:12px;font-weight:600;">仕入原価（円）</label>
+            <input type="number" id="tbs_flap_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+        </div>
+      </div>
     </div>
     <div id="tbsalesModalError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;"></div>
     <div class="modal-actions">
@@ -12875,6 +12934,13 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   }
   window.tbsClearProduct = tbsClearProduct;
 
+  function tbsToggleFork(){
+    const checked = document.getElementById('tbs_isFork').checked;
+    const sec = document.getElementById('tbs_forkSection');
+    if(sec){ sec.style.display = checked ? 'flex' : 'none'; }
+  }
+  window.tbsToggleFork = tbsToggleFork;
+
   function renderTbSalesTab(){
     // 勝田ブランチのみ表示
     const branch = currentUser ? (currentUser.branchId||'') : '';
@@ -12905,9 +12971,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       (r.size||'').toLowerCase().includes(selKeyword)
     );
 
-    // サマリー
-    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0),0);
-    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0),0);
+    // サマリー（チューブ・フラップ含む）
+    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0)+(r.tube?(r.tube.sales||0):0)+(r.flap?(r.flap.sales||0):0),0);
+    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0)+(r.tube?(r.tube.cost||0):0)+(r.flap?(r.flap.cost||0):0),0);
     const totalProfit = totalSales - totalCost;
     const summaryEl = document.getElementById('tbsalesSummary');
     if(summaryEl){
@@ -12945,12 +13011,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
     listEl.innerHTML = Object.keys(grouped).sort().map(clientName=>{
       const rows = grouped[clientName];
-      const cSales  = rows.reduce((s,r)=>s+(r.sales||0),0);
-      const cCost   = rows.reduce((s,r)=>s+(r.cost||0),0);
+      const cSales  = rows.reduce((s,r)=>s+(r.sales||0)+(r.tube?(r.tube.sales||0):0)+(r.flap?(r.flap.sales||0):0),0);
+      const cCost   = rows.reduce((s,r)=>s+(r.cost||0)+(r.tube?(r.tube.cost||0):0)+(r.flap?(r.flap.cost||0):0),0);
       const cProfit = cSales - cCost;
       const rowsHtml = rows.map(r=>{
         const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
-        return '<tr style="border-bottom:1px solid var(--line-soft);">'
+        let html = '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';">'
           +'<td style="padding:8px 10px;font-size:13px;color:var(--text-2);">'+(r.date||'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
@@ -12959,11 +13025,39 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+(r.cost||0).toLocaleString('ja-JP')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(cProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
-          +'<td style="padding:8px 10px;white-space:nowrap;">'
+          +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.tube?1:0)+(r.flap?1:0))+'">'
           +'<button class="btn btn-ghost btn-sm" data-tbs-edit="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;margin-right:4px;">編集</button>'
           +'<button class="btn btn-ghost btn-sm" data-tbs-del="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red);">削除</button>'
           +'</td>'
           +'</tr>';
+        if(r.tube){
+          const tm = r.tube.sales && r.tube.cost ? Math.round((r.tube.sales-r.tube.cost)/r.tube.sales*100) : null;
+          html += '<tr style="border-bottom:'+(r.flap?'none':'1px solid var(--line-soft)');
+          html += ';background:var(--bg-2);">'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--text-3);"></td>'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--teal);">🔵 チューブ '+(r.tube.brand?escapeHtml(r.tube.brand):'')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.tube.size?escapeHtml(r.tube.size):'—')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.tube.qty||1)+'本</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.tube.sales||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.tube.cost||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(tm!==null?tm+'%':'—')+'</td>'
+            +'<td colspan="1"></td>'
+            +'</tr>';
+        }
+        if(r.flap){
+          const fm = r.flap.sales && r.flap.cost ? Math.round((r.flap.sales-r.flap.cost)/r.flap.sales*100) : null;
+          html += '<tr style="border-bottom:1px solid var(--line-soft);background:var(--bg-2);">'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--text-3);"></td>'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--amber);">🟡 フラップ '+(r.flap.brand?escapeHtml(r.flap.brand):'')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.flap.size?escapeHtml(r.flap.size):'—')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.flap.qty||1)+'本</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+(r.flap.sales||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+(r.flap.cost||0).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(fm!==null?fm+'%':'—')+'</td>'
+            +'<td colspan="1"></td>'
+            +'</tr>';
+        }
+        return html;
       }).join('');
 
       return '<details open style="margin-bottom:12px;">'
@@ -13019,6 +13113,22 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('tbs_cost').value  = record ? (record.cost||'') : '';
     document.getElementById('tbs_qty').value   = record ? (record.qty||1) : 1;
     document.getElementById('tbs_note').value  = record ? (record.note||'') : '';
+    // フォークリフト・チューブ・フラップ欄
+    const _isFork = record ? !!(record.tube || record.flap) : false;
+    const _forkCb = document.getElementById('tbs_isFork');
+    if(_forkCb) _forkCb.checked = _isFork;
+    const _forkSec = document.getElementById('tbs_forkSection');
+    if(_forkSec) _forkSec.style.display = _isFork ? 'flex' : 'none';
+    document.getElementById('tbs_tube_brand').value = record && record.tube ? (record.tube.brand||'') : '';
+    document.getElementById('tbs_tube_size').value  = record && record.tube ? (record.tube.size||'')  : '';
+    document.getElementById('tbs_tube_qty').value   = record && record.tube ? (record.tube.qty||1)    : 1;
+    document.getElementById('tbs_tube_sales').value = record && record.tube ? (record.tube.sales||'') : '';
+    document.getElementById('tbs_tube_cost').value  = record && record.tube ? (record.tube.cost||'')  : '';
+    document.getElementById('tbs_flap_brand').value = record && record.flap ? (record.flap.brand||'') : '';
+    document.getElementById('tbs_flap_size').value  = record && record.flap ? (record.flap.size||'')  : '';
+    document.getElementById('tbs_flap_qty').value   = record && record.flap ? (record.flap.qty||1)    : 1;
+    document.getElementById('tbs_flap_sales').value = record && record.flap ? (record.flap.sales||'') : '';
+    document.getElementById('tbs_flap_cost').value  = record && record.flap ? (record.flap.cost||'')  : '';
     document.getElementById('tbsalesModalError').style.display = 'none';
     // 商品検索リセット
     const _pSearch = document.getElementById('tbs_productSearch');
@@ -13062,15 +13172,31 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const cost   = parseInt(document.getElementById('tbs_cost').value)||0;
     const qty    = Math.max(1, parseInt(document.getElementById('tbs_qty').value)||1);
     const note   = document.getElementById('tbs_note').value.trim();
+    // フォークリフト用チューブ・フラップ
+    const _isFork = document.getElementById('tbs_isFork').checked;
+    const tube = _isFork ? {
+      brand: document.getElementById('tbs_tube_brand').value.trim(),
+      size:  document.getElementById('tbs_tube_size').value.trim(),
+      qty:   Math.max(1, parseInt(document.getElementById('tbs_tube_qty').value)||1),
+      sales: parseInt(document.getElementById('tbs_tube_sales').value)||0,
+      cost:  parseInt(document.getElementById('tbs_tube_cost').value)||0
+    } : null;
+    const flap = _isFork ? {
+      brand: document.getElementById('tbs_flap_brand').value.trim(),
+      size:  document.getElementById('tbs_flap_size').value.trim(),
+      qty:   Math.max(1, parseInt(document.getElementById('tbs_flap_qty').value)||1),
+      sales: parseInt(document.getElementById('tbs_flap_sales').value)||0,
+      cost:  parseInt(document.getElementById('tbs_flap_cost').value)||0
+    } : null;
     errEl.style.display = 'none';
     if(!date)  { errEl.textContent='日付を入力してください。'; errEl.style.display='block'; return; }
     if(!client){ errEl.textContent='取引先名を入力してください。'; errEl.style.display='block'; return; }
     if(!sales) { errEl.textContent='売上金額を入力してください。'; errEl.style.display='block'; return; }
     if(tbSalesEditId){
       const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
-      if(rec){ rec.date=date; rec.client=client; rec.brand=brand; rec.size=size; rec.sales=sales; rec.cost=cost; rec.qty=qty; rec.note=note; rec.updatedAt=Date.now(); }
+      if(rec){ rec.date=date; rec.client=client; rec.brand=brand; rec.size=size; rec.sales=sales; rec.cost=cost; rec.qty=qty; rec.note=note; rec.tube=tube; rec.flap=flap; rec.updatedAt=Date.now(); }
     } else {
-      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, note, createdAt:Date.now() });
+      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, note, tube, flap, createdAt:Date.now() });
     }
     await saveTbSales();
     document.getElementById('tbsalesModal').classList.remove('show');
