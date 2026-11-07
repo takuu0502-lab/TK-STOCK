@@ -12858,7 +12858,10 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
   async function loadTbSales(){
     const data = await window.storage.get('tbSalesRecords', { SHARED: true });
-    tbSalesRecords = Array.isArray(data) ? data : [];
+    const val = data ? data.value : null;
+    // Firebase はオブジェクトとして返す場合があるため両方対応
+    tbSalesRecords = Array.isArray(val) ? val
+      : (val && typeof val === 'object' ? Object.values(val) : []);
   }
   async function saveTbSales(){
     await window.storage.set('tbSalesRecords', tbSalesRecords, { SHARED: true });
