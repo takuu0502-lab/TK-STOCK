@@ -19462,11 +19462,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     let costIsAuto = false;
     let costAutoTip = '';
     const _detBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
+    // 商品に個別A表価格が設定されている場合、カタログのwを上書き（ブロック外で宣言してスコープ共有）
+    const _effectiveW = catalogEntry ? (p.wholesalePrice || catalogEntry.w) : null;
     if(catalogEntry){
       // カタログ商品：支店別固定価格 → 計算価格の順で使用
       const _branchFixed = getBranchFixedCost(p, _detBranch);
-      // 商品に個別A表価格が設定されている場合、カタログのwを上書き
-      const _effectiveW = (p.wholesalePrice || catalogEntry.w);
       if(_branchFixed !== null){
         cost = _branchFixed;
       } else {
