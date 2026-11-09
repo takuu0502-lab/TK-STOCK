@@ -2240,6 +2240,10 @@
         <input type="number" id="f_minstock" min="0" value="0" style="width:100%;">
       </div>
     </div>
+    <div id="f_wholesale_field" style="display:none;" class="field">
+      <label>A表価格（税抜・円）<span style="font-weight:400;font-size:11px;color:var(--text-3);"> ※任意。入力するとA表ベースの自動計算に使用されます</span></label>
+      <input type="number" id="f_wholesale" min="0" placeholder="例) 15000">
+    </div>
     <div class="row">
       <div class="field" style="flex:1;">
         <label>仕入れ原価（1点あたり・円）</label>
@@ -18190,6 +18194,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('f_spec_tire_row').style.display = showTireFields ? 'flex' : 'none';
     document.getElementById('f_wheel_fields').style.display = isWheel ? 'block' : 'none';
     document.getElementById('f_estimate_visible_field').style.display = isTire ? 'block' : 'none';
+    const _fWholesaleField = document.getElementById('f_wholesale_field');
+    if(_fWholesaleField) _fWholesaleField.style.display = isTire ? 'block' : 'none';
     // エンジンオイル中分類選択時：容量フィールドを表示
     const _fSubEl = document.getElementById('f_sub');
     const _fMajorId = document.getElementById('f_major').value;
@@ -18745,8 +18751,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const _editBranch2 = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     const _editBranchFixed = getBranchFixedCost(p, _editBranch2);
     const _editCatEntry = findCatalogEntryForProduct(p);
+    const _editEffW = p.wholesalePrice || (_editCatEntry && _editCatEntry.w);
     const _editComputedCost = _editCatEntry
-      ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editCatEntry.w, _editCatEntry.t, p.name) ?? (p.costPrice || 0))
+      ? (computeCostPrice(_editCatEntry.b, _editCatEntry.m, _editEffW, _editCatEntry.t, p.name) ?? (p.costPrice || 0))
       : (p.costPrice || 0);
     document.getElementById('f_cost').value = (_editBranchFixed !== null ? _editBranchFixed : _editComputedCost) || '';
     const _editBranchSell = getBranchFixedSell(p, _editBranch2);
@@ -18758,6 +18765,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('f_memo').value = p.memo || '';
     document.getElementById('f_list_memo').value = p.listMemo || '';
     document.getElementById('f_url').value = p.url || '';
+    document.getElementById('f_wholesale').value = p.wholesalePrice || '';
     const _mfEditBranch = currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
     document.getElementById('f_mfyear').value = getBranchManufactureYear(p, _mfEditBranch) || '';
     renderYearStockModalRows(p, _mfEditBranch);
@@ -19457,10 +19465,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(catalogEntry){
       // カタログ商品：支店別固定価格 → 計算価格の順で使用
       const _branchFixed = getBranchFixedCost(p, _detBranch);
+      // 商品に個別A表価格が設定されている場合、カタログのwを上書き
+      const _effectiveW = (p.wholesalePrice || catalogEntry.w);
       if(_branchFixed !== null){
         cost = _branchFixed;
       } else {
-        const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, catalogEntry.w, catalogEntry.t, p.name);
+        const computed = computeCostPrice(catalogEntry.b, catalogEntry.m, _effectiveW, catalogEntry.t, p.name);
         if(computed !== null){
           cost = computed; costIsAuto = true;
           // ツールチップ用：適用ルール情報を構築（商品名ベースのルールも考慮）
@@ -19474,7 +19484,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             : (costRules.byBrand && costRules.byBrand[catalogEntry.b] && (costRules.byBrand[catalogEntry.b].percent > 0 || costRules.byBrand[catalogEntry.b].basis === 'cost')) ? 'ブランド別ルール'
             : 'デフォルトルール';
           const _cBasisLabel = _cRule.basis === 'wholesale' ? 'A表価格（卸価格）' : '希望小売価格';
-          const _cBasePrice = _cRule.basis === 'wholesale' ? catalogEntry.w : catalogEntry.t;
+          const _cBasePrice = _cRule.basis === 'wholesale' ? _effectiveW : catalogEntry.t;
           const _cPct = Number(_cRule.percent) || 0;
           costAutoTip = _cLevel+'\n基準: '+_cBasisLabel+' ¥'+(_cBasePrice||0).toLocaleString('ja-JP')+'\n割引: '+_cPct+'%OFF\n計算価格: ¥'+computed.toLocaleString('ja-JP');
         }
@@ -19495,7 +19505,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       return (priceRules.byModel && priceRules.byModel[catalogEntry.b+'||'+_sDerived] && _sDerived !== catalogEntry.m) ? _sDerived : catalogEntry.m;
     })();
     const sell = _branchSellFixed !== null ? _branchSellFixed
-      : (catalogEntry ? (getEffectiveSellPrice(catalogEntry.b, _sellEffModel, catalogEntry.w, catalogEntry.t) || p.sellPrice || 0) : p.sellPrice || 0);
+      : (catalogEntry ? (getEffectiveSellPrice(catalogEntry.b, _sellEffModel, _effectiveW, catalogEntry.t) || p.sellPrice || 0) : p.sellPrice || 0);
     const margin = (cost && sell) ? (sell - cost) : null;
     const _detHistOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const hist = transactions.filter(t=>t.productId===id&&(t.branchId||'taniyabe')===_detHistOwnBranch).slice(0, 100);
@@ -19595,7 +19605,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">仕入れ原価（1点）<span style=\"color:var(--text-3);font-weight:400;font-size:11px;\"> 税抜</span>'+(costIsAuto ? '<span style="color:var(--teal);font-weight:400;cursor:pointer;" data-price-tip="'+costAutoTip+'"> ・自動計算</span>' : '')+'</div><div class="detail-stat-value">'+(cost ? '\u00a5'+cost.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
             + '<div class="detail-stat"><div class="detail-stat-label">販売価格（1点）<span style="color:var(--text-3);font-weight:400;font-size:11px;"> 税抜</span></div><div class="detail-stat-value">'+(sell ? '\u00a5'+sell.toLocaleString('ja-JP') : '\u2014')+'</div></div>'
             + (catalogEntry && catalogEntry.t ? '<div class="detail-stat"><div class="detail-stat-label">メーカー定価<span style="color:var(--text-3);font-weight:400;font-size:11px;"> 税抜</span></div><div class="detail-stat-value">\u00a5'+catalogEntry.t.toLocaleString('ja-JP')+'</div></div>' : '')
-            + (showCost && catalogEntry && catalogEntry.w && costIsAuto ? '<div class="detail-stat"><div class="detail-stat-label">A表価格<span style="color:var(--text-3);font-weight:400;font-size:11px;"> 税抜</span></div><div class="detail-stat-value">\u00a5'+catalogEntry.w.toLocaleString('ja-JP')+'</div></div>' : '')
+            + (showCost && _effectiveW && costIsAuto ? '<div class="detail-stat"><div class="detail-stat-label">A表価格<span style="color:var(--text-3);font-weight:400;font-size:11px;"> 税抜</span>'+(p.wholesalePrice ? '<span style="color:var(--amber);font-weight:400;font-size:11px;"> ・個別設定</span>' : '')+'</div><div class="detail-stat-value">\u00a5'+_effectiveW.toLocaleString('ja-JP')+'</div></div>' : '')
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">粗利（1点）</div><div class="detail-stat-value">'+(margin !== null ? '\u00a5'+margin.toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
             + (showCost ? '<div class="detail-stat"><div class="detail-stat-label">在庫合計金額（原価）</div><div class="detail-stat-value">'+(cost ? '\u00a5'+(cost*_detOwnStk).toLocaleString('ja-JP') : '\u2014')+'</div></div>' : '')
             + '</div>';
@@ -20506,6 +20516,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const minStock = parseInt(document.getElementById('f_minstock').value || '0', 10);
     const costPrice = parseInt(document.getElementById('f_cost').value || '0', 10);
     const sellPrice = parseInt(document.getElementById('f_price').value || '0', 10);
+    const _wholesaleRaw = document.getElementById('f_wholesale').value;
+    const wholesalePrice = _wholesaleRaw ? (parseInt(_wholesaleRaw, 10) || null) : null;
     const _fixedCost = document.getElementById('f_cost_fixed').checked;
     const _fixedSell = document.getElementById('f_sell_fixed').checked;
     const carModel = document.getElementById('f_car_model').value.trim();
@@ -20617,7 +20629,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       // 支店別製造年を保存（Object.assignのmanufactureYearは後方互換のため残す）
       if(!p._branchManufactureYear) p._branchManufactureYear = {};
       p._branchManufactureYear[_saveBranch] = manufactureYear || null;
-      Object.assign(p, {barcode, brand, partno, supplierId, name, carModel, oilVolume: oilVolume||null, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, updatedAt: Date.now()});
+      Object.assign(p, {barcode, brand, partno, supplierId, name, carModel, oilVolume: oilVolume||null, majorId, subId, subSubId, spec, stock, minStock, costPrice: _globalCostPrice, sellPrice: _globalSellPrice, _fixedCost: _anyBranchFixed, _fixedSell: _anyBranchFixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, wholesalePrice: wholesalePrice || null, updatedAt: Date.now()});
       // JANコードを明示的に空にした場合、次回モーダルで自動補完されないようフラグを立てる
       if(!barcode) {
         p._suppressAutoJan = true;
@@ -20639,7 +20651,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       if(_fixedSell && sellPrice > 0) initBranchSellPrice[newBranchId] = sellPrice;
       const initBranchManufactureYear = {};
       if(manufactureYear) initBranchManufactureYear[newBranchId] = manufactureYear;
-      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, carModel, oilVolume: oilVolume||null, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
+      const _newProd = {id: uid('p'), barcode, brand, partno, supplierId, name, carModel, oilVolume: oilVolume||null, majorId, subId, subSubId, spec, stock, minStock, costPrice, sellPrice, _fixedCost, _fixedSell, memo, listMemo, url, productType, orderCustomer, orderCar, orderDueDate, wheelSpec, hideFromEstimate, wholesalePrice: wholesalePrice || null, manufactureYear, _branchFixedCost: initBranchFixedCost, _branchSellPrice: initBranchSellPrice, _branchManufactureYear: initBranchManufactureYear, branchId: newBranchId, branchStock: initBranchStock, branchLocation: initBranchLocation, createdAt: new Date().toISOString()};
       if(_pendingCatalogKey){ _newProd.catalogKey = _pendingCatalogKey; }
       if(_pendingFromCatalog){ _newProd._fromCatalog = true; }
       // catalogKeyが未設定の場合、カタログエントリを自動検索してリンク
