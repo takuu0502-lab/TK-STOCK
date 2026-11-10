@@ -1439,7 +1439,10 @@
     <div id="outReaderWrap"></div>
     <div id="outResult"></div>
     <div id="outCartWrap"></div>
-    <div id="provisionalListWrap" style="margin-top:24px;"></div>
+    <div id="provListSearchWrap" style="display:none;margin-top:20px;">
+      <input type="text" id="provListSearch" placeholder="🔍 お客様名・商品名・車種名・備考で絞り込み" style="width:100%;max-width:420px;box-sizing:border-box;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text-1);font-size:13px;padding:8px 12px;">
+    </div>
+    <div id="provisionalListWrap" style="margin-top:8px;"></div>
     <div id="outSessionWrap" style="margin-top:24px;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:14px;font-weight:700;color:var(--text-1);">完了リスト（今回）</div>
@@ -21792,10 +21795,23 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(!wrap) return;
     const _plOwnBranch = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
     const pending = provisionalOutbounds.filter(p=>p.status==='pending'&&(p.branchId||'taniyabe')===_plOwnBranch);
+    // 検索ボックスの表示制御
+    const _plSearchWrap = document.getElementById('provListSearchWrap');
+    const _plSearchInput = document.getElementById('provListSearch');
+    if(_plSearchWrap) _plSearchWrap.style.display = pending.length > 0 ? '' : 'none';
     if(pending.length===0){ wrap.innerHTML=''; return; }
+    // キーワードフィルター
+    const _plQ = (_plSearchInput ? _plSearchInput.value.trim() : '').toLowerCase();
+    const _plFiltered = _plQ ? pending.filter(e=>{
+      if((e.customerName||'').toLowerCase().includes(_plQ)) return true;
+      if((e.carName||'').toLowerCase().includes(_plQ)) return true;
+      if((e.note||'').toLowerCase().includes(_plQ)) return true;
+      if((e.staff||'').toLowerCase().includes(_plQ)) return true;
+      return (e.items||[]).some(i=>(i.name||'').toLowerCase().includes(_plQ)||(i.brand||'').toLowerCase().includes(_plQ)||(i.spec||'').toLowerCase().includes(_plQ));
+    }) : pending;
     const _sortNew = arr => arr.slice().sort((a,b)=>new Date(b.date||b.createdAt||0)-new Date(a.date||a.createdAt||0));
-    const provList = _sortNew(pending.filter(e=>(e.type||'custody')==='provisional'));
-    const custList = _sortNew(pending.filter(e=>(e.type||'custody')==='custody'));
+    const provList = _sortNew(_plFiltered.filter(e=>(e.type||'custody')==='provisional'));
+    const custList = _sortNew(_plFiltered.filter(e=>(e.type||'custody')==='custody'));
     function _fmtJpDatePL(str){
       if(!str) return '—';
       const d = new Date(str+'T00:00:00');
@@ -21875,6 +21891,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       }).join('');
     };
     let html = '<div style="margin-top:4px;">';
+    if(_plQ && provList.length===0 && custList.length===0){
+      html += '<div style="color:var(--text-3);font-size:13px;padding:16px 0;">「'+escapeHtml(_plQ)+'」に一致する仮出庫はありません。</div>';
+      wrap.innerHTML = html + '</div>';
+      return;
+    }
     if(provList.length>0){
       html += '<div style="font-size:14px;font-weight:700;color:var(--amber);margin-bottom:6px;">🔖 仮出庫リスト（予約一覧）（'+provList.length+'件）</div>';
       html += '<div style="font-size:12px;color:var(--text-2);line-height:1.7;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;">📌 売上入力した日に<strong>出庫確定</strong>をお願いします。その日の売上履歴・出庫履歴を確認するためです。</div>';
@@ -23074,6 +23095,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   document.getElementById('historySearch').addEventListener('input', e=>{
     historySearchText = e.target.value.trim();
     renderHistory();
+  });
+  document.getElementById('provListSearch').addEventListener('input', ()=>{
+    renderProvisionalList();
   });
   document.getElementById('historySupplierFilter').addEventListener('change', e=>{
     historySupplierFilterVal = e.target.value;
