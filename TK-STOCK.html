@@ -5161,7 +5161,6 @@ window.addEventListener('storageReady', function(){
       recalcBranchStockFromYearStock(p);
     } else {
       p.branchStock[branchId] = (p.branchStock[branchId]||0) + qty;
-      if(p.branchStock[branchId] < 0) p.branchStock[branchId] = 0;
     }
     p.stock = p.branchStock[branchId] || 0;
     p.updatedAt = Date.now(); // 在庫更新時は必ずupdatedAtを更新（Firebase保存時の競合でデータが失われないように）
@@ -5191,7 +5190,7 @@ window.addEventListener('storageReady', function(){
       }
       recalcBranchStockFromYearStock(p);
     } else {
-      p.branchStock[branchId] = Math.max(0, (p.branchStock[branchId]||0) - qty);
+      p.branchStock[branchId] = (p.branchStock[branchId]||0) - qty;
     }
     p.stock = p.branchStock[branchId] || 0;
     p.updatedAt = Date.now(); // 在庫更新時は必ずupdatedAtを更新
@@ -14163,17 +14162,35 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       const ok = await showConfirm('棚卸しを確定しますか？\n実数に基づいて'+_br+'の在庫を更新します。\n\n対象：'+items.length+'件（差異あり：'+diffItems.length+'件）');
       if(!ok) return;
 
-      // 在庫を実数に更新
+      // 在庫を実数に更新 & 差分をトランザクションとして記録（履歴との整合性を保つ）
       const _scNow = Date.now();
+      const _scAdjTxs = [];
       items.forEach(item=>{
         if(!item.p.branchStock) item.p.branchStock = {};
+        const _scOldStk = item.p.branchStock[_br] || 0;
         item.p.branchStock[_br] = item.actQty;
         item.p.stock = Object.values(item.p.branchStock).reduce((s,v)=>s+(v||0),0);
         item.p.updatedAt = _scNow;
+        // 差分がある場合は調整トランザクションを追加（履歴との整合性）
+        const _scDiff = item.actQty - _scOldStk;
+        if(_scDiff !== 0){
+          _scAdjTxs.push({
+            id: uid('t'), productId: item.p.id, barcode: item.p.barcode||'', name: item.p.name||'',
+            type: _scDiff >= 0 ? 'in' : 'out',
+            qty: Math.abs(_scDiff),
+            date: new Date(_scNow).toISOString(),
+            user: currentUser ? currentUser.displayName : '',
+            itemType: 'adjust',
+            note: '棚卸し確定による在庫修正',
+            branchId: _br
+          });
+        }
       });
+      if(_scAdjTxs.length > 0) transactions.unshift(..._scAdjTxs);
       // 在庫数を専用パスに先行保存（各商品ごと）
       await Promise.all(items.map(item=>_saveStockSnapshot(item.p.id, item.p.branchStock, _scNow, item.p._branchYearStock)));
       await saveProducts();
+      if(_scAdjTxs.length > 0) await saveTransactions();
 
       // 履歴に保存
       const histEntry = {
@@ -20426,7 +20443,6 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       return;
     } else {
       pFresh.branchStock[opBranch] = (pFresh.branchStock[opBranch]||0) + (kind==='in' ? qty : -qty);
-      if(pFresh.branchStock[opBranch] < 0) pFresh.branchStock[opBranch] = 0;
     }
     pFresh.stock = Object.values(pFresh.branchStock).reduce((s,v)=>s+(v||0),0);
     pFresh.updatedAt = Date.now();
