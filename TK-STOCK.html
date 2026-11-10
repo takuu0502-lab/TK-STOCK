@@ -2885,6 +2885,10 @@
         <label style="font-size:13px;font-weight:600;">車種名</label>
         <input type="text" id="prov_car" placeholder="例) プリウス" style="width:100%;box-sizing:border-box;margin-top:4px;">
       </div>
+      <div class="field">
+        <label style="font-size:13px;font-weight:600;">備考</label>
+        <textarea id="prov_memo" rows="2" placeholder="例) 10時以降に来店予定" style="width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;min-height:52px;"></textarea>
+      </div>
       <div id="prov_notify_field" style="padding:8px 10px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;">
         <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:7px;">📞 お客様への連絡</div>
         <div style="display:flex;gap:16px;">
@@ -8850,6 +8854,8 @@ window.addEventListener('storageReady', function(){
       document.getElementById('prov_inbound_date_tbd').checked = false;
       inboundDateInput.disabled = false;
       document.getElementById('prov_notify_yes').checked = true;
+      const memoInput = document.getElementById('prov_memo');
+      if(memoInput) memoInput.value = (opts && opts.memo) || '';
       errorEl.style.display = 'none';
       errorEl.textContent = '';
       function applyType(type){
@@ -8978,6 +8984,7 @@ window.addEventListener('storageReady', function(){
         const name = customerInput.value.trim();
         const date = dateTbd.checked ? '未定' : dateInput.value;
         const car = carInput.value.trim();
+        const memo = memoInput ? memoInput.value.trim() : '';
         const useInbound = inboundCheck.checked;
         const inboundDate = inboundDateTbd.checked ? '未定' : inboundDateInput.value;
         const type = document.querySelector('input[name="prov_type"]:checked').value;
@@ -8996,7 +9003,7 @@ window.addEventListener('storageReady', function(){
             return { ...item, qty: inp ? Math.max(1, parseInt(inp.value||1,10)) : 1 };
           });
         }
-        cleanup({ customerName: name, scheduledDate: date, carName: car, inboundDate: useInbound ? inboundDate : '', type, needsNotification, itemQtys: _itemQtys });
+        cleanup({ customerName: name, scheduledDate: date, carName: car, note: memo, inboundDate: useInbound ? inboundDate : '', type, needsNotification, itemQtys: _itemQtys });
       }
       function onCancel(){ cleanup(null); }
       okBtn.addEventListener('click', onOk);
@@ -14407,6 +14414,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           customerName,
           scheduledDate,
           carName: carName||'',
+          note: formResult.note||'',
           branchId: _bulkProvBranch,
           staff: currentUser?.displayName || '',
           items: _resolvedItems,
@@ -19717,6 +19725,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           +'</div>'
           +'</div>'
           +(po.customerName?'<div style="margin-top:6px;padding:5px 8px;background:rgba(232,160,32,0.1);border-radius:6px;font-size:12px;color:var(--amber);font-weight:600;">👤 '+escapeHtml(po.customerName)+(po.carName?' ／ 車種：'+escapeHtml(po.carName):'')+'</div>':'')
+          +(po.note?'<div style="margin-top:5px;padding:5px 8px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--text-2);white-space:pre-wrap;">📝 '+escapeHtml(po.note)+'</div>':'')
           +'</div>';
       };
 
@@ -19988,6 +19997,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           customerName,
           scheduledDate,
           carName: carName||'',
+          note: formResult.note||'',
           staff: _dpUser,
           items: [{ productId:p2.id, name:p2.name, brand:p2.brand||'', spec:p2.spec||'', partno:p2.partno||'', qty }],
           needsNotification: formResult.needsNotification !== false,
@@ -20044,6 +20054,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           customerName,
           scheduledDate,
           carName: carName||'',
+          note: formResult.note||'',
           staff: _custUser,
           items: [{ productId:p.id, name:p.name, brand:p.brand||'', spec:p.spec||'', partno:p.partno||'', qty }],
           status: 'pending',
@@ -21238,6 +21249,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           customerName,
           scheduledDate,
           carName: carName||'',
+          note: formResult.note||'',
           staff: _opUser,
           items: outboundCart.map(item=>({ productId:item.productId, name:item.name, brand:item.brand||'', spec:item.spec||'', partno:item.partno||'', qty:item.qty })),
           needsNotification: formResult.needsNotification !== false,
