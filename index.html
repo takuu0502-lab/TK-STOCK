@@ -1412,7 +1412,10 @@
     <div id="inResult"></div>
     <div id="inCartWrap"></div>
     <div id="customerOrderWrap" style="margin-top:24px;"></div>
-    <div id="incomingSchedWrap" style="margin-top:24px;"></div>
+    <div id="inSchedSearchWrap" style="display:none;margin-top:20px;">
+      <input type="text" id="inSchedSearch" placeholder="🔍 商品名・ブランド・サイズ・お客様名で絞り込み" style="width:100%;max-width:420px;box-sizing:border-box;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text-1);font-size:13px;padding:8px 12px;">
+    </div>
+    <div id="incomingSchedWrap" style="margin-top:8px;"></div>
     <div id="inSessionWrap" style="margin-top:24px;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:14px;font-weight:700;color:var(--text-1);">完了リスト（今回）</div>
@@ -22441,8 +22444,25 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       // customerOrderIdなし・かつcustomerNameのみのorphanは表示
       return !s.customerOrderId;
     });
+    // 検索ボックスの表示制御
+    const _isSearchWrap = document.getElementById('inSchedSearchWrap');
+    const _isSearchInput = document.getElementById('inSchedSearch');
+    if(_isSearchWrap) _isSearchWrap.style.display = pending.length > 0 ? '' : 'none';
     if(pending.length===0){ wrap.innerHTML=''; return; }
-    pending.sort((a,b)=>(a.expectedDate||'').localeCompare(b.expectedDate||''));
+    // キーワードフィルター
+    const _isQ = (_isSearchInput ? _isSearchInput.value.trim() : '').toLowerCase();
+    const filtered = _isQ ? pending.filter(s=>{
+      if((s.productName||'').toLowerCase().includes(_isQ)) return true;
+      if((s.brand||'').toLowerCase().includes(_isQ)) return true;
+      if((s.spec||'').toLowerCase().includes(_isQ)) return true;
+      if((s.customerName||'').toLowerCase().includes(_isQ)) return true;
+      if((s.note||'').toLowerCase().includes(_isQ)) return true;
+      const p2 = products.find(x=>x.id===s.productId);
+      if(p2 && (p2.name||'').toLowerCase().includes(_isQ)) return true;
+      if(p2 && (p2.spec||'').toLowerCase().includes(_isQ)) return true;
+      return false;
+    }) : pending;
+    filtered.sort((a,b)=>(a.expectedDate||'').localeCompare(b.expectedDate||''));
     const today = new Date(); today.setHours(0,0,0,0);
     function _fmtJpDateIS(str){
       if(!str) return '未定';
@@ -22450,7 +22470,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       if(isNaN(d)) return str;
       return d.getFullYear()+'年 '+String(d.getMonth()+1).padStart(2,'0')+'月 '+String(d.getDate()).padStart(2,'0')+'日';
     }
-    let cards = pending.map(s=>{
+    if(_isQ && filtered.length === 0){
+      wrap.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:16px 0;">「'+escapeHtml(_isQ)+'」に一致する入庫予定はありません。</div>';
+      return;
+    }
+    let cards = filtered.map(s=>{
       const p2 = products.find(x=>x.id===s.productId);
       const d = new Date(s.expectedDate+'T00:00:00');
       const diff = Math.round((d-today)/(1000*60*60*24));
@@ -22509,7 +22533,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         +'</div>';
     }).join('');
     let html = '<div style="margin-top:4px;">'
-      +'<div style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;">📦 入庫予定リスト（在庫分）（'+pending.length+'件）</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;">📦 入庫予定リスト（在庫分）（'+(_isQ ? filtered.length+' / ' : '')+pending.length+'件）</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;max-height:520px;overflow-y:auto;padding-right:2px;">'+cards+'</div>'
       +'</div>';
     wrap.innerHTML = html;
@@ -23098,6 +23122,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
   });
   document.getElementById('provListSearch').addEventListener('input', ()=>{
     renderProvisionalList();
+  });
+  document.getElementById('inSchedSearch').addEventListener('input', ()=>{
+    renderIncomingScheduleList();
   });
   document.getElementById('historySupplierFilter').addEventListener('change', e=>{
     historySupplierFilterVal = e.target.value;
