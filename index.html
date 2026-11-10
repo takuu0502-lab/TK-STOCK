@@ -1466,7 +1466,7 @@
         <span class="chip" data-hdate="today">本日</span>
         <span class="chip" data-hdate="week">今週</span>
       </div>
-      <input type="text" id="historySearch" placeholder="商品名・ブランド・サイズで検索" style="flex:1;min-width:180px;max-width:300px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
+      <input type="text" id="historySearch" placeholder="商品名・ブランド・サイズ・お客様名・担当者で検索" style="flex:1;min-width:180px;max-width:360px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
       <select id="historySupplierFilter" style="min-width:120px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;color:var(--text-1);font-size:13px;padding:6px 10px;">
         <option value="">仕入先：すべて</option>
       </select>
@@ -23149,8 +23149,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       list = list.filter(t=>{
         if((t.name||'').toLowerCase().includes(q)) return true;
         if((t.barcode||'').includes(q)) return true;
+        if((t.customerName||'').toLowerCase().includes(q)) return true;
+        if((t.user||'').toLowerCase().includes(q)) return true;
+        if((t.spec||'').toLowerCase().includes(q)) return true;
         const p = products.find(x=>x.id===t.productId);
         if(p && (p.brand||'').toLowerCase().includes(q)) return true;
+        if(p && (p.spec||'').toLowerCase().includes(q)) return true;
         return false;
       });
     }
