@@ -22424,7 +22424,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       const diffLabel = diff===0?'今日':diff>0?diff+'日後':Math.abs(diff)+'日超過';
       const diffColor = diff<0?'var(--red)':diff===0?'var(--amber)':'var(--teal)';
       const borderColor = diff<0?'var(--red)':'var(--line)';
-      const stk = p2 ? getStock(p2) : '?';
+      const stk = p2 ? ((p2.branchStock && p2.branchStock[_ownBr] != null) ? p2.branchStock[_ownBr] : (p2.stock || 0)) : '?';
       return '<div id="isch-entry-'+s.id+'" style="border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;background:var(--bg-1);box-shadow:0 1px 4px rgba(0,0,0,0.05);display:flex;flex-direction:column;">'
         /* カード上部 */
         +'<div style="padding:14px 16px;flex:1;">'
