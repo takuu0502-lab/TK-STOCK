@@ -16126,7 +16126,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     let rows = rowData.map((r,i)=>
       '<tr>'
       +'<td class="op-num">'+(i+1)+'</td>'
-      +'<td style="font-size:9pt;">'+escapeHtml(r.brand||'—')+'</td>'
+      +'<td style="font-size:9pt;white-space:nowrap;">'+escapeHtml(r.brand||'—')+'</td>'
       +'<td>'+escapeHtml(r.name||'')+'</td>'
       +'<td style="font-size:9pt;">'+escapeHtml(r.spec||'—')+'</td>'
       +'<td style="font-size:9pt;font-family:monospace;">'+escapeHtml(r.partno||'—')+'</td>'
@@ -16150,6 +16150,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         +'<thead><tr><th style="width:24pt;">No.</th><th style="text-align:left;width:60pt;">メーカー</th><th style="text-align:left;">商品名</th><th style="text-align:left;width:80pt;white-space:nowrap;">規格・サイズ</th><th style="text-align:left;width:72pt;">品番</th><th style="width:36pt;">数量</th></tr></thead>'
         +'<tbody>'+rows+'</tbody>'
       +'</table>'
+      +'<div style="font-size:9.5pt;color:#333;margin:3mm 0;">上記の通りご確認の上、ご注文のほどよろしくお願いいたします。</div>'
       +(note ? '<div class="op-note-label">備考</div><div class="op-note">'+escapeHtml(note)+'</div>' : '')
       +'<div class="op-footer">印刷日：'+escapeHtml(printedStr)+'</div>';
 
