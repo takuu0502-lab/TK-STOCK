@@ -7070,6 +7070,7 @@ window.addEventListener('storageReady', function(){
   // 指定商品と同一ファミリーの全productIdを返す
   // ホワイトリストにない商品は自分だけを返す
   function _siblingProductIds(p){
+    if((p.name||'').includes('自社委託')) return [p.id];
     const base = _productBaseName(p.name);
     if(!_custodyFamilyWhitelist.includes(base)) return [p.id];
     const spec = (p.spec||'').trim();
