@@ -11086,7 +11086,7 @@ window.addEventListener('storageReady', function(){
               // 仮出庫：全支店の列にそれぞれ表示
               const _poPend = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(i=>i.productId===p.id));
               const provQtyProv = _poPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-              const provQtyCust = _poPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+              const provQtyCust = custodyContracts.filter(c=>c.productId===p.id&&c.branchId===brId).reduce((s,r)=>s+_custodyRemaining(r),0);
               const provQty = provQtyProv + provQtyCust;
               if(provQtyProv > 0){
                 if(isOwn){
@@ -11135,13 +11135,7 @@ window.addEventListener('storageReady', function(){
                   }
                 }
               }
-              // 預かり在庫バッジ（custodyContracts連動）
-              if(brId === 'katsuta'){
-                const _cstQty = custodyContracts.filter(c=>c.productId===p.id&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0);
-                if(_cstQty > 0){
-                  badges += '<div style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565c0;font-size:'+(isOwn?'10':'9')+'px;font-weight:700;padding:1px '+(isOwn?'6':'5')+'px;border-radius:'+(isOwn?'8':'6')+'px;white-space:nowrap;">🏪 預かり '+_cstQty+'本</div>';
-                }
-              }
+              // 預かり在庫バッジはcustodyContracts連動に統一（上のprovQtyCustで処理済み）
               cell += '<td style="padding:6px 10px;vertical-align:middle;text-align:left;background:'+_bBg+';">'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
                 + '<div style="flex-shrink:0;">'
@@ -11158,15 +11152,14 @@ window.addEventListener('storageReady', function(){
             return cell;
           } else {
             // 通常の単一列
+            const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
             const _scPoPend=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id));
             const _scProvQtyProv=_scPoPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-            const _scProvQtyCust=_scPoPend.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+            const _scProvQtyCust=custodyContracts.filter(c=>c.productId===p.id&&c.branchId===_ownBr).reduce((s,r)=>s+_custodyRemaining(r),0);
             const provQty=_scProvQtyProv+_scProvQtyCust;
             const provOver=_scProvQtyCust>stk;
             const _provTipSc=_scPoPend.map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮出庫]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
-            const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
-            const _cstQtySingle=(isSuperAdminUser()||_ownBr==='katsuta')?custodyContracts.filter(c=>c.productId===p.id&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0):0;
-            return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:default;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="custody" title="'+_provTipSc+'" style="cursor:default;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+_makeInschBadges(_ownBr ? p.id : '', _ownBr, 11, true)+(_cstQtySingle>0?'<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🏪 預かり '+_cstQtySingle+'本</div>':'')+  '</td>';
+            return '<td data-label="在庫数"><div class="gauge-wrap"><span class="stock-num" style="color:'+color+';">'+stk+'</span><div class="gauge-bar"><div class="gauge-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'+(low ? '<span class="low-flag">在庫少</span>' : '')+'</div>'+(p.customerOrders && p.customerOrders.length > 0 ? '<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">📋 客注 '+p.customerOrders.length+'件</div>' : '')+(_scProvQtyProv>0?'<div data-prov-badge="'+p.id+'" data-prov-branch="'+_ownBr+'" data-prov-type="provisional" title="'+_provTipSc+'" style="cursor:default;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔖 仮出庫 '+_scProvQtyProv+'本</div>':'')+(_scProvQtyCust>0?'<div style="cursor:default;margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+(provOver?'var(--red)':'#e8a020')+';color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(provOver?'⚠️':'📦')+' 預かり '+_scProvQtyCust+'本'+(provOver?' (在庫超過)':'')+' </div>':'')+_makeInschBadges(_ownBr ? p.id : '', _ownBr, 11, true)+'</td>';
           }
         })()
         + (recentFilter ? '<td style="white-space:nowrap;"><span style="font-size:11px;color:var(--text-3);margin-right:6px;">'+createdStr+'</span><button class="btn btn-amber btn-sm" data-edit-id="'+p.id+'" style="font-size:11px;padding:3px 10px;" onclick="event.stopPropagation();">編集</button></td>' : '')
