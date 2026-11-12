@@ -7186,6 +7186,8 @@ window.addEventListener('storageReady', function(){
   function renderCustodyTab(){
     const el = document.getElementById('custodyContent');
     if(!el) return;
+    // 再描画前に検索ワードを保持
+    const _prevSearch = (document.getElementById('custodySearch')||{}).value || '';
     const rows = _custodyRows();
 
     // サマリー集計
@@ -7197,7 +7199,8 @@ window.addEventListener('storageReady', function(){
     let html =
       '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">'
       +'<h2 class="section-title" style="margin:0;">預かり在庫</h2>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      +'<input type="text" id="custodySearch" placeholder="🔍 お客様名・パターン・サイズ・備考で絞り込み" value="'+escapeHtml(_prevSearch)+'" oninput="renderCustodyTab()" style="height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;width:300px;background:var(--bg-1);color:var(--text-1);">'
       +'<button class="btn btn-ghost btn-sm" onclick="custodyPrintList()" style="border-color:var(--text-2);color:var(--text-2);">🖨 一覧印刷</button>'
       +'<button class="btn btn-amber" onclick="custodyAddRow()">＋ 新規登録</button>'
       +'</div>'
@@ -7230,7 +7233,20 @@ window.addEventListener('storageReady', function(){
       +'</tr></thead>';
     html += '<tbody>';
 
-    const _sortedRows = rows.slice().sort((a,b)=>(a.customerName||'').localeCompare(b.customerName||'','ja'));
+    const _custodyQ = (document.getElementById('custodySearch')||{}).value || _prevSearch;
+    const _custodyQN = _custodyQ.trim().toLowerCase();
+    const _sortedRows = rows.slice().sort((a,b)=>(a.customerName||'').localeCompare(b.customerName||'','ja'))
+      .filter(r=>{
+        if(!_custodyQN) return true;
+        return (r.customerName||'').toLowerCase().includes(_custodyQN)
+          || (r.pattern||'').toLowerCase().includes(_custodyQN)
+          || (r.size||'').toLowerCase().includes(_custodyQN)
+          || (r.note||'').toLowerCase().includes(_custodyQN);
+      });
+    if(!_sortedRows.length && _custodyQN){
+      html += '<div style="color:var(--text-3);padding:40px 0;text-align:center;font-size:14px;">「'+escapeHtml(_custodyQ)+'」に一致する預かり在庫はありません</div>';
+      el.innerHTML=html; return;
+    }
     _sortedRows.forEach(row=>{
       const rem = _custodyRemaining(row);
       const logs = (row.logs||[]).slice().sort((a,b)=>a.date>b.date?1:-1);
