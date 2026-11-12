@@ -7030,7 +7030,8 @@ window.addEventListener('storageReady', function(){
     return currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
   }
   function _custodyRemaining(row){
-    return Math.max(0, (row.initialQty||0) - (row.logs||[]).reduce((s,l)=>s+(l.qty||0),0));
+    // 使用・売上のみ残数から引く（追加ログ type:'add' は initialQty に既に加算済みのため除外）
+    return Math.max(0, (row.initialQty||0) - (row.logs||[]).filter(l=>l.type!=='add').reduce((s,l)=>s+(l.qty||0),0));
   }
   function _custodyRows(){
     const br = _custodyBranchId();
@@ -9715,7 +9716,7 @@ window.addEventListener('storageReady', function(){
             }
           }
           const _sellVal = (sell != null && sell > 0) ? sell : null;
-          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: _sellVal != null ? _sellVal : r.w, retailPrice: r.t||null });
+          groups.push({ id:uid('qg'), productId: r._productId||null, name:(r.b===r.m?r.b:r.m.startsWith(r.b+' ')?r.m:r.b+' '+r.m), spec:r.s, qty:defaultQty, unitPrice: _sellVal != null ? _sellVal : null, retailPrice: r.t||null });
         }
         quoteGroups = groups;
         { const _qBr = currentUser ? (currentUser.branchId||'taniyabe') : 'taniyabe';
