@@ -7030,8 +7030,10 @@ window.addEventListener('storageReady', function(){
     return currentUser ? (currentUser.branchId || 'taniyabe') : 'taniyabe';
   }
   function _custodyRemaining(row){
-    // 使用・売上のみ残数から引く（追加ログ type:'add' は initialQty に既に加算済みのため除外）
-    return Math.max(0, (row.initialQty||0) - (row.logs||[]).filter(l=>l.type!=='add').reduce((s,l)=>s+(l.qty||0),0));
+    // initialQty（初回登録数）＋ addログ合計 − 使用/売上ログ合計
+    const _addSum  = (row.logs||[]).filter(l=>l.type==='add').reduce((s,l)=>s+(l.qty||0),0);
+    const _useSum  = (row.logs||[]).filter(l=>l.type!=='add').reduce((s,l)=>s+(l.qty||0),0);
+    return Math.max(0, (row.initialQty||0) + _addSum - _useSum);
   }
   function _custodyRows(){
     const br = _custodyBranchId();
@@ -7693,7 +7695,7 @@ window.addEventListener('storageReady', function(){
       if(qty<1){alert('本数を入力してください');return;}
       const date=(document.getElementById('caq_date')||{}).value||new Date().toISOString().slice(0,10);
       const note=((document.getElementById('caq_note')||{}).value||'').trim();
-      row.initialQty=(row.initialQty||0)+qty;
+      // initialQty は初回登録数を保持。追加分はログだけに記録して _custodyRemaining で合算する
       if(!row.logs) row.logs=[];
       row.logs.push({id:uid('cl'),type:'add',qty,date,note,createdAt:new Date().toISOString()});
       await saveCustodyContracts();
