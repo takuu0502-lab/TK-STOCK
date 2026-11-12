@@ -2156,6 +2156,20 @@
                 </optgroup>
               </select>
             </div>
+            <div class="tire-size-col" style="width:auto;min-width:90px;">
+              <label>プライ数</label>
+              <select id="f_forklift_ply" style="width:100%;height:34px;font-size:13px;font-weight:600;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-1);box-sizing:border-box;">
+                <option value="">-</option>
+                <option value="6PR">6PR</option>
+                <option value="8PR">8PR</option>
+                <option value="10PR">10PR</option>
+                <option value="12PR">12PR</option>
+                <option value="14PR">14PR</option>
+                <option value="16PR">16PR</option>
+                <option value="18PR">18PR</option>
+                <option value="20PR">20PR</option>
+              </select>
+            </div>
             <div style="font-size:11px;color:var(--text-3);padding-bottom:8px;">または上の「規格・仕様」欄に直接入力</div>
           </div>
         </div>
@@ -18359,13 +18373,16 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         populateSpecTireSelects();
       });
     }
-    // フォークリフト用サイズプリセット選択
+    // フォークリフト用サイズプリセット選択 / プライ数選択 → spec自動生成
     const _flPreset = document.getElementById('f_forklift_size_preset');
-    if(_flPreset){
-      _flPreset.addEventListener('change', function(){
-        if(this.value) document.getElementById('f_spec').value = this.value;
-      });
+    const _flPly    = document.getElementById('f_forklift_ply');
+    function _updateForkliftSpec(){
+      const _sz  = _flPreset ? _flPreset.value : '';
+      const _ply = _flPly    ? _flPly.value    : '';
+      if(_sz) document.getElementById('f_spec').value = _ply ? _sz + ' ' + _ply : _sz;
     }
+    if(_flPreset) _flPreset.addEventListener('change', _updateForkliftSpec);
+    if(_flPly)    _flPly.addEventListener('change',    _updateForkliftSpec);
   })();
   // ホイールスペック変更時に規格・仕様へ自動反映（常に上書き）
   function updateSpecFromWheelSpec(){
@@ -18394,7 +18411,10 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     //   外径x幅-リム 形式: 18x7-8, 28x9-15
     //   外径x幅-リム/フランジ 形式: 18x7-8/4.33
     //   mm幅 形式: 250-15/7.00, 300-15/8.00
-    const flMatch = (spec||'').match(/^(?:\d+x[\d.½]+-\d+|\d+[\d.]*-\d+)(?:\/[\d.]+)?$/i);
+    // フォークリフト用: "8.25-15 12PR" のようにプライ数が末尾に付く場合も考慮
+    const _flSpecBase = (spec||'').replace(/\s+\d{1,2}PR$/i, '').trim();
+    const _flPlyVal   = (spec||'').match(/(\d{1,2}PR)$/i);
+    const flMatch = _flSpecBase.match(/^(?:\d+x[\d.½]+-\d+|\d+[\d.]*-\d+)(?:\/[\d.]+)?$/i);
     if(flMatch){
       // フォークリフト用モードをオンにして再構築
       const _flChk = document.getElementById('f_forklift_mode');
@@ -18406,8 +18426,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       const _preset = document.getElementById('f_forklift_size_preset');
       if(_preset){
         const _opts = Array.from(_preset.options).map(o=>o.value);
-        _preset.value = _opts.includes(spec) ? spec : '';
+        _preset.value = _opts.includes(_flSpecBase) ? _flSpecBase : '';
       }
+      // プライ数を復元
+      const _plyEl = document.getElementById('f_forklift_ply');
+      if(_plyEl) _plyEl.value = _flPlyVal ? _flPlyVal[1].toUpperCase() : '';
       return;
     }
     // Match both standard "195/65R15" and truck "6.50R16" formats
@@ -18702,6 +18725,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(_flChkReset) _flChkReset.checked = false;
     const _flPresetReset = document.getElementById('f_forklift_size_preset');
     if(_flPresetReset) _flPresetReset.value = '';
+    const _flPlyReset = document.getElementById('f_forklift_ply');
+    if(_flPlyReset) _flPlyReset.value = '';
     populateSpecTireSelects();
     document.getElementById('f_tiremodel').value = '';
     populateMajorSelect(selectedMajor || (categories[0] && categories[0].id));
