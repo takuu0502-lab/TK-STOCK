@@ -3721,6 +3721,7 @@ window.addEventListener('storageReady', function(){
   let outboundSession = []; // 今回の出庫完了リスト
   let provisionalOutbounds = []; // 仮出庫リスト
   let custodyContracts = []; // 預かり在庫
+  let _custodySearchWord = ''; // 預かり在庫検索ワード
   let popFiles = []; // POPフォルダ
   let popCategories = ['夏タイヤ','冬タイヤ','ホイール','セット品','その他']; // POPカテゴリ
   let custodyCustomers = []; // 取引先マスター
@@ -7186,8 +7187,6 @@ window.addEventListener('storageReady', function(){
   function renderCustodyTab(){
     const el = document.getElementById('custodyContent');
     if(!el) return;
-    // 再描画前に検索ワードを保持
-    const _prevSearch = (document.getElementById('custodySearch')||{}).value || '';
     const rows = _custodyRows();
 
     // サマリー集計
@@ -7201,8 +7200,8 @@ window.addEventListener('storageReady', function(){
       +'<h2 class="section-title" style="margin:0;">預かり在庫</h2>'
       +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
       +'<div style="display:flex;align-items:center;gap:0;">'
-      +'<input type="text" id="custodySearch" placeholder="お客様名・パターン・サイズ・備考" value="'+escapeHtml(_prevSearch)+'" onkeydown="if(event.key===\'Enter\')renderCustodyTab()" style="height:34px;padding:0 10px;border:1px solid var(--line);border-right:none;border-radius:8px 0 0 8px;font-size:13px;width:260px;background:var(--bg-1);color:var(--text-1);">'
-      +'<button onclick="renderCustodyTab()" style="height:34px;padding:0 14px;background:var(--amber);color:#fff;border:none;border-radius:0 8px 8px 0;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">検索</button>'
+      +'<input type="text" id="custodySearch" placeholder="お客様名・パターン・サイズ・備考" value="'+escapeHtml(_custodySearchWord)+'" onkeydown="if(event.key===\'Enter\'){_custodySearchWord=this.value;renderCustodyTab();}" style="height:34px;padding:0 10px;border:1px solid var(--line);border-right:none;border-radius:8px 0 0 8px;font-size:13px;width:260px;background:var(--bg-1);color:var(--text-1);">'
+      +'<button onclick="_custodySearchWord=document.getElementById(\'custodySearch\').value;renderCustodyTab();" style="height:34px;padding:0 14px;background:var(--amber);color:#fff;border:none;border-radius:0 8px 8px 0;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">検索</button>'
       +'</div>'
       +'<button class="btn btn-ghost btn-sm" onclick="custodyPrintList()" style="border-color:var(--text-2);color:var(--text-2);">🖨 一覧印刷</button>'
       +'<button class="btn btn-amber" onclick="custodyAddRow()">＋ 新規登録</button>'
@@ -7236,7 +7235,7 @@ window.addEventListener('storageReady', function(){
       +'</tr></thead>';
     html += '<tbody>';
 
-    const _custodyQ = (document.getElementById('custodySearch')||{}).value || _prevSearch;
+    const _custodyQ = _custodySearchWord;
     const _custodyQN = _custodyQ.trim().toLowerCase();
     const _sortedRows = rows.slice().sort((a,b)=>(a.customerName||'').localeCompare(b.customerName||'','ja'))
       .filter(r=>{
@@ -7807,6 +7806,10 @@ window.addEventListener('storageReady', function(){
   }
 
   // グローバルスコープに公開（onclick属性から呼び出せるようにする）
+  Object.defineProperty(window, '_custodySearchWord', {
+    get(){ return _custodySearchWord; },
+    set(v){ _custodySearchWord = v; }
+  });
   window.custodyAddRow    = custodyAddRow;
   window.custodyEditRow   = custodyEditRow;
   window.custodyLogUse    = custodyLogUse;
