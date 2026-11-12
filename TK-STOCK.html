@@ -7057,6 +7057,31 @@ window.addEventListener('storageReady', function(){
     const br = _custodyBranchId();
     return custodyContracts.filter(c=> isSuperAdminUser() ? c.branchId==='katsuta' : c.branchId===br);
   }
+  // 商品名のベース名を返す（末尾のカッコ内バリアントを除去）
+  // 例: "G539(2022)" → "G539", "G611（台付き）" → "G611"
+  function _productBaseName(name){
+    return (name||'').replace(/\s*[\(（][^)）]*[\)）]\s*$/, '').trim();
+  }
+  // 指定商品と同一ファミリー（同ブランド・同ベース名・同スペック）の全productIdを返す
+  // ※「自社委託」は別管理のため、自社委託商品は単独・非自社委託商品は自社委託を除外してグループ化
+  // ※スペック（サイズ・プライ数含む）は完全一致
+  function _siblingProductIds(p){
+    const isSelf = (p.name||'').includes('自社委託');
+    if(isSelf) return [p.id];
+    const base = _productBaseName(p.name);
+    const spec = (p.spec||'').trim();
+    return products.filter(x =>
+      x.brand === p.brand &&
+      _productBaseName(x.name) === base &&
+      (x.spec||'').trim() === spec &&
+      !(x.name||'').includes('自社委託')
+    ).map(x => x.id);
+  }
+  // 指定商品ファミリーの預かり在庫残数合計（指定支店）
+  function _custodyQtyForFamily(p, branchId){
+    const ids = _siblingProductIds(p);
+    return custodyContracts.filter(c => ids.includes(c.productId) && c.branchId === branchId).reduce((s,r)=>s+_custodyRemaining(r),0);
+  }
 
   // ── メインビュー（表形式） ──
   // ─── POPフォルダ ───────────────────────────────────────────
@@ -10781,7 +10806,7 @@ window.addEventListener('storageReady', function(){
           const qty = p.branchStock ? (p.branchStock[_svBr]||0) : ((p.branchId||'taniyabe')===_svBr ? (p.stock||0) : 0);
           if(qty <= 0) continue;
           // 預かり在庫分を除外（預かり品は自社資産ではないため）
-          const _custodyQty = (custodyContracts||[]).filter(c=>c.productId===p.id&&c.branchId===_svBr).reduce((s,r)=>s+_custodyRemaining(r),0);
+          const _custodyQty = _custodyQtyForFamily(p, _svBr);
           const _ownQty = Math.max(0, qty - _custodyQty);
           if(_ownQty <= 0) continue;
           if(p.costPrice && p.costPrice > 0){ _totalCost += _ownQty * p.costPrice; _hasCost = true; }
@@ -11092,7 +11117,7 @@ window.addEventListener('storageReady', function(){
               // 仮出庫：全支店の列にそれぞれ表示
               const _poPend = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===brId&&(po.items||[]).some(i=>i.productId===p.id));
               const provQtyProv = _poPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-              const provQtyCust = custodyContracts.filter(c=>c.productId===p.id&&c.branchId===brId).reduce((s,r)=>s+_custodyRemaining(r),0);
+              const provQtyCust = _custodyQtyForFamily(p, brId);
               const provQty = provQtyProv + provQtyCust;
               if(provQtyProv > 0){
                 if(isOwn){
@@ -11161,7 +11186,7 @@ window.addEventListener('storageReady', function(){
             const _ownBr=currentUser?currentUser.branchId||'taniyabe':'taniyabe';
             const _scPoPend=provisionalOutbounds.filter(po=>po.status==='pending'&&(po.items||[]).some(i=>i.productId===p.id));
             const _scProvQtyProv=_scPoPend.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-            const _scProvQtyCust=custodyContracts.filter(c=>c.productId===p.id&&c.branchId===_ownBr).reduce((s,r)=>s+_custodyRemaining(r),0);
+            const _scProvQtyCust=_custodyQtyForFamily(p, _ownBr);
             const provQty=_scProvQtyProv+_scProvQtyCust;
             const provOver=_scProvQtyCust>stk;
             const _provTipSc=_scPoPend.map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return ((po.type||'provisional')==='provisional'?'[仮出庫]':'[預かり]')+' '+(po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
@@ -17406,7 +17431,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     // 預かり在庫差し引き設定（勝田のみ有効）
     const _subtractCustody = (document.getElementById('prcol_subtractcustody')||{}).checked && ownBranch === 'katsuta';
     const _getCustodyQty = _subtractCustody
-      ? (pid) => custodyContracts.filter(c=>c.productId===pid&&c.branchId==='katsuta').reduce((s,r)=>s+_custodyRemaining(r),0)
+      ? (pid) => { const _pp = products.find(x=>x.id===pid); return _pp ? _custodyQtyForFamily(_pp,'katsuta') : 0; }
       : () => 0;
     // 仮出庫差し引き設定
     const _subtractProv = !!(document.getElementById('prcol_subtractprov')||{}).checked;
@@ -19667,7 +19692,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           const _detOwnStk = p.branchStock ? (p.branchStock[_detOwnBranch]||0) : (p.stock||0);
           const _detPOs = provisionalOutbounds.filter(po=>po.status==='pending'&&(po.branchId||'taniyabe')===_detOwnBranch&&(po.items||[]).some(i=>i.productId===p.id));
           const _detProvQty = _detPOs.filter(po=>(po.type||'provisional')==='provisional').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
-          const _detCustQty = _detPOs.filter(po=>(po.type||'provisional')==='custody').reduce((s,po)=>s+(po.items||[]).filter(i=>i.productId===p.id).reduce((ss,i)=>ss+i.qty,0),0);
+          const _detCustQty = _custodyQtyForFamily(p, _detOwnBranch);
           const provQty = _detProvQty + _detCustQty;
           const provOver = provQty > _detOwnStk;
           const _provTipDet=_detPOs.map(po=>{ const _q=(po.items||[]).filter(i=>i.productId===p.id).reduce((s,i)=>s+i.qty,0); return (po.customerName||'?')+(po.carName?' '+po.carName:'')+(po.scheduledDate?' ('+po.scheduledDate+')':'')+' x'+_q+'本'; }).join('\n');
