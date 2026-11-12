@@ -7062,13 +7062,16 @@ window.addEventListener('storageReady', function(){
   function _productBaseName(name){
     return (name||'').replace(/\s*[\(（][^)）]*[\)）]\s*$/, '').trim();
   }
-  // 指定商品と同一ファミリー（同ブランド・同ベース名・同スペック）の全productIdを返す
-  // ※「自社委託」は別管理のため、自社委託商品は単独・非自社委託商品は自社委託を除外してグループ化
-  // ※スペック（サイズ・プライ数含む）は完全一致
+  // 預かり在庫をファミリーまとめ計算する商品ベース名のホワイトリスト
+  // ここに追加した商品名のみ、年式違いをまとめて集計する
+  const _custodyFamilyWhitelist = [
+    'G539',
+  ];
+  // 指定商品と同一ファミリーの全productIdを返す
+  // ホワイトリストにない商品は自分だけを返す
   function _siblingProductIds(p){
-    const isSelf = (p.name||'').includes('自社委託');
-    if(isSelf) return [p.id];
     const base = _productBaseName(p.name);
+    if(!_custodyFamilyWhitelist.includes(base)) return [p.id];
     const spec = (p.spec||'').trim();
     return products.filter(x =>
       x.brand === p.brand &&
