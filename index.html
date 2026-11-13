@@ -2377,7 +2377,7 @@
         <input type="checkbox" id="prcol_totalval" style="width:16px;height:16px;accent-color:var(--teal);"> 在庫合計金額（仕入れ価格 × 在庫数）
       </label>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
-        <input type="checkbox" id="prcol_provout" style="width:16px;height:16px;accent-color:var(--teal);"> 仮出庫数
+        <input type="checkbox" id="prcol_provout" style="width:16px;height:16px;accent-color:var(--teal);"> 予約数
       </label>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
         <input type="checkbox" id="prcol_yearmfg" style="width:16px;height:16px;accent-color:var(--teal);"> 製造年別在庫
@@ -17590,7 +17590,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(colCost)      thCols += '<th style="text-align:right;">仕入れ価格（税抜）</th>';
     if(colSellPrice) thCols += '<th style="text-align:right;">販売価格（税込）</th>';
     if(colTotalVal)  thCols += '<th style="text-align:right;">在庫合計金額</th>';
-    if(colProvOut)  thCols += '<th style="text-align:center;">仮出庫</th>';
+    if(colProvOut)  thCols += '<th style="text-align:center;">予約</th>';
     if(colYearMfg)  thCols += '<th>製造年別在庫</th>';
 
     // 分類区切り行（分類順ソート＋リスト内に複数大分類が存在する場合に表示）
