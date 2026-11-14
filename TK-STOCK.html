@@ -13507,6 +13507,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     setTimeout(()=>{ w.print(); }, 400);
   }
 
+  window.printTbSales = printTbSales;
+
   function openTbSalesModal(record){
     tbSalesEditId = record ? record.id : null;
     document.getElementById('tbsalesModalTitle').textContent = record ? '✏️ TB売上 編集' : '＋ TB売上 新規登録';
