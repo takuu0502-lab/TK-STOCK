@@ -13102,6 +13102,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(selClient)  filtered = filtered.filter(r=>r.client===selClient);
     if(selMonth)   filtered = filtered.filter(r=>(r.date||'').startsWith(selMonth));
     if(selKeyword) filtered = filtered.filter(r=>
+      (r.client||'').toLowerCase().includes(selKeyword) ||
       (r.brand||'').toLowerCase().includes(selKeyword) ||
       (r.brand2||'').toLowerCase().includes(selKeyword) ||
       (r.size||'').toLowerCase().includes(selKeyword)
@@ -13379,6 +13380,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(selClient)  filtered = filtered.filter(r=>r.client===selClient);
     if(selMonth)   filtered = filtered.filter(r=>(r.date||'').startsWith(selMonth));
     if(selKeyword) filtered = filtered.filter(r=>
+      (r.client||'').toLowerCase().includes(selKeyword) ||
       (r.brand||'').toLowerCase().includes(selKeyword) ||
       (r.brand2||'').toLowerCase().includes(selKeyword) ||
       (r.size||'').toLowerCase().includes(selKeyword)
