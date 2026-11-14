@@ -2560,28 +2560,57 @@
         <div id="tbs_productSelected" style="margin-top:6px;display:none;padding:8px 10px;background:var(--bg-3);border-radius:8px;font-size:13px;"></div>
         <input type="hidden" id="tbs_productId" value="">
       </div>
-      <div class="field">
-        <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
-        <input type="text" id="tbs_brand" class="input" placeholder="例: TOYO M144" style="width:100%;margin-top:4px;">
-        <input type="text" id="tbs_brand2" class="input" placeholder="銘柄2（前後で異なる場合）" style="width:100%;margin-top:6px;">
-      </div>
-      <div class="field">
-        <label style="font-size:13px;font-weight:600;">サイズ</label>
-        <input type="text" id="tbs_size" class="input" placeholder="例: 11R22.5" style="width:100%;margin-top:4px;">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="field">
-          <label style="font-size:13px;font-weight:600;">売上金額（1本あたり）<span style="color:var(--red);">*</span></label>
-          <input type="number" id="tbs_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      <!-- 銘柄1 -->
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px;">銘柄①</div>
+        <div class="field" style="margin-bottom:8px;">
+          <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
+          <input type="text" id="tbs_brand" class="input" placeholder="例: TOYO M144" style="width:100%;margin-top:4px;">
         </div>
-        <div class="field">
-          <label style="font-size:13px;font-weight:600;">仕入れ原価（1本あたり）</label>
-          <input type="number" id="tbs_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+        <div class="field" style="margin-bottom:8px;">
+          <label style="font-size:13px;font-weight:600;">サイズ</label>
+          <input type="text" id="tbs_size" class="input" placeholder="例: 11R22.5" style="width:100%;margin-top:4px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;">
+          <div class="field">
+            <label style="font-size:13px;font-weight:600;">売上（1本）<span style="color:var(--red);">*</span></label>
+            <input type="number" id="tbs_sales" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:13px;font-weight:600;">原価（1本）</label>
+            <input type="number" id="tbs_cost" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:13px;font-weight:600;">本数</label>
+            <input type="number" id="tbs_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
         </div>
       </div>
-      <div class="field">
-        <label style="font-size:13px;font-weight:600;">本数</label>
-        <input type="number" id="tbs_qty" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
+      <!-- 銘柄2（任意） -->
+      <div style="border:1px dashed var(--line);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--bg-2);">
+        <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px;">銘柄②（任意・前後で異なる場合）</div>
+        <div class="field" style="margin-bottom:8px;">
+          <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
+          <input type="text" id="tbs_brand2" class="input" placeholder="例: BRIDGESTONE M888" style="width:100%;margin-top:4px;">
+        </div>
+        <div class="field" style="margin-bottom:8px;">
+          <label style="font-size:13px;font-weight:600;">サイズ</label>
+          <input type="text" id="tbs_size2" class="input" placeholder="例: 11R22.5" style="width:100%;margin-top:4px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;">
+          <div class="field">
+            <label style="font-size:13px;font-weight:600;">売上（1本）</label>
+            <input type="number" id="tbs_sales2" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:13px;font-weight:600;">原価（1本）</label>
+            <input type="number" id="tbs_cost2" placeholder="0" min="0" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+          <div class="field">
+            <label style="font-size:13px;font-weight:600;">本数</label>
+            <input type="number" id="tbs_qty2" placeholder="1" min="1" value="1" style="width:100%;box-sizing:border-box;margin-top:4px;">
+          </div>
+        </div>
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">備考</label>
@@ -13078,8 +13107,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     );
 
     // サマリー（チューブ・フラップ含む、本数×単価）
-    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
-    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
+    const totalSales = filtered.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.brand2?(r.sales2||0)*(r.qty2||1):0)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
+    const totalCost  = filtered.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.brand2?(r.cost2||0)*(r.qty2||1):0)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
     const totalProfit = totalSales - totalCost;
     const summaryEl = document.getElementById('tbsalesSummary');
     if(summaryEl){
@@ -13122,8 +13151,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       }
       listEl2.innerHTML = Object.keys(dateGrouped).sort((a,b)=>b.localeCompare(a)).map(date=>{
         const rows = dateGrouped[date];
-        const dSales  = rows.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
-        const dCost   = rows.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
+        const dSales  = rows.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.brand2?(r.sales2||0)*(r.qty2||1):0)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
+        const dCost   = rows.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.brand2?(r.cost2||0)*(r.qty2||1):0)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
         const dProfit = dSales - dCost;
         const rowsHtml = rows.map(r=>{
           const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
@@ -13136,10 +13165,21 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
             +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+((r.cost||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
             +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(dProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
             +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
-            +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.tube?1:0)+(r.flap?1:0))+'">'
+            +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.brand2?1:0)+(r.tube?1:0)+(r.flap?1:0))+'">'
             +'<button class="btn btn-ghost btn-sm" data-tbs-edit="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;margin-right:4px;">編集</button>'
             +'<button class="btn btn-ghost btn-sm" data-tbs-del="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red);">削除</button>'
             +'</td></tr>';
+          if(r.brand2){
+            const m2 = r.sales2 && r.cost2 ? Math.round((r.sales2-r.cost2)/r.sales2*100) : null;
+            html += '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';background:var(--bg-2);">'
+              +'<td style="padding:4px 10px;font-size:12px;color:#6d28d9;font-weight:600;" colspan="2">②  '+escapeHtml(r.brand2)+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.size2?escapeHtml(r.size2):'—')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.qty2||1)+'本</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+((r.sales2||0)*(r.qty2||1)).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+((r.cost2||0)*(r.qty2||1)).toLocaleString('ja-JP')+'</td>'
+              +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(m2!==null?m2+'%':'—')+'</td>'
+              +'<td colspan="1"></td></tr>';
+          }
           if(r.tube){
             const tm = r.tube.sales && r.tube.cost ? Math.round((r.tube.sales-r.tube.cost)/r.tube.sales*100) : null;
             html += '<tr style="border-bottom:'+(r.flap?'none':'1px solid var(--line-soft)')+';background:var(--bg-2);">'
@@ -13222,8 +13262,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
 
     listEl.innerHTML = Object.keys(grouped).sort().map(clientName=>{
       const rows = grouped[clientName];
-      const cSales  = rows.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
-      const cCost   = rows.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
+      const cSales  = rows.reduce((s,r)=>s+(r.sales||0)*(r.qty||1)+(r.brand2?(r.sales2||0)*(r.qty2||1):0)+(r.tube?(r.tube.sales||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.sales||0)*(r.flap.qty||1):0),0);
+      const cCost   = rows.reduce((s,r)=>s+(r.cost||0)*(r.qty||1)+(r.brand2?(r.cost2||0)*(r.qty2||1):0)+(r.tube?(r.tube.cost||0)*(r.tube.qty||1):0)+(r.flap?(r.flap.cost||0)*(r.flap.qty||1):0),0);
       const cProfit = cSales - cCost;
       const rowsHtml = rows.map(r=>{
         const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
@@ -13236,11 +13276,23 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:var(--text-2);">¥'+((r.cost||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;text-align:right;color:'+(cProfit>=0?'var(--teal)':'var(--red)')+';">'+(margin!==null?margin+'%':'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:12px;color:var(--text-3);">'+(r.note?escapeHtml(r.note):'')+'</td>'
-          +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.tube?1:0)+(r.flap?1:0))+'">'
+          +'<td style="padding:8px 10px;white-space:nowrap;" rowspan="'+(1+(r.brand2?1:0)+(r.tube?1:0)+(r.flap?1:0))+'">'
           +'<button class="btn btn-ghost btn-sm" data-tbs-edit="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;margin-right:4px;">編集</button>'
           +'<button class="btn btn-ghost btn-sm" data-tbs-del="'+escapeHtml(r.id)+'" style="font-size:11px;padding:2px 8px;color:var(--red);border-color:var(--red);">削除</button>'
           +'</td>'
           +'</tr>';
+        if(r.brand2){
+          const m2 = r.sales2 && r.cost2 ? Math.round((r.sales2-r.cost2)/r.sales2*100) : null;
+          html += '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';background:var(--bg-2);">'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--text-3);"></td>'
+            +'<td style="padding:4px 10px;font-size:12px;color:#6d28d9;font-weight:600;">②  '+escapeHtml(r.brand2)+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;color:var(--text-2);">'+(r.size2?escapeHtml(r.size2):'—')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:center;">'+(r.qty2||1)+'本</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--amber);">¥'+((r.sales2||0)*(r.qty2||1)).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-2);">¥'+((r.cost2||0)*(r.qty2||1)).toLocaleString('ja-JP')+'</td>'
+            +'<td style="padding:4px 10px;font-size:12px;text-align:right;color:var(--text-3);">'+(m2!==null?m2+'%':'—')+'</td>'
+            +'<td colspan="1"></td></tr>';
+        }
         if(r.tube){
           const tm = r.tube.sales && r.tube.cost ? Math.round((r.tube.sales-r.tube.cost)/r.tube.sales*100) : null;
           html += '<tr style="border-bottom:'+(r.flap?'none':'1px solid var(--line-soft)');
@@ -13319,8 +13371,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('tbs_date').value  = record ? (record.date||'') : new Date().toISOString().slice(0,10);
     _refreshTbClientSelect(record ? (record.client||'') : '');
     document.getElementById('tbs_brand').value  = record ? (record.brand||'') : '';
-    document.getElementById('tbs_brand2').value = record ? (record.brand2||'') : '';
     document.getElementById('tbs_size').value   = record ? (record.size||'') : '';
+    document.getElementById('tbs_brand2').value = record ? (record.brand2||'') : '';
+    document.getElementById('tbs_size2').value  = record ? (record.size2||'') : '';
+    document.getElementById('tbs_sales2').value = record ? (record.sales2||'') : '';
+    document.getElementById('tbs_cost2').value  = record ? (record.cost2||'') : '';
+    document.getElementById('tbs_qty2').value   = record ? (record.qty2||1) : 1;
     document.getElementById('tbs_sales').value = record ? (record.sales||'') : '';
     document.getElementById('tbs_cost').value  = record ? (record.cost||'') : '';
     document.getElementById('tbs_qty').value   = record ? (record.qty||1) : 1;
@@ -13380,8 +13436,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const date   = document.getElementById('tbs_date').value.trim();
     const client = document.getElementById('tbs_client').value.trim();
     const brand  = document.getElementById('tbs_brand').value.trim();
-    const brand2 = document.getElementById('tbs_brand2').value.trim();
     const size   = document.getElementById('tbs_size').value.trim();
+    const brand2 = document.getElementById('tbs_brand2').value.trim();
+    const size2  = document.getElementById('tbs_size2').value.trim();
+    const sales2 = brand2 ? (parseInt(document.getElementById('tbs_sales2').value)||0) : 0;
+    const cost2  = brand2 ? (parseInt(document.getElementById('tbs_cost2').value)||0) : 0;
+    const qty2   = brand2 ? Math.max(1, parseInt(document.getElementById('tbs_qty2').value)||1) : 0;
     const sales  = parseInt(document.getElementById('tbs_sales').value)||0;
     const cost   = parseInt(document.getElementById('tbs_cost').value)||0;
     const qty    = Math.max(1, parseInt(document.getElementById('tbs_qty').value)||1);
@@ -13408,9 +13468,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(!sales) { errEl.textContent='売上金額を入力してください。'; errEl.style.display='block'; return; }
     if(tbSalesEditId){
       const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
-      if(rec){ rec.date=date; rec.client=client; rec.brand=brand; rec.brand2=brand2||undefined; rec.size=size; rec.sales=sales; rec.cost=cost; rec.qty=qty; rec.note=note; rec.tube=tube; rec.flap=flap; rec.updatedAt=Date.now(); }
+      if(rec){ Object.assign(rec, { date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, updatedAt:Date.now() }); }
     } else {
-      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, brand2:brand2||undefined, size, sales, cost, qty, note, tube, flap, createdAt:Date.now() });
+      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, createdAt:Date.now() });
     }
     await saveTbSales();
     document.getElementById('tbsalesModal').classList.remove('show');
