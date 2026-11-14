@@ -2563,6 +2563,7 @@
       <div class="field">
         <label style="font-size:13px;font-weight:600;">タイヤ銘柄</label>
         <input type="text" id="tbs_brand" class="input" placeholder="例: TOYO M144" style="width:100%;margin-top:4px;">
+        <input type="text" id="tbs_brand2" class="input" placeholder="銘柄2（前後で異なる場合）" style="width:100%;margin-top:6px;">
       </div>
       <div class="field">
         <label style="font-size:13px;font-weight:600;">サイズ</label>
@@ -13072,6 +13073,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(selMonth)   filtered = filtered.filter(r=>(r.date||'').startsWith(selMonth));
     if(selKeyword) filtered = filtered.filter(r=>
       (r.brand||'').toLowerCase().includes(selKeyword) ||
+      (r.brand2||'').toLowerCase().includes(selKeyword) ||
       (r.size||'').toLowerCase().includes(selKeyword)
     );
 
@@ -13127,7 +13129,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
           let html = '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';">'
             +'<td style="padding:8px 10px;font-size:13px;">'+(r.client?escapeHtml(r.client):'—')+'</td>'
-            +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
+            +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand)+(r.brand2?' / '+escapeHtml(r.brand2):''):'—')+'</td>'
             +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
             +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty||1)+'本</td>'
             +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+((r.sales||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
@@ -13227,7 +13229,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
         const margin = r.sales && r.cost ? Math.round((r.sales-r.cost)/r.sales*100) : null;
         let html = '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';">'
           +'<td style="padding:8px 10px;font-size:13px;color:var(--text-2);">'+(r.date||'—')+'</td>'
-          +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand):'—')+'</td>'
+          +'<td style="padding:8px 10px;font-size:13px;">'+(r.brand?escapeHtml(r.brand)+(r.brand2?' / '+escapeHtml(r.brand2):''):'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;">'+(r.size?escapeHtml(r.size):'—')+'</td>'
           +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty||1)+'本</td>'
           +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+((r.sales||0)*(r.qty||1)).toLocaleString('ja-JP')+'</td>'
@@ -13316,8 +13318,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     document.getElementById('tbsalesModalTitle').textContent = record ? '✏️ TB売上 編集' : '＋ TB売上 新規登録';
     document.getElementById('tbs_date').value  = record ? (record.date||'') : new Date().toISOString().slice(0,10);
     _refreshTbClientSelect(record ? (record.client||'') : '');
-    document.getElementById('tbs_brand').value = record ? (record.brand||'') : '';
-    document.getElementById('tbs_size').value  = record ? (record.size||'') : '';
+    document.getElementById('tbs_brand').value  = record ? (record.brand||'') : '';
+    document.getElementById('tbs_brand2').value = record ? (record.brand2||'') : '';
+    document.getElementById('tbs_size').value   = record ? (record.size||'') : '';
     document.getElementById('tbs_sales').value = record ? (record.sales||'') : '';
     document.getElementById('tbs_cost').value  = record ? (record.cost||'') : '';
     document.getElementById('tbs_qty').value   = record ? (record.qty||1) : 1;
@@ -13377,6 +13380,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     const date   = document.getElementById('tbs_date').value.trim();
     const client = document.getElementById('tbs_client').value.trim();
     const brand  = document.getElementById('tbs_brand').value.trim();
+    const brand2 = document.getElementById('tbs_brand2').value.trim();
     const size   = document.getElementById('tbs_size').value.trim();
     const sales  = parseInt(document.getElementById('tbs_sales').value)||0;
     const cost   = parseInt(document.getElementById('tbs_cost').value)||0;
@@ -13404,9 +13408,9 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(!sales) { errEl.textContent='売上金額を入力してください。'; errEl.style.display='block'; return; }
     if(tbSalesEditId){
       const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
-      if(rec){ rec.date=date; rec.client=client; rec.brand=brand; rec.size=size; rec.sales=sales; rec.cost=cost; rec.qty=qty; rec.note=note; rec.tube=tube; rec.flap=flap; rec.updatedAt=Date.now(); }
+      if(rec){ rec.date=date; rec.client=client; rec.brand=brand; rec.brand2=brand2||undefined; rec.size=size; rec.sales=sales; rec.cost=cost; rec.qty=qty; rec.note=note; rec.tube=tube; rec.flap=flap; rec.updatedAt=Date.now(); }
     } else {
-      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, note, tube, flap, createdAt:Date.now() });
+      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, brand2:brand2||undefined, size, sales, cost, qty, note, tube, flap, createdAt:Date.now() });
     }
     await saveTbSales();
     document.getElementById('tbsalesModal').classList.remove('show');
