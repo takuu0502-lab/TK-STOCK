@@ -13172,7 +13172,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           if(r.brand2){
             const m2 = r.sales2 && r.cost2 ? Math.round((r.sales2-r.cost2)/r.sales2*100) : null;
             html += '<tr style="border-bottom:'+(r.tube||r.flap?'none':'1px solid var(--line-soft)')+';">'
-              +'<td style="padding:8px 10px;font-size:13px;" colspan="2">'+escapeHtml(r.brand2)+'</td>'
+              +'<td style="padding:8px 10px;font-size:13px;"></td>'
+              +'<td style="padding:8px 10px;font-size:13px;">'+escapeHtml(r.brand2)+'</td>'
               +'<td style="padding:8px 10px;font-size:13px;">'+(r.size2?escapeHtml(r.size2):'—')+'</td>'
               +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+(r.qty2||1)+'本</td>'
               +'<td style="padding:8px 10px;font-size:13px;text-align:right;font-weight:600;color:var(--amber);">¥'+((r.sales2||0)*(r.qty2||1)).toLocaleString('ja-JP')+'</td>'
