@@ -9654,7 +9654,20 @@ window.addEventListener('storageReady', function(){
     if(p.catalogKey){
       const [ckB, ckM, ckS] = p.catalogKey.split('||');
       const byKey = getCatalogByKey(ckB, ckM, ckS);
-      if(byKey) return byKey;
+      if(byKey){
+        // 商品名がcatalogKeyより具体的なカタログエントリを示す場合はそちらを優先
+        // 例: 商品名"BLIZZAK VRX3(2025)"にcatalogKey="BLIZZAK||VRX3||215/55R17"のとき
+        //     VRX3(2025)エントリが存在すればそちらを返す
+        if(p.name){
+          const _moreSpecific = getCatalog().find(r2 =>
+            r2 !== byKey && r2.b === byKey.b && r2.s === byKey.s &&
+            r2.m.length > byKey.m.length && r2.m.includes(byKey.m) &&
+            p.name.includes(r2.m)
+          );
+          if(_moreSpecific) return _moreSpecific;
+        }
+        return byKey;
+      }
     }
     if(!p.spec || !p.name) return null;
     const spec = p.spec.trim();
@@ -21614,9 +21627,29 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     }).sort((a,b)=>new Date(b.createdAt||b.date||0)-new Date(a.createdAt||a.date||0));
     const totalCount = pending.length;
 
+    // 客注品検索フィルター
+    const _coSearchEl = document.getElementById('coListSearch');
+    const _coQ = (_coSearchEl ? _coSearchEl.value.trim() : '').toLowerCase();
+    const _coFiltered = _coQ ? pending.filter(o=>{
+      if((o.customerName||'').toLowerCase().includes(_coQ)) return true;
+      if((o.carName||'').toLowerCase().includes(_coQ)) return true;
+      if((o.note||'').toLowerCase().includes(_coQ)) return true;
+      const _oItems = _getOrderItems(o);
+      return _oItems.some(si=>{
+        const p = products.find(x=>x.id===si.productId);
+        return (si.productName||'').toLowerCase().includes(_coQ)
+          || (p && (p.name||'').toLowerCase().includes(_coQ))
+          || (p && (p.brand||'').toLowerCase().includes(_coQ))
+          || (si.spec||p&&p.spec||'').toLowerCase().includes(_coQ);
+      });
+    }) : pending;
+
     let header = '<div style="margin-bottom:12px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
       + '<div style="font-size:14px;font-weight:700;color:var(--teal);">🛒 客注品入庫リスト'+(totalCount>0?' ('+totalCount+'件)':'')+'</div>'
+      + '</div>'
+      + '<div style="margin-bottom:6px;">'
+      + '<input type="text" id="coListSearch" placeholder="🔍 お客様名・商品名・サイズ・車種名で絞り込み" value="'+escapeHtml(_coQ)+'" style="width:100%;box-sizing:border-box;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);color:var(--text-1);font-size:13px;" oninput="renderCustomerOrderList()">'
       + '</div>'
       + '<div style="font-size:12px;color:var(--text-2);line-height:1.7;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;">'
       + '📌 予約を受けた際は<strong>入庫予定登録</strong>をお願いします。商品登録がない場合は<strong>新規商品登録</strong>してから入庫予定登録をお願いします。'
@@ -21638,7 +21671,11 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       return d.getFullYear()+'年 '+String(d.getMonth()+1).padStart(2,'0')+'月 '+String(d.getDate()).padStart(2,'0')+'日';
     }
     const _coToday = new Date(); _coToday.setHours(0,0,0,0);
-    let rows = pending.map(order=>{
+    if(_coQ && _coFiltered.length===0){
+      wrap.innerHTML = header + '<div style="color:var(--text-3);font-size:13px;padding:16px 0;">「'+escapeHtml(_coQ)+'」に一致する客注品はありません。</div>';
+      return;
+    }
+    let rows = _coFiltered.map(order=>{
       const _srcItems = _getOrderItems(order);
       const dateStr = _fmtJpDate(order.expectedDate);
       const installStr = _fmtJpDate(order.installDate);
@@ -21927,6 +21964,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       });
     });
   }
+
+  window.renderCustomerOrderList = renderCustomerOrderList;
 
   let _coItems = []; // [{product, qty}]
   let _coEditOrderId = null;
