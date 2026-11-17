@@ -13009,7 +13009,8 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       : (val && typeof val === 'object' ? Object.values(val) : []);
   }
   async function saveTbSales(){
-    await window.storage.set('tbSalesRecords', tbSalesRecords, { SHARED: true });
+    const result = await window.storage.set('tbSalesRecords', tbSalesRecords, { SHARED: true });
+    if(!result) throw new Error('Firebase書き込みエラー。ネットワーク接続またはFirebaseのルールを確認してください。');
   }
 
   function _refreshTbClientSelect(selectedVal){
@@ -13625,16 +13626,35 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     if(!date)  { errEl.textContent='日付を入力してください。'; errEl.style.display='block'; return; }
     if(!client){ errEl.textContent='取引先名を入力してください。'; errEl.style.display='block'; return; }
     if(!sales) { errEl.textContent='売上金額を入力してください。'; errEl.style.display='block'; return; }
+    // 保存前のバックアップ（失敗時ロールバック用）
+    let _prevRec = null;
     if(tbSalesEditId){
       const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
-      if(rec){ Object.assign(rec, { date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, updatedAt:Date.now() }); }
+      if(rec){ _prevRec = {...rec}; Object.assign(rec, { date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, updatedAt:Date.now() }); }
     } else {
       tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, createdAt:Date.now() });
     }
-    await saveTbSales();
-    document.getElementById('tbsalesModal').classList.remove('show');
-    renderTbSalesTab();
-    showToast(tbSalesEditId ? '更新しました' : '登録しました');
+    // 保存ボタンを無効化して二重送信防止
+    const _saveBtn = document.getElementById('tbsalesModalSave');
+    if(_saveBtn){ _saveBtn.disabled = true; _saveBtn.textContent = '保存中...'; }
+    try {
+      await saveTbSales();
+      document.getElementById('tbsalesModal').classList.remove('show');
+      renderTbSalesTab();
+      showToast(tbSalesEditId ? '更新しました' : '登録しました');
+    } catch(e) {
+      // ロールバック
+      if(tbSalesEditId && _prevRec){
+        const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
+        if(rec) Object.assign(rec, _prevRec);
+      } else {
+        tbSalesRecords.pop();
+      }
+      errEl.textContent = '⚠️ 保存に失敗しました。ネットワーク接続を確認してもう一度お試しください。';
+      errEl.style.display = 'block';
+    } finally {
+      if(_saveBtn){ _saveBtn.disabled = false; _saveBtn.textContent = '保存する'; }
+    }
   });
 
   // ── 棚卸し機能 ──────────────────────────────
