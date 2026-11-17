@@ -6254,16 +6254,24 @@ window.addEventListener('storageReady', function(){
         }
       }
       // 並列読み込みでデータ更新を高速化
-      const [_rpob, _rco, _risch, _rtx] = await Promise.all([
+      const [_rpob, _rco, _risch, _rtx, _rtbs] = await Promise.all([
         window.storage.get('provisionalOutbounds', SHARED),
         window.storage.get('customerOrders', SHARED),
         window.storage.get('incomingSchedules', SHARED),
         window.storage.get('transactions', SHARED),
+        window.storage.get('tbSalesRecords', { SHARED: true }),
       ]);
       if(_rpob){ const _fresh = JSON.parse(_rpob.value); if(Array.isArray(_fresh)) provisionalOutbounds = _fresh; }
       if(_rco && _rco.value){ const _fresh = JSON.parse(_rco.value); if(Array.isArray(_fresh)) customerOrders = _fresh; }
       if(_risch && _risch.value){ const _fresh = JSON.parse(_risch.value); if(Array.isArray(_fresh)) incomingSchedules = _fresh; }
       if(_rtx){ const _fresh = JSON.parse(_rtx.value); if(Array.isArray(_fresh)) transactions = _fresh; }
+      // TB売上も更新（複数端末で操作した際のデータ齟齬を防止）
+      if(_rtbs){
+        const _tbsVal = _rtbs.value;
+        const _freshTbs = Array.isArray(_tbsVal) ? _tbsVal
+          : (_tbsVal && typeof _tbsVal === 'object' ? Object.values(_tbsVal) : null);
+        if(_freshTbs) tbSalesRecords = _freshTbs;
+      }
       // 専用パスの在庫スナップショットを適用（メインブロブより新しい在庫数で上書き）
       await _applyStockSnapshots();
       // 更新時刻をボタンに反映
@@ -13630,9 +13638,21 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
     let _prevRec = null;
     if(tbSalesEditId){
       const rec = tbSalesRecords.find(r=>r.id===tbSalesEditId);
-      if(rec){ _prevRec = {...rec}; Object.assign(rec, { date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, updatedAt:Date.now() }); }
+      if(rec){
+        _prevRec = {...rec};
+        const _upd = { date, client, brand, size, sales, cost, qty, note, updatedAt:Date.now() };
+        if(brand2){ _upd.brand2=brand2; _upd.size2=size2||''; _upd.sales2=sales2||0; _upd.cost2=cost2||0; _upd.qty2=qty2||1; }
+        else { delete rec.brand2; delete rec.size2; delete rec.sales2; delete rec.cost2; delete rec.qty2; }
+        if(tube) _upd.tube=tube; else delete rec.tube;
+        if(flap) _upd.flap=flap; else delete rec.flap;
+        Object.assign(rec, _upd);
+      }
     } else {
-      tbSalesRecords.push({ id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, brand2:brand2||undefined, size2:size2||undefined, sales2:brand2?sales2:undefined, cost2:brand2?cost2:undefined, qty2:brand2?qty2:undefined, note, tube, flap, createdAt:Date.now() });
+      const _newRec = { id:'tbs_'+Math.random().toString(36).slice(2,10), date, client, brand, size, sales, cost, qty, note, createdAt:Date.now() };
+      if(brand2){ _newRec.brand2=brand2; _newRec.size2=size2||''; _newRec.sales2=sales2||0; _newRec.cost2=cost2||0; _newRec.qty2=qty2||1; }
+      if(tube) _newRec.tube=tube;
+      if(flap) _newRec.flap=flap;
+      tbSalesRecords.push(_newRec);
     }
     // 保存ボタンを無効化して二重送信防止
     const _saveBtn = document.getElementById('tbsalesModalSave');
