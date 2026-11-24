@@ -15211,7 +15211,12 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
           +(_sub?'<div style="font-size:11px;color:var(--text-2);margin-bottom:8px;">'+escapeHtml(_sub)+'</div>':'<div style="margin-bottom:8px;"></div>')
           +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
           +'<div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:130px;">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">'
           +'<label style="font-size:11px;color:var(--text-3);font-weight:600;">入荷予定日</label>'
+          +'<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2);cursor:pointer;">'
+          +'<input type="checkbox" id="bulkInsch_unk_'+i+'" style="width:12px;height:12px;accent-color:var(--amber);" onchange="(function(chk,i){var d=document.getElementById(\'bulkInsch_date_\'+i);d.style.display=chk.checked?\'none\':\'\';d.value=chk.checked?\'\':\''+_defaultDate+'\';chk.closest(\'div\').nextElementSibling&&(chk.closest(\'div\').nextElementSibling.style.color=chk.checked?\'var(--amber)\':\'\');})(this,'+i+')">'
+          +'未確認</label>'
+          +'</div>'
           +'<input type="date" id="bulkInsch_date_'+i+'" value="'+_defaultDate+'" style="width:100%;box-sizing:border-box;font-size:13px;">'
           +'</div>'
           +'<div style="display:flex;flex-direction:column;gap:3px;">'
@@ -15270,7 +15275,7 @@ body{margin:0;padding:0;font-family:'Hiragino Sans','BIZ UDGothic','Helvetica Ne
       function closeModal(){ document.getElementById('bulkInschModal').classList.remove('show'); okBtn.removeEventListener('click', onOk); cancelBtn.removeEventListener('click', onCancel); }
       async function onOk(){
         const dates = ps.map((_,i)=> document.getElementById('bulkInsch_date_'+i).value);
-        const missingIdx = dates.findIndex(d=>!d);
+        const missingIdx = dates.findIndex((d,i)=>!d && !document.getElementById('bulkInsch_unk_'+i)?.checked);
         if(missingIdx >= 0){
           errorEl.textContent = (missingIdx+1)+'番目の商品の入荷予定日を入力してください。';
           errorEl.style.display = 'block';
